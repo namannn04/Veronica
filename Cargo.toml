@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/veronica-core",
+    "crates/veronica-usage",
+    "crates/veronica-system",
+    "crates/veronica-calendar",
+    "crates/veronica-media",
+    "crates/veronica-cli",
+    "apps/desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "GPL-3.0-only"
+repository = "https://github.com/namannn04/veronica"
+authors = ["Veronica contributors"]
+
+[workspace.dependencies]
+veronica-core = { path = "crates/veronica-core" }
+veronica-usage = { path = "crates/veronica-usage" }
+veronica-system = { path = "crates/veronica-system" }
+veronica-media = { path = "crates/veronica-media" }
+veronica-calendar = { path = "crates/veronica-calendar" }
+
+anyhow = "1.0"
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+directories = "5.0"
+chrono = { version = "0.4", features = ["serde"] }
+sysinfo = "0.32"
+zbus = { version = "4.4", default-features = false, features = ["tokio"] }
+clap = { version = "4.5", features = ["derive"] }
+notify = "7.0"
+futures-util = "0.3"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

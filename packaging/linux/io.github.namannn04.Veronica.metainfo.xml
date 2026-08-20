@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.namannn04.Veronica</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <developer id="io.github.namannn04">
+    <name>Veronica contributors</name>
+  </developer>
+  <name>Veronica</name>
+  <summary>Native control center for Ubuntu</summary>
+  <description>
+    <p>
+      Veronica replaces a shelf of single-purpose utilities with one native
+      application. It tracks coding-agent usage, monitors this machine and your
+      SSH hosts, controls media and audio, and adds a hover island to the top
+      bar.
+    </p>
+    <p>Usage data never leaves the machine. There is no account and no telemetry.</p>
+  </description>
+  <launchable type="desktop-id">io.github.namannn04.Veronica.desktop</launchable>
+  <url type="homepage">https://github.com/namannn04/veronica</url>
+  <url type="bugtracker">https://github.com/namannn04/veronica/issues</url>
+  <provides>
+    <binary>veronica</binary>
+    <binary>vr</binary>
+  </provides>
+  <categories>
+    <category>System</category>
+    <category>Monitor</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-08-20">
+      <description>
+        <p>First release: agent usage dashboard, system monitor, the notch island and the vr CLI.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Veronica
+GenericName=Control Center
+Comment=Agent usage, machines, media and desktop utilities in one app
+Exec=veronica
+# Must match the icon basename the bundler installs under hicolor.
+Icon=veronica
+Terminal=false
+Categories=System;Monitor;
+Keywords=usage;claude;codex;monitor;clipboard;control;
+StartupNotify=true
+StartupWMClass=Veronica

@@ -1,0 +1,393 @@
+/* The notch island.
+ *
+ * GNOME's top bar lives in the shell's own layer, which an application window
+ * cannot be stacked above. So rather than pretending to replace it, the island
+ * hangs from it: a pill tucked directly beneath the bar, centred on the same
+ * axis as the clock, that grows downward on hover.
+ *
+ * The window is transparent and resizes with the island, so the desktop stays
+ * clickable everywhere the island is not.
+ */
+
+.notch-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  /* Only the island is interactive; the rest of the window is shaped out. */
+  pointer-events: none;
+  /* The window is only as tall as the island, so nothing here scrolls. */
+}
+
+.island {
+  pointer-events: auto;
+  /* The window is a fixed 520x430; the island sizes itself inside it and the
+     Rust side keeps the clickable region matched to whatever it occupies. */
+  width: 300px;
+  background: color-mix(in srgb, #14131a 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-top: none;
+  /* Square at the top where it meets the bar, rounded where it hangs free. */
+  border-radius: 0 0 17px 17px;
+  color: #f4f2ef;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  transition: width 200ms cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 180ms ease;
+}
+
+.island.expanded {
+  width: 100%;
+  border-radius: 0 0 20px 20px;
+}
+
+/* ------------------------------------------------------------- collapsed */
+
+.pill {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pill .clock {
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.pill .sep {
+  flex: 1;
+}
+
+.pill .glyph {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #b9b5b0;
+  font-size: 11px;
+}
+
+.pill .glyph.alert {
+  color: #ec835a;
+}
+
+.pill .glyph.muted {
+  color: #d03b3b;
+}
+
+/* Equaliser bars, only animated while something is actually playing. */
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 11px;
+}
+
+.eq span {
+  width: 2px;
+  height: 4px;
+  background: #6a8d73;
+  border-radius: 1px;
+}
+
+/* Only a playing track animates; a paused one holds a static shape, so the
+   island is not permanently in motion in the corner of the screen. */
+.eq.live span {
+  animation: eq 900ms ease-in-out infinite;
+}
+
+.eq.live span:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.eq.live span:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+.pill .glyph.track {
+  gap: 5px;
+  min-width: 0;
+}
+
+.pill .track-name {
+  max-width: 74px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    height: 3px;
+  }
+  50% {
+    height: 11px;
+  }
+}
+
+/* -------------------------------------------------------------- expanded */
+
+.island-body {
+  padding: 4px 14px 13px;
+  display: grid;
+  /* A grid track defaults to min-width:auto, so a long unbreakable title - a
+     browser tab name, for instance - widens the whole body past the window and
+     pushes the right-aligned figures out of sight. minmax(0, 1fr) holds the
+     column to the island's width so the ellipsis can do its job. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 11px;
+}
+
+.island-section {
+  min-width: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 10px;
+}
+
+.island-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.island-label {
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8d8983;
+  margin-bottom: 7px;
+}
+
+.island-rings {
+  display: grid;
+  gap: 9px;
+}
+
+.island-ring-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  font-size: 11.5px;
+}
+
+.island-ring-row .name {
+  width: 54px;
+  color: #c3c2b7;
+  flex: none;
+}
+
+.island-ring-row .track {
+  display: block;
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+/* Both of these are spans, so they need an explicit block display: width and
+   height are ignored on an inline box, which left every meter showing only its
+   empty track. */
+.island-ring-row .fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.island-ring-row .value {
+  width: 74px;
+  text-align: right;
+  color: #8d8983;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.island-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: #c3c2b7;
+  font-variant-numeric: tabular-nums;
+}
+
+.island-stat strong {
+  color: #f4f2ef;
+  font-weight: 620;
+}
+
+/* Drop target for the file shelf. */
+.shelf {
+  border: 1.5px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 11px;
+  padding: 12px;
+  text-align: center;
+  font-size: 11.5px;
+  color: #8d8983;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.shelf.over {
+  border-color: #d97757;
+  background: rgba(217, 119, 87, 0.12);
+  color: #f4f2ef;
+}
+
+.shelf-files {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+.shelf-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  padding: 5px 8px;
+}
+
+.shelf-file .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.island-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.island-actions button {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  font-weight: 550;
+  color: #e6e3df;
+  transition: background 120ms ease;
+}
+
+.island-actions button:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.island-actions button.on {
+  background: rgba(208, 59, 59, 0.24);
+  color: #ffb4b4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eq span {
+    animation: none;
+    height: 7px;
+  }
+}
+
+/* -------------------------------------------------------- island now playing */
+
+.island-now {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.island-now-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.island-now-title {
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 620;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.island-now-artist {
+  font-size: 11.5px;
+  color: #8d8983;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The shared transport and progress styles assume the app's tokens; the island
+   sits on its own dark plate, so they are restated here. */
+.island-body .transport.compact button {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e6e3df;
+}
+
+.island-body .transport.compact button.primary {
+  background: #d97757;
+  border-color: transparent;
+  color: #fff;
+}
+
+.island-body .track-track {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.island-body .track-fill {
+  background: #d97757;
+}
+
+.island-body .track-time {
+  color: #8d8983;
+}
+
+/* ------------------------------------------------------------ island agenda */
+
+.island-day {
+  font-size: 10.5px;
+  font-weight: 620;
+  color: #c3c2b7;
+  margin-bottom: 3px;
+}
+
+.island-event {
+  display: flex;
+  gap: 9px;
+  min-width: 0;
+  font-size: 11.5px;
+  padding: 1px 0;
+}
+
+.island-event .when {
+  width: 52px;
+  flex: none;
+  color: #8d8983;
+  font-variant-numeric: tabular-nums;
+}
+
+.island-event .what {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill .glyph.event {
+  gap: 3px;
+  color: #b9b5b0;
+}

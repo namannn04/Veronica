@@ -1,0 +1,16 @@
+[package]
+name = "veronica-system"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+veronica-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+sysinfo = { workspace = true }
+zbus = { workspace = true }
+chrono = { workspace = true }

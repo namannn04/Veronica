@@ -1,0 +1,39 @@
+[package]
+name = "veronica-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native control center for Ubuntu"
+
+[[bin]]
+name = "veronica"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+veronica-core = { workspace = true }
+veronica-usage = { workspace = true }
+veronica-system = { workspace = true }
+veronica-media = { workspace = true }
+veronica-calendar = { workspace = true }
+zbus = { workspace = true }
+
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+# Album art arrives as a local file path; it is inlined as a data URL because the
+# webview's content policy does not load file:// URLs.
+base64 = "0.22"
+
+# The notch overlay limits its clickable area with an X11 input shape, which
+# needs the GTK window Tauri wraps. Pinned to the versions Tauri 2 links.
+[target."cfg(target_os = \"linux\")".dependencies]
+gtk = "0.18"
+cairo-rs = "0.18"

@@ -1,0 +1,12 @@
+[package]
+name = "veronica-media"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+zbus = { workspace = true }

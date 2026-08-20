@@ -1,0 +1,21 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Frontend
+node_modules/
+/apps/desktop/dist/
+
+# Build output
+/apps/desktop/src-tauri/gen/
+
+# Editors and OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local environment
+.env
+.env.*
+!.env.example

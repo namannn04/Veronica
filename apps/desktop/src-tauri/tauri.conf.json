@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Veronica",
+  "version": "0.1.0",
+  "identifier": "io.github.namannn04.Veronica",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "beforeBuildCommand": "bun run build",
+    "devUrl": "http://127.0.0.1:5183",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Veronica",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 880,
+        "minHeight": 560,
+        "resizable": true,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "visible": false,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+    },
+    "trayIcon": {
+      "id": "veronica-tray",
+      "iconPath": "icons/tray.png",
+      "iconAsTemplate": false,
+      "menuOnLeftClick": false,
+      "tooltip": "Veronica"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb",
+      "appimage"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.png"
+    ],
+    "category": "Utility",
+    "shortDescription": "Native control center for Ubuntu",
+    "longDescription": "Veronica combines agent usage tracking, machine monitoring, media control and desktop utilities into one application.",
+    "linux": {
+      "deb": {
+        "depends": [
+          "jq"
+        ],
+        "recommends": [
+          "bun",
+          "yt-dlp"
+        ],
+        "section": "utils",
+        "desktopTemplate": "../../../packaging/linux/veronica.desktop",
+        "files": {
+          "/usr/bin/vr": "../../../target/release/vr",
+          "/usr/share/metainfo/io.github.namannn04.Veronica.metainfo.xml": "../../../packaging/linux/io.github.namannn04.Veronica.metainfo.xml"
+        }
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "publisher": "Veronica contributors",
+    "homepage": "https://github.com/namannn04/veronica"
+  }
+}
