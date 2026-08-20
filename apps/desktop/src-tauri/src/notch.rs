@@ -31,11 +31,13 @@ pub const COLLAPSED: LogicalSize<f64> = LogicalSize {
     height: 34.0,
 };
 
-/// Expanded island, sized for now-playing, the usage bars, the machine readout
-/// and the shelf row. This is also the window's fixed size.
+/// Expanded island. Two columns, like the shell's own clock dropdown: media and
+/// notifications on the left, the month and the day's agenda on the right. This
+/// is also the window's fixed size, because the interactive region is what
+/// changes rather than the window.
 pub const EXPANDED: LogicalSize<f64> = LogicalSize {
-    width: 520.0,
-    height: 430.0,
+    width: 740.0,
+    height: 560.0,
 };
 
 /// Height of GNOME's top bar at scale 1. The island hangs directly beneath it.
@@ -160,11 +162,23 @@ fn apply_input_shape(_window: &tauri::WebviewWindow, _expanded: bool) -> Result<
 ///
 /// The window does not change size; only the interactive region does, and the
 /// interface animates the island's own width and height inside it.
-pub fn set_expanded(app: &AppHandle, expanded: bool) -> Result<()> {
+///
+/// `pinned` means the island was opened by a click rather than a hover, so it
+/// should stay open. It also takes keyboard focus, which is what lets Escape
+/// close it: an unfocused window never sees the key.
+pub fn set_expanded(app: &AppHandle, expanded: bool, pinned: bool) -> Result<()> {
     let Some(window) = app.get_webview_window(WINDOW_LABEL) else {
         return Ok(());
     };
-    apply_input_shape(&window, expanded)
+    apply_input_shape(&window, expanded)?;
+
+    if pinned {
+        // Raise first: a click on the pill does not necessarily bring an
+        // always-on-top window forward on every window manager.
+        let _ = window.set_always_on_top(true);
+        let _ = window.set_focus();
+    }
+    Ok(())
 }
 
 pub fn set_visible(app: &AppHandle, visible: bool) -> Result<()> {
@@ -192,8 +206,16 @@ mod tests {
     #[test]
     fn centres_the_island_horizontally_below_the_top_bar() {
         let position = centred_position(1920.0, EXPANDED.width, DEFAULT_TOP_BAR_HEIGHT);
-        assert_eq!(position.x, 700.0);
+        assert_eq!(position.x, (1920.0 - EXPANDED.width) / 2.0);
         assert_eq!(position.y, 34.0);
+    }
+
+    #[test]
+    fn the_expanded_island_fits_a_common_display() {
+        // A 1366x768 laptop is the smallest screen worth supporting; the island
+        // must not exceed it or the shape would extend past the display.
+        assert!(EXPANDED.width <= 1366.0);
+        assert!(EXPANDED.height <= 768.0 - DEFAULT_TOP_BAR_HEIGHT);
     }
 
     #[test]
@@ -211,7 +233,9 @@ mod tests {
         let rect = island_rect(false);
         assert_eq!(rect.width, COLLAPSED.width);
         assert_eq!(rect.height, COLLAPSED.height);
-        assert_eq!(rect.x, 110.0, "(520 - 300) / 2");
+        // Derived, not a literal, so changing the island size cannot silently
+        // leave this test asserting the old geometry.
+        assert_eq!(rect.x, (EXPANDED.width - COLLAPSED.width) / 2.0);
         assert_eq!(rect.y, 0.0);
     }
 

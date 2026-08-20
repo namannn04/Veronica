@@ -14,6 +14,9 @@ verbatim, so the numbers are identical on both platforms.
 
 Requires Ubuntu 24.04 or later on x86_64.
 
+See [docs/RUNNING.md](docs/RUNNING.md) for how to run it, use the notch, and
+troubleshoot.
+
 ## Install
 
 The Debian package is the recommended route on Ubuntu:
@@ -80,6 +83,10 @@ The AppImage does not install the `vr` command; use the Debian package for that.
 
 **Notch**
 
+- **The clock dropdown, upgraded** — hover to peek or click to pin open. One
+  panel holds now-playing with album art and transport, the notification
+  history, a month grid, the day's events, and the things the shell knows
+  nothing about: agent spend and machine load.
 - **Hover island** — a pill tucked under the top bar showing the clock, today's
   spend, the current track and live indicators, expanding on hover into
   now-playing with transport, agent usage, machine load, a file shelf and quick

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Core permissions Veronica's two windows need. Custom commands are not gated by capabilities, but the event API is: without this, listen() is denied and every push update silently stops arriving.",
+  "windows": ["main", "notch"],
+  "permissions": ["core:default"]
+}

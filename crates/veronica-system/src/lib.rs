@@ -6,11 +6,13 @@
 
 pub mod audio;
 pub mod metrics;
+pub mod notifications;
 pub mod notify;
 pub mod portal;
 pub mod power;
 
 pub use metrics::{MetricsSampler, SystemSnapshot};
+pub use notifications::Notification;
 pub use portal::PortalSupport;
 
 use anyhow::Result;

@@ -75,6 +75,9 @@ fn run() -> Result<()> {
             commands::media_now_playing,
             commands::media_control,
             commands::calendar_agenda,
+            commands::notifications_list,
+            commands::notifications_dismiss,
+            commands::notifications_clear,
             commands::notch_set_expanded,
             commands::show_main_window,
             commands::open_external,
@@ -105,6 +108,26 @@ fn run() -> Result<()> {
                 window.show()?;
             }
 
+            // Watch the bus for notifications. This runs for the process's
+            // lifetime; if the bus refuses monitoring, the feature is simply
+            // absent rather than fatal.
+            let watcher = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                let emitter = watcher.clone();
+                let result = veronica_system::notifications::watch(move |notification| {
+                    use tauri::Emitter;
+                    let state = emitter.state::<AppState>();
+                    state.push_notification(notification.clone());
+                    if let Err(error) = emitter.emit("notifications-received", notification) {
+                        tracing::warn!(target: "veronica", "cannot emit notification: {error}");
+                    }
+                })
+                .await;
+                if let Err(error) = result {
+                    tracing::info!("notification history unavailable: {error:#}");
+                }
+            });
+
             let refine = handle.clone();
             tauri::async_runtime::spawn(async move {
                 let resolved = veronica_system::detect_session().await;
@@ -112,7 +135,7 @@ fn run() -> Result<()> {
                 *state.session.lock().expect("session lock") = resolved;
                 // Capability-dependent screens re-read once the probe lands.
                 use tauri::Emitter;
-                let _ = refine.emit("session://resolved", ());
+                let _ = refine.emit("session-resolved", ());
             });
 
             Ok(())

@@ -21,6 +21,8 @@ pub struct AppState {
     /// True while the collector is running, so overlapping refreshes are
     /// rejected rather than corrupting the output directory.
     pub refreshing: Mutex<bool>,
+    /// Notifications seen on the bus, newest first and bounded.
+    pub notifications: Mutex<Vec<veronica_system::Notification>>,
 }
 
 impl AppState {
@@ -43,7 +45,15 @@ impl AppState {
             usage: Mutex::new(usage),
             sampler: Mutex::new(MetricsSampler::new()),
             refreshing: Mutex::new(false),
+            notifications: Mutex::new(Vec::new()),
         })
+    }
+
+    /// Record a notification, newest first, dropping the oldest past the limit.
+    pub fn push_notification(&self, notification: veronica_system::Notification) {
+        let mut list = self.notifications.lock().expect("notifications lock");
+        list.insert(0, notification);
+        list.truncate(veronica_system::notifications::HISTORY_LIMIT);
     }
 
     pub fn settings_snapshot(&self) -> Settings {

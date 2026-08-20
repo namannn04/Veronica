@@ -155,7 +155,7 @@ async fn run_refresh(app: &AppHandle) -> CommandResult<String> {
 
     let emitter = app.clone();
     let outcome = collector::refresh(&script, &out_dir, &cache_dir, move |event| {
-        let _ = emitter.emit("usage://progress", event);
+        let _ = emitter.emit("usage-progress", event);
     })
     .await
     .map_err(fail)?;
@@ -166,7 +166,7 @@ async fn run_refresh(app: &AppHandle) -> CommandResult<String> {
         *state.usage.lock().expect("usage lock") = Some(outcome.document);
     }
     // Tell every window the numbers changed, so the notch updates too.
-    let _ = app.emit("usage://updated", &generated_at);
+    let _ = app.emit("usage-updated", &generated_at);
     Ok(generated_at)
 }
 
@@ -191,7 +191,7 @@ pub fn settings_set(
         let enabled = value.as_bool().unwrap_or(false);
         notch::set_visible(&app, enabled).map_err(fail)?;
     }
-    let _ = app.emit("settings://updated", &key);
+    let _ = app.emit("settings-updated", &key);
     Ok(())
 }
 
@@ -299,9 +299,49 @@ pub async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<Agend
     })
 }
 
+/// The notification history, newest first.
 #[tauri::command]
-pub fn notch_set_expanded(app: AppHandle, expanded: bool) -> CommandResult<()> {
-    notch::set_expanded(&app, expanded).map_err(fail)
+pub fn notifications_list(
+    state: State<'_, AppState>,
+) -> CommandResult<Vec<veronica_system::Notification>> {
+    Ok(state
+        .notifications
+        .lock()
+        .expect("notifications lock")
+        .clone())
+}
+
+/// Remove one entry from the history.
+///
+/// This does not recall the desktop's own banner: GNOME owns that, and Veronica
+/// is only watching. The distinction is reflected in the interface wording.
+#[tauri::command]
+pub fn notifications_dismiss(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
+    state
+        .notifications
+        .lock()
+        .expect("notifications lock")
+        .retain(|entry| entry.id != id);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn notifications_clear(state: State<'_, AppState>) -> CommandResult<()> {
+    state
+        .notifications
+        .lock()
+        .expect("notifications lock")
+        .clear();
+    Ok(())
+}
+
+#[tauri::command]
+pub fn notch_set_expanded(
+    app: AppHandle,
+    expanded: bool,
+    pinned: bool,
+) -> CommandResult<()> {
+    notch::set_expanded(&app, expanded, pinned).map_err(fail)
 }
 
 #[tauri::command]

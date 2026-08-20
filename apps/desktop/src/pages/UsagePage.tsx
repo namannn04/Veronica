@@ -45,13 +45,13 @@ export function UsagePage() {
   // The collector streams its phases, and any surface can trigger a refresh, so
   // this listens rather than only reacting to its own button.
   useEffect(() => {
-    const phases = listen<CollectorEvent>("usage://progress", (event) => {
+    const phases = listen<CollectorEvent>("usage-progress", (event) => {
       const payload = event.payload;
       if (payload.kind === "phase") setProgress(`${payload.name} — ${payload.detail}`);
       else if (payload.kind === "note") setProgress(payload.message);
       else if (payload.kind === "error") setError(payload.message);
     });
-    const updated = listen("usage://updated", () => {
+    const updated = listen("usage-updated", () => {
       void load();
     });
     return () => {

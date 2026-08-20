@@ -1,74 +1,148 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 
-import { colorScale } from "./components/charts";
-import {
-  TrackProgress,
-  TransportControls,
-  useNowPlaying,
-} from "./components/NowPlaying";
+import { MonthGrid, isoDay, sameDay } from "./components/MonthGrid";
+import { TrackProgress, TransportControls, useNowPlaying } from "./components/NowPlaying";
 import { ipc } from "./lib/ipc";
-import { clockTime, countdown, money, percent, tokens, untilLabel } from "./lib/format";
-import type { AgendaView, Dashboard, SystemSnapshot, VolumeState } from "./lib/types";
+import {
+  agoFromMillis,
+  clockTime,
+  money,
+  percent,
+  tokens,
+  untilLabel,
+} from "./lib/format";
+import type {
+  AgendaView,
+  CalendarEvent,
+  Dashboard,
+  DesktopNotification,
+  SystemSnapshot,
+  VolumeState,
+} from "./lib/types";
 import "./notch.css";
 
+/** Delay before a hover-opened island closes, so crossing the seam is forgiving. */
+const CLOSE_DELAY_MS = 260;
+
 /**
- * The hover island.
+ * The notch island.
  *
- * Collapsed it shows the clock plus live indicators. Hovering asks the Rust side
- * to grow the window and reveals today's spend, the usage bars, system load and
- * a drop target for staging files.
+ * Collapsed it is a pill under the top bar. It opens two ways: hovering peeks,
+ * and clicking pins it open until dismissed. Pinning also takes keyboard focus,
+ * which is what makes Escape work — an unfocused window never sees the key.
  *
- * Expansion is debounced on the way out: a pointer crossing the seam between the
- * pill and the expanded body would otherwise collapse and re-expand it.
+ * Open, it mirrors what the shell's own clock dropdown offers, in one place:
+ * now-playing with transport, the notification history, a month grid, and the
+ * day's agenda — plus the things the shell has no idea about, like agent spend
+ * and machine load.
  */
 export function Notch() {
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [clock, setClock] = useState(() => new Date());
   const [board, setBoard] = useState<Dashboard | null>(null);
-  const [sourceOrder, setSourceOrder] = useState<string[]>([]);
   const [snapshot, setSnapshot] = useState<SystemSnapshot | null>(null);
   const [mic, setMic] = useState<VolumeState | null>(null);
-  const [clock, setClock] = useState(() => new Date());
+  const [agenda, setAgenda] = useState<AgendaView | null>(null);
+  const [notifications, setNotifications] = useState<DesktopNotification[]>([]);
+  const [month, setMonth] = useState(() => new Date());
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [files, setFiles] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
-  const collapseTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
   const { playing, control } = useNowPlaying(true);
-  const [agenda, setAgenda] = useState<AgendaView | null>(null);
+
+  // -- open and close ------------------------------------------------------
+
+  const applyOpen = useCallback(
+    (nextOpen: boolean, nextPinned: boolean, remember = false) => {
+      setOpen(nextOpen);
+      setPinned(nextPinned);
+      void ipc.notchSetExpanded(nextOpen, nextPinned);
+      // Only a deliberate pin or dismiss is remembered; a hover peek is not,
+      // or the island would reopen itself after any stray pointer movement.
+      if (remember) void ipc.settingsSet("notchPinned", nextPinned);
+    },
+    [],
+  );
+
+  // Restore the pinned state from the last session.
+  useEffect(() => {
+    let live = true;
+    ipc
+      .settingsAll()
+      .then((settings) => {
+        if (live && settings.notchPinned === true) applyOpen(true, true);
+      })
+      .catch(() => {
+        // Settings are optional; the island simply starts collapsed.
+      });
+    return () => {
+      live = false;
+    };
+  }, [applyOpen]);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+
+  const peek = useCallback(() => {
+    cancelClose();
+    if (!open) applyOpen(true, false);
+  }, [cancelClose, open, applyOpen]);
+
+  const scheduleClose = useCallback(() => {
+    // A pinned island ignores the pointer leaving; only an explicit dismiss
+    // closes it.
+    if (pinned) return;
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => {
+      applyOpen(false, false);
+      closeTimer.current = null;
+    }, CLOSE_DELAY_MS);
+  }, [pinned, cancelClose, applyOpen]);
+
+  const togglePinned = useCallback(() => {
+    cancelClose();
+    if (pinned) {
+      applyOpen(false, false, true);
+    } else {
+      applyOpen(true, true, true);
+    }
+  }, [pinned, cancelClose, applyOpen]);
+
+  const dismiss = useCallback(() => {
+    cancelClose();
+    applyOpen(false, false, true);
+  }, [cancelClose, applyOpen]);
+
+  // Escape closes a pinned island; it only arrives while the window has focus.
+  useEffect(() => {
+    if (!pinned) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismiss();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pinned, dismiss]);
+
+  useEffect(() => cancelClose, [cancelClose]);
+
+  // -- data ---------------------------------------------------------------
 
   useEffect(() => {
     const timer = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Read without join links: the pill only needs times and titles, and looking
-  // each event up in Evolution would add a round trip per event.
-  useEffect(() => {
-    let live = true;
-    const load = async () => {
-      try {
-        const next = await ipc.calendarAgenda(3, false);
-        if (live) setAgenda(next);
-      } catch {
-        // No calendars or no bus: the island simply omits the section.
-      }
-    };
-    void load();
-    const timer = setInterval(load, 120_000);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
-  }, []);
-
   const loadUsage = useCallback(async () => {
     try {
-      // The island only needs recent activity, not the whole history.
       const view = await ipc.usageView(7, []);
       setBoard(view.dashboard);
-      // Colour by the document's source order, not by rank in this window: a
-      // source with no recent spend drops out of the ranking, and indexing by
-      // position would hand its colour to a different source.
-      setSourceOrder(view.sources.map((s) => s.id));
     } catch {
       // The island must keep showing the clock even with no usage data.
     }
@@ -76,15 +150,57 @@ export function Notch() {
 
   useEffect(() => {
     void loadUsage();
-    const updated = listen("usage://updated", () => void loadUsage());
+    const updated = listen("usage-updated", () => void loadUsage());
+    void updated.catch((error) =>
+      console.error("cannot listen for usage updates", error),
+    );
     return () => {
-      void updated.then((un) => un());
+      void updated.then((un) => un()).catch(() => {});
     };
   }, [loadUsage]);
 
-  // Metrics and mic state are only needed while the island is open.
+  const loadAgenda = useCallback(async () => {
+    try {
+      // A 35-day window covers the visible month grid without join-link
+      // lookups, which would cost a round trip per event.
+      setAgenda(await ipc.calendarAgenda(35, false));
+    } catch {
+      // No calendars or no bus: the section is simply omitted.
+    }
+  }, []);
+
   useEffect(() => {
-    if (!expanded) return;
+    void loadAgenda();
+    const timer = setInterval(loadAgenda, 120_000);
+    return () => clearInterval(timer);
+  }, [loadAgenda]);
+
+  const [notifError, setNotifError] = useState<string | null>(null);
+  const loadNotifications = useCallback(async () => {
+    try {
+      setNotifications(await ipc.notificationsList());
+      setNotifError(null);
+    } catch (e) {
+      // Surfaced rather than swallowed: an empty list and a broken bridge look
+      // identical otherwise, which hides real faults.
+      setNotifError(String(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadNotifications();
+    const received = listen("notifications-received", () => void loadNotifications());
+    void received.catch((error) =>
+      console.error("cannot listen for notifications", error),
+    );
+    return () => {
+      void received.then((un) => un()).catch(() => {});
+    };
+  }, [loadNotifications]);
+
+  // Metrics and mic are only needed while the island can be seen.
+  useEffect(() => {
+    if (!open) return;
     let live = true;
     const tick = async () => {
       try {
@@ -101,51 +217,48 @@ export function Notch() {
       live = false;
       clearInterval(timer);
     };
-  }, [expanded]);
+  }, [open]);
 
-  const open = () => {
-    if (collapseTimer.current !== null) {
-      window.clearTimeout(collapseTimer.current);
-      collapseTimer.current = null;
-    }
-    if (!expanded) {
-      setExpanded(true);
-      void ipc.notchSetExpanded(true);
-    }
-  };
+  // -- derived ------------------------------------------------------------
 
-  const close = () => {
-    if (collapseTimer.current !== null) window.clearTimeout(collapseTimer.current);
-    collapseTimer.current = window.setTimeout(() => {
-      setExpanded(false);
-      void ipc.notchSetExpanded(false);
-      collapseTimer.current = null;
-    }, 260);
-  };
+  const eventDays = useMemo(() => {
+    const days = new Set<string>();
+    agenda?.days.forEach((day) => {
+      if (day.events.length > 0) days.add(day.date);
+    });
+    return days;
+  }, [agenda]);
 
-  const toggleMic = async () => {
-    try {
-      setMic(await ipc.microphoneToggle());
-    } catch {
-      /* leave the previous state visible */
-    }
-  };
+  const shownDay = selectedDay ?? clock;
+  const dayEvents: CalendarEvent[] = useMemo(() => {
+    const key = isoDay(shownDay);
+    return agenda?.days.find((day) => day.date === key)?.events ?? [];
+  }, [agenda, shownDay]);
 
-  const sourceColor = useMemo(() => colorScale(sourceOrder), [sourceOrder]);
-  // Prefer what is running now over what is next, because that is the more
-  // useful thing to glance at.
-  const nextEvent = agenda?.happeningNow ?? agenda?.nextUp ?? null;
   const today = board?.days.at(-1);
+  const nextEvent = agenda?.happeningNow ?? agenda?.nextUp ?? null;
+  const criticalCount = notifications.filter((n) => n.urgency === "critical").length;
 
   // Indicators in priority order, because only two fit beside the clock.
   // A muted microphone leads: it is a state the user needs to notice, unlike a
-  // figure they can look up. An imminent event beats a playing track, which
-  // beats today's spend.
+  // figure they can look up. Then unread notifications, an imminent event, a
+  // playing track, and finally today's spend.
   const indicators: JSX.Element[] = [];
   if (mic?.muted) {
     indicators.push(
       <span className="glyph muted" key="mic" title="Microphone muted">
         ▲ mic
+      </span>,
+    );
+  }
+  if (notifications.length > 0) {
+    indicators.push(
+      <span
+        className={`glyph${criticalCount > 0 ? " alert" : ""}`}
+        key="notif"
+        title={`${notifications.length} notifications`}
+      >
+        ● {notifications.length}
       </span>,
     );
   }
@@ -193,9 +306,14 @@ export function Notch() {
   const dateLabel = clock.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
   return (
-    <div className="notch-root" onMouseEnter={open} onMouseLeave={close}>
-      <div className={`island${expanded ? " expanded" : ""}`}>
-        <div className="pill">
+    <div className="notch-root" onMouseEnter={peek} onMouseLeave={scheduleClose}>
+      <div className={`island${open ? " expanded" : ""}`}>
+        <button
+          className="pill"
+          onClick={togglePinned}
+          aria-expanded={open}
+          title={pinned ? "Click to close" : "Click to keep open"}
+        >
           <span className="clock">
             {dateLabel} {timeLabel}
           </span>
@@ -203,177 +321,199 @@ export function Notch() {
           {/* The pill is a fixed width, so only the two most useful indicators
               are shown; the rest are visible once the island is open. */}
           {indicators.slice(0, 2)}
-        </div>
+        </button>
 
-        {expanded && (
+        {open && (
           <div className="island-body">
-            {playing && (
-              <div className="island-section">
-                <div className="island-label">Now playing</div>
-                <div className="island-now">
-                  <div className="island-now-text">
-                    <div className="island-now-title" title={playing.title}>
-                      {playing.title || "Untitled"}
+            <div className="island-cols">
+              <div className="island-col">
+                {playing && (
+                  <div className="card-mini">
+                    <div className="mini-head">
+                      <span className="mini-app">{playing.identity}</span>
                     </div>
-                    <div className="island-now-artist">
-                      {playing.artist || playing.identity}
-                    </div>
-                  </div>
-                  <TransportControls playing={playing} control={control} compact />
-                </div>
-                <TrackProgress playing={playing} />
-              </div>
-            )}
-
-            <div className="island-section">
-              <div className="island-label">Agent usage · last 7 days</div>
-              {board ? (
-                <>
-                  <div className="island-stat">
-                    <span>Spend</span>
-                    <strong>{money(board.totals.cost)}</strong>
-                  </div>
-                  <div className="island-stat">
-                    <span>Tokens</span>
-                    <strong>{tokens(board.totals.tokens)}</strong>
-                  </div>
-                  <div className="island-rings" style={{ marginTop: 8 }}>
-                    {board.bySource.slice(0, 3).map((source) => {
-                      const share =
-                        board.totals.cost > 0 ? (source.cost / board.totals.cost) * 100 : 0;
-                      return (
-                        <div className="island-ring-row" key={source.name}>
-                          <span className="name">{source.label}</span>
-                          <span className="track">
-                            <span
-                              className="fill"
-                              style={{
-                                width: `${Math.max(share, 2)}%`,
-                                background: sourceColor(source.name),
-                              }}
-                            />
-                          </span>
-                          <span className="value">{money(source.cost)}</span>
+                    <div className="mini-media">
+                      {playing.artUrl ? (
+                        <img className="mini-art" src={playing.artUrl} alt="" />
+                      ) : (
+                        <span className="mini-art glyphy">♪</span>
+                      )}
+                      <div className="mini-media-text">
+                        <div className="mini-title" title={playing.title}>
+                          {playing.title || "Untitled"}
                         </div>
-                      );
+                        <div className="mini-sub">{playing.artist || playing.identity}</div>
+                      </div>
+                      <TransportControls playing={playing} control={control} compact />
+                    </div>
+                    <TrackProgress playing={playing} />
+                  </div>
+                )}
+
+                <div className="notif-head">
+                  <span className="island-label">Notifications</span>
+                  {notifications.length > 0 && (
+                    <button
+                      className="mini-btn"
+                      onClick={async () => {
+                        await ipc.notificationsClear();
+                        void loadNotifications();
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="notif-list">
+                  {notifError ? (
+                    <div className="notif-empty">{notifError}</div>
+                  ) : notifications.length === 0 ? (
+                    <div className="notif-empty">No notifications</div>
+                  ) : (
+                    notifications.slice(0, 8).map((entry) => (
+                      <div className={`notif urgency-${entry.urgency}`} key={entry.id}>
+                        <div className="notif-top">
+                          <span className="notif-app">{entry.appName || "System"}</span>
+                          <span className="notif-when">{agoFromMillis(entry.receivedAt)}</span>
+                          <button
+                            className="notif-x"
+                            aria-label="Remove from history"
+                            title="Remove from history"
+                            onClick={async () => {
+                              await ipc.notificationsDismiss(entry.id);
+                              void loadNotifications();
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {entry.summary && <div className="notif-summary">{entry.summary}</div>}
+                        {entry.body && <div className="notif-body">{entry.body}</div>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="island-col right">
+                <div className="date-head">
+                  <div className="date-dow">
+                    {shownDay.toLocaleDateString(undefined, { weekday: "long" })}
+                  </div>
+                  <div className="date-full">
+                    {shownDay.toLocaleDateString(undefined, {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
                     })}
                   </div>
-                </>
-              ) : (
-                <div className="island-stat">
-                  <span>No usage collected yet</span>
                 </div>
-              )}
-            </div>
 
-            {snapshot && (
-              <div className="island-section">
-                <div className="island-label">This computer</div>
-                <div className="island-ring-row">
-                  <span className="name">CPU</span>
-                  <span className="track">
-                    <span
-                      className="fill"
-                      style={{
-                        width: `${Math.max(snapshot.cpu.usagePercent, 2)}%`,
-                        background:
-                          snapshot.cpu.usagePercent >= 85
-                            ? "var(--status-critical)"
-                            : snapshot.cpu.usagePercent >= 60
-                              ? "var(--status-warning)"
-                              : "var(--sage)",
-                      }}
-                    />
-                  </span>
-                  <span className="value">{percent(snapshot.cpu.usagePercent)}</span>
-                </div>
-                <div className="island-ring-row" style={{ marginTop: 7 }}>
-                  <span className="name">Memory</span>
-                  <span className="track">
-                    <span
-                      className="fill"
-                      style={{
-                        width: `${Math.max(
-                          (snapshot.memory.usedBytes / Math.max(snapshot.memory.totalBytes, 1)) *
-                            100,
-                          2,
-                        )}%`,
-                        background: "var(--series-2)",
-                      }}
-                    />
-                  </span>
-                  <span className="value">
-                    {percent(
-                      (snapshot.memory.usedBytes / Math.max(snapshot.memory.totalBytes, 1)) * 100,
-                    )}
-                  </span>
-                </div>
-                <div className="island-stat" style={{ marginTop: 7 }}>
-                  <span>Up</span>
-                  <strong>{countdown(snapshot.uptimeSecs)}</strong>
-                </div>
-              </div>
-            )}
+                <MonthGrid
+                  month={month}
+                  today={clock}
+                  eventDays={eventDays}
+                  selected={selectedDay}
+                  onMonthChange={(delta) =>
+                    setMonth((current) => {
+                      const next = new Date(current);
+                      next.setDate(1);
+                      next.setMonth(next.getMonth() + delta);
+                      return next;
+                    })
+                  }
+                  onSelect={(date) => {
+                    setSelectedDay(date);
+                    if (date.getMonth() !== month.getMonth()) setMonth(date);
+                  }}
+                />
 
-            {agenda && agenda.days.length > 0 && (
-              <div className="island-section">
-                <div className="island-label">Agenda</div>
-                {agenda.days.slice(0, 2).map((day) => (
-                  <div key={day.date} style={{ marginBottom: 6 }}>
-                    <div className="island-day">{day.label}</div>
-                    {day.events.slice(0, 3).map((event) => (
+                <div className="day-events">
+                  <div className="island-label">
+                    {sameDay(shownDay, clock) ? "Today" : "Events"}
+                  </div>
+                  {dayEvents.length === 0 ? (
+                    <div className="notif-empty">No events</div>
+                  ) : (
+                    dayEvents.slice(0, 4).map((event) => (
                       <div className="island-event" key={`${event.eventUid}-${event.start}`}>
                         <span className="when">
                           {event.allDay ? "all day" : clockTime(event.start)}
                         </span>
                         <span className="what">{event.summary}</span>
                       </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="island-section">
-              <div className="island-label">Shelf</div>
-              <div
-                className={`shelf${dragOver ? " over" : ""}`}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setDragOver(false);
-                  const dropped = Array.from(event.dataTransfer.files).map((file) => file.name);
-                  setFiles((current) => [...dropped, ...current].slice(0, 5));
-                }}
-              >
-                {files.length === 0 ? "Drop files here to stage them" : `${files.length} staged`}
-                {files.length > 0 && (
-                  <div className="shelf-files">
-                    {files.map((name) => (
-                      <div className="shelf-file" key={name}>
-                        <span className="nm">{name}</span>
-                        <button
-                          onClick={() => setFiles((c) => c.filter((f) => f !== name))}
-                          aria-label={`Remove ${name}`}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="island-actions">
-              <button onClick={() => void ipc.showMainWindow()}>Open Veronica</button>
-              <button className={mic?.muted ? "on" : ""} onClick={toggleMic}>
-                {mic?.muted ? "Unmute mic" : "Mute mic"}
-              </button>
+            <div className="island-foot">
+              <div className="foot-stats">
+                {board && (
+                  <span title="Agent spend, last 7 days">
+                    <strong>{money(board.totals.cost)}</strong> 7d ·{" "}
+                    {tokens(board.totals.tokens)}
+                  </span>
+                )}
+                {snapshot && (
+                  <span title="This computer">
+                    CPU <strong>{percent(snapshot.cpu.usagePercent)}</strong> · MEM{" "}
+                    <strong>
+                      {percent(
+                        (snapshot.memory.usedBytes / Math.max(snapshot.memory.totalBytes, 1)) *
+                          100,
+                      )}
+                    </strong>
+                  </span>
+                )}
+              </div>
+              <div className="foot-actions">
+                <div
+                  className={`shelf-chip${dragOver ? " over" : ""}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDragOver(false);
+                    const dropped = Array.from(event.dataTransfer.files).map((f) => f.name);
+                    setFiles((current) => [...dropped, ...current].slice(0, 5));
+                  }}
+                  title={files.length > 0 ? files.join("\n") : "Drop files to stage them"}
+                >
+                  ⬓ {files.length > 0 ? `${files.length} staged` : "Shelf"}
+                </div>
+                <button
+                  className="mini-btn"
+                  onClick={() =>
+                    control(playing?.status === "playing" ? "pause" : "toggle")
+                  }
+                  disabled={!playing}
+                >
+                  {playing?.status === "playing" ? "Pause" : "Play"}
+                </button>
+                <button
+                  className={`mini-btn${mic?.muted ? " on" : ""}`}
+                  onClick={async () => {
+                    try {
+                      setMic(await ipc.microphoneToggle());
+                    } catch {
+                      /* leave the previous state visible */
+                    }
+                  }}
+                >
+                  {mic?.muted ? "Unmute" : "Mute"}
+                </button>
+                <button className="mini-btn" onClick={() => void ipc.showMainWindow()}>
+                  Open
+                </button>
+                <button className="mini-btn" onClick={dismiss} title="Close (Esc)">
+                  ✕
+                </button>
+              </div>
             </div>
           </div>
         )}

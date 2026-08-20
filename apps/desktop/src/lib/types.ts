@@ -225,3 +225,17 @@ export interface AgendaView {
   nextUp: CalendarEvent | null;
   happeningNow: CalendarEvent | null;
 }
+
+export type NotificationUrgency = "low" | "normal" | "critical";
+
+export interface DesktopNotification {
+  id: number;
+  appName: string;
+  appIcon: string;
+  summary: string;
+  body: string;
+  urgency: NotificationUrgency;
+  /** Unix milliseconds. */
+  receivedAt: number;
+  desktopEntry: string | null;
+}

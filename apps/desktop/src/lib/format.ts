@@ -152,3 +152,12 @@ export function untilLabel(iso: string): string {
   if (seconds <= 0) return "now";
   return `in ${countdown(seconds)}`;
 }
+
+/** Relative time from a unix-millisecond stamp, e.g. "12h ago". */
+export function agoFromMillis(millis: number): string {
+  const seconds = Math.floor((Date.now() - millis) / 1000);
+  if (seconds < 45) return "now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}

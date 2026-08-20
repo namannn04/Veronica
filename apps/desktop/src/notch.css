@@ -3,9 +3,10 @@
  * GNOME's top bar lives in the shell's own layer, which an application window
  * cannot be stacked above. So rather than pretending to replace it, the island
  * hangs from it: a pill tucked directly beneath the bar, centred on the same
- * axis as the clock, that grows downward on hover.
+ * axis as the clock, that opens downward.
  *
- * The window is transparent and resizes with the island, so the desktop stays
+ * The window is a fixed size and transparent; the Rust side keeps an X11 input
+ * shape matched to whatever the island currently occupies, so the desktop stays
  * clickable everywhere the island is not.
  */
 
@@ -17,35 +18,33 @@
   overflow: hidden;
   /* Only the island is interactive; the rest of the window is shaped out. */
   pointer-events: none;
-  /* The window is only as tall as the island, so nothing here scrolls. */
 }
 
 .island {
   pointer-events: auto;
-  /* The window is a fixed 520x430; the island sizes itself inside it and the
-     Rust side keeps the clickable region matched to whatever it occupies. */
   width: 300px;
-  background: color-mix(in srgb, #14131a 88%, transparent);
-  backdrop-filter: blur(18px) saturate(1.3);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  background: color-mix(in srgb, #14131a 90%, transparent);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-top: none;
-  /* Square at the top where it meets the bar, rounded where it hangs free. */
+  /* Square where it meets the bar, rounded where it hangs free. */
   border-radius: 0 0 17px 17px;
   color: #f4f2ef;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
   overflow: hidden;
-  transition: width 200ms cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 180ms ease;
+  transition: width 210ms cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 180ms ease;
 }
 
 .island.expanded {
   width: 100%;
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 22px 22px;
 }
 
 /* ------------------------------------------------------------- collapsed */
 
 .pill {
+  width: 100%;
   height: 34px;
   display: flex;
   align-items: center;
@@ -54,6 +53,12 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: inherit;
+  text-align: left;
+}
+
+.pill:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .pill .clock {
@@ -81,7 +86,24 @@
   color: #d03b3b;
 }
 
-/* Equaliser bars, only animated while something is actually playing. */
+.pill .glyph.event {
+  gap: 3px;
+}
+
+.pill .glyph.track {
+  gap: 5px;
+  min-width: 0;
+}
+
+.pill .track-name {
+  max-width: 74px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Equaliser bars, animated only while something is actually playing, so the
+   island is not permanently in motion in the corner of the screen. */
 .eq {
   display: inline-flex;
   align-items: flex-end;
@@ -96,8 +118,6 @@
   border-radius: 1px;
 }
 
-/* Only a playing track animates; a paused one holds a static shape, so the
-   island is not permanently in motion in the corner of the screen. */
 .eq.live span {
   animation: eq 900ms ease-in-out infinite;
 }
@@ -108,18 +128,6 @@
 
 .eq.live span:nth-child(3) {
   animation-delay: 300ms;
-}
-
-.pill .glyph.track {
-  gap: 5px;
-  min-width: 0;
-}
-
-.pill .track-name {
-  max-width: 74px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @keyframes eq {
@@ -135,25 +143,28 @@
 /* -------------------------------------------------------------- expanded */
 
 .island-body {
-  padding: 4px 14px 13px;
+  padding: 2px 12px 11px;
+}
+
+.island-cols {
   display: grid;
-  /* A grid track defaults to min-width:auto, so a long unbreakable title - a
-     browser tab name, for instance - widens the whole body past the window and
-     pushes the right-aligned figures out of sight. minmax(0, 1fr) holds the
-     column to the island's width so the ellipsis can do its job. */
-  grid-template-columns: minmax(0, 1fr);
-  gap: 11px;
+  /* minmax(0, …) because a grid track defaults to min-width:auto, and one long
+     unbreakable notification title would otherwise widen the whole panel past
+     the window and push the right column out of sight. */
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 12px;
 }
 
-.island-section {
+.island-col {
   min-width: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.island-section:first-child {
-  border-top: none;
-  padding-top: 0;
+.island-col.right {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding-left: 12px;
 }
 
 .island-label {
@@ -162,167 +173,69 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #8d8983;
+}
+
+/* ------------------------------------------------------------ media card */
+
+.card-mini {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 13px;
+  padding: 9px 10px;
+  min-width: 0;
+}
+
+.mini-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 7px;
 }
 
-.island-rings {
-  display: grid;
-  gap: 9px;
-}
-
-.island-ring-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
+.mini-app {
   font-size: 11.5px;
-}
-
-.island-ring-row .name {
-  width: 54px;
-  color: #c3c2b7;
-  flex: none;
-}
-
-.island-ring-row .track {
-  display: block;
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-/* Both of these are spans, so they need an explicit block display: width and
-   height are ignored on an inline box, which left every meter showing only its
-   empty track. */
-.island-ring-row .fill {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-}
-
-.island-ring-row .value {
-  width: 74px;
-  text-align: right;
-  color: #8d8983;
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.island-stat {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-  font-size: 11.5px;
-  color: #c3c2b7;
-  font-variant-numeric: tabular-nums;
-}
-
-.island-stat strong {
-  color: #f4f2ef;
   font-weight: 620;
+  color: #c3c2b7;
 }
 
-/* Drop target for the file shelf. */
-.shelf {
-  border: 1.5px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 11px;
-  padding: 12px;
-  text-align: center;
-  font-size: 11.5px;
-  color: #8d8983;
-  transition: border-color 140ms ease, background 140ms ease;
-}
-
-.shelf.over {
-  border-color: #d97757;
-  background: rgba(217, 119, 87, 0.12);
-  color: #f4f2ef;
-}
-
-.shelf-files {
-  display: grid;
-  gap: 5px;
-  margin-top: 8px;
-  text-align: left;
-}
-
-.shelf-file {
+.mini-media {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 11px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 7px;
-  padding: 5px 8px;
+  gap: 9px;
+  min-width: 0;
 }
 
-.shelf-file .nm {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.island-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.island-actions button {
-  flex: 1;
-  padding: 6px 8px;
+.mini-art {
+  width: 42px;
+  height: 42px;
   border-radius: 8px;
+  object-fit: cover;
+  flex: none;
   background: rgba(255, 255, 255, 0.07);
-  font-size: 11px;
-  font-weight: 550;
-  color: #e6e3df;
-  transition: background 120ms ease;
 }
 
-.island-actions button:hover {
-  background: rgba(255, 255, 255, 0.13);
+.mini-art.glyphy {
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  color: #8d8983;
 }
 
-.island-actions button.on {
-  background: rgba(208, 59, 59, 0.24);
-  color: #ffb4b4;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .eq span {
-    animation: none;
-    height: 7px;
-  }
-}
-
-/* -------------------------------------------------------- island now playing */
-
-.island-now {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.island-now-text {
+.mini-media-text {
   flex: 1;
   min-width: 0;
 }
 
-.island-now-title {
-  min-width: 0;
-  font-size: 12.5px;
+.mini-title {
+  font-size: 12px;
   font-weight: 620;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.island-now-artist {
-  font-size: 11.5px;
+.mini-sub {
+  font-size: 11px;
   color: #8d8983;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -351,17 +264,221 @@
   background: #d97757;
 }
 
-.island-body .track-time {
+.island-body .track-time,
+.island-body .track-live {
   color: #8d8983;
 }
 
-/* ------------------------------------------------------------ island agenda */
+/* ---------------------------------------------------------- notifications */
 
-.island-day {
+.notif-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* The panel is a fixed height, so a long history scrolls rather than
+     stretching the window past its input shape. */
+  max-height: 268px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.notif {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 11px;
+  padding: 7px 9px;
+  min-width: 0;
+}
+
+.notif.urgency-critical {
+  border-left-color: #d03b3b;
+}
+
+.notif.urgency-low {
+  opacity: 0.72;
+}
+
+.notif-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.notif-app {
   font-size: 10.5px;
-  font-weight: 620;
+  font-weight: 640;
   color: #c3c2b7;
-  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-when {
+  font-size: 10px;
+  color: #8d8983;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.notif-x {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  color: #8d8983;
+  font-size: 9px;
+  display: grid;
+  place-items: center;
+}
+
+.notif-x:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f4f2ef;
+}
+
+.notif-summary {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-body {
+  font-size: 11px;
+  color: #b9b5b0;
+  margin-top: 1px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notif-empty {
+  font-size: 11.5px;
+  color: #6f6b66;
+  padding: 6px 0;
+}
+
+/* ---------------------------------------------------------------- date */
+
+.date-head {
+  margin-bottom: 2px;
+}
+
+.date-dow {
+  font-size: 11.5px;
+  color: #b9b5b0;
+}
+
+.date-full {
+  font-size: 16px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.month-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 4px;
+}
+
+.month-head button {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #b9b5b0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.month-head button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f4f2ef;
+}
+
+.month-name {
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+.month-dow {
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 620;
+  color: #6f6b66;
+  padding-bottom: 2px;
+}
+
+.month-day {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: #c3c2b7;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.month-day:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.month-day.outside {
+  color: #55524e;
+}
+
+.month-day.today {
+  background: #d97757;
+  color: #fff;
+  font-weight: 650;
+}
+
+.month-day.selected {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+/* A dot marks a day with events; it sits below the number so it never
+   obscures it, and is hidden on today where the fill already stands out. */
+.month-day.has-events::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #6a8d73;
+}
+
+.month-day.today.has-events::after {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.day-events {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
 .island-event {
@@ -387,7 +504,86 @@
   white-space: nowrap;
 }
 
-.pill .glyph.event {
-  gap: 3px;
-  color: #b9b5b0;
+/* ---------------------------------------------------------------- footer */
+
+.island-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
+}
+
+.foot-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: #8d8983;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.foot-stats strong {
+  color: #f4f2ef;
+  font-weight: 620;
+}
+
+.foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+}
+
+.mini-btn {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  font-weight: 550;
+  color: #e6e3df;
+  white-space: nowrap;
+  transition: background 120ms ease;
+}
+
+.mini-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mini-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.mini-btn.on {
+  background: rgba(208, 59, 59, 0.24);
+  color: #ffb4b4;
+}
+
+.shelf-chip {
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  font-size: 11px;
+  color: #8d8983;
+  white-space: nowrap;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.shelf-chip.over {
+  border-color: #d97757;
+  background: rgba(217, 119, 87, 0.14);
+  color: #f4f2ef;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eq.live span {
+    animation: none;
+    height: 7px;
+  }
 }

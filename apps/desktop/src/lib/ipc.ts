@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   AgendaView,
+  DesktopNotification,
   Dashboard,
   Diagnostics,
   MediaAction,
@@ -38,8 +39,14 @@ export const ipc = {
   mediaControl: (action: MediaAction) =>
     invoke<void>("media_control", { action }),
 
-  notchSetExpanded: (expanded: boolean) =>
-    invoke<void>("notch_set_expanded", { expanded }),
+  notificationsList: () => invoke<DesktopNotification[]>("notifications_list"),
+  notificationsDismiss: (id: number) =>
+    invoke<void>("notifications_dismiss", { id }),
+  notificationsClear: () => invoke<void>("notifications_clear"),
+
+  /** `pinned` keeps the island open and gives it focus so Escape works. */
+  notchSetExpanded: (expanded: boolean, pinned: boolean) =>
+    invoke<void>("notch_set_expanded", { expanded, pinned }),
   showMainWindow: () => invoke<void>("show_main_window"),
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
