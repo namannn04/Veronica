@@ -232,13 +232,13 @@ pub const ENTRIES: &[ExtensionEntry] = &[
     ExtensionEntry {
         id: "clipboard",
         title: "Clipboard",
-        subtitle: "Clipboard history with instant paste.",
+        subtitle: "Clipboard history, searchable, with one-click copy back.",
         icon: "clipboard-list",
         group: G::Utilities,
         featured: true,
         defaults_key: "clipboardEnabled",
         required_capabilities: &[ClipboardHistory],
-        optional_capabilities: &[GlobalPaste, GlobalShortcuts],
+        optional_capabilities: &[GlobalPaste, GlobalShortcuts, ShellIntegration],
         required_tools: &[],
     },
     ExtensionEntry {

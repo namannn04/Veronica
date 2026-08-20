@@ -1037,3 +1037,53 @@ th.sortable:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------- clipboard */
+
+.clip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--grid);
+  min-width: 0;
+}
+
+.clip-row:last-child {
+  border-bottom: none;
+}
+
+.clip-preview {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.clip-preview:hover {
+  background: var(--plane);
+}
+
+.clip-text {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clip-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clip-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}

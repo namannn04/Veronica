@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   AgendaView,
+  ClipRow,
   DesktopNotification,
   Machine,
   MachineReport,
@@ -28,6 +29,10 @@ export const ipc = {
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
   settingsSet: (key: string, value: unknown) =>
     invoke<void>("settings_set", { key, value }),
+
+  clipboardList: (query: string) => invoke<ClipRow[]>("clipboard_list", { query }),
+  clipboardRemove: (id: number) => invoke<void>("clipboard_remove", { id }),
+  clipboardClear: () => invoke<void>("clipboard_clear"),
 
   machinesProbe: () => invoke<MachineReport[]>("machines_probe"),
   machinesAdd: (target: string, name: string | null, port: number | null) =>

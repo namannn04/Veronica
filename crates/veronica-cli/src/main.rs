@@ -6,6 +6,7 @@
 //! an agent can drive Veronica headlessly.
 
 mod calendar_cmd;
+mod clipboard_cmd;
 mod format;
 mod machines_cmd;
 mod media_cmd;
@@ -48,6 +49,9 @@ enum Command {
     /// Agent usage: totals, limits, projects and collection.
     #[command(subcommand)]
     Usage(usage_cmd::UsageCommand),
+    /// The clipboard history.
+    #[command(subcommand, alias = "clip")]
+    Clipboard(clipboard_cmd::ClipboardCommand),
     /// The computers Veronica can reach.
     #[command(subcommand, alias = "machine")]
     Machines(machines_cmd::MachineCommand),
@@ -126,6 +130,7 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Media(command) => media_cmd::run(command, output).await,
         Command::Calendar(command) => calendar_cmd::run(command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
+        Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output).await,
     }
 }
 

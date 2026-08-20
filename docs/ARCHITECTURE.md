@@ -146,3 +146,26 @@ cumulative counters, so the snippet takes two samples with a short sleep between
 them and the parser works out the difference. A single sample reports zero rather
 than a fabricated number, and a counter reset between samples — a reboot — is
 detected instead of producing nonsense.
+
+## The clipboard
+
+Reading the clipboard is the clearest case of a feature that a Wayland session
+simply will not grant an ordinary application: only the focused window may see
+the selection, so no background process can keep a history. Setting it has the
+same restriction from the other side — a client needs a serial from a recent
+input event, which is why a windowless process cannot put anything on the
+clipboard at all.
+
+Both halves therefore live in the shell extension, which runs inside the
+compositor. It watches `owner-changed` on the display's selection, reads the
+text with `St.Clipboard`, and pipes it to `vr clipboard record` on stdin — on
+stdin specifically, so no shell quoting is involved and the content can be
+anything, including newlines and quotes. Writing back uses
+`St.Clipboard.set_text`, and a short grace window after each write stops the
+extension re-recording what it just placed there.
+
+The history itself is ordinary domain logic in `veronica-core`: deduplication
+that promotes a repeat rather than adding a row, a cap on both entry count and
+entry size, atomic saves, and search. The application reads that history
+directly and copies back through the browser clipboard API, which is permitted
+there because it happens in response to a click in a focused window.

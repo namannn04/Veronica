@@ -281,14 +281,20 @@ impl Capabilities {
         // Wayland deliberately restricts these.
         set(
             ClipboardHistory,
-            if wayland {
-                CapabilityState::integration(
-                    "A Wayland compositor only hands the clipboard to the focused window. \
-                     Veronica reads it while its panel is focused; continuous background \
-                     history needs the GNOME Shell companion extension.",
+            if !wayland {
+                CapabilityState::Available
+            } else if session.is_gnome {
+                // The shell extension does the watching, since the compositor is
+                // the only thing a Wayland session lets read the selection.
+                CapabilityState::permission(
+                    "Enable the Veronica GNOME Shell extension, which captures copies \
+                     from inside the compositor.",
                 )
             } else {
-                CapabilityState::Available
+                CapabilityState::integration(
+                    "A Wayland compositor only hands the clipboard to the focused window, \
+                     and capturing needs a shell extension. This desktop is not GNOME.",
+                )
             },
         );
         set(
@@ -387,20 +393,36 @@ mod tests {
     }
 
     #[test]
-    fn clipboard_and_dimming_need_help_on_wayland_but_not_on_x11() {
+    fn window_dimming_needs_help_on_wayland_but_not_on_x11() {
         let wayland = Capabilities::resolve(&session(SessionKind::Wayland));
         let x11 = Capabilities::resolve(&session(SessionKind::X11));
+        assert!(matches!(
+            wayland.state(Capability::WindowDimming),
+            CapabilityState::IntegrationRequired { .. }
+        ));
+        assert_eq!(
+            x11.state(Capability::WindowDimming),
+            &CapabilityState::Available
+        );
+    }
 
-        for capability in [Capability::ClipboardHistory, Capability::WindowDimming] {
-            assert!(
-                matches!(
-                    wayland.state(capability),
-                    CapabilityState::IntegrationRequired { .. }
-                ),
-                "{capability:?} should need an integration on Wayland"
-            );
-            assert_eq!(x11.state(capability), &CapabilityState::Available);
-        }
+    #[test]
+    fn clipboard_history_is_reachable_on_gnome_wayland_via_the_extension() {
+        let mut gnome = session(SessionKind::Wayland);
+        gnome.is_gnome = true;
+        // Permission-gated rather than unavailable: the user can act on it.
+        assert!(Capabilities::resolve(&gnome).is_supported(Capability::ClipboardHistory));
+
+        let mut other = session(SessionKind::Wayland);
+        other.is_gnome = false;
+        assert!(!Capabilities::resolve(&other).is_supported(Capability::ClipboardHistory));
+
+        // X11 hands the clipboard to anyone who asks.
+        assert_eq!(
+            Capabilities::resolve(&session(SessionKind::X11))
+                .state(Capability::ClipboardHistory),
+            &CapabilityState::Available
+        );
     }
 
     #[test]

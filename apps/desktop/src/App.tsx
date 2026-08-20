@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 
+import { ClipboardPage } from "./pages/ClipboardPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ExtensionsPage } from "./pages/ExtensionsPage";
@@ -17,6 +18,7 @@ type Route =
   | "machines"
   | "media"
   | "calendar"
+  | "clipboard"
   | "extensions"
   | "diagnostics";
 
@@ -26,6 +28,7 @@ const NAV: { id: Route; label: string; section: string }[] = [
   { id: "machines", label: "Machines", section: "System" },
   { id: "media", label: "Media", section: "Media" },
   { id: "calendar", label: "Calendar", section: "Media" },
+  { id: "clipboard", label: "Clipboard", section: "Utilities" },
   { id: "extensions", label: "Extensions", section: "Veronica" },
   { id: "diagnostics", label: "Diagnostics", section: "Veronica" },
 ];
@@ -102,6 +105,7 @@ export function App() {
         {route === "machines" && <MachinesPage />}
         {route === "media" && <MediaPage />}
         {route === "calendar" && <CalendarPage />}
+        {route === "clipboard" && <ClipboardPage />}
         {route === "extensions" && (
           <ExtensionsPage diagnostics={diagnostics} onChanged={loadDiagnostics} />
         )}

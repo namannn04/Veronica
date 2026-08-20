@@ -92,6 +92,17 @@ The AppImage does not install the `vr` command; use the Debian package for that.
 - **Honest failures** — an unreachable host says why, and never delays or hides
   the machines that answered.
 
+**Clipboard**
+
+- **Searchable history** — everything you copy, deduplicated so re-copying moves
+  an entry up rather than adding a row, with a count of how often you have used
+  it. One click copies it back.
+- **Captured from the compositor** — on Wayland only the focused window may read
+  the clipboard, so the GNOME Shell extension does the watching and the last few
+  entries are available straight from the top bar dropdown.
+- **Stays local** — a plain file under your data directory that you can inspect
+  or delete; large copies are skipped rather than stored.
+
 **Top bar**
 
 - **Inside the shell's own dropdown** — a GNOME Shell extension adds Veronica's
@@ -137,6 +148,8 @@ vr calendar next             the next event and how long until it starts
 vr machines ls               the fleet, with live CPU, memory and disk
 vr machines stats <id>       one machine's vital signs in full
 vr machines add <ssh-host>   add a machine; discover finds config aliases
+vr clipboard list            the clipboard history, searchable
+vr clipboard get <id>        one entry's full text, for piping onward
 vr extensions                what can run on this session, and why not
 vr config set <key> <value>  every setting the UI exposes
 ```
@@ -161,9 +174,12 @@ does not.
 
 | Capability | Why | Route |
 | --- | --- | --- |
-| Clipboard history | Only the focused window may read the clipboard | GNOME Shell extension, or an X11 session |
 | Focus Dim | Dimming other windows is the compositor's job | GNOME Shell extension, or an X11 session |
 | Keyboard lock | Needs an exclusive evdev grab | Membership of the `input` group |
+
+Clipboard history was in this table until the shell extension existed; capture
+now happens inside the compositor, which is the only thing a Wayland session
+lets read the selection.
 
 Everything else has a working route: PipeWire for audio and mic mute, logind for
 prevent-sleep and lid-awake, MPRIS for media, Evolution Data Server for

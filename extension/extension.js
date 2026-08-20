@@ -21,6 +21,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import { ClipboardWatcher, entryText, recentEntries } from './clipboard.js';
 import {
     band,
     emptyLabel,
@@ -162,8 +163,13 @@ export default class VeronicaExtension extends Extension {
         this._menuSignalId = 0;
         this._usageSection = null;
         this._machineSection = null;
+        this._clipboardSection = null;
         this._injectedInto = null;
         this._fallbackItem = null;
+
+        this._clipboard = new ClipboardWatcher();
+        if (this._clipboard.enable())
+            console.debug('veronica: watching the clipboard');
 
         this._indicator = new VeronicaIndicator();
         // Left of the system menu, so it reads as part of the status cluster
@@ -224,6 +230,14 @@ export default class VeronicaExtension extends Extension {
             this._machineSection.destroy();
             this._machineSection = null;
         }
+        if (this._clipboardSection) {
+            this._clipboardSection.destroy();
+            this._clipboardSection = null;
+        }
+        if (this._clipboard) {
+            this._clipboard.disable();
+            this._clipboard = null;
+        }
         if (this._fallbackItem) {
             this._fallbackItem.destroy();
             this._fallbackItem = null;
@@ -246,12 +260,15 @@ export default class VeronicaExtension extends Extension {
         this._usageSection.add(emptyLabel('Reading…'));
         this._machineSection = new Section('This computer');
         this._machineSection.add(emptyLabel('Reading…'));
+        this._clipboardSection = new Section('Clipboard');
+        this._clipboardSection.add(emptyLabel('Nothing copied yet'));
 
         const column = findCalendarColumn(dateMenu);
         if (column) {
             // Below the calendar and the events list, where the shell puts its
             // own optional sections such as clocks and weather.
             column.add_child(this._usageSection.actor);
+            column.add_child(this._clipboardSection.actor);
             column.add_child(this._machineSection.actor);
             this._injectedInto = column;
             console.log('veronica: added sections to the clock dropdown');
@@ -270,6 +287,7 @@ export default class VeronicaExtension extends Extension {
             x_expand: true,
         });
         wrapper.add_child(this._usageSection.actor);
+        wrapper.add_child(this._clipboardSection.actor);
         wrapper.add_child(this._machineSection.actor);
         this._fallbackItem.add_child(wrapper);
         dateMenu.menu.addMenuItem(this._fallbackItem);
@@ -277,7 +295,48 @@ export default class VeronicaExtension extends Extension {
 
     /** Fill both sections from `vr`. */
     async _refreshSections() {
-        await Promise.all([this._refreshUsage(), this._refreshMachine()]);
+        await Promise.all([
+            this._refreshUsage(),
+            this._refreshClipboard(),
+            this._refreshMachine(),
+        ]);
+    }
+
+    async _refreshClipboard() {
+        const section = this._clipboardSection;
+        if (!section)
+            return;
+
+        const rows = await recentEntries(5, this._cancellable);
+        if (!this._clipboardSection || this._clipboardSection !== section)
+            return;
+
+        section.clear();
+        if (rows.length === 0) {
+            section.add(emptyLabel('Nothing copied yet'));
+            return;
+        }
+
+        for (const row of rows) {
+            // The list carries previews only; the full text is fetched on click,
+            // so a large copy is never held in the panel.
+            const button = new St.Button({
+                style_class: 'veronica-clip',
+                x_expand: true,
+                can_focus: true,
+                label: row.preview,
+            });
+            button.connect('clicked', () => {
+                entryText(row.id, this._cancellable)
+                    .then(text => {
+                        if (text)
+                            this._clipboard?.write(text);
+                    })
+                    .catch(() => {});
+                Main.panel.statusArea.dateMenu?.menu?.close();
+            });
+            section.add(button);
+        }
     }
 
     async _refreshUsage() {

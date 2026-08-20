@@ -5,12 +5,14 @@
 //! the extension catalogue and settings.
 
 pub mod capabilities;
+pub mod clipboard;
 pub mod extensions;
 pub mod paths;
 pub mod session;
 pub mod settings;
 
 pub use capabilities::{Capabilities, Capability, CapabilityState};
+pub use clipboard::{ClipEntry, ClipboardHistory};
 pub use extensions::{ExtensionAvailability, ExtensionEntry, ExtensionGroup, ENTRIES};
 pub use paths::{AppDirectories, APP_ID};
 pub use session::{DesktopSession, SessionKind};

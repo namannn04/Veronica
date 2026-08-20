@@ -276,3 +276,14 @@ export interface MachineReport {
   /** Why the probe failed, when it did. */
   error: string | null;
 }
+
+export interface ClipRow {
+  id: number;
+  preview: string;
+  /** The full text, so copying back needs no second call. */
+  text: string;
+  lines: number;
+  bytes: number;
+  count: number;
+  lastSeen: string;
+}
