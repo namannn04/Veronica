@@ -69,7 +69,8 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/metadata.json": "../../../extension/metadata.json",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/extension.js": "../../../extension/extension.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/lib.js": "../../../extension/lib.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/stylesheet.css": "../../../extension/stylesheet.css"
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/stylesheet.css": "../../../extension/stylesheet.css",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/clipboard.js": "../../../extension/clipboard.js"
         }
       },
       "appimage": {
