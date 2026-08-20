@@ -14,6 +14,7 @@ veronica-usage = { workspace = true }
 veronica-system = { workspace = true }
 veronica-media = { workspace = true }
 veronica-calendar = { workspace = true }
+veronica-machines = { workspace = true }
 zbus = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }

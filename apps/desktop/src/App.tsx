@@ -4,17 +4,26 @@ import { listen } from "@tauri-apps/api/event";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ExtensionsPage } from "./pages/ExtensionsPage";
+import { MachinesPage } from "./pages/MachinesPage";
 import { MediaPage } from "./pages/MediaPage";
 import { SystemPage } from "./pages/SystemPage";
 import { UsagePage } from "./pages/UsagePage";
 import { ipc } from "./lib/ipc";
 import type { Diagnostics } from "./lib/types";
 
-type Route = "usage" | "system" | "media" | "calendar" | "extensions" | "diagnostics";
+type Route =
+  | "usage"
+  | "system"
+  | "machines"
+  | "media"
+  | "calendar"
+  | "extensions"
+  | "diagnostics";
 
 const NAV: { id: Route; label: string; section: string }[] = [
   { id: "usage", label: "Agent Usage", section: "Agent" },
   { id: "system", label: "System", section: "System" },
+  { id: "machines", label: "Machines", section: "System" },
   { id: "media", label: "Media", section: "Media" },
   { id: "calendar", label: "Calendar", section: "Media" },
   { id: "extensions", label: "Extensions", section: "Veronica" },
@@ -90,6 +99,7 @@ export function App() {
       <main className="content">
         {route === "usage" && <UsagePage />}
         {route === "system" && <SystemPage />}
+        {route === "machines" && <MachinesPage />}
         {route === "media" && <MediaPage />}
         {route === "calendar" && <CalendarPage />}
         {route === "extensions" && (

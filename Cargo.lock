@@ -4471,6 +4471,7 @@ dependencies = [
  "tracing-subscriber",
  "veronica-calendar",
  "veronica-core",
+ "veronica-machines",
  "veronica-media",
  "veronica-system",
  "veronica-usage",
@@ -4506,10 +4507,24 @@ dependencies = [
  "tracing-subscriber",
  "veronica-calendar",
  "veronica-core",
+ "veronica-machines",
  "veronica-media",
  "veronica-system",
  "veronica-usage",
  "zbus",
+]
+
+[[package]]
+name = "veronica-machines"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "veronica-core",
 ]
 
 [[package]]

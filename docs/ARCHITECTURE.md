@@ -35,6 +35,7 @@ platform layer against Linux services.
 | `crates/veronica-system` | procfs metrics, logind inhibitors, PipeWire audio, D-Bus notifications, portal probing. |
 | `crates/veronica-media` | MPRIS control and local playback. |
 | `crates/veronica-calendar` | Agenda from GNOME's calendar server, join links from Evolution Data Server. |
+| `crates/veronica-machines` | The fleet: host model, the probe, and running it locally or over SSH. |
 | `crates/veronica-cli` | The `vr` binary. |
 | `apps/desktop` | Tauri application: Rust commands plus the React interface. |
 | `resources/refresh-usage` | The bundled usage collector. |
@@ -123,3 +124,25 @@ The extension holds no domain logic. Every figure it shows comes from
 number, and the extension stays small enough to audit. It finds the dropdown's
 right-hand column by the shell's own style class, `datemenu-calendar-column`,
 rather than by private field names, which move between releases without notice.
+
+## Reaching other machines
+
+Remote machines are probed by running the `ssh` binary rather than linking an
+SSH library. That is a deliberate trade: it means the user's own configuration
+applies unchanged — aliases, keys, agent, jump hosts, known-hosts — so a machine
+that works in a terminal works here with no further setup, and Veronica never
+handles a private key or a passphrase. `BatchMode=yes` is always passed, because
+a host that wants a password would otherwise block on a prompt nobody can see,
+which looks like a hang rather than a configuration problem.
+
+One shell snippet gathers everything in a single round trip, since over SSH each
+extra command costs another connection's latency. It reads only procfs and `df`,
+so it needs no privileges and nothing installed on the far end beyond a POSIX
+shell. Local and remote machines run the same snippet through the same parser,
+so a remote machine reports exactly what a local one does.
+
+CPU is the one figure that cannot come from a single reading: `/proc/stat` holds
+cumulative counters, so the snippet takes two samples with a short sleep between
+them and the parser works out the difference. A single sample reports zero rather
+than a fabricated number, and a counter reset between samples — a reboot — is
+detected instead of producing nonsense.

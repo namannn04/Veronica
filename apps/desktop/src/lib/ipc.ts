@@ -5,6 +5,8 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   AgendaView,
   DesktopNotification,
+  Machine,
+  MachineReport,
   Dashboard,
   Diagnostics,
   MediaAction,
@@ -26,6 +28,12 @@ export const ipc = {
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
   settingsSet: (key: string, value: unknown) =>
     invoke<void>("settings_set", { key, value }),
+
+  machinesProbe: () => invoke<MachineReport[]>("machines_probe"),
+  machinesAdd: (target: string, name: string | null, port: number | null) =>
+    invoke<Machine>("machines_add", { target, name, port }),
+  machinesRemove: (id: string) => invoke<void>("machines_remove", { id }),
+  machinesDiscover: () => invoke<string[]>("machines_discover"),
 
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
   microphoneState: () => invoke<VolumeState>("microphone_state"),

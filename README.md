@@ -81,6 +81,17 @@ The AppImage does not install the `vr` command; use the Debian package for that.
   tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
   progress bar that knows the difference between a track and a live stream.
 
+**Machines**
+
+- **One fleet view** — this computer plus any host you can already reach over
+  SSH, each with live CPU, memory, disks, load and uptime from a single probe.
+- **No new credentials** — remote machines are reached by running `ssh`, so your
+  config aliases, keys, agent and jump hosts apply unchanged, and Veronica never
+  handles a key or a passphrase.
+- **Discovery** — aliases in `~/.ssh/config` are offered as one-click additions.
+- **Honest failures** — an unreachable host says why, and never delays or hides
+  the machines that answered.
+
 **Top bar**
 
 - **Inside the shell's own dropdown** — a GNOME Shell extension adds Veronica's
@@ -123,6 +134,9 @@ vr media toggle              play or pause; also next, previous, stop
 vr media players             every player registered on the session bus
 vr calendar list             your agenda, grouped by day, with join links
 vr calendar next             the next event and how long until it starts
+vr machines ls               the fleet, with live CPU, memory and disk
+vr machines stats <id>       one machine's vital signs in full
+vr machines add <ssh-host>   add a machine; discover finds config aliases
 vr extensions                what can run on this session, and why not
 vr config set <key> <value>  every setting the UI exposes
 ```

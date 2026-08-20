@@ -327,6 +327,118 @@ pub fn notifications_clear(state: State<'_, AppState>) -> CommandResult<()> {
     Ok(())
 }
 
+/// Settings key holding the stored fleet, shared with the CLI.
+const MACHINES_KEY: &str = "machines";
+
+/// Probe every machine in the fleet.
+///
+/// One unreachable host reports its own error rather than failing the view, so
+/// a laptop that is off does not hide the machines that are on.
+#[tauri::command]
+pub async fn machines_probe(
+    app: AppHandle,
+) -> CommandResult<Vec<veronica_machines::MachineReport>> {
+    let stored = {
+        let state = app.state::<AppState>();
+        let settings = state.settings_snapshot();
+        settings
+            .get(MACHINES_KEY)
+            .and_then(|value| {
+                serde_json::from_value::<Vec<veronica_machines::Machine>>(value.clone()).ok()
+            })
+            .unwrap_or_default()
+    };
+    let fleet = veronica_machines::fleet(stored);
+    Ok(veronica_machines::probe_fleet(&fleet, veronica_machines::DEFAULT_TIMEOUT).await)
+}
+
+/// Add a machine reached over SSH.
+#[tauri::command]
+pub fn machines_add(
+    state: State<'_, AppState>,
+    target: String,
+    name: Option<String>,
+    port: Option<u16>,
+) -> CommandResult<veronica_machines::Machine> {
+    use veronica_machines::host;
+
+    let label = name.filter(|n| !n.trim().is_empty()).unwrap_or_else(|| target.clone());
+    let id = host::slugify(&label);
+    if id == "local" {
+        return Err("\"local\" is reserved for this computer".to_string());
+    }
+
+    let mut settings = state.settings.lock().expect("settings lock");
+    let mut machines: Vec<veronica_machines::Machine> = settings
+        .get(MACHINES_KEY)
+        .and_then(|value| serde_json::from_value(value.clone()).ok())
+        .unwrap_or_default();
+
+    if machines.iter().any(|machine| machine.id == id) {
+        return Err(format!("a machine called {id} already exists"));
+    }
+
+    let machine = veronica_machines::Machine {
+        id,
+        name: label,
+        reach: veronica_machines::Reach::Ssh { target, port },
+    };
+    machines.push(machine.clone());
+    settings.set(
+        MACHINES_KEY,
+        serde_json::to_value(&machines).map_err(|e| e.to_string())?,
+    );
+    settings
+        .save(&state.directories.settings_file())
+        .map_err(fail)?;
+    Ok(machine)
+}
+
+#[tauri::command]
+pub fn machines_remove(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+    let mut settings = state.settings.lock().expect("settings lock");
+    let mut machines: Vec<veronica_machines::Machine> = settings
+        .get(MACHINES_KEY)
+        .and_then(|value| serde_json::from_value(value.clone()).ok())
+        .unwrap_or_default();
+    let before = machines.len();
+    machines.retain(|machine| machine.id != id);
+    if machines.len() == before {
+        return Err(format!("no machine called {id}"));
+    }
+    settings.set(
+        MACHINES_KEY,
+        serde_json::to_value(&machines).map_err(|e| e.to_string())?,
+    );
+    settings
+        .save(&state.directories.settings_file())
+        .map_err(fail)?;
+    Ok(())
+}
+
+/// SSH aliases in the user's config that are not configured yet.
+#[tauri::command]
+pub fn machines_discover(state: State<'_, AppState>) -> CommandResult<Vec<String>> {
+    use veronica_machines::host;
+
+    let settings = state.settings_snapshot();
+    let configured: Vec<veronica_machines::Machine> = settings
+        .get(MACHINES_KEY)
+        .and_then(|value| serde_json::from_value(value.clone()).ok())
+        .unwrap_or_default();
+    let config = veronica_core::paths::home_dir()
+        .map(|home| home.join(".ssh/config"))
+        .unwrap_or_default();
+    Ok(host::ssh_config_hosts(&config)
+        .into_iter()
+        .filter(|alias| {
+            !configured
+                .iter()
+                .any(|machine| machine.ssh_target() == Some(alias.as_str()))
+        })
+        .collect())
+}
+
 #[tauri::command]
 pub fn show_main_window(app: AppHandle) -> CommandResult<()> {
     if let Some(window) = app.get_webview_window("main") {

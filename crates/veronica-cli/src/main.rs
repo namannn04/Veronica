@@ -7,6 +7,7 @@
 
 mod calendar_cmd;
 mod format;
+mod machines_cmd;
 mod media_cmd;
 mod usage_cmd;
 
@@ -47,6 +48,9 @@ enum Command {
     /// Agent usage: totals, limits, projects and collection.
     #[command(subcommand)]
     Usage(usage_cmd::UsageCommand),
+    /// The computers Veronica can reach.
+    #[command(subcommand, alias = "machine")]
+    Machines(machines_cmd::MachineCommand),
     /// Your agenda, from every configured calendar.
     #[command(subcommand)]
     Calendar(calendar_cmd::CalendarCommand),
@@ -121,6 +125,7 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Usage(command) => usage_cmd::run(&directories, command, output).await,
         Command::Media(command) => media_cmd::run(command, output).await,
         Command::Calendar(command) => calendar_cmd::run(command, output).await,
+        Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
     }
 }
 

@@ -239,3 +239,40 @@ export interface DesktopNotification {
   receivedAt: number;
   desktopEntry: string | null;
 }
+
+export type MachineReach =
+  | { kind: "local" }
+  | { kind: "ssh"; target: string; port?: number };
+
+export interface Machine {
+  id: string;
+  name: string;
+  reach: MachineReach;
+}
+
+export interface MachineDisk {
+  mountPoint: string;
+  totalBytes: number;
+  availableBytes: number;
+}
+
+export interface MachineStats {
+  hostName: string;
+  kernel: string;
+  os: string;
+  uptimeSecs: number;
+  loadAverage: [number, number, number];
+  cpuPercent: number;
+  memoryTotalBytes: number;
+  memoryAvailableBytes: number;
+  swapTotalBytes: number;
+  swapFreeBytes: number;
+  disks: MachineDisk[];
+}
+
+export interface MachineReport {
+  machine: Machine;
+  stats: MachineStats | null;
+  /** Why the probe failed, when it did. */
+  error: string | null;
+}
