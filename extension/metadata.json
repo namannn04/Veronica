@@ -1,0 +1,8 @@
+{
+  "uuid": "veronica@namannn04.github.io",
+  "name": "Veronica",
+  "description": "Puts Veronica's readouts into the real top bar and its clock dropdown: agent usage and spend, machine load, and quick toggles, alongside the notifications, media and calendar the shell already shows.",
+  "shell-version": ["48", "49", "50"],
+  "url": "https://github.com/namannn04/Veronica",
+  "version": 1
+}

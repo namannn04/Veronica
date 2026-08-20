@@ -12,7 +12,6 @@ use veronica_system::metrics::SystemSnapshot;
 use veronica_usage::aggregate::{self, DayRange, SourceSelection};
 use veronica_usage::collector;
 
-use crate::notch;
 use crate::state::AppState;
 
 /// Errors cross the IPC boundary as messages.
@@ -183,14 +182,7 @@ pub fn settings_set(
     key: String,
     value: serde_json::Value,
 ) -> CommandResult<()> {
-    state.set_setting(&key, value.clone()).map_err(fail)?;
-
-    // Enabling or disabling the notch has to take effect immediately, the way
-    // toggling an extension does on macOS.
-    if key == "notchShelfEnabled" {
-        let enabled = value.as_bool().unwrap_or(false);
-        notch::set_visible(&app, enabled).map_err(fail)?;
-    }
+    state.set_setting(&key, value).map_err(fail)?;
     let _ = app.emit("settings-updated", &key);
     Ok(())
 }
@@ -333,15 +325,6 @@ pub fn notifications_clear(state: State<'_, AppState>) -> CommandResult<()> {
         .expect("notifications lock")
         .clear();
     Ok(())
-}
-
-#[tauri::command]
-pub fn notch_set_expanded(
-    app: AppHandle,
-    expanded: bool,
-    pinned: bool,
-) -> CommandResult<()> {
-    notch::set_expanded(&app, expanded, pinned).map_err(fail)
 }
 
 #[tauri::command]

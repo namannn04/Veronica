@@ -38,6 +38,7 @@ platform layer against Linux services.
 | `crates/veronica-cli` | The `vr` binary. |
 | `apps/desktop` | Tauri application: Rust commands plus the React interface. |
 | `resources/refresh-usage` | The bundled usage collector. |
+| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown. |
 | `packaging/` | Debian package, AppImage, desktop entry and AppStream metadata. |
 
 ## The usage collector is shared, not reimplemented
@@ -102,3 +103,23 @@ The portable crates are unit tested, with parity tests pinning the values
 Edith's Swift produces for the rate-limit maths — the smoothstep ramps, the
 risk blend, the zone hysteresis and the budget states. Run `cargo test
 --workspace`.
+
+## The top bar
+
+GNOME's top bar and its clock dropdown belong to the shell. An application
+window cannot be stacked above them, cannot reserve space beside them, and on
+Wayland cannot even place itself. Drawing a look-alike panel underneath the real
+one was tried and abandoned: it reads as a second bar rather than part of the
+desktop.
+
+So the top bar integration is a GNOME Shell extension, which runs inside the
+shell's own process and can add to its widgets directly. It contributes only
+what the shell has no notion of — agent usage, spend, machine state — and leaves
+the notifications, media controls and calendar to the shell, which already does
+them well.
+
+The extension holds no domain logic. Every figure it shows comes from
+`vr ... --json`, so the panel and the application cannot disagree about a
+number, and the extension stays small enough to audit. It finds the dropdown's
+right-hand column by the shell's own style class, `datemenu-calendar-column`,
+rather than by private field names, which move between releases without notice.

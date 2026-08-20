@@ -35,13 +35,14 @@ pub enum Capability {
     RunningApplications,
     ScreenColorSampling,
     ScreenShareDetection,
+    ShellIntegration,
     SystemMetrics,
     UsageCollection,
     WindowDimming,
 }
 
 impl Capability {
-    pub const ALL: [Capability; 24] = [
+    pub const ALL: [Capability; 25] = [
         Capability::ApplicationAudio,
         Capability::BluetoothMonitoring,
         Capability::CalendarEvents,
@@ -63,6 +64,7 @@ impl Capability {
         Capability::RunningApplications,
         Capability::ScreenColorSampling,
         Capability::ScreenShareDetection,
+        Capability::ShellIntegration,
         Capability::SystemMetrics,
         Capability::UsageCollection,
         Capability::WindowDimming,
@@ -93,6 +95,7 @@ impl Capability {
             RunningApplications => "Running applications",
             ScreenColorSampling => "Screen colour sampling",
             ScreenShareDetection => "Screen share detection",
+            ShellIntegration => "Top bar integration",
             SystemMetrics => "System metrics",
             UsageCollection => "Usage collection",
             WindowDimming => "Window dimming",
@@ -123,6 +126,7 @@ impl Capability {
             RunningApplications => "procfs + desktop entries",
             ScreenColorSampling => "xdg-desktop-portal Screenshot.PickColor",
             ScreenShareDetection => "xdg-desktop-portal ScreenCast",
+            ShellIntegration => "GNOME Shell extension",
             SystemMetrics => "procfs / sysfs",
             WindowDimming => "Compositor",
         }
@@ -299,6 +303,21 @@ impl Capabilities {
             },
         );
         set(
+            ShellIntegration,
+            if session.is_gnome {
+                CapabilityState::permission(
+                    "Log out and back in once after installing, so GNOME Shell loads the \
+                     extension.",
+                )
+            } else {
+                CapabilityState::unsupported(
+                    "Adding sections to the top bar needs a GNOME Shell extension; this \
+                     desktop is not GNOME.",
+                )
+            },
+        );
+
+        set(
             InputSuppression,
             CapabilityState::integration(
                 "The keyboard-cleaning lock needs an exclusive evdev grab, which requires \
@@ -320,6 +339,7 @@ impl Capabilities {
                 ScreenShareDetection,
                 WindowDimming,
                 InputSuppression,
+                ShellIntegration,
             ] {
                 set(
                     capability,
@@ -432,6 +452,20 @@ mod tests {
         };
         assert!(matches!(
             empty.state(Capability::UsageCollection),
+            CapabilityState::Unsupported { .. }
+        ));
+    }
+
+    #[test]
+    fn top_bar_integration_needs_gnome() {
+        let mut gnome = session(SessionKind::Wayland);
+        gnome.is_gnome = true;
+        assert!(Capabilities::resolve(&gnome).is_supported(Capability::ShellIntegration));
+
+        let mut other = session(SessionKind::Wayland);
+        other.is_gnome = false;
+        assert!(matches!(
+            Capabilities::resolve(&other).state(Capability::ShellIntegration),
             CapabilityState::Unsupported { .. }
         ));
     }

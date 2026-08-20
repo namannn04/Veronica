@@ -16,28 +16,79 @@ vr usage refresh --progress
 The app puts an icon in the top bar. Left-click opens the window; right-click
 gives a menu with Refresh usage, Toggle notch, and Quit.
 
-## Using the notch
+## The top bar
 
-The notch is the pill under the top bar, centred on the clock.
+Veronica does not draw a panel of its own. It adds sections to the top bar's
+real clock dropdown — the one that already shows notifications, media and the
+calendar — through a GNOME Shell extension. Whatever the shell already does
+well is left alone; Veronica contributes what the shell has no idea about:
+agent usage and spend, and machine state. A small indicator also appears in the
+status area on the right, showing today's spend.
 
-| Action | What happens |
-| --- | --- |
-| Hover it | Peeks open, and closes again shortly after the pointer leaves |
-| Click it | Pins it open, so it stays until dismissed |
-| Click it again, or the ✕ | Closes it |
-| Escape | Closes it when pinned |
-
-The pinned state is remembered, so it reopens the way you left it. Whether the
-notch exists at all is the `notchShelf` extension, toggleable from
-Extensions, the tray menu, or the command line:
+The Debian package installs the extension system-wide. Because GNOME Shell only
+scans for extensions at startup, and Wayland has no way to restart the shell in
+place, a **fresh login is required once** after installing:
 
 ```bash
-vr config set notchShelfEnabled false   # hide it
-vr config set notchShelfEnabled true    # bring it back
+# after installing the package, log out and back in, then:
+gnome-extensions enable veronica@namannn04.github.io
+gnome-extensions info veronica@namannn04.github.io   # expect State: ACTIVE
 ```
 
-Clicks pass through everywhere the island is not, so the desktop underneath
-stays usable.
+From a source checkout, install it for your user instead:
+
+```bash
+./extension/install.sh
+```
+
+Left-click the tray icon to open the window; right-click for a menu with
+Refresh usage and Quit.
+
+### If nothing appears in the dropdown
+
+- `gnome-extensions info veronica@namannn04.github.io` should say `State: ACTIVE`.
+  `ERROR` means it threw, and the reason is in the journal.
+- Watch the shell's own log for Veronica's messages:
+
+  ```bash
+  journalctl --user -f | grep -i veronica
+  ```
+
+  On a healthy start it logs `added sections to the clock dropdown` and the path
+  it found `vr` at.
+- `clock dropdown layout not recognised` means the shell's popup changed shape
+  and the sections fell back to a plain menu item. The extension looks for the
+  actor with style class `datemenu-calendar-column`; that is what to re-check
+  against a newer GNOME.
+- `vr at "not found"` means the CLI is not where the shell can see it. A shell
+  extension does not inherit a login shell's `PATH`, so the extension checks
+  `/usr/bin/vr`, `/usr/local/bin/vr` and `~/.local/bin/vr` in that order.
+- On some Ubuntu installs `disable-user-extensions` is `true`, which makes the
+  shell ignore *user* extensions entirely and looks identical to a broken
+  extension. The packaged system-wide install is unaffected, but if you used
+  `install.sh`:
+
+  ```bash
+  gsettings get org.gnome.shell disable-user-extensions   # want: false
+  ```
+
+## Developing the extension
+
+Wayland cannot restart the shell in place, so a code change needs a fresh login
+— or a disposable shell on its own bus, which is how this was built:
+
+```bash
+dbus-run-session -- bash -c 'echo $DBUS_SESSION_BUS_ADDRESS > /tmp/bus; \
+  exec gnome-shell --headless --virtual-monitor 1400x900'
+# then, against that bus:
+DBUS_SESSION_BUS_ADDRESS=$(cat /tmp/bus) \
+  gnome-extensions enable veronica@namannn04.github.io
+```
+
+The headless shell logs to its own stdout, which is where the extension's
+messages appear. Screenshots are refused even there, so verification is by log.
+Note that GJS caches ES modules per session: re-enabling is not enough to pick
+up a code change, the shell has to be restarted.
 
 ## Running from source
 

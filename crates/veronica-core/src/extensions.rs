@@ -219,14 +219,14 @@ pub const ENTRIES: &[ExtensionEntry] = &[
     },
     ExtensionEntry {
         id: "notchShelf",
-        title: "Notch",
-        subtitle: "A hover island in the top bar: file shelf, now playing, usage and alerts.",
+        title: "Top bar",
+        subtitle: "Agent usage and machine load inside the top bar's own clock dropdown.",
         icon: "inbox",
         group: G::Media,
         featured: true,
         defaults_key: "notchShelfEnabled",
-        required_capabilities: &[FileShelf],
-        optional_capabilities: &[BluetoothMonitoring, CameraPreview, ExternalMediaControl],
+        required_capabilities: &[ShellIntegration],
+        optional_capabilities: &[ExternalMediaControl],
         required_tools: &[],
     },
     ExtensionEntry {

@@ -4,7 +4,6 @@
 // Linux, so no windows_subsystem attribute is needed.
 mod art;
 mod commands;
-mod notch;
 mod state;
 mod tray;
 
@@ -78,7 +77,6 @@ fn run() -> Result<()> {
             commands::notifications_list,
             commands::notifications_dismiss,
             commands::notifications_clear,
-            commands::notch_set_expanded,
             commands::show_main_window,
             commands::open_external,
         ])
@@ -90,19 +88,9 @@ fn run() -> Result<()> {
             // synchronous answer first.
             let session = veronica_core::DesktopSession::detect();
             let state = AppState::new(directories.clone(), session)?;
-            let settings = state.settings_snapshot();
             app.manage(state);
 
             tray::install(&handle)?;
-            notch::create(&handle)?;
-
-            // The notch follows its extension setting, which defaults on
-            // because the entry is featured.
-            let notch_entry = veronica_core::extensions::entry("notchShelf")
-                .expect("notchShelf is in the catalogue");
-            if settings.extension_enabled(notch_entry) {
-                notch::set_visible(&handle, true)?;
-            }
 
             if let Some(window) = app.get_webview_window("main") {
                 window.show()?;

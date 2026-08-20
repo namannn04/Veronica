@@ -65,7 +65,11 @@
         "desktopTemplate": "../../../packaging/linux/veronica.desktop",
         "files": {
           "/usr/bin/vr": "../../../target/release/vr",
-          "/usr/share/metainfo/io.github.namannn04.Veronica.metainfo.xml": "../../../packaging/linux/io.github.namannn04.Veronica.metainfo.xml"
+          "/usr/share/metainfo/io.github.namannn04.Veronica.metainfo.xml": "../../../packaging/linux/io.github.namannn04.Veronica.metainfo.xml",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/metadata.json": "../../../extension/metadata.json",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/extension.js": "../../../extension/extension.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/lib.js": "../../../extension/lib.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/stylesheet.css": "../../../extension/stylesheet.css"
         }
       },
       "appimage": {

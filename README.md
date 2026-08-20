@@ -81,6 +81,22 @@ The AppImage does not install the `vr` command; use the Debian package for that.
   tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
   progress bar that knows the difference between a track and a live stream.
 
+**Top bar**
+
+- **Inside the shell's own dropdown** — a GNOME Shell extension adds Veronica's
+  readouts to the real clock dropdown, beside the notifications, media and
+  calendar the shell already shows: agent usage and spend for the last seven
+  days, per-source breakdown, and the machine's capability state. Plus a spend
+  indicator in the status area.
+- **No second panel** — the shell keeps owning the top bar; Veronica only adds
+  what the shell has no idea about.
+
+**Media**
+
+- **One place for every player** — anything that speaks MPRIS: Spotify, a browser
+  tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
+  progress bar that knows the difference between a track and a live stream.
+
 **Notch**
 
 - **The clock dropdown, upgraded** — hover to peek or click to pin open. One

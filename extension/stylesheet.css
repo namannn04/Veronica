@@ -1,0 +1,81 @@
+/* Veronica's sections inside the shell's own popups.
+ *
+ * Deliberately restrained: these live inside GNOME's menus, so they inherit the
+ * theme's colours wherever possible and only add structure. Hard-coded colours
+ * are limited to the brand accent and the status bands, which must stay stable
+ * across light and dark themes.
+ */
+
+.veronica-section {
+  padding: 6px 12px 10px 12px;
+}
+
+.veronica-heading {
+  font-size: 0.8em;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  padding-bottom: 6px;
+}
+
+.veronica-row {
+  spacing: 8px;
+  padding: 2px 0;
+}
+
+.veronica-row-label {
+  min-width: 92px;
+  font-size: 0.95em;
+}
+
+.veronica-row-value {
+  font-size: 0.95em;
+  font-feature-settings: "tnum";
+}
+
+.veronica-dim {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* A meter: a track with a fill sized by the caller. */
+.veronica-meter {
+  height: 6px;
+  min-width: 90px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.veronica-meter-fill {
+  height: 6px;
+  border-radius: 3px;
+  background-color: #d97757;
+}
+
+.veronica-meter-fill.warning {
+  background-color: #fab219;
+}
+
+.veronica-meter-fill.critical {
+  background-color: #d03b3b;
+}
+
+.veronica-meter-fill.good {
+  background-color: #6a8d73;
+}
+
+.veronica-empty {
+  font-size: 0.95em;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 4px 0;
+}
+
+/* The top bar indicator. */
+.veronica-indicator {
+  spacing: 5px;
+}
+
+.veronica-indicator-label {
+  font-size: 0.92em;
+  font-feature-settings: "tnum";
+}
