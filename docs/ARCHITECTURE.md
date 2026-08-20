@@ -169,3 +169,37 @@ that promotes a repeat rather than adding a row, a cap on both entry count and
 entry size, atomic saves, and search. The application reads that history
 directly and copies back through the browser clipboard API, which is permitted
 there because it happens in response to a click in a focused window.
+
+## Rate limits and credentials
+
+Rate-limit figures cannot be derived locally: only the provider knows them. So
+this is the one place Veronica makes a network request, and it goes straight from
+the machine to the provider using the token the agent's own CLI already holds.
+
+Claude's come from its usage endpoint over HTTPS. Codex's come from
+`codex app-server` over a JSON-RPC conversation on stdio, so there is no network
+call and no token for Veronica to handle at all; the two windows it reports are
+told apart by their duration rather than by the `primary`/`secondary` naming,
+which says nothing about which is which.
+
+Three decisions about the credential file are worth recording, because it belongs
+to Claude Code rather than to Veronica:
+
+- **The token is a header, never an argument.** Process argument lists are
+  world-readable through `/proc`, so shelling out to `curl` with a bearer token
+  would expose it to every other process on the machine. That is the main reason
+  a real HTTP client is linked in rather than reusing the shell tooling the
+  collector already depends on.
+- **A refresh is written back, and that is the safer choice.** The provider may
+  rotate the refresh token; keeping the old one after a rotation would invalidate
+  the user's login. Writes preserve every field the file had, including ones
+  Veronica knows nothing about, are atomic, and create the temporary file
+  owner-only from the outset rather than tightening permissions after the secret
+  is already on disk.
+- **Nothing is refreshed that does not need to be.** With a minute of leeway, a
+  token that is still valid is used as-is, so an ordinary read never touches the
+  file at all.
+
+The gauge itself lives in one place, `veronica-usage::gauges`, which the CLI, the
+application and the shell extension all read. A ring in the top bar therefore
+cannot disagree with the same figure on the dashboard.

@@ -8,6 +8,7 @@ import {
   SpendCalendar,
   colorScale,
 } from "../components/charts";
+import { LimitRings } from "../components/LimitRings";
 import { ProjectList } from "../components/ProjectList";
 import { ModelTable } from "../components/ModelTable";
 import { ipc } from "../lib/ipc";
@@ -170,6 +171,8 @@ export function UsagePage() {
           </button>
         ))}
       </div>
+
+      <LimitRings />
 
       {board && (
         <>

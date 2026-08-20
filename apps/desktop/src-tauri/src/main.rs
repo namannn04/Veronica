@@ -66,6 +66,7 @@ fn run() -> Result<()> {
             commands::capabilities,
             commands::usage_view,
             commands::usage_refresh,
+            commands::usage_limits,
             commands::settings_all,
             commands::settings_set,
             commands::system_snapshot,

@@ -6,7 +6,7 @@ use veronica_core::AppDirectories;
 use veronica_usage::aggregate::{self, DayRange, SourceSelection};
 use veronica_usage::collector;
 
-use crate::format::{self, money, tokens, Output};
+use crate::format::{self, countdown, money, tokens, Output};
 
 #[derive(Subcommand)]
 pub enum UsageCommand {
@@ -45,6 +45,15 @@ pub enum UsageCommand {
     Calendar {
         #[arg(long)]
         days: Option<usize>,
+    },
+    /// Rate limits for Claude and Codex, as live gauges.
+    Limits {
+        /// Warn above this utilisation.
+        #[arg(long, default_value_t = 60)]
+        warn: i64,
+        /// Treat above this as critical.
+        #[arg(long, default_value_t = 85)]
+        critical: i64,
     },
     /// Run the collector and rewrite usage.json.
     Refresh {
@@ -265,6 +274,63 @@ pub async fn run(
             })
         }
 
+        UsageCommand::Limits { warn, critical } => {
+            use veronica_usage::limits::UsageThresholds;
+
+            let thresholds = UsageThresholds {
+                warning_percent: *warn,
+                critical_percent: *critical,
+            };
+            let report = veronica_usage::gauges::collect(
+                chrono::Utc::now(),
+                veronica_usage::gauges::DEFAULT_PACING_MARGIN,
+            )
+            .await;
+
+            output.emit(&report, || {
+                use std::fmt::Write;
+                let mut out = String::new();
+                if report.gauges.is_empty() {
+                    let _ = write!(out, "no rate limits available");
+                } else {
+                    let rows: Vec<Vec<String>> = report
+                        .gauges
+                        .iter()
+                        .map(|gauge| {
+                            let level = veronica_usage::limits::UsageLevel::from_percent(
+                                gauge.percent,
+                                thresholds,
+                            );
+                            vec![
+                                gauge.provider.clone(),
+                                gauge.window.clone(),
+                                bar(gauge.percent),
+                                format!("{:.0}%", gauge.percent),
+                                gauge
+                                    .resets_in_secs
+                                    .map(countdown)
+                                    .unwrap_or_else(|| "—".into()),
+                                format!("{:?}", gauge.zone).to_lowercase(),
+                                format!("{level:?}").to_lowercase(),
+                            ]
+                        })
+                        .collect();
+                    let _ = write!(
+                        out,
+                        "{}",
+                        format::table(
+                            &["provider", "window", "", "used", "resets", "pace", "level"],
+                            &rows
+                        )
+                    );
+                }
+                for note in &report.notes {
+                    let _ = write!(out, "\n{note}");
+                }
+                out
+            })
+        }
+
         UsageCommand::Refresh { progress } => {
             let script = directories.collector_script();
             collector::install_script(&script)?;
@@ -328,5 +394,25 @@ pub async fn run(
                 out
             })
         }
+    }
+}
+
+/// A ten-cell bar for a percentage, so a terminal reading is scannable.
+fn bar(percent: f64) -> String {
+    let filled = ((percent / 10.0).round() as usize).min(10);
+    format!("[{}{}]", "#".repeat(filled), "·".repeat(10 - filled))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bar;
+
+    #[test]
+    fn the_bar_fills_proportionally_and_clamps() {
+        assert_eq!(bar(0.0), "[··········]");
+        assert_eq!(bar(50.0), "[#####·····]");
+        assert_eq!(bar(100.0), "[##########]");
+        // Over the limit still renders, rather than overflowing the cell count.
+        assert_eq!(bar(140.0), "[##########]");
     }
 }

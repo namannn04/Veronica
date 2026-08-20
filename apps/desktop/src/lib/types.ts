@@ -287,3 +287,27 @@ export interface ClipRow {
   count: number;
   lastSeen: string;
 }
+
+export type UsageLevel = "green" | "orange" | "red";
+export type PacingZone = "chill" | "onTrack" | "warning" | "hot";
+
+export interface Gauge {
+  /** "Claude" or "Codex". */
+  provider: string;
+  /** "Session", "Week", or a model-scoped label. */
+  window: string;
+  percent: number;
+  resetsInSecs: number | null;
+  /** 0-1, blending absolute use, projected overrun and pace. */
+  risk: number;
+  level: UsageLevel;
+  zone: PacingZone;
+  /** Percentage points ahead of a linear burn; negative means behind. */
+  paceDelta: number | null;
+}
+
+export interface GaugeReport {
+  gauges: Gauge[];
+  /** Why a provider contributed nothing. */
+  notes: string[];
+}

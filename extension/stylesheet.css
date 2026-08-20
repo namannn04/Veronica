@@ -92,3 +92,17 @@
 .veronica-clip:focus {
   background-color: rgba(255, 255, 255, 0.1);
 }
+
+/* The band of the most pressing rate limit, shown in the top bar. */
+.veronica-band-good {
+  color: #6a8d73;
+}
+
+.veronica-band-warning {
+  color: #fab219;
+}
+
+.veronica-band-critical {
+  color: #d03b3b;
+  font-weight: bold;
+}

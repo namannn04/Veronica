@@ -24,6 +24,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { ClipboardWatcher, entryText, recentEntries } from './clipboard.js';
 import {
     band,
+    countdown,
     emptyLabel,
     findCli,
     heading,
@@ -38,6 +39,15 @@ import {
 
 /** How often the top bar indicator refreshes while the session is idle. */
 const INDICATOR_INTERVAL_SECONDS = 30;
+
+/**
+ * How often to ask the provider for rate limits.
+ *
+ * Far slower than the spend readout: each call is a network request, and the
+ * windows move on the scale of hours, so polling tightly would be rude to the
+ * provider and pointless for the user.
+ */
+const LIMITS_INTERVAL_SECONDS = 300;
 
 /** Style class the shell gives the clock dropdown's right-hand column. */
 const CALENDAR_COLUMN_CLASS = 'datemenu-calendar-column';
@@ -129,7 +139,14 @@ class VeronicaIndicator extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
             visible: false,
         });
+        this._limitLabel = new St.Label({
+            text: '',
+            style_class: 'veronica-indicator-label',
+            y_align: Clutter.ActorAlign.CENTER,
+            visible: false,
+        });
         this._box.add_child(this._icon);
+        this._box.add_child(this._limitLabel);
         this._box.add_child(this._label);
         this.add_child(this._box);
 
@@ -146,6 +163,22 @@ class VeronicaIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(this._refreshItem);
     }
 
+    /** The most pressing rate limit, or null to hide it. */
+    setLimit(limit) {
+        if (!limit) {
+            this._limitLabel.visible = false;
+            return;
+        }
+        this._limitLabel.text = limit.text;
+        // The band is carried by a style class rather than an inline colour, so
+        // the theme can restyle it.
+        for (const name of ['good', 'warning', 'critical'])
+            this._limitLabel.remove_style_class_name(`veronica-band-${name}`);
+        this._limitLabel.add_style_class_name(`veronica-band-${limit.band}`);
+        this._limitLabel.visible = true;
+        this.set_accessible_name(limit.tooltip);
+    }
+
     setSpend(text) {
         if (text) {
             this._label.text = text;
@@ -160,6 +193,7 @@ export default class VeronicaExtension extends Extension {
     enable() {
         this._cancellable = new Gio.Cancellable();
         this._timeoutId = 0;
+        this._limitsTimeoutId = 0;
         this._menuSignalId = 0;
         this._usageSection = null;
         this._machineSection = null;
@@ -194,6 +228,15 @@ export default class VeronicaExtension extends Extension {
         // "Reading…" while the subprocess runs.
         this._refreshSections().catch(() => {});
         this._refreshIndicator().catch(() => {});
+        this._refreshLimitIndicator().catch(() => {});
+        this._limitsTimeoutId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT_IDLE,
+            LIMITS_INTERVAL_SECONDS,
+            () => {
+                this._refreshLimitIndicator().catch(() => {});
+                return GLib.SOURCE_CONTINUE;
+            }
+        );
         this._timeoutId = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT_IDLE,
             INDICATOR_INTERVAL_SECONDS,
@@ -205,9 +248,11 @@ export default class VeronicaExtension extends Extension {
     }
 
     disable() {
-        if (this._timeoutId) {
-            GLib.Source.remove(this._timeoutId);
-            this._timeoutId = 0;
+        for (const name of ['_timeoutId', '_limitsTimeoutId']) {
+            if (this[name]) {
+                GLib.Source.remove(this[name]);
+                this[name] = 0;
+            }
         }
         if (this._cancellable) {
             this._cancellable.cancel();
@@ -355,8 +400,24 @@ export default class VeronicaExtension extends Extension {
             return;
         }
 
+        // Rate limits first: a window about to run out matters more than a
+        // month's spend.
+        const limits = await runJson(['usage', 'limits'], this._cancellable);
+        if (!this._usageSection || this._usageSection !== section)
+            return;
+        for (const gauge of (limits?.gauges ?? []).slice(0, 4)) {
+            const resets = Number.isFinite(gauge.resetsInSecs)
+                ? ` · ${countdown(gauge.resetsInSecs)}`
+                : '';
+            section.add(meterRow(
+                `${gauge.provider} ${gauge.window}`,
+                (gauge.percent ?? 0) / 100,
+                `${Math.round(gauge.percent ?? 0)}%${resets}`,
+                band(gauge.percent ?? 0)
+            ));
+        }
+
         const totals = summary.totals ?? {};
-        console.debug(`veronica: usage ${money(totals.cost ?? 0)} over ${summary.activeDays ?? 0} days`);
         section.add(textRow('Spend', money(totals.cost ?? 0)));
         section.add(textRow('Tokens', tokens(totals.tokens ?? 0)));
         section.add(textRow('Sessions', `${summary.sessions ?? 0}`, true));
@@ -419,5 +480,37 @@ export default class VeronicaExtension extends Extension {
         this._indicator.setSpend(
             Number.isFinite(cost) && cost > 0 ? money(cost) : ''
         );
+    }
+
+    /**
+     * Show the window closest to running out, tinted by its band.
+     *
+     * Highest risk rather than highest percentage: 60% with minutes left is more
+     * urgent than 80% with a week to go, and risk already accounts for that.
+     */
+    async _refreshLimitIndicator() {
+        if (!this._indicator)
+            return;
+        const report = await runJson(['usage', 'limits'], this._cancellable);
+        if (!this._indicator)
+            return;
+
+        const gauges = report?.gauges ?? [];
+        if (gauges.length === 0) {
+            this._indicator.setLimit(null);
+            return;
+        }
+        const pressing = gauges.reduce(
+            (worst, gauge) => ((gauge.risk ?? 0) > (worst.risk ?? 0) ? gauge : worst),
+            gauges[0]
+        );
+        this._indicator.setLimit({
+            text: `${Math.round(pressing.percent ?? 0)}%`,
+            band: band(pressing.percent ?? 0),
+            tooltip: `${pressing.provider} ${pressing.window}: ${Math.round(pressing.percent ?? 0)}%`
+                + (Number.isFinite(pressing.resetsInSecs)
+                    ? `, resets in ${countdown(pressing.resetsInSecs)}`
+                    : ''),
+        });
     }
 }

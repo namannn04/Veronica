@@ -54,6 +54,12 @@ The AppImage does not install the `vr` command; use the Debian package for that.
 - **Local accounting** — Claude, Codex, Cursor and Command Code activity
   attributed to the right machine, repository, worktree and chat, without
   sending history anywhere.
+- **Rate-limit rings** — Claude's session and weekly windows as live gauges,
+  with second-by-second countdowns, and any model-scoped window the account has.
+  Codex's windows too, read from its own server rather than the network.
+- **Pace, not just percentage** — a window at 60% with minutes left matters more
+  than one at 80% with a week to go, so each ring reports how far ahead of a
+  linear burn you are and blends that into one risk reading.
 - **Dashboard** — spend and token KPIs with per-day, model, source and hourly
   charts, plus a sortable model table.
 - **Activity calendar** — a daily spend calendar across your whole history,
@@ -140,6 +146,7 @@ vr usage summary             the same totals the dashboard shows
 vr usage projects --chats    spend by project, with its chats
 vr usage calendar --days 30  the spend calendar in the terminal
 vr usage refresh --progress  run the collector
+vr usage limits              rate-limit gauges, with pace and countdowns
 vr media status              what is playing, on any MPRIS player
 vr media toggle              play or pause; also next, previous, stop
 vr media players             every player registered on the session bus
@@ -188,7 +195,10 @@ screen-share detection.
 
 ## Privacy
 
-Usage data never leaves this computer. There is no account and no telemetry.
+Usage data never leaves this computer. Rate-limit checks are the one network
+request Veronica makes: they go straight from this machine to your provider,
+using the OAuth token your agent CLI already holds, and nothing is proxied
+through anywhere else. There is no account and no telemetry.
 Veronica reads your local agent history from `~/.claude`, `~/.codex`,
 `~/.cursor` and `~/.commandcode`, and writes its own state under the XDG
 directories, which `vr diagnose` prints.

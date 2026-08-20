@@ -12,3 +12,8 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+# Rate-limit checks go straight from this machine to the provider. rustls rather
+# than the system OpenSSL so the binary does not depend on a distro TLS build,
+# and a real client rather than shelling out to curl so a bearer token never
+# lands in a process argument list, which /proc makes world-readable.
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "charset", "http2"] }

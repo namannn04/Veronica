@@ -169,6 +169,20 @@ async fn run_refresh(app: &AppHandle) -> CommandResult<String> {
     Ok(generated_at)
 }
 
+/// Rate-limit gauges for every provider that can be read.
+///
+/// A slow call by nature: it reaches the provider over the network and may spawn
+/// the codex server, so the interface treats it as a refresh rather than
+/// something to poll tightly.
+#[tauri::command]
+pub async fn usage_limits() -> CommandResult<veronica_usage::GaugeReport> {
+    Ok(veronica_usage::gauges::collect(
+        chrono::Utc::now(),
+        veronica_usage::gauges::DEFAULT_PACING_MARGIN,
+    )
+    .await)
+}
+
 #[tauri::command]
 pub fn settings_all(state: State<'_, AppState>) -> CommandResult<serde_json::Value> {
     let settings = state.settings_snapshot();

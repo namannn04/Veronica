@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   AgendaView,
   ClipRow,
+  GaugeReport,
   DesktopNotification,
   Machine,
   MachineReport,
@@ -23,6 +24,8 @@ export const ipc = {
   /** `days` of null means the whole history; empty `sources` means all. */
   usageView: (days: number | null, sources: string[]) =>
     invoke<UsageView>("usage_view", { days, sources }),
+
+  usageLimits: () => invoke<GaugeReport>("usage_limits"),
 
   usageRefresh: () => invoke<string>("usage_refresh"),
 

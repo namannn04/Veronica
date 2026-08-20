@@ -227,3 +227,19 @@ export function textRow(labelText, valueText, dim = false) {
 export function emptyLabel(text) {
     return new St.Label({ text, style_class: 'veronica-empty' });
 }
+
+/** A duration as a compact countdown, e.g. "2h 14m". */
+export function countdown(seconds) {
+    if (!Number.isFinite(seconds) || seconds <= 0)
+        return 'now';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (days > 0)
+        return `${days}d ${hours}h`;
+    if (hours > 0)
+        return `${hours}h ${minutes}m`;
+    if (minutes > 0)
+        return `${minutes}m`;
+    return `${Math.floor(seconds)}s`;
+}
