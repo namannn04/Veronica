@@ -111,6 +111,12 @@ The AppImage does not install the `vr` command; use the Debian package for that.
 
 **Top bar**
 
+- **Optional full replacement** — network, Bluetooth, volume and battery as
+  Veronica's own indicators in the real top bar, reading the same libraries
+  GNOME Shell's stock indicators use (NetworkManager, BlueZ, PipeWire/Gvc,
+  UPower). Off by default: `vr config set topBarReplacement true` turns it on,
+  `false` restores GNOME's originals instantly — they are only ever hidden,
+  never destroyed, so nothing is lost either way.
 - **Inside the shell's own dropdown** — a GNOME Shell extension adds Veronica's
   readouts to the real clock dropdown, beside the notifications, media and
   calendar the shell already shows: agent usage and spend for the last seven

@@ -72,6 +72,35 @@ Refresh usage and Quit.
   gsettings get org.gnome.shell disable-user-extensions   # want: false
   ```
 
+## Replacing the status-area cluster (network, Bluetooth, volume, battery)
+
+Off by default. To turn it on:
+
+```bash
+vr config set topBarReplacement true
+```
+
+Veronica's own network, Bluetooth, volume and battery indicators appear in the
+real top bar within about ten seconds — no relogin needed for this part, only
+for the extension itself the first time. To go back to GNOME's originals:
+
+```bash
+vr config set topBarReplacement false
+```
+
+GNOME's own icons were only ever hidden, never destroyed, so they reappear
+exactly as they were with nothing lost. Clicking a Veronica indicator opens the
+matching GNOME Settings panel for anything that needs configuring — joining a
+new wifi network, pairing a Bluetooth device — rather than a reimplementation
+of that UI.
+
+If an indicator never appears: `journalctl --user -f | grep -i veronica` logs
+each one's first successful reading (with `VERONICA_LOG` unset this needs
+`G_MESSAGES_DEBUG=all` on gnome-shell's own environment to see, since these are
+debug-level). A missing indicator most often means the matching system service
+is not running — no Bluetooth adapter, no UPower battery on a desktop — in
+which case that one indicator simply stays hidden rather than showing an error.
+
 ## Developing the extension
 
 Wayland cannot restart the shell in place, so a code change needs a fresh login

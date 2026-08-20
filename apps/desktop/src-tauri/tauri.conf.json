@@ -70,7 +70,12 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/extension.js": "../../../extension/extension.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/lib.js": "../../../extension/lib.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/stylesheet.css": "../../../extension/stylesheet.css",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/clipboard.js": "../../../extension/clipboard.js"
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/clipboard.js": "../../../extension/clipboard.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/power.js": "../../../extension/power.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/volume.js": "../../../extension/volume.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/network.js": "../../../extension/network.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/bluetooth.js": "../../../extension/bluetooth.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js"
         }
       },
       "appimage": {

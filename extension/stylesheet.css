@@ -106,3 +106,28 @@
   color: #d03b3b;
   font-weight: bold;
 }
+
+/* ------------------------------------------------------- status indicators */
+
+.veronica-status-box {
+  spacing: 2px;
+}
+
+.veronica-status-item {
+  padding: 0 6px;
+  spacing: 4px;
+  border-radius: 6px;
+}
+
+.veronica-status-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.veronica-status-icon {
+  icon-size: 1.14em;
+}
+
+.veronica-status-label {
+  font-feature-settings: "tnum";
+  font-size: 0.85em;
+}

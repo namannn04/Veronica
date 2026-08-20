@@ -22,6 +22,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { ClipboardWatcher, entryText, recentEntries } from './clipboard.js';
+import { PanelReplacement } from './panelReplacement.js';
 import {
     band,
     countdown,
@@ -48,6 +49,15 @@ const INDICATOR_INTERVAL_SECONDS = 30;
  * provider and pointless for the user.
  */
 const LIMITS_INTERVAL_SECONDS = 300;
+
+/**
+ * How often to check whether the top-bar replacement setting changed.
+ *
+ * The setting lives in Veronica's own config file rather than a GSettings
+ * schema, so there is no change signal to listen for; polling this slowly is
+ * the plain alternative, and the check itself is a fast local read.
+ */
+const REPLACEMENT_CHECK_INTERVAL_SECONDS = 10;
 
 /** Style class the shell gives the clock dropdown's right-hand column. */
 const CALENDAR_COLUMN_CLASS = 'datemenu-calendar-column';
@@ -205,6 +215,20 @@ export default class VeronicaExtension extends Extension {
         if (this._clipboard.enable())
             console.debug('veronica: watching the clipboard');
 
+        // Off by default: replacing the stock network/bluetooth/volume/battery
+        // cluster is the highest-risk part of the top bar integration, so it
+        // only activates once the user has explicitly opted in.
+        this._panelReplacement = new PanelReplacement();
+        this._applyReplacementSetting().catch(() => {});
+        this._replacementTimeoutId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT_IDLE,
+            REPLACEMENT_CHECK_INTERVAL_SECONDS,
+            () => {
+                this._applyReplacementSetting().catch(() => {});
+                return GLib.SOURCE_CONTINUE;
+            }
+        );
+
         this._indicator = new VeronicaIndicator();
         // Left of the system menu, so it reads as part of the status cluster
         // rather than competing with the clock.
@@ -283,6 +307,16 @@ export default class VeronicaExtension extends Extension {
             this._clipboard.disable();
             this._clipboard = null;
         }
+        if (this._replacementTimeoutId) {
+            GLib.Source.remove(this._replacementTimeoutId);
+            this._replacementTimeoutId = 0;
+        }
+        if (this._panelReplacement) {
+            // Always disabled on the way out, regardless of the setting, so
+            // the stock icons are guaranteed to come back.
+            this._panelReplacement.disable();
+            this._panelReplacement = null;
+        }
         if (this._fallbackItem) {
             this._fallbackItem.destroy();
             this._fallbackItem = null;
@@ -336,6 +370,21 @@ export default class VeronicaExtension extends Extension {
         wrapper.add_child(this._machineSection.actor);
         this._fallbackItem.add_child(wrapper);
         dateMenu.menu.addMenuItem(this._fallbackItem);
+    }
+
+    /** Match the live top-bar replacement state to the stored setting. */
+    async _applyReplacementSetting() {
+        if (!this._panelReplacement)
+            return;
+        const settings = await runJson(['config', 'get', 'topBarReplacement'], this._cancellable);
+        const wanted = settings === true;
+        if (wanted && !this._panelReplacement.isActive) {
+            this._panelReplacement.enable();
+            console.log('veronica: replaced the network/bluetooth/volume/battery cluster');
+        } else if (!wanted && this._panelReplacement.isActive) {
+            this._panelReplacement.disable();
+            console.log('veronica: restored the stock status area');
+        }
     }
 
     /** Fill both sections from `vr`. */

@@ -203,3 +203,40 @@ to Claude Code rather than to Veronica:
 The gauge itself lives in one place, `veronica-usage::gauges`, which the CLI, the
 application and the shell extension all read. A ring in the top bar therefore
 cannot disagree with the same figure on the dashboard.
+
+## Replacing the status-area cluster
+
+The top-bar extension has a second, optional layer beyond the clock-dropdown
+sections: it can replace GNOME's own network, Bluetooth, volume and battery
+indicators with Veronica's, built from the same libraries the stock ones use
+(`NM`, BlueZ over D-Bus, `Gvc`, `UPowerGlib`). This is the highest-risk piece of
+the top bar integration — it touches indicators the user relies on for basic
+system state — so three things about it are deliberate:
+
+- **Off by default, gated by a setting Veronica already reads elsewhere**
+  (`topBarReplacement` in `veronica-core::Settings`), rather than activating the
+  moment the extension is enabled. `vr config set topBarReplacement true`
+  turns it on; `false` turns it off. The extension polls the setting every ten
+  seconds rather than requiring a restart to notice a change.
+- **The stock cluster is hidden, never destroyed.** `Main.panel.statusArea.aggregateMenu`
+  is set invisible and nothing more; disabling the replacement, disabling the
+  extension entirely, or even the extension crashing all leave that actor
+  intact, so GNOME's own icons reappear exactly as they were with one flag
+  flip and no lost state.
+- **Each indicator fails independently.** Constructing one indicator throwing
+  does not prevent the others from appearing, and a missing binding (no
+  Bluetooth adapter, no UPower battery) simply keeps that one indicator
+  invisible rather than surfacing an error.
+
+Configuring an actual connection — joining a new wifi network, pairing a
+Bluetooth device — is deliberately not reimplemented; clicking an indicator
+opens the matching GNOME Settings panel, which already does that well.
+
+Built and verified against a disposable headless shell before ever reaching a
+real session, the same way the rest of the extension was: real readings only,
+nothing simulated. That process caught a genuine bug before it shipped — `Gvc`
+signals `default-sink-changed` with `id = -1` while the default sink is still
+resolving, and passing that through to `lookup_output_id`, which expects a
+`uint32`, threw on marshalling. The fix follows gnome-shell's own volume
+indicator: ask the control for `get_default_sink()` directly rather than
+trusting the signal's argument.
