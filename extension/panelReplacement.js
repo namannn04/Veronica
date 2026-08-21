@@ -20,8 +20,18 @@ import { NotchButton } from './notchClock.js';
 import { PowerIndicator } from './power.js';
 import { VolumeIndicator } from './volume.js';
 
-/** Status-area names being hidden, and the box they are replaced in. */
-const REPLACED_STATUS_AREA = 'aggregateMenu';
+/**
+ * Status-area names being hidden.
+ *
+ * GNOME 43 folded network, Bluetooth, volume, battery and the rest into a
+ * single "Quick Settings" button — `quickSettings` — replacing the older
+ * `aggregateMenu`. Hiding the wrong name is not an error, `Main.panel.statusArea`
+ * simply returns undefined for it, which is exactly how this shipped once
+ * already: no exception, just GNOME's real icons left showing right next to
+ * Veronica's, duplicated. There is no schema-version guarantee here, so if a
+ * future GNOME renames this again the same failure mode will recur silently.
+ */
+const REPLACED_STATUS_AREA = 'quickSettings';
 const REPLACED_CLOCK = 'dateMenu';
 const NOTCH_ROLE = 'veronica-notch';
 

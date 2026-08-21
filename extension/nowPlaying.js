@@ -12,36 +12,44 @@ import { runJson } from './lib.js';
 export class NowPlayingCard {
     constructor() {
         this.actor = new St.BoxLayout({
-            style_class: 'veronica-now-playing',
-            x_expand: true,
+            style_class: 'veronica-card veronica-now-playing',
             visible: false,
         });
+
+        this._art = new St.Icon({
+            icon_name: 'emblem-music-symbolic',
+            style_class: 'veronica-now-art',
+        });
+        this.actor.add_child(this._art);
 
         const text = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
             style_class: 'veronica-now-text',
         });
         this._title = new St.Label({ style_class: 'veronica-now-title' });
         this._artist = new St.Label({ style_class: 'veronica-now-artist' });
         text.add_child(this._title);
         text.add_child(this._artist);
+        this.actor.add_child(text);
 
-        const controls = new St.BoxLayout({ style_class: 'veronica-now-controls' });
+        const controls = new St.BoxLayout({
+            style_class: 'veronica-now-controls',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
         this._playPauseIcon = new St.Icon({
             icon_name: 'media-playback-start-symbolic',
-            style_class: 'veronica-status-icon',
+            style_class: 'veronica-now-icon',
         });
         controls.add_child(this._transportButton('media-skip-backward-symbolic', () => this._send('previous')));
         controls.add_child(this._transportButton(null, () => this._send('toggle'), this._playPauseIcon));
         controls.add_child(this._transportButton('media-skip-forward-symbolic', () => this._send('next')));
-
-        this.actor.add_child(text);
         this.actor.add_child(controls);
     }
 
     _transportButton(iconName, onClicked, existingIcon) {
-        const icon = existingIcon ?? new St.Icon({ icon_name: iconName, style_class: 'veronica-status-icon' });
+        const icon = existingIcon ?? new St.Icon({ icon_name: iconName, style_class: 'veronica-now-icon' });
         const button = new St.Button({ style_class: 'veronica-now-btn', child: icon });
         button.connect('clicked', onClicked);
         return button;

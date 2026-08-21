@@ -219,10 +219,19 @@ else:
   dropdown is built from. The calendar and notification list are the real
   thing, not a reimplementation; what Veronica adds beside them (agent usage
   and rate limits, now-playing, clipboard history, machine state) is what the
-  shell has no notion of.
+  shell has no notion of. `CalendarMessageList`'s constructor ignores whatever
+  `style_class` it is given and sets its own, so the width cap that keeps an
+  empty "No Notifications" placeholder from dominating the popup has to be
+  applied with `add_style_class_name()` after construction instead.
 - Network, Bluetooth, volume and battery come from `NM`, BlueZ over D-Bus,
   `Gvc` (the same PipeWire binding gnome-shell's own status/volume.js uses),
   and `UPowerGlib` respectively.
+- The card layout — now-playing and usage rings side by side, a compact
+  machine-status line, a clipboard card, quick-action tiles below — mirrors
+  the macOS app's own notch design: `St.DrawingArea` and Cairo draw the
+  percentage rings (`extension/ring.js`), and everything else is `St.BoxLayout`
+  cards styled with a shared `.veronica-card` background rather than visible
+  borders.
 
 This is the highest-risk piece of the top bar integration — it touches
 indicators and chrome the user relies on for basic system state — so three
@@ -233,11 +242,16 @@ things about it are deliberate:
   moment the extension is enabled. `vr config set topBarReplacement true`
   turns it on; `false` turns it off. The extension polls the setting every ten
   seconds rather than requiring a restart to notice a change.
-- **The stock chrome is hidden, never destroyed.** `Main.panel.statusArea.aggregateMenu`
+- **The stock chrome is hidden, never destroyed.** `Main.panel.statusArea.quickSettings`
   and `dateMenu` are set invisible and nothing more; disabling the replacement,
   disabling the extension entirely, or even the extension crashing all leave
   those actors intact, so GNOME's own clock and icons reappear exactly as they
-  were with one flag flip and no lost state.
+  were with one flag flip and no lost state. (GNOME 43 folded the old
+  `aggregateMenu` into `quickSettings`; targeting the stale name doesn't throw
+  — `Main.panel.statusArea` just returns `undefined` for it — so the stock
+  icons keep showing right next to Veronica's, duplicated, with nothing in the
+  logs to say why. Caught by a user report rather than a test, since nothing
+  about it fails loudly.)
 - **Each piece fails independently.** The status cluster and the notch clock
   are built in separate `try`/`catch` blocks, and within the status cluster
   each of the four indicators is its own — one missing binding (no Bluetooth
@@ -271,3 +285,18 @@ process — inherited by every `vr` subprocess the extension spawns — and the
 extension files copied into that scratch data directory, since once
 `XDG_DATA_HOME` no longer points at the real one, GNOME silently falls back to
 whatever is installed system-wide rather than the code being tested.
+
+`org.gnome.Shell.Eval` over D-Bus (the shell needs `--unsafe-mode` for this to
+return anything) can then walk the live actor tree — `Main.panel.statusArea`,
+a button's `.menu.box` — to confirm what actually got built, rather than
+inferring it from logs alone.
+
+One more thing this process caught: `gnome-extensions disable` followed by
+`enable` inside the *same* shell process does not reliably pick up a change to
+one of the extension's own submodules (confirmed directly — a fix to
+`notchClock.js` was invisible after a disable/enable cycle, and only took
+effect after the whole `gnome-shell` process was restarted). GJS caches ES
+modules by URL for the life of the process, and disable/enable does not evict
+that cache. A code change to any file under `extension/` needs the whole
+shell restarted to be certain it took — on Wayland that means logging out and
+back in; there is no in-session substitute for real testing.

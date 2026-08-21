@@ -132,7 +132,12 @@
   font-size: 0.85em;
 }
 
-/* --------------------------------------------------------------- the notch */
+/* --------------------------------------------------------------- the notch
+ *
+ * Card-based, dark, tight spacing: background opacity for grouping rather
+ * than visible borders, small type, generous but not loose gaps. Follows the
+ * same visual language as the macOS app this is a port of.
+ */
 
 .veronica-notch-clock {
   font-feature-settings: "tnum";
@@ -140,20 +145,48 @@
 }
 
 .veronica-notch-menu {
-  spacing: 10px;
-  max-width: 30em;
+  spacing: 12px;
 }
 
 .veronica-notch-column {
-  min-width: 20em;
-  spacing: 6px;
+  width: 23em;
+  spacing: 10px;
+}
+
+/* The real notification list, width-capped so an empty "No Notifications"
+ * placeholder cannot dwarf the column beside it. */
+.veronica-notch-messages {
+  width: 17em;
+  max-height: 26em;
+}
+
+/* A generic card: subtle background, no border, rounded corners. Every
+ * grouped block in the notch is one of these. */
+.veronica-card {
+  background-color: rgba(255, 255, 255, 0.055);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.veronica-glance-row {
+  spacing: 8px;
+}
+
+/* Now-playing and the usage card sit side by side at a fixed height, so
+ * neither one's content determines how tall the row is. */
+.veronica-now-playing,
+.veronica-usage-card {
+  height: 12em;
 }
 
 .veronica-now-playing {
-  padding: 8px 12px;
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.06);
-  spacing: 8px;
+  spacing: 10px;
+  width: 13em;
+}
+
+.veronica-now-art {
+  icon-size: 2.6em;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .veronica-now-text {
@@ -171,14 +204,104 @@
 }
 
 .veronica-now-controls {
-  spacing: 4px;
+  spacing: 2px;
 }
 
 .veronica-now-btn {
-  padding: 4px;
+  padding: 5px;
   border-radius: 6px;
 }
 
 .veronica-now-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.veronica-now-icon {
+  icon-size: 1.1em;
+}
+
+.veronica-usage-card {
+  spacing: 8px;
+}
+
+.veronica-rings {
+  spacing: 20px;
+  x-align: center;
+}
+
+.veronica-ring-wrap {
+  spacing: 4px;
+}
+
+.veronica-ring-value {
+  font-weight: bold;
+  font-size: 0.85em;
+  font-feature-settings: "tnum";
+}
+
+.veronica-ring-caption {
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.veronica-ring-resets {
+  font-size: 0.7em;
+  font-feature-settings: "tnum";
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.veronica-usage-spend {
+  font-size: 0.78em;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: center;
+}
+
+.veronica-machine-line {
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.veronica-clip-card {
+  spacing: 4px;
+}
+
+.veronica-clip-row {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.06);
+  font-size: 0.88em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.veronica-clip-row:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.veronica-actions-row {
+  spacing: 8px;
+}
+
+.veronica-action-tile {
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.055);
+  height: 2.4em;
+}
+
+.veronica-action-tile:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+.veronica-action-content {
+  spacing: 6px;
+  x-align: center;
+}
+
+.veronica-action-icon {
+  icon-size: 1em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.veronica-action-label {
+  font-size: 0.82em;
+  font-weight: 600;
 }

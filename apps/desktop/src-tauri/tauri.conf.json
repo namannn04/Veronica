@@ -78,7 +78,9 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/sections.js": "../../../extension/sections.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/nowPlaying.js": "../../../extension/nowPlaying.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchClock.js": "../../../extension/notchClock.js"
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchClock.js": "../../../extension/notchClock.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/ring.js": "../../../extension/ring.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/usageCard.js": "../../../extension/usageCard.js"
         }
       },
       "appimage": {
