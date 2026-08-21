@@ -204,29 +204,45 @@ The gauge itself lives in one place, `veronica-usage::gauges`, which the CLI, th
 application and the shell extension all read. A ring in the top bar therefore
 cannot disagree with the same figure on the dashboard.
 
-## Replacing the status-area cluster
+## Full top-bar replacement
 
 The top-bar extension has a second, optional layer beyond the clock-dropdown
-sections: it can replace GNOME's own network, Bluetooth, volume and battery
-indicators with Veronica's, built from the same libraries the stock ones use
-(`NM`, BlueZ over D-Bus, `Gvc`, `UPowerGlib`). This is the highest-risk piece of
-the top bar integration — it touches indicators the user relies on for basic
-system state — so three things about it are deliberate:
+sections: it can replace the whole of GNOME's own top-bar chrome with
+Veronica's — the clock and its calendar/notification popup, and the network,
+Bluetooth, volume and battery cluster — built from the same widgets and
+libraries the stock ones use rather than reimplemented on top of something
+else:
+
+- The clock's popup reuses GNOME's own `Calendar`, `CalendarMessageList` and
+  `DBusEventSource` classes from
+  `resource:///org/gnome/shell/ui/calendar.js` — the exact widgets the stock
+  dropdown is built from. The calendar and notification list are the real
+  thing, not a reimplementation; what Veronica adds beside them (agent usage
+  and rate limits, now-playing, clipboard history, machine state) is what the
+  shell has no notion of.
+- Network, Bluetooth, volume and battery come from `NM`, BlueZ over D-Bus,
+  `Gvc` (the same PipeWire binding gnome-shell's own status/volume.js uses),
+  and `UPowerGlib` respectively.
+
+This is the highest-risk piece of the top bar integration — it touches
+indicators and chrome the user relies on for basic system state — so three
+things about it are deliberate:
 
 - **Off by default, gated by a setting Veronica already reads elsewhere**
   (`topBarReplacement` in `veronica-core::Settings`), rather than activating the
   moment the extension is enabled. `vr config set topBarReplacement true`
   turns it on; `false` turns it off. The extension polls the setting every ten
   seconds rather than requiring a restart to notice a change.
-- **The stock cluster is hidden, never destroyed.** `Main.panel.statusArea.aggregateMenu`
-  is set invisible and nothing more; disabling the replacement, disabling the
-  extension entirely, or even the extension crashing all leave that actor
-  intact, so GNOME's own icons reappear exactly as they were with one flag
-  flip and no lost state.
-- **Each indicator fails independently.** Constructing one indicator throwing
-  does not prevent the others from appearing, and a missing binding (no
-  Bluetooth adapter, no UPower battery) simply keeps that one indicator
-  invisible rather than surfacing an error.
+- **The stock chrome is hidden, never destroyed.** `Main.panel.statusArea.aggregateMenu`
+  and `dateMenu` are set invisible and nothing more; disabling the replacement,
+  disabling the extension entirely, or even the extension crashing all leave
+  those actors intact, so GNOME's own clock and icons reappear exactly as they
+  were with one flag flip and no lost state.
+- **Each piece fails independently.** The status cluster and the notch clock
+  are built in separate `try`/`catch` blocks, and within the status cluster
+  each of the four indicators is its own — one missing binding (no Bluetooth
+  adapter, no UPower battery) or one construction failure never takes down
+  anything else.
 
 Configuring an actual connection — joining a new wifi network, pairing a
 Bluetooth device — is deliberately not reimplemented; clicking an indicator
@@ -240,3 +256,18 @@ resolving, and passing that through to `lookup_output_id`, which expects a
 `uint32`, threw on marshalling. The fix follows gnome-shell's own volume
 indicator: ask the control for `get_default_sink()` directly rather than
 trusting the signal's argument.
+
+### Testing this without touching a real session
+
+A disposable `gnome-shell --headless` instance on its own D-Bus session does
+**not** isolate it from the user's real state by default, in two ways this
+work ran into directly: GSettings/dconf is a per-user database rather than
+per-session-bus, so `gnome-extensions enable` against the disposable shell
+still wrote to the real `enabled-extensions`; and `vr`'s own settings are a
+plain file under `XDG_CONFIG_HOME`, which the dconf fix does not cover at all.
+Verifying this feature safely needed `GSETTINGS_BACKEND=memory` plus all four
+XDG directories overridden to a scratch path for the disposable shell's own
+process — inherited by every `vr` subprocess the extension spawns — and the
+extension files copied into that scratch data directory, since once
+`XDG_DATA_HOME` no longer points at the real one, GNOME silently falls back to
+whatever is installed system-wide rather than the code being tested.

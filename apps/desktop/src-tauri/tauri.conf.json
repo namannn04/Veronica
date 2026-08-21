@@ -75,7 +75,10 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/volume.js": "../../../extension/volume.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/network.js": "../../../extension/network.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/bluetooth.js": "../../../extension/bluetooth.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js"
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/sections.js": "../../../extension/sections.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/nowPlaying.js": "../../../extension/nowPlaying.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchClock.js": "../../../extension/notchClock.js"
         }
       },
       "appimage": {

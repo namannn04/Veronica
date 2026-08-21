@@ -1,67 +1,80 @@
-/* Replacing the status-area cluster: network, bluetooth, volume, battery.
+/* Replacing GNOME's own top-bar chrome: the status-area cluster (network,
+ * Bluetooth, volume, battery) and the clock/calendar dropdown itself.
  *
  * This is the highest-risk piece of Veronica's top bar integration, so it is
  * gated behind an explicit setting (`topBarReplacement`, off by default) and
- * built to be trivially reversible: the stock `aggregateMenu` is only ever
- * hidden, never destroyed, so disabling the extension — or this setting —
- * brings the original icons back exactly as they were, with no state lost.
+ * built to be trivially reversible: every stock actor is only ever hidden,
+ * never destroyed, so disabling the extension — or this setting — brings the
+ * originals back exactly as they were, with no state lost.
  *
- * Each indicator degrades independently: if one GObject binding is missing,
- * that indicator simply never becomes visible, and the others are unaffected.
+ * The status cluster and the clock are independent: if one fails to build,
+ * the other is unaffected.
  */
 
-import St from 'gi://St';
-
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import St from 'gi://St';
 
 import { BluetoothIndicator } from './bluetooth.js';
 import { NetworkIndicator } from './network.js';
+import { NotchButton } from './notchClock.js';
 import { PowerIndicator } from './power.js';
 import { VolumeIndicator } from './volume.js';
 
-/** Indicators replaced, and the shell's name for the actor being hidden. */
+/** Status-area names being hidden, and the box they are replaced in. */
 const REPLACED_STATUS_AREA = 'aggregateMenu';
+const REPLACED_CLOCK = 'dateMenu';
+const NOTCH_ROLE = 'veronica-notch';
 
 export class PanelReplacement {
     constructor() {
         this._active = false;
-        this._hiddenActor = null;
-        this._wasVisible = true;
+        this._hidden = new Map();
         this._box = null;
+        this._notch = null;
     }
 
     get isActive() {
         return this._active;
     }
 
-    /** Hide the stock cluster and show Veronica's own. Safe to call twice. */
-    enable() {
+    /** Hide the stock chrome and show Veronica's own. Safe to call twice. */
+    enable(clipboardWatcher, cancellable) {
         if (this._active)
             return;
 
-        const stock = Main.panel.statusArea[REPLACED_STATUS_AREA];
-        if (stock) {
-            this._hiddenActor = stock;
-            this._wasVisible = stock.visible;
-            stock.hide();
+        this._hideStock(REPLACED_STATUS_AREA);
+        this._hideStock(REPLACED_CLOCK);
+
+        try {
+            this._box = new St.BoxLayout({ style_class: 'veronica-status-box' });
+            for (const Indicator of [NetworkIndicator, BluetoothIndicator, VolumeIndicator, PowerIndicator]) {
+                try {
+                    this._box.add_child(new Indicator());
+                } catch (error) {
+                    // One indicator failing to construct must not take the
+                    // others down with it.
+                    console.debug(`veronica: cannot build ${Indicator.name}: ${error}`);
+                }
+            }
+            Main.panel._rightBox.add_child(this._box);
+        } catch (error) {
+            console.debug(`veronica: cannot build the status cluster: ${error}`);
         }
 
-        this._box = new St.BoxLayout({ style_class: 'veronica-status-box' });
-        for (const Indicator of [NetworkIndicator, BluetoothIndicator, VolumeIndicator, PowerIndicator]) {
-            try {
-                this._box.add_child(new Indicator());
-            } catch (error) {
-                // One indicator failing to construct must not take the others
-                // down with it.
-                console.debug(`veronica: cannot build ${Indicator.name}: ${error}`);
-            }
+        try {
+            this._notch = new NotchButton(clipboardWatcher, cancellable);
+            Main.panel.addToStatusArea(NOTCH_ROLE, this._notch, 0, 'center');
+        } catch (error) {
+            // The status cluster above is independent and stays up even if
+            // the clock replacement fails.
+            console.debug(`veronica: cannot build the notch clock: ${error}`);
+            this._notch = null;
         }
-        Main.panel._rightBox.add_child(this._box);
 
         this._active = true;
     }
 
-    /** Restore the stock cluster exactly as it was. Safe to call twice. */
+    /** Restore the stock chrome exactly as it was. Safe to call twice. */
     disable() {
         if (!this._active)
             return;
@@ -69,11 +82,28 @@ export class PanelReplacement {
         this._box?.destroy();
         this._box = null;
 
-        if (this._hiddenActor) {
-            this._hiddenActor.visible = this._wasVisible;
-            this._hiddenActor = null;
+        if (this._notch) {
+            // addToStatusArea already parents the button; destroying it is
+            // enough, there is nothing further to detach.
+            this._notch.destroy();
+            this._notch = null;
         }
 
+        for (const [name, wasVisible] of this._hidden) {
+            const actor = Main.panel.statusArea[name];
+            if (actor)
+                actor.visible = wasVisible;
+        }
+        this._hidden.clear();
+
         this._active = false;
+    }
+
+    _hideStock(name) {
+        const actor = Main.panel.statusArea[name];
+        if (actor) {
+            this._hidden.set(name, actor.visible);
+            actor.hide();
+        }
     }
 }

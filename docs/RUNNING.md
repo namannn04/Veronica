@@ -72,7 +72,7 @@ Refresh usage and Quit.
   gsettings get org.gnome.shell disable-user-extensions   # want: false
   ```
 
-## Replacing the status-area cluster (network, Bluetooth, volume, battery)
+## Full top-bar replacement (clock, calendar, notifications, network, Bluetooth, volume, battery)
 
 Off by default. To turn it on:
 
@@ -80,19 +80,22 @@ Off by default. To turn it on:
 vr config set topBarReplacement true
 ```
 
-Veronica's own network, Bluetooth, volume and battery indicators appear in the
-real top bar within about ten seconds — no relogin needed for this part, only
-for the extension itself the first time. To go back to GNOME's originals:
+Veronica's own clock, calendar/notification popup, network, Bluetooth, volume
+and battery all appear in the real top bar within about ten seconds — no
+relogin needed for this part, only for the extension itself the first time. To
+go back to GNOME's originals:
 
 ```bash
 vr config set topBarReplacement false
 ```
 
-GNOME's own icons were only ever hidden, never destroyed, so they reappear
-exactly as they were with nothing lost. Clicking a Veronica indicator opens the
-matching GNOME Settings panel for anything that needs configuring — joining a
-new wifi network, pairing a Bluetooth device — rather than a reimplementation
-of that UI.
+GNOME's own clock and icons were only ever hidden, never destroyed, so they
+reappear exactly as they were with nothing lost. Clicking a Veronica network or
+Bluetooth indicator opens the matching GNOME Settings panel for anything that
+needs configuring — joining a new wifi network, pairing a device — rather than
+a reimplementation of that UI. The calendar and notification list inside
+Veronica's clock popup are GNOME's own real widgets, so they behave exactly as
+the stock dropdown's do.
 
 If an indicator never appears: `journalctl --user -f | grep -i veronica` logs
 each one's first successful reading (with `VERONICA_LOG` unset this needs

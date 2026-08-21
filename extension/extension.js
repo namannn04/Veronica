@@ -21,21 +21,22 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { ClipboardWatcher, entryText, recentEntries } from './clipboard.js';
+import { ClipboardWatcher } from './clipboard.js';
 import { PanelReplacement } from './panelReplacement.js';
+import {
+    Section,
+    refreshClipboardSection,
+    refreshMachineSection,
+    refreshUsageSection,
+} from './sections.js';
 import {
     band,
     countdown,
     emptyLabel,
     findCli,
-    heading,
     launchApp,
-    meterRow,
     money,
-    percent,
     runJson,
-    textRow,
-    tokens,
 } from './lib.js';
 
 /** How often the top bar indicator refreshes while the session is idle. */
@@ -99,37 +100,6 @@ function findCalendarColumn(dateMenu) {
     if (!dateMenu?.menu?.box)
         return null;
     return findByStyleClass(dateMenu.menu.box, CALENDAR_COLUMN_CLASS);
-}
-
-/** A section of rows that rebuilds itself from a `vr` document. */
-class Section {
-    constructor(title) {
-        this.actor = new St.BoxLayout({
-            style_class: 'veronica-section',
-            orientation: Clutter.Orientation.VERTICAL,
-            x_expand: true,
-        });
-        this._rows = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
-            x_expand: true,
-        });
-        this.actor.add_child(heading(title));
-        this.actor.add_child(this._rows);
-    }
-
-    clear() {
-        this._rows.destroy_all_children();
-    }
-
-    add(child) {
-        this._rows.add_child(child);
-    }
-
-    destroy() {
-        this.actor.destroy();
-        this.actor = null;
-        this._rows = null;
-    }
 }
 
 /** The top bar indicator: today's spend, and the app on click. */
@@ -379,144 +349,26 @@ export default class VeronicaExtension extends Extension {
         const settings = await runJson(['config', 'get', 'topBarReplacement'], this._cancellable);
         const wanted = settings === true;
         if (wanted && !this._panelReplacement.isActive) {
-            this._panelReplacement.enable();
-            console.log('veronica: replaced the network/bluetooth/volume/battery cluster');
+            this._panelReplacement.enable(this._clipboard, this._cancellable);
+            console.log('veronica: replaced the status cluster and the clock');
         } else if (!wanted && this._panelReplacement.isActive) {
             this._panelReplacement.disable();
             console.log('veronica: restored the stock status area');
         }
     }
 
-    /** Fill both sections from `vr`. */
+    /** Fill all three sections from `vr`, in the real clock dropdown. */
     async _refreshSections() {
         await Promise.all([
-            this._refreshUsage(),
-            this._refreshClipboard(),
-            this._refreshMachine(),
+            refreshUsageSection(this._usageSection, this._cancellable),
+            refreshClipboardSection(
+                this._clipboardSection,
+                this._cancellable,
+                this._clipboard,
+                () => Main.panel.statusArea.dateMenu?.menu?.close()
+            ),
+            refreshMachineSection(this._machineSection, this._cancellable),
         ]);
-    }
-
-    async _refreshClipboard() {
-        const section = this._clipboardSection;
-        if (!section)
-            return;
-
-        const rows = await recentEntries(5, this._cancellable);
-        if (!this._clipboardSection || this._clipboardSection !== section)
-            return;
-
-        section.clear();
-        if (rows.length === 0) {
-            section.add(emptyLabel('Nothing copied yet'));
-            return;
-        }
-
-        for (const row of rows) {
-            // The list carries previews only; the full text is fetched on click,
-            // so a large copy is never held in the panel.
-            const button = new St.Button({
-                style_class: 'veronica-clip',
-                x_expand: true,
-                can_focus: true,
-                label: row.preview,
-            });
-            button.connect('clicked', () => {
-                entryText(row.id, this._cancellable)
-                    .then(text => {
-                        if (text)
-                            this._clipboard?.write(text);
-                    })
-                    .catch(() => {});
-                Main.panel.statusArea.dateMenu?.menu?.close();
-            });
-            section.add(button);
-        }
-    }
-
-    async _refreshUsage() {
-        const section = this._usageSection;
-        if (!section)
-            return;
-
-        const summary = await runJson(['usage', 'summary', '--days', '7'], this._cancellable);
-        // The section may have been torn down while the subprocess ran.
-        if (!this._usageSection || this._usageSection !== section)
-            return;
-
-        section.clear();
-        if (!summary) {
-            section.add(emptyLabel('No usage collected yet'));
-            return;
-        }
-
-        // Rate limits first: a window about to run out matters more than a
-        // month's spend.
-        const limits = await runJson(['usage', 'limits'], this._cancellable);
-        if (!this._usageSection || this._usageSection !== section)
-            return;
-        for (const gauge of (limits?.gauges ?? []).slice(0, 4)) {
-            const resets = Number.isFinite(gauge.resetsInSecs)
-                ? ` · ${countdown(gauge.resetsInSecs)}`
-                : '';
-            section.add(meterRow(
-                `${gauge.provider} ${gauge.window}`,
-                (gauge.percent ?? 0) / 100,
-                `${Math.round(gauge.percent ?? 0)}%${resets}`,
-                band(gauge.percent ?? 0)
-            ));
-        }
-
-        const totals = summary.totals ?? {};
-        section.add(textRow('Spend', money(totals.cost ?? 0)));
-        section.add(textRow('Tokens', tokens(totals.tokens ?? 0)));
-        section.add(textRow('Sessions', `${summary.sessions ?? 0}`, true));
-
-        const sources = await runJson(['usage', 'sources', '--days', '7'], this._cancellable);
-        if (!this._usageSection || this._usageSection !== section)
-            return;
-        if (Array.isArray(sources) && sources.length > 0) {
-            const highest = Math.max(...sources.map(s => s.cost ?? 0), 0);
-            for (const source of sources.slice(0, 4)) {
-                const cost = source.cost ?? 0;
-                section.add(meterRow(
-                    source.label || source.name,
-                    highest > 0 ? cost / highest : 0,
-                    money(cost),
-                    null
-                ));
-            }
-        }
-    }
-
-    async _refreshMachine() {
-        const section = this._machineSection;
-        if (!section)
-            return;
-
-        const diagnose = await runJson(['diagnose'], this._cancellable);
-        if (!this._machineSection || this._machineSection !== section)
-            return;
-
-        section.clear();
-        if (!diagnose) {
-            section.add(emptyLabel('Veronica is not installed'));
-            return;
-        }
-
-        const session = diagnose.session ?? {};
-        const states = diagnose.capabilities?.states ?? {};
-        const available = Object.values(states)
-            .filter(state => state.state === 'available').length;
-        const total = Object.keys(states).length;
-
-        section.add(textRow('Session', `${session.kind ?? 'unknown'} · ${session.desktop ?? ''}`.trim(), true));
-        if (total > 0)
-            section.add(textRow('Capabilities', `${available} of ${total} available`, true));
-
-        const extensions = Array.isArray(diagnose.extensions) ? diagnose.extensions : [];
-        const enabled = extensions.filter(e => e.enabled).length;
-        if (extensions.length > 0)
-            section.add(textRow('Extensions', `${enabled} of ${extensions.length} on`, true));
     }
 
     async _refreshIndicator() {
