@@ -7,6 +7,8 @@ import type {
   AlertsView,
   BackupSummary,
   ImportReport,
+  AttentionFocusSession,
+  AttentionStatus,
   PresenterView,
   ClipRow,
   CopyFormatOption,
@@ -47,6 +49,11 @@ export const ipc = {
   backupInspect: (path: string) => invoke<BackupSummary>("backup_inspect", { path }),
   backupImport: (path: string, confirm: boolean) =>
     invoke<ImportReport>("backup_import", { path, confirm }),
+  attentionStatus: () => invoke<AttentionStatus>("attention_status"),
+  attentionStart: (name: string, durationSeconds: number) =>
+    invoke<AttentionFocusSession>("attention_start", { name, durationSeconds }),
+  attentionStop: () => invoke<AttentionFocusSession>("attention_stop"),
+  attentionHistory: () => invoke<AttentionFocusSession[]>("attention_history"),
   shellAction: (action: "cleanKeys" | "pickColor") =>
     invoke<void>("shell_action", { action }),
 

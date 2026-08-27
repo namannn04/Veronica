@@ -6,6 +6,7 @@
 //! an agent can drive Veronica headlessly.
 
 mod alerts_cmd;
+mod attention_cmd;
 mod backup_cmd;
 mod calendar_cmd;
 mod clipboard_cmd;
@@ -58,6 +59,9 @@ enum Command {
     /// Rate-limit alerts: the notifier's state, a delivery check and a reset.
     #[command(subcommand)]
     Alerts(alerts_cmd::AlertsCommand),
+    /// Attention focus sessions and local attention history.
+    #[command(subcommand)]
+    Attention(attention_cmd::AttentionCommand),
     /// Export, inspect and restore Veronica's persistent data.
     #[command(subcommand)]
     Backup(backup_cmd::BackupCommand),
@@ -152,6 +156,7 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Config(command) => config(&directories, command, output),
         Command::Usage(command) => usage_cmd::run(&directories, command, output).await,
         Command::Alerts(command) => alerts_cmd::run(&directories, command, output).await,
+        Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Media(command) => media_cmd::run(command, output).await,
         Command::System(command) => system_cmd::run(command, output),

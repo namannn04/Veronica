@@ -6,6 +6,7 @@
 
 pub mod capabilities;
 pub mod backup;
+pub mod attention;
 pub mod clipboard;
 pub mod extensions;
 pub mod focus_dim;
@@ -17,6 +18,7 @@ pub mod swatches;
 
 pub use capabilities::{Capabilities, Capability, CapabilityState};
 pub use backup::{BackupArchive, BackupManifest, ImportReport};
+pub use attention::{AttentionFocusSession, AttentionRepository, AttentionStatus};
 pub use clipboard::{ClipEntry, ClipboardHistory};
 pub use extensions::{ExtensionAvailability, ExtensionEntry, ExtensionGroup, ENTRIES};
 pub use focus_dim::{DisplayMode, FocusDimSettings};

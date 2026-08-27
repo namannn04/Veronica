@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 
 import { AboutPage } from "./pages/AboutPage";
+import { AttentionPage } from "./pages/AttentionPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
 import { ColorPickerPage } from "./pages/ColorPickerPage";
@@ -24,6 +25,7 @@ type Route =
   | "machines"
   | "media"
   | "calendar"
+  | "attention"
   | "clipboard"
   | "color"
   | "companion" | "extensions" | "settings" | "about";
@@ -34,6 +36,7 @@ const NAV: { id: Route; label: string; icon: string }[] = [
   { id: "herdr", label: "Herdr", icon: "◉" },
   { id: "media", label: "Music", icon: "♫" },
   { id: "calendar", label: "Calendar", icon: "▣" },
+  { id: "attention", label: "Attention", icon: "◎" },
   { id: "system", label: "System", icon: "⌁" },
   { id: "machines", label: "Machines", icon: "▤" },
   { id: "clipboard", label: "Clipboard", icon: "❐" },
@@ -136,6 +139,7 @@ export function App() {
         {route === "machines" && <MachinesPage />}
         {route === "media" && <MediaPage />}
         {route === "calendar" && <CalendarPage />}
+        {route === "attention" && <AttentionPage />}
         {route === "clipboard" && <ClipboardPage />}
         {route === "color" && <ColorPickerPage />}
         {route === "companion" && <UnavailablePage title="Companion" description="Notes and voice memos still need recording, storage and playback implementations for Linux." />}

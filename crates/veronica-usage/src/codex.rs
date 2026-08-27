@@ -49,9 +49,9 @@ impl CodexLimits {
 
 fn to_window(raw: &RawWindow) -> Option<(f64, LimitWindow)> {
     let percent = raw.used_percent?;
-    let resets_at = raw.resets_at.and_then(|seconds| {
-        chrono::DateTime::from_timestamp(seconds as i64, 0)
-    });
+    let resets_at = raw
+        .resets_at
+        .and_then(|seconds| chrono::DateTime::from_timestamp(seconds as i64, 0));
     Some((
         raw.window_duration_mins.unwrap_or(0.0),
         LimitWindow { percent, resets_at },
@@ -98,18 +98,29 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
         .arg("app-server")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
         .context("cannot start codex app-server")?;
 
     let mut stdin = child.stdin.take().context("no stdin for codex")?;
     let stdout = child.stdout.take().context("no stdout for codex")?;
+    let stderr = child.stderr.take().context("no stderr for codex")?;
+    let stderr_task = tokio::spawn(async move {
+        let mut lines = BufReader::new(stderr).lines();
+        let mut messages = Vec::new();
+        while let Ok(Some(line)) = lines.next_line().await {
+            if !line.trim().is_empty() {
+                messages.push(line);
+            }
+        }
+        messages
+    });
 
     let exchange = async {
         let mut lines = BufReader::new(stdout).lines();
 
-        let mut send = |value: Value| {
+        let send = |value: Value| {
             let mut line = serde_json::to_string(&value).unwrap_or_default();
             line.push('\n');
             line
@@ -138,11 +149,11 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
         await_response(&mut lines, 0).await?;
 
         stdin
-            .write_all(send(json!({"method": "initialized", "params": {}})).as_bytes())
+            .write_all(send(json!({"method": "initialized"})).as_bytes())
             .await?;
         stdin
             .write_all(
-                send(json!({"method": "account/rateLimits/read", "id": 1, "params": {}}))
+                send(json!({"method": "account/rateLimits/read", "id": 1, "params": null}))
                     .as_bytes(),
             )
             .await?;
@@ -163,14 +174,17 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
 
     // The child is killed on drop, so a hung server cannot outlive this call.
     let _ = child.start_kill();
-    result
+    let diagnostics = stderr_task.await.unwrap_or_default();
+    result.with_context(|| {
+        diagnostics
+            .last()
+            .map(|line| format!("codex app-server: {line}"))
+            .unwrap_or_else(|| "codex app-server returned no diagnostics".to_string())
+    })
 }
 
 /// Read lines until the reply with this id arrives.
-async fn await_response<R>(
-    lines: &mut tokio::io::Lines<BufReader<R>>,
-    id: i64,
-) -> Result<Value>
+async fn await_response<R>(lines: &mut tokio::io::Lines<BufReader<R>>, id: i64) -> Result<Value>
 where
     R: tokio::io::AsyncRead + Unpin,
 {

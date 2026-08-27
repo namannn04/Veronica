@@ -2029,3 +2029,7 @@ th.sortable:hover {
   color: var(--status-warning);
   border-color: color-mix(in srgb, var(--status-warning) 45%, transparent);
 }
+.attention-focus { text-align: center; padding: 36px; }
+.attention-clock { font-size: 48px; font-weight: 700; margin: 14px 0 24px; font-variant-numeric: tabular-nums; }
+.attention-focus .backup-path { max-width: 680px; margin: 18px auto 0; }
+.attention-focus input[type="number"] { max-width: 110px; }

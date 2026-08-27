@@ -445,6 +445,20 @@ export interface ImportReport {
   createdAt: string;
 }
 
+export interface AttentionFocusSession {
+  id: string;
+  name: string;
+  startedAt: string;
+  plannedDurationSeconds: number;
+  endedAt: string | null;
+}
+
+export interface AttentionStatus {
+  active: AttentionFocusSession | null;
+  completedSessions: number;
+  totalFocusSeconds: number;
+}
+
 export type UsageLevel = "green" | "orange" | "red";
 export type PacingZone = "chill" | "onTrack" | "warning" | "hot";
 

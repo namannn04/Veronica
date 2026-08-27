@@ -354,6 +354,44 @@ pub fn backup_import(
     Ok(report)
 }
 
+#[tauri::command]
+pub fn attention_status(state: State<'_, AppState>) -> CommandResult<veronica_core::AttentionStatus> {
+    veronica_core::AttentionRepository::new(state.directories.attention_dir())
+        .status(chrono::Utc::now())
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub fn attention_start(
+    state: State<'_, AppState>,
+    name: String,
+    duration_seconds: i64,
+) -> CommandResult<veronica_core::AttentionFocusSession> {
+    veronica_core::AttentionRepository::new(state.directories.attention_dir())
+        .start_focus(&name, duration_seconds, chrono::Utc::now())
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub fn attention_stop(
+    state: State<'_, AppState>,
+) -> CommandResult<veronica_core::AttentionFocusSession> {
+    veronica_core::AttentionRepository::new(state.directories.attention_dir())
+        .stop_focus(chrono::Utc::now())
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub fn attention_history(
+    state: State<'_, AppState>,
+) -> CommandResult<Vec<veronica_core::AttentionFocusSession>> {
+    let mut sessions = veronica_core::AttentionRepository::new(state.directories.attention_dir())
+        .history()
+        .map_err(fail)?;
+    sessions.reverse();
+    Ok(sessions)
+}
+
 /// Match the process-owned idle inhibitor to Edith's Keep Awake switch.
 pub async fn sync_prevent_sleep(app: &AppHandle, enabled: bool) -> CommandResult<()> {
     if !enabled {
