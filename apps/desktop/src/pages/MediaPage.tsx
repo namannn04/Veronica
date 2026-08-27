@@ -1,88 +1,17 @@
 import { TrackProgress, TransportControls, useNowPlaying } from "../components/NowPlaying";
 
-/**
- * Whatever is playing on this machine.
- *
- * Edith controls Spotify and Apple Music through AppleScript. On Linux MPRIS is
- * the standard, so one page controls Spotify, a browser tab, Rhythmbox or VLC
- * without knowing which is running.
- */
 export function MediaPage() {
-  const { playing, unavailable, control } = useNowPlaying(true);
+  const { playing, unavailable, control, refresh } = useNowPlaying(true);
 
-  if (unavailable) {
-    return (
-      <>
-        <Head />
-        <div className="empty">
-          <h3>No session bus</h3>
-          <p>Media control needs a desktop session with D-Bus running.</p>
-        </div>
-      </>
-    );
-  }
+  return <div className="music-page">
+    <div className="page-head edith-head"><div><h1>Music</h1><div className="page-sub">Every Linux player, through MPRIS</div></div><div className="head-actions"><button className="icon-button" onClick={() => void refresh()} title="Refresh" aria-label="Refresh players">↻</button>{playing && <button className="button" onClick={() => control("stop")}>Stop</button>}</div></div>
 
-  if (!playing) {
-    return (
-      <>
-        <Head />
-        <div className="empty">
-          <h3>Nothing is playing</h3>
-          <p>
-            Start any player that speaks MPRIS — Spotify, Rhythmbox, VLC, or a
-            browser tab — and it appears here with full transport control.
-          </p>
-        </div>
-      </>
-    );
-  }
-
-  const status = playing.status ?? "stopped";
-
-  return (
-    <>
-      <Head />
-      <section className="card">
-        <div className="now-playing">
-          <div className="art" aria-hidden="true">
-            {/* The Rust side inlines art as a data URL and returns nothing when
-                there is none to show, so an empty tile is never rendered. */}
-            {playing.artUrl ? (
-              <img src={playing.artUrl} alt="" />
-            ) : (
-              <span className="art-glyph">♪</span>
-            )}
-          </div>
-          <div className="now-body">
-            <div className="now-title" title={playing.title}>
-              {playing.title || "Untitled"}
-            </div>
-            <div className="now-artist">
-              {playing.artist || playing.identity}
-              {playing.album ? ` · ${playing.album}` : ""}
-            </div>
-            <TrackProgress playing={playing} />
-            <div className="now-foot">
-              <span className={`pill ${status === "playing" ? "good" : ""}`}>{status}</span>
-              <span className="card-note">{playing.identity}</span>
-            </div>
-            <TransportControls playing={playing} control={control} />
-          </div>
-        </div>
+    {unavailable ? <div className="empty music-empty"><div className="empty-glyph">♫</div><h3>No desktop media session</h3><p>Music control needs the graphical session D-Bus. Open Veronica from your Ubuntu desktop session.</p></div> : !playing ? <div className="empty music-empty"><div className="empty-glyph">♫</div><h3>No player is active</h3><p>Start Spotify, Rhythmbox, VLC or media in a browser. Veronica automatically follows the player that is actually playing.</p><div className="supported-players"><span>Spotify</span><span>Rhythmbox</span><span>VLC</span><span>Browsers</span></div></div> : <>
+      <section className="music-player blur-music">
+        <div className="music-art">{playing.artUrl ? <img src={playing.artUrl} alt="" /> : <span>♪</span>}<i className={playing.status === "playing" ? "playing" : ""} /></div>
+        <div className="music-copy"><span className="music-source">{playing.identity}</span><h2 className="now-title" title={playing.title}>{playing.title || "Untitled"}</h2><p className="now-artist">{playing.artist || "Unknown artist"}{playing.album ? <><b> · </b>{playing.album}</> : null}</p><TrackProgress playing={playing} /><div className="music-controls"><TransportControls playing={playing} control={control} /><span className={`pill ${playing.status === "playing" ? "good" : ""}`}>{playing.status || "stopped"}</span></div></div>
       </section>
-    </>
-  );
-}
-
-function Head() {
-  return (
-    <div className="page-head">
-      <div>
-        <h1>Media</h1>
-        <div className="page-sub">
-          Any player that speaks MPRIS, controlled from one place
-        </div>
-      </div>
-    </div>
-  );
+      <section className="card music-info"><div><span>ACTIVE PLAYER</span><strong>{playing.identity}</strong><small>{playing.player}</small></div><div><span>PLAYBACK</span><strong>{playing.status || "Stopped"}</strong><small>MPRIS session</small></div><div><span>QUEUE CONTROL</span><strong>{playing.canGoPrevious || playing.canGoNext ? "Available" : "Not exposed"}</strong><small>Previous and next</small></div></section>
+    </>}
+  </div>;
 }

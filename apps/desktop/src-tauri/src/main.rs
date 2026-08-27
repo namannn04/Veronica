@@ -2,13 +2,15 @@
 
 // Tauri's own main is the entry point; there is no console window to hide on
 // Linux, so no windows_subsystem attribute is needed.
+mod alerts;
 mod art;
 mod commands;
+mod presenter;
 mod state;
 mod tray;
 
 use anyhow::Result;
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 use veronica_core::AppDirectories;
 
 use state::AppState;
@@ -69,12 +71,21 @@ fn run() -> Result<()> {
             commands::usage_limits,
             commands::settings_all,
             commands::settings_set,
+            commands::backup_export,
+            commands::backup_inspect,
+            commands::backup_import,
+            commands::shell_action,
             commands::system_snapshot,
+            commands::system_processes,
+            commands::system_quit_process,
+            commands::herdr_board,
+            commands::herdr_open,
             commands::microphone_state,
             commands::microphone_toggle,
             commands::media_now_playing,
             commands::media_control,
             commands::calendar_agenda,
+            commands::calendar_open,
             commands::machines_probe,
             commands::machines_add,
             commands::machines_remove,
@@ -82,6 +93,17 @@ fn run() -> Result<()> {
             commands::clipboard_list,
             commands::clipboard_remove,
             commands::clipboard_clear,
+            commands::presenter_state,
+            commands::presenter_set,
+            commands::alerts_view,
+            commands::alerts_test,
+            commands::alerts_reset,
+            commands::color_formats,
+            commands::color_swatches,
+            commands::color_pick,
+            commands::color_copy,
+            commands::color_forget,
+            commands::color_clear,
             commands::notifications_list,
             commands::notifications_dismiss,
             commands::notifications_clear,
@@ -104,6 +126,43 @@ fn run() -> Result<()> {
                 window.show()?;
             }
 
+            // The shell extension writes through `vr config set`, outside
+            // Tauri's IPC. Re-read that small JSON file so notch quick actions
+            // acquire and release the same process-owned inhibitor locks as
+            // switches clicked in the desktop app. The first interval tick is
+            // immediate, which also restores both locks after a restart.
+            let watch_settings = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+                loop {
+                    interval.tick().await;
+                    let path = watch_settings.state::<AppState>().directories.settings_file();
+                    let Ok(settings) = veronica_core::Settings::load(&path) else {
+                        continue;
+                    };
+                    let lid_awake = settings.bool_or("lidAwakeEnabled", false);
+                    let prevent_sleep = settings.bool_or("preventSleep", false);
+                    let changed = {
+                        let state = watch_settings.state::<AppState>();
+                        let mut current = state.settings.lock().expect("settings lock");
+                        let changed = *current != settings;
+                        *current = settings;
+                        changed
+                    };
+                    if let Err(error) = commands::sync_lid_awake(&watch_settings, lid_awake).await {
+                        tracing::warn!(target: "veronica", "cannot apply Lid Awake: {error}");
+                    }
+                    if let Err(error) =
+                        commands::sync_prevent_sleep(&watch_settings, prevent_sleep).await
+                    {
+                        tracing::warn!(target: "veronica", "cannot apply Keep Awake: {error}");
+                    }
+                    if changed {
+                        let _ = watch_settings.emit("settings-updated", "external");
+                    }
+                }
+            });
+
             // Watch the bus for notifications. This runs for the process's
             // lifetime; if the bus refuses monitoring, the feature is simply
             // absent rather than fatal.
@@ -122,6 +181,20 @@ fn run() -> Result<()> {
                 if let Err(error) = result {
                     tracing::info!("notification history unavailable: {error:#}");
                 }
+            });
+
+            // Rate-limit alerts. Idles cheaply until the user turns them on,
+            // so a fresh install makes no provider requests of its own.
+            let alerting = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                alerts::run(alerting).await;
+            });
+
+            // Presenter mode's screen-share detector. Also idles until the
+            // feature is switched on.
+            let presenting = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                presenter::run(presenting).await;
             });
 
             let refine = handle.clone();

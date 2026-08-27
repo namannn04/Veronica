@@ -15,10 +15,14 @@ export class NowPlayingCard {
             style_class: 'veronica-card veronica-now-playing',
             visible: false,
         });
+        this._private = false;
+        this._lastTitle = '';
+        this._lastArtist = '';
 
         this._art = new St.Icon({
             icon_name: 'emblem-music-symbolic',
             style_class: 'veronica-now-art',
+            y_align: Clutter.ActorAlign.CENTER,
         });
         this.actor.add_child(this._art);
 
@@ -76,12 +80,27 @@ export class NowPlayingCard {
             this.actor.visible = false;
             return;
         }
-        this._title.text = playing.title || 'Untitled';
-        this._artist.text = playing.artist || playing.identity || '';
+        this._lastTitle = playing.title || 'Untitled';
+        this._lastArtist = playing.artist || playing.identity || '';
+        this._title.text = this._private ? 'Private' : this._lastTitle;
+        this._artist.text = this._private ? 'Presenter mode' : this._lastArtist;
         this._playPauseIcon.icon_name = playing.status === 'playing'
             ? 'media-playback-pause-symbolic'
             : 'media-playback-start-symbolic';
         this.actor.visible = true;
+    }
+
+    setPrivate(privateMode) {
+        this._private = privateMode;
+        if (!this.actor)
+            return;
+        this._title.text = privateMode ? 'Private' : this._lastTitle;
+        this._artist.text = privateMode ? 'Presenter mode' : this._lastArtist;
+        this.actor.set_style_class_name(
+            privateMode
+                ? 'veronica-card veronica-now-playing presenter-private'
+                : 'veronica-card veronica-now-playing'
+        );
     }
 
     destroy() {

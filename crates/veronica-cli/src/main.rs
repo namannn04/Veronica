@@ -5,11 +5,17 @@
 //! exactly one document, logs go to stderr, and exit codes are meaningful, so
 //! an agent can drive Veronica headlessly.
 
+mod alerts_cmd;
+mod backup_cmd;
 mod calendar_cmd;
 mod clipboard_cmd;
+mod color_cmd;
+mod focus_dim_cmd;
 mod format;
 mod machines_cmd;
 mod media_cmd;
+mod presenter_cmd;
+mod system_cmd;
 mod usage_cmd;
 
 use anyhow::{Context, Result};
@@ -49,9 +55,18 @@ enum Command {
     /// Agent usage: totals, limits, projects and collection.
     #[command(subcommand)]
     Usage(usage_cmd::UsageCommand),
+    /// Rate-limit alerts: the notifier's state, a delivery check and a reset.
+    #[command(subcommand)]
+    Alerts(alerts_cmd::AlertsCommand),
+    /// Export, inspect and restore Veronica's persistent data.
+    #[command(subcommand)]
+    Backup(backup_cmd::BackupCommand),
     /// The clipboard history.
     #[command(subcommand, alias = "clip")]
     Clipboard(clipboard_cmd::ClipboardCommand),
+    /// Sample a colour from the screen and keep a swatch history.
+    #[command(subcommand)]
+    Color(color_cmd::ColorCommand),
     /// The computers Veronica can reach.
     #[command(subcommand, alias = "machine")]
     Machines(machines_cmd::MachineCommand),
@@ -61,6 +76,15 @@ enum Command {
     /// Control whatever is playing, through MPRIS.
     #[command(subcommand)]
     Media(media_cmd::MediaCommand),
+    /// CPU, memory, storage and battery information.
+    #[command(subcommand)]
+    System(system_cmd::SystemCommand),
+    /// Presenter mode: blur sensitive figures on a shared screen.
+    #[command(subcommand)]
+    Presenter(presenter_cmd::PresenterCommand),
+    /// Focus Dim: darken everything behind the window you are working in.
+    #[command(subcommand, name = "focus-dim")]
+    FocusDim(focus_dim_cmd::FocusDimCommand),
     /// List the extension catalogue and whether each one can run here.
     #[command(name = "extensions", alias = "ext")]
     Extensions {
@@ -127,10 +151,23 @@ async fn run(cli: &Cli) -> Result<()> {
         }
         Command::Config(command) => config(&directories, command, output),
         Command::Usage(command) => usage_cmd::run(&directories, command, output).await,
+        Command::Alerts(command) => alerts_cmd::run(&directories, command, output).await,
+        Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Media(command) => media_cmd::run(command, output).await,
+        Command::System(command) => system_cmd::run(command, output),
+        Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
+        Command::FocusDim(command) => {
+            focus_dim_cmd::run(&directories, command, output).await
+        }
         Command::Calendar(command) => calendar_cmd::run(command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output).await,
+        Command::Color(command) => {
+            // The picker honours the configured format and profile, so the CLI
+            // and the app agree on what a pick produces.
+            let settings = Settings::load(&directories.settings_file())?;
+            color_cmd::run(&directories, &settings, command, output).await
+        }
     }
 }
 

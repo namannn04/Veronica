@@ -7,6 +7,10 @@
 
 use std::path::{Path, PathBuf};
 
+/// Files that live in `extension/` for tooling's benefit and are not part of the
+/// extension GNOME loads.
+const DEVELOPMENT_ONLY: [&str; 2] = ["install.sh", "package.json"];
+
 fn repo_root() -> PathBuf {
     // CARGO_MANIFEST_DIR is crates/veronica-core.
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -31,8 +35,10 @@ fn every_extension_file_is_listed_in_the_debian_package() {
         let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        // install.sh is for source checkouts; the package does not ship it.
-        if name == "install.sh" || !path.is_file() {
+        // Development-only files: the installer script, the ESM declaration
+        // that lets node and editors read this directory, and its tests. GNOME
+        // loads none of them.
+        if !path.is_file() || DEVELOPMENT_ONLY.contains(&name) || name.ends_with(".test.mjs") {
             continue;
         }
         let shipped = matches!(
@@ -49,6 +55,33 @@ fn every_extension_file_is_listed_in_the_debian_package() {
         "these extension files are not in the Debian package's file list, so an \
          installed extension would fail to import them: {missing:?}"
     );
+}
+
+/// The same failure by the other route: `install.sh` is what a source checkout
+/// uses, and an explicit file list there goes stale silently too.
+#[test]
+fn the_source_installer_copies_every_extension_file() {
+    let script = std::fs::read_to_string(repo_root().join("extension/install.sh"))
+        .expect("extension/install.sh");
+
+    // Globbing by extension is the only form that cannot go stale. If the
+    // script ever goes back to naming files one by one, this fails and says so.
+    assert!(
+        script.contains("*.js") && script.contains("*.json") && script.contains("*.css"),
+        "install.sh must copy extension files by glob, not by an explicit list \
+         that goes stale whenever a module is added"
+    );
+
+    // The glob would otherwise sweep in the development-only files too.
+    for name in DEVELOPMENT_ONLY {
+        if name == "install.sh" {
+            continue;
+        }
+        assert!(
+            script.contains(name),
+            "install.sh must exclude {name}, which GNOME does not load"
+        );
+    }
 }
 
 #[test]

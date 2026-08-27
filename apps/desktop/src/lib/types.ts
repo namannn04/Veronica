@@ -18,6 +18,8 @@ export interface ExtensionReport extends Record<string, unknown> {
   title: string;
   subtitle: string;
   icon: string;
+  /** The settings key holding the on/off state, from the Rust catalogue. */
+  defaultsKey: string;
   group: ExtensionGroup;
   featured: boolean;
   enabled: boolean;
@@ -174,6 +176,42 @@ export interface SystemSnapshot {
   battery: { percent: number; charging: boolean; timeToEmptySecs: number | null } | null;
 }
 
+export interface RunningProcess {
+  pid: number;
+  name: string;
+  executable: string | null;
+  cpuPercent: number;
+  memoryBytes: number;
+}
+
+export interface HerdrSession {
+  name: string;
+  running: boolean;
+  default: boolean;
+  session_dir: string;
+  socket_path: string;
+  error?: string | null;
+}
+
+export interface HerdrAgent {
+  id: string;
+  session: string;
+  kind: string;
+  status: "blocked" | "working" | "unknown" | "done" | "idle";
+  title: string;
+  workspace: string;
+  cwd: string;
+  paneId: string;
+  focused: boolean;
+}
+
+export interface HerdrBoard {
+  installed: boolean;
+  executable: string | null;
+  sessions: HerdrSession[];
+  agents: HerdrAgent[];
+}
+
 export interface VolumeState {
   volume: number;
   muted: boolean;
@@ -286,6 +324,125 @@ export interface ClipRow {
   bytes: number;
   count: number;
   lastSeen: string;
+}
+
+export type BlurCategory = "money" | "usage" | "agents" | "calendar" | "music";
+
+export interface ScreenShareState {
+  sharing: boolean;
+  screencastSessions: number;
+  remoteSessions: number;
+  reason: string | null;
+  /** Set when detection could not run at all, e.g. on a non-GNOME desktop. */
+  unavailable: string | null;
+}
+
+export interface PresenterView {
+  enabled: boolean;
+  manual: boolean;
+  autoEnabled: boolean;
+  autoActive: boolean;
+  autoPaused: boolean;
+  autoReason: string | null;
+  categories: BlurCategory[];
+  /** The resolved gate: enabled && (manual || an undismissed detected share). */
+  active: boolean;
+  /** One CSS class per category blurred right now. */
+  blurredClasses: string[];
+  share: ScreenShareState;
+}
+
+export interface NotifySettings {
+  master: boolean;
+  trackSession: boolean;
+  trackWeekly: boolean;
+  recovery: boolean;
+  pacingWarning: boolean;
+  pacingHot: boolean;
+  reminderSession: boolean;
+  reminderSessionOffsetMin: number;
+  reminderWeekly: boolean;
+  reminderWeeklyOffsetMin: number;
+  tokenExpired: boolean;
+  /** Blend time remaining into the level rather than using the raw percentage. */
+  smartColor: boolean;
+  pacingMargin: number;
+  thresholds: { warningPercent: number; criticalPercent: number };
+}
+
+export interface WatchedWindow {
+  percent: number;
+  resetsAt: string | null;
+  /** "2 h 14 min", absent when the provider gave no reset time. */
+  resetsIn: string | null;
+  level: UsageLevel;
+  zone: PacingZone;
+}
+
+export interface AlertsView {
+  settings: NotifySettings;
+  /** Seconds between polls, after clamping. */
+  pollSeconds: number;
+  session: WatchedWindow | null;
+  week: WatchedWindow | null;
+  /** Why there is nothing to watch, when that is the case. */
+  note: string | null;
+  sessionReminderAt: string | null;
+  weekReminderAt: string | null;
+}
+
+export interface SwatchRow {
+  id: number;
+  hex: string;
+  /** Components in 0..1, in `profile`'s space. */
+  red: number;
+  green: number;
+  blue: number;
+  profile: "srgb" | "displayP3";
+  profileLabel: string;
+  pickedAt: string;
+  /** Every representation, keyed by format id, so copying needs no round trip. */
+  formats: Record<string, string>;
+  /** Whether a dark label is legible on this colour. */
+  prefersDarkText: boolean;
+}
+
+export interface CopyFormatOption {
+  id: string;
+  label: string;
+}
+
+export interface PickResult {
+  swatch: SwatchRow;
+  /** What was put on the clipboard, in the configured format. */
+  value: string;
+  format: string;
+  /** Which backend opened the eyedropper. */
+  source: string;
+  copiedVia: string | null;
+  /** Set when the colour was recorded but the clipboard refused it. */
+  copyError: string | null;
+}
+
+export interface CopyResult {
+  value: string;
+  format: string;
+  copiedVia: string;
+}
+
+export interface BackupSummary {
+  path: string;
+  appVersion: string;
+  createdAt: string;
+  files: number;
+  decodedBytes: number;
+}
+
+export interface ImportReport {
+  filesRestored: number;
+  bytesRestored: number;
+  sourceVersion: string;
+  createdAt: string;
 }
 
 export type UsageLevel = "green" | "orange" | "red";

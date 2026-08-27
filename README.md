@@ -22,7 +22,7 @@ troubleshoot.
 The Debian package is the recommended route on Ubuntu:
 
 ```
-sudo apt install ./Veronica_0.1.0_amd64.deb
+sudo apt install ./Veronica_0.1.8_amd64.deb
 ```
 
 That installs the app, the `vr` command line tool, the desktop entry, the
@@ -32,8 +32,8 @@ collector needs.
 An AppImage is also published for other distributions:
 
 ```
-chmod +x Veronica_0.1.0_amd64.AppImage
-./Veronica_0.1.0_amd64.AppImage
+chmod +x Veronica_0.1.8_amd64.AppImage
+./Veronica_0.1.8_amd64.AppImage
 ```
 
 Ubuntu 24.04 and later no longer ship the FUSE 2 runtime an AppImage needs to
@@ -41,7 +41,7 @@ mount itself. Either install it once with `sudo apt install libfuse2t64`, or run
 the image without it:
 
 ```
-./Veronica_0.1.0_amd64.AppImage --appimage-extract
+./Veronica_0.1.8_amd64.AppImage --appimage-extract
 ./squashfs-root/AppRun
 ```
 
@@ -66,6 +66,32 @@ The AppImage does not install the `vr` command; use the Debian package for that.
   ranked against your own busiest day.
 - **Project drilldown** — spend by project and repository, expanding into the
   chats that produced it.
+
+**Alerts**
+
+- **Every crossing, once** — a window rising past a level, falling back to green,
+  drifting ahead of pace or burning hot each produce one banner when they happen,
+  and silence while nothing changes. Edith's wording, verbatim.
+- **Time-aware levels** — a session at 60% with minutes left outranks a week at
+  80% with days to go, so the level follows the blended risk rather than the raw
+  percentage.
+- **Before a reset** — an optional reminder a chosen time before either window
+  resets, fired by Veronica itself since freedesktop notifications cannot be
+  scheduled.
+- **One banner, updated** — a rising threshold replaces its own notification
+  rather than stacking five, and the state survives a restart, so relaunching
+  while a window sits at 90% does not re-announce it.
+- **Nothing until asked** — off by default, and while off no request is made to
+  any provider at all.
+
+**Herdr**
+
+- **Live agent board** — every running Herdr agent grouped into Edith's Blocked,
+  Working, Unknown, Done and Idle lanes, refreshed from Herdr's public JSON API.
+- **Session and kind filters** — focus the board by persistent session or agent
+  family, with a compact rail for agents and terminals.
+- **Attach anywhere** — copy the exact attach command or open a session or agent
+  directly in GNOME Console, while Herdr remains the owner of terminal state.
 
 **This computer**
 
@@ -109,24 +135,45 @@ The AppImage does not install the `vr` command; use the Debian package for that.
 - **Stays local** — a plain file under your data directory that you can inspect
   or delete; large copies are skipped rather than stored.
 
+**Color Picker**
+
+- **Sample any pixel** — the compositor's own eyedropper, through GNOME Shell or
+  the desktop portal. Veronica never reads the screen without a click.
+- **Every representation** — hex, `rgb()`, `rgba()`, `hsl()` and a `GdkRGBA`
+  literal, from one pick. Choose which one lands on the clipboard.
+- **Swatch history** — every colour you have sampled, kept locally, with the hex
+  printed on the colour itself in whichever of black or white stays legible.
+- **sRGB or Display P3** — the compositor reports sRGB; Display P3 converts it
+  properly, for a wide-gamut panel.
+
+**Presenter**
+
+- **Blurs what should not be shared** — spend, token counts, rate limits,
+  calendar entries and track names, while navigation and controls stay usable.
+- **Notices a screen share** — an app capturing the screen or controlling it
+  remotely activates it automatically, detected from the compositor's own
+  screencast sessions. Dismiss one share without switching detection off.
+- **Category by category** — reveal the calendar for a demo while spend stays
+  hidden.
+
+**Focus Dim**
+
+- **Darkens everything behind your window** — drawn inside GNOME Shell, so it
+  works on Wayland, where no application could place a dim behind another app's
+  window.
+- **Per display or focused only** — keep each monitor's front window bright, or
+  dim every monitor but the one you are typing in.
+
 **Top bar**
 
-- **Optional full replacement** — the clock, calendar, notifications, network,
-  Bluetooth, volume and battery, all as Veronica's own. The calendar and
-  notifications reuse GNOME's own widget classes (`Calendar`,
-  `CalendarMessageList`, `DBusEventSource`) rather than being reimplemented, so
-  behaviour matches exactly; network/Bluetooth/volume/battery are built from
-  the same libraries GNOME's stock indicators use (`NM`, BlueZ, PipeWire/Gvc,
-  UPower). The result also carries Veronica's own sections — agent usage and
-  rate limits, now-playing, clipboard history, machine state — right inside
-  the popup. Off by default: `vr config set topBarReplacement true` turns it
-  on, `false` restores GNOME's originals instantly — every stock actor is only
-  ever hidden, never destroyed, so nothing is lost either way.
-- **Inside the shell's own dropdown** — a GNOME Shell extension adds Veronica's
-  readouts to the real clock dropdown, beside the notifications, media and
-  calendar the shell already shows: agent usage and spend for the last seven
-  days, per-source breakdown, and the machine's capability state. Plus a spend
-  indicator in the status area.
+- **CPU and memory beside the clock** — Edith's menu bar readout, in the position
+  Ubuntu has for it, read straight from procfs rather than by running anything.
+- **Compact Edith shelf** — while the extension is enabled, Veronica replaces
+  only the center date button with its 580px Home, Notifications, Files,
+  Clipboard and Camera shelf. It does not lengthen GNOME's calendar dropdown.
+- **Ubuntu controls stay native** — Quick Settings remains the only owner of
+  Wi-Fi, Bluetooth, volume and battery. Veronica adds neither copies of those
+  indicators nor an agent-spend indicator to the right side of the panel.
 - **No second panel** — the shell keeps owning the top bar; Veronica only adds
   what the shell has no idea about.
 
@@ -138,14 +185,15 @@ The AppImage does not install the `vr` command; use the Debian package for that.
 
 **Notch**
 
-- **The clock dropdown, upgraded** — hover to peek or click to pin open. One
+- **The clock dropdown, upgraded** — click Ubuntu's center clock as usual. One
   panel holds now-playing with album art and transport, the notification
   history, a month grid, the day's events, and the things the shell knows
   nothing about: agent spend and machine load.
-- **Hover island** — a pill tucked under the top bar showing the clock, today's
-  spend, the current track and live indicators, expanding on hover into
-  now-playing with transport, agent usage, machine load, a file shelf and quick
-  actions. Clicks pass through everywhere the island is not.
+- **Edith's structure** — Home, Files, Clipboard, Audio and Camera use the same
+  pill-tab order as Edith. Home has the paired now-playing and limit cards plus
+  real Keep Awake and Lid Awake actions; Clipboard is a scrollable copy/delete
+  history. Tabs whose Linux backend is still being ported identify that state
+  instead of presenting a dead control.
 
 ## Command line
 
@@ -168,6 +216,18 @@ vr machines stats <id>       one machine's vital signs in full
 vr machines add <ssh-host>   add a machine; discover finds config aliases
 vr clipboard list            the clipboard history, searchable
 vr clipboard get <id>        one entry's full text, for piping onward
+vr usage alerts              what the notifier would post right now, as a dry run
+vr alerts test               post one banner, to check notifications arrive
+vr alerts state              what the notifier is comparing against
+vr color pick                sample a pixel; copies and records it
+vr color list                the swatch history
+vr color show <id>           one swatch in every format
+vr presenter status          the blur state, and what detection sees
+vr presenter start           blur now; also stop, enable, disable, dismiss
+vr focus-dim on              dim behind the focused window; also off, intensity
+vr backup export             back up settings and persistent app data
+vr backup inspect <file>     verify and describe an archive without restoring
+vr backup import <file> --confirm  validate and restore an archive atomically
 vr extensions                what can run on this session, and why not
 vr config set <key> <value>  every setting the UI exposes
 ```
@@ -177,7 +237,7 @@ stderr, and exit codes are reliable, so an agent can drive Veronica headlessly.
 
 ## What works on your session
 
-Veronica resolves each of its 24 capabilities against the running session and
+Veronica resolves each of its 25 capabilities against the running session and
 reports the result, with the service it talks to, on the Diagnostics page and in
 `vr diagnose`. Nothing is silently disabled.
 
@@ -192,12 +252,16 @@ does not.
 
 | Capability | Why | Route |
 | --- | --- | --- |
-| Focus Dim | Dimming other windows is the compositor's job | GNOME Shell extension, or an X11 session |
 | Keyboard lock | Needs an exclusive evdev grab | Membership of the `input` group |
+| Local music playback | Not built yet; external players work through MPRIS | — |
+| Companion | The backend's deployment is not shipped yet | — |
 
-Clipboard history was in this table until the shell extension existed; capture
-now happens inside the compositor, which is the only thing a Wayland session
-lets read the selection.
+Clipboard history and Focus Dim were both in this table until the shell extension
+existed. Capture and dimming now happen inside the compositor, which is the only
+thing a Wayland session lets read the selection or place one window behind
+another. Veronica reports a capability it has not built as needing integration
+rather than as available, so the Extensions page never shows "Ready" for a switch
+that would do nothing.
 
 Everything else has a working route: PipeWire for audio and mic mute, logind for
 prevent-sleep and lid-awake, MPRIS for media, Evolution Data Server for

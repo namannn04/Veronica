@@ -144,20 +144,52 @@
   padding: 0 4px;
 }
 
-.veronica-notch-menu {
-  spacing: 12px;
+/* The CPU/memory readout, beside the clock. Tabular figures and a fixed-ish
+   width keep the panel from jittering as the numbers change. */
+.veronica-stats {
+  spacing: 4px;
+  padding: 0 2px 0 6px;
 }
 
-.veronica-notch-column {
-  width: 23em;
-  spacing: 10px;
+.veronica-stats-value {
+  font-feature-settings: "tnum";
+  font-size: 0.85em;
+  opacity: 0.72;
 }
 
-/* The real notification list, width-capped so an empty "No Notifications"
- * placeholder cannot dwarf the column beside it. */
-.veronica-notch-messages {
-  width: 17em;
-  max-height: 26em;
+.veronica-stats-separator {
+  font-size: 0.85em;
+  opacity: 0.4;
+}
+
+.veronica-notch-shell-menu .popup-menu-content {
+  padding: 0;
+  border-radius: 22px;
+  background-color: rgba(4, 4, 5, 0.985);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
+.veronica-notch-shell-menu {
+  -arrow-rise: 7px;
+  -arrow-border-radius: 22px;
+  -arrow-background-color: rgba(4, 4, 5, 0.985);
+  -arrow-border-color: rgba(255, 255, 255, 0.16);
+  -arrow-border-width: 1px;
+  box-shadow: none;
+}
+
+.veronica-notch-shell-menu.popup-menu-boxpointer,
+.veronica-notch-shell-menu .popup-menu-content,
+.veronica-notch-shell-menu .popup-menu-item {
+  box-shadow: none;
+}
+
+/* PopupBaseMenuItem inherits generous GNOME menu padding. The notch already
+ * owns its insets, so keeping both created the unexplained left/bottom gutter. */
+.veronica-notch-shell-menu .popup-menu-item.veronica-notch-root-item {
+  padding: 0;
+  margin: 0;
 }
 
 /* A generic card: subtle background, no border, rounded corners. Every
@@ -222,6 +254,28 @@
 
 .veronica-usage-card {
   spacing: 8px;
+}
+
+.veronica-usage-toolbar {
+  height: 18px;
+}
+
+.veronica-provider-switch {
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.veronica-provider-switch:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.veronica-provider-label {
+  font-size: 9.5px;
+  font-weight: 650;
 }
 
 .veronica-rings {
@@ -297,11 +351,511 @@
 }
 
 .veronica-action-icon {
-  icon-size: 1em;
+  icon-size: 1.1em;
   color: rgba(255, 255, 255, 0.85);
 }
 
 .veronica-action-label {
-  font-size: 0.82em;
+  font-size: 0.88em;
   font-weight: 600;
+}
+
+/* ----------------------------------------------------- Edith notch surface */
+
+.veronica-shelf {
+  width: 548px;
+  padding: 8px 12px 10px 12px;
+  spacing: 6px;
+}
+
+.veronica-shelf-header {
+  height: 34px;
+  spacing: 4px;
+}
+
+.veronica-shelf-tab {
+  height: 24px;
+  min-width: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.veronica-shelf-tab:hover,
+.veronica-shelf-settings:hover {
+  background-color: rgba(255, 255, 255, 0.13);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.veronica-shelf-tab.active {
+  padding: 0 8px;
+  background-color: rgba(255, 255, 255, 0.93);
+  color: #111111;
+}
+
+.veronica-shelf-tab-content {
+  spacing: 4px;
+}
+
+.veronica-shelf-tab-icon {
+  icon-size: 12px;
+}
+
+.veronica-shelf-tab-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.veronica-shelf-settings {
+  width: 30px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.veronica-shelf-settings StIcon {
+  icon-size: 12px;
+}
+
+.veronica-shelf-stack {
+  height: 218px;
+}
+
+.veronica-shelf-panel {
+  width: 548px;
+  height: 218px;
+}
+
+.veronica-shelf-home {
+  spacing: 10px;
+}
+
+.veronica-home-card-wrap {
+  width: 360px;
+  height: 150px;
+}
+
+.veronica-shelf-home .veronica-now-playing,
+.veronica-shelf-home .veronica-empty-music {
+  width: 340px;
+  height: 130px;
+}
+
+.veronica-shelf-home .veronica-usage-card {
+  /* 160 content + 20 card padding = the intended 180px column. The old
+   * 180px content width overflowed the 548px row and Clutter shrank it. */
+  width: 160px;
+  height: 130px;
+}
+
+.veronica-empty-music {
+  spacing: 5px;
+}
+
+.veronica-empty-music-icon {
+  icon-size: 20px;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.veronica-empty-music-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.veronica-shelf-home .veronica-machine-line {
+  padding: 0 2px;
+}
+
+.veronica-shelf-home .veronica-action-tile {
+  height: 46px;
+}
+
+.veronica-action-tile.active {
+  background-color: #c98f4f;
+  color: #111111;
+}
+
+.veronica-action-tile.active .veronica-action-icon,
+.veronica-action-tile.active .veronica-action-label {
+  color: #111111;
+}
+
+.presenter-private {
+  background-color: rgba(201, 143, 79, 0.10);
+}
+
+.veronica-notifications-panel {
+  height: 210px;
+  padding: 0 4px 4px 4px;
+}
+
+.veronica-shelf-messages {
+  width: 540px;
+  height: 206px;
+  max-height: 206px;
+}
+
+.veronica-files-panel {
+  padding: 0 2px 2px 2px;
+}
+
+.veronica-files-toolbar {
+  height: 32px;
+  spacing: 6px;
+}
+
+.veronica-files-title {
+  font-size: 12px;
+  font-weight: 600;
+  padding-left: 6px;
+}
+
+.veronica-small-button {
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.60);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.veronica-small-button:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.13);
+}
+
+.veronica-small-button StIcon {
+  icon-size: 12px;
+}
+
+.veronica-files-scroll {
+  height: 174px;
+}
+
+.veronica-file-rows {
+  spacing: 5px;
+  padding: 2px 4px 0 0;
+}
+
+.veronica-file-row {
+  min-height: 34px;
+  spacing: 8px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 9px;
+  background-color: rgba(255, 255, 255, 0.055);
+}
+
+.veronica-file-row:hover {
+  background-color: rgba(255, 255, 255, 0.10);
+}
+
+.veronica-file-icon {
+  icon-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.veronica-file-open {
+  padding: 4px 0;
+  font-size: 11.5px;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.veronica-files-empty {
+  padding-top: 60px;
+}
+
+.veronica-camera-panel {
+  padding: 0;
+  spacing: 8px;
+}
+
+.veronica-camera-preview-frame {
+  width: 292px;
+  height: 164px;
+  border-radius: 14px;
+  background-color: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.veronica-camera-preview-surface {
+  width: 292px;
+  height: 164px;
+  background-color: #080809;
+}
+
+.veronica-camera-placeholder {
+  spacing: 5px;
+}
+
+.veronica-camera-icon {
+  icon-size: 24px;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.veronica-camera-title {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.veronica-camera-detail {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.veronica-camera-preview-button {
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.92);
+  color: #111111;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.veronica-camera-preview-button:hover {
+  background-color: #ffffff;
+}
+
+.veronica-clean-overlay {
+  background-color: rgba(0, 0, 0, 0.72);
+}
+
+.veronica-clean-card {
+  width: 330px;
+  padding: 26px;
+  spacing: 10px;
+  border-radius: 22px;
+  background-color: rgba(18, 18, 20, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+  text-align: center;
+}
+
+.veronica-clean-card StIcon {
+  icon-size: 30px;
+  color: #c98f4f;
+}
+
+.veronica-clean-detail {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.veronica-clean-done {
+  margin-top: 8px;
+  padding: 8px 22px;
+  border-radius: 999px;
+  background-color: #c98f4f;
+  color: #111111;
+  font-weight: 650;
+}
+
+.veronica-clipboard-panel {
+  padding-bottom: 2px;
+}
+
+.veronica-clipboard-scroll {
+  height: 206px;
+}
+
+.veronica-clipboard-rows {
+  spacing: 6px;
+  padding-right: 4px;
+}
+
+.veronica-clipboard-row {
+  spacing: 8px;
+  padding: 4px 8px 4px 12px;
+  min-height: 32px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.veronica-clipboard-row:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.veronica-clipboard-copy {
+  padding: 4px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: left;
+}
+
+.veronica-clipboard-delete {
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.veronica-clipboard-delete:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.veronica-clipboard-delete StIcon {
+  icon-size: 11px;
+}
+
+.veronica-clipboard-empty {
+  padding-top: 78px;
+}
+
+.veronica-status-panel {
+  padding-top: 42px;
+  spacing: 7px;
+}
+
+.veronica-status-panel-icon {
+  icon-size: 24px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.veronica-status-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.veronica-status-panel-detail {
+  width: 360px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.48);
+  text-align: center;
+}
+
+/* The app and notch read the same `appearance` setting. Dark variants retain
+ * Edith's white typography while changing the island material and accent. */
+.veronica-notch-shell-menu.veronica-theme-midnight {
+  -arrow-background-color: rgba(7, 16, 31, 0.99);
+}
+.veronica-notch-shell-menu.veronica-theme-midnight .popup-menu-content {
+  background-color: rgba(7, 16, 31, 0.99);
+}
+
+.veronica-notch-shell-menu.veronica-theme-aubergine {
+  -arrow-background-color: rgba(35, 17, 34, 0.99);
+}
+.veronica-notch-shell-menu.veronica-theme-aubergine .popup-menu-content {
+  background-color: rgba(35, 17, 34, 0.99);
+}
+
+.veronica-notch-shell-menu.veronica-theme-forest {
+  -arrow-background-color: rgba(9, 25, 20, 0.99);
+}
+.veronica-notch-shell-menu.veronica-theme-forest .popup-menu-content {
+  background-color: rgba(9, 25, 20, 0.99);
+}
+
+.veronica-theme-midnight .veronica-card,
+.veronica-theme-midnight .veronica-action-tile,
+.veronica-theme-midnight .veronica-file-row,
+.veronica-theme-midnight .veronica-clipboard-row {
+  background-color: rgba(94, 159, 255, 0.075);
+}
+
+.veronica-theme-aubergine .veronica-card,
+.veronica-theme-aubergine .veronica-action-tile,
+.veronica-theme-aubergine .veronica-file-row,
+.veronica-theme-aubergine .veronica-clipboard-row {
+  background-color: rgba(233, 117, 190, 0.07);
+}
+
+.veronica-theme-forest .veronica-card,
+.veronica-theme-forest .veronica-action-tile,
+.veronica-theme-forest .veronica-file-row,
+.veronica-theme-forest .veronica-clipboard-row {
+  background-color: rgba(105, 190, 145, 0.075);
+}
+
+.veronica-theme-midnight .veronica-action-tile.active { background-color: #6f9ee8; }
+.veronica-theme-aubergine .veronica-action-tile.active { background-color: #cf79ac; }
+.veronica-theme-forest .veronica-action-tile.active { background-color: #74a98a; }
+
+/* Ivory needs a complete foreground inversion because GNOME's Shell theme is
+ * normally dark even when the user deliberately chooses this light island. */
+.veronica-notch-shell-menu.veronica-theme-light {
+  -arrow-background-color: rgba(248, 245, 239, 0.995);
+  -arrow-border-color: rgba(39, 31, 24, 0.18);
+  color: #211c18;
+}
+.veronica-notch-shell-menu.veronica-theme-light .popup-menu-content {
+  background-color: rgba(248, 245, 239, 0.995);
+  border-color: rgba(39, 31, 24, 0.18);
+  color: #211c18;
+}
+
+.veronica-theme-light .veronica-card,
+.veronica-theme-light .veronica-action-tile,
+.veronica-theme-light .veronica-file-row,
+.veronica-theme-light .veronica-clipboard-row,
+.veronica-theme-light .veronica-camera-preview-frame {
+  background-color: rgba(41, 31, 23, 0.055);
+  border-color: rgba(41, 31, 23, 0.10);
+}
+
+.veronica-theme-light .veronica-shelf-tab,
+.veronica-theme-light .veronica-shelf-settings,
+.veronica-theme-light .veronica-provider-switch,
+.veronica-theme-light .veronica-small-button {
+  background-color: rgba(41, 31, 23, 0.07);
+  color: rgba(33, 28, 24, 0.68);
+}
+
+.veronica-theme-light .veronica-shelf-tab:hover,
+.veronica-theme-light .veronica-shelf-settings:hover,
+.veronica-theme-light .veronica-provider-switch:hover,
+.veronica-theme-light .veronica-small-button:hover {
+  background-color: rgba(41, 31, 23, 0.13);
+  color: #211c18;
+}
+
+.veronica-theme-light .veronica-shelf-tab.active {
+  background-color: #29231e;
+  color: #fffaf5;
+}
+
+.veronica-theme-light .veronica-now-art,
+.veronica-theme-light .veronica-empty-music-icon,
+.veronica-theme-light .veronica-camera-icon,
+.veronica-theme-light .veronica-status-panel-icon,
+.veronica-theme-light .veronica-file-icon,
+.veronica-theme-light .veronica-action-icon {
+  color: rgba(33, 28, 24, 0.62);
+}
+
+.veronica-theme-light .veronica-now-artist,
+.veronica-theme-light .veronica-ring-caption,
+.veronica-theme-light .veronica-ring-resets,
+.veronica-theme-light .veronica-usage-spend,
+.veronica-theme-light .veronica-empty-music-label,
+.veronica-theme-light .veronica-camera-detail,
+.veronica-theme-light .veronica-status-panel-detail,
+.veronica-theme-light .veronica-empty {
+  color: rgba(33, 28, 24, 0.56);
+}
+
+.veronica-theme-light .veronica-file-open,
+.veronica-theme-light .veronica-clipboard-copy,
+.veronica-theme-light .veronica-status-panel-title,
+.veronica-theme-light .veronica-action-label {
+  color: rgba(33, 28, 24, 0.90);
+}
+
+.veronica-theme-light .veronica-action-tile.active { background-color: #c98f4f; }
+.veronica-theme-light .veronica-action-tile.active .veronica-action-icon,
+.veronica-theme-light .veronica-action-tile.active .veronica-action-label { color: #111; }
+
+/* Focus Dim's overlay. One per monitor, inside the window group, so the panel
+   and the overview are never covered. The colour is flat black: tinting it would
+   shift the colours of whatever is behind it, which is the opposite of a neutral
+   dim. Opacity is animated from JavaScript, so none is set here. */
+.veronica-focus-dim {
+  background-color: #000000;
 }

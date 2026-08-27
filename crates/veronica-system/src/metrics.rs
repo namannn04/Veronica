@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use serde::Serialize;
-use sysinfo::{Disks, MemoryRefreshKind, Networks, System};
+use sysinfo::{Disks, MemoryRefreshKind, Networks, ProcessesToUpdate, Signal, System};
 
 /// Minimum gap between CPU samples. Anything shorter and the kernel counters
 /// have not moved enough to produce a meaningful percentage.
@@ -100,6 +100,74 @@ pub struct BatteryStats {
     pub percent: f64,
     pub charging: bool,
     pub time_to_empty_secs: Option<u64>,
+}
+
+/// A user-owned process shown by the System page. Linux does not expose the
+/// same NSRunningApplication catalogue as macOS, so the process table is the
+/// honest native equivalent and includes the executable path for disambiguation.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunningProcess {
+    pub pid: u32,
+    pub name: String,
+    pub executable: Option<String>,
+    pub cpu_percent: f32,
+    pub memory_bytes: u64,
+}
+
+/// Current user's processes, highest CPU first. Kernel threads and other users'
+/// services are excluded, and Veronica itself is kept out of the quit list.
+pub fn running_processes() -> Vec<RunningProcess> {
+    let mut system = System::new_all();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+    std::thread::sleep(MIN_CPU_INTERVAL);
+    system.refresh_processes(ProcessesToUpdate::All, true);
+
+    let current_pid = sysinfo::get_current_pid().ok();
+    let current_user = current_pid
+        .and_then(|pid| system.process(pid))
+        .and_then(|process| process.user_id().cloned());
+
+    let mut rows: Vec<_> = system
+        .processes()
+        .iter()
+        .filter(|(pid, process)| {
+            Some(**pid) != current_pid
+                && current_user.as_ref().is_none_or(|uid| process.user_id() == Some(uid))
+                && !process.name().is_empty()
+        })
+        .map(|(pid, process)| RunningProcess {
+            pid: pid.as_u32(),
+            name: process.name().to_string_lossy().into_owned(),
+            executable: process.exe().map(|path| path.display().to_string()),
+            cpu_percent: process.cpu_usage(),
+            memory_bytes: process.memory(),
+        })
+        .collect();
+    rows.sort_by(|a, b| {
+        b.cpu_percent
+            .total_cmp(&a.cpu_percent)
+            .then_with(|| b.memory_bytes.cmp(&a.memory_bytes))
+    });
+    rows
+}
+
+/// Ask one current-user process to exit. PID 1 and Veronica itself are always
+/// refused even if a caller bypasses the interface.
+pub fn terminate_process(pid: u32) -> anyhow::Result<()> {
+    anyhow::ensure!(pid > 1, "refusing to terminate a system process");
+    let target = sysinfo::Pid::from_u32(pid);
+    anyhow::ensure!(Some(target) != sysinfo::get_current_pid().ok(), "Veronica cannot quit itself here");
+
+    let system = System::new_all();
+    let process = system.process(target).ok_or_else(|| anyhow::anyhow!("process {pid} is no longer running"))?;
+    let current_user = sysinfo::get_current_pid()
+        .ok()
+        .and_then(|own| system.process(own))
+        .and_then(|own| own.user_id());
+    anyhow::ensure!(current_user.is_some() && process.user_id() == current_user, "process {pid} belongs to another user");
+    anyhow::ensure!(process.kill_with(Signal::Term).unwrap_or(false), "process {pid} refused the quit request");
+    Ok(())
 }
 
 /// Samples metrics, holding the `System` handle between reads so CPU
@@ -364,5 +432,20 @@ mod tests {
             snapshot.cpu.usage_percent
         );
         assert!(!snapshot.disks.is_empty(), "at least the root filesystem");
+    }
+
+    #[test]
+    fn running_processes_are_user_owned_and_never_include_veronica_itself() {
+        let own = sysinfo::get_current_pid().unwrap().as_u32();
+        let rows = running_processes();
+        assert!(!rows.is_empty(), "the test process should see its user session");
+        assert!(rows.iter().all(|row| row.pid != own));
+        assert!(rows.iter().all(|row| !row.name.is_empty()));
+    }
+
+    #[test]
+    fn terminating_pid_one_is_always_refused() {
+        let error = terminate_process(1).unwrap_err().to_string();
+        assert!(error.contains("system process"));
     }
 }

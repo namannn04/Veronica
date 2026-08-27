@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 
 import { LimitRing } from "./charts";
+import { ProviderSelector } from "./ProviderSelector";
 import { ipc } from "../lib/ipc";
 import { countdown } from "../lib/format";
+import {
+  limitProviderOf,
+  storedLimitProvider,
+  type LimitProvider,
+} from "../lib/preferences";
 import type { Gauge, GaugeReport } from "../lib/types";
 
 /**
@@ -19,13 +26,16 @@ export function LimitRings() {
   const [report, setReport] = useState<GaugeReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [provider, setProvider] = useState<LimitProvider>("Claude");
   // Ticks once a second so the "resets in" text counts down between reads.
   const [, setTick] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setReport(await ipc.usageLimits());
+      const [limits, settings] = await Promise.all([ipc.usageLimits(), ipc.settingsAll()]);
+      setReport(limits);
+      setProvider(limitProviderOf(settings.limitsProvider));
       setError(null);
     } catch (e) {
       setError(String(e));
@@ -44,12 +54,29 @@ export function LimitRings() {
     };
   }, [load]);
 
-  const gauges = report?.gauges ?? [];
+  useEffect(() => {
+    const changed = listen("settings-updated", () => {
+      void ipc.settingsAll().then((settings) => setProvider(limitProviderOf(settings.limitsProvider)));
+    });
+    return () => { void changed.then((unlisten) => unlisten()); };
+  }, []);
+
+  const selectProvider = async (next: LimitProvider) => {
+    setProvider(next);
+    try {
+      await ipc.settingsSet("limitsProvider", storedLimitProvider(next));
+      setError(null);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const gauges = (report?.gauges ?? []).filter((gauge) => gauge.provider === provider);
 
   return (
     <section className="card" style={{ marginBottom: 12 }}>
       <div className="card-head">
-        <h2>Rate limits</h2>
+        <div className="limits-title"><ProviderSelector value={provider} onChange={(next) => void selectProvider(next)} /><h2>Rate limits</h2></div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span className="card-note">Straight from your provider</span>
           <button className="button" onClick={load} disabled={loading}>
@@ -77,7 +104,7 @@ export function LimitRings() {
         <p className="card-note">No rate limits available.</p>
       )}
 
-      {report?.notes.map((note) => (
+      {report?.notes.filter((note) => note.startsWith(provider)).map((note) => (
         <p className="card-note" key={note} style={{ marginTop: 8 }}>
           {note}
         </p>

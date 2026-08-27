@@ -189,15 +189,249 @@ pub fn settings_all(state: State<'_, AppState>) -> CommandResult<serde_json::Val
     serde_json::to_value(settings.as_map()).map_err(|e| e.to_string())
 }
 
+/// Run a compositor-owned quick action through the GNOME Shell extension.
+/// Both the app and notch therefore use one implementation for modal input
+/// suppression and color picking instead of pretending a WebView can do it.
 #[tauri::command]
-pub fn settings_set(
+pub async fn shell_action(action: String) -> CommandResult<()> {
+    let method = match action.as_str() {
+        "cleanKeys" => "CleanKeys",
+        "pickColor" => "PickColor",
+        _ => return Err(format!("unknown Shell action: {action}")),
+    };
+    let connection = zbus::Connection::session()
+        .await
+        .map_err(|error| format!("cannot reach the GNOME session bus: {error}"))?;
+    connection
+        .call_method(
+            Some("io.github.namannn04.Veronica.Shell"),
+            "/io/github/namannn04/Veronica/Shell",
+            Some("io.github.namannn04.Veronica.ShellActions"),
+            method,
+            &(),
+        )
+        .await
+        .map_err(|error| {
+            format!(
+                "Veronica's GNOME extension is unavailable; enable it before using {action}: {error}"
+            )
+        })?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn settings_set(
     app: AppHandle,
-    state: State<'_, AppState>,
     key: String,
     value: serde_json::Value,
 ) -> CommandResult<()> {
-    state.set_setting(&key, value).map_err(fail)?;
+    if key == "lidAwakeEnabled" {
+        let enabled = value
+            .as_bool()
+            .ok_or_else(|| "lidAwakeEnabled must be true or false".to_string())?;
+        let was_enabled = app
+            .state::<AppState>()
+            .settings_snapshot()
+            .bool_or("lidAwakeEnabled", false);
+
+        // Acquire before persisting an enabled state, so the switch cannot say
+        // on when logind refused the lock. Disable is the reverse: preserve the
+        // existing lock if writing the setting fails.
+        if enabled {
+            sync_lid_awake(&app, true).await?;
+        }
+        if let Err(error) = app.state::<AppState>().set_setting(&key, value) {
+            if enabled && !was_enabled {
+                let _ = sync_lid_awake(&app, false).await;
+            }
+            return Err(fail(error));
+        }
+        if !enabled {
+            sync_lid_awake(&app, false).await?;
+        }
+    } else if key == "preventSleep" {
+        let enabled = value
+            .as_bool()
+            .ok_or_else(|| "preventSleep must be true or false".to_string())?;
+        let was_enabled = app
+            .state::<AppState>()
+            .settings_snapshot()
+            .bool_or("preventSleep", false);
+        if enabled {
+            sync_prevent_sleep(&app, true).await?;
+        }
+        if let Err(error) = app.state::<AppState>().set_setting(&key, value) {
+            if enabled && !was_enabled {
+                let _ = sync_prevent_sleep(&app, false).await;
+            }
+            return Err(fail(error));
+        }
+        if !enabled {
+            sync_prevent_sleep(&app, false).await?;
+        }
+    } else {
+        app.state::<AppState>()
+            .set_setting(&key, value)
+            .map_err(fail)?;
+    }
     let _ = app.emit("settings-updated", &key);
+    Ok(())
+}
+
+// -- backup -----------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupSummary {
+    pub path: String,
+    pub app_version: String,
+    pub created_at: String,
+    pub files: usize,
+    pub decoded_bytes: u64,
+}
+
+fn backup_summary(path: &std::path::Path, archive: &veronica_core::BackupArchive) -> BackupSummary {
+    BackupSummary {
+        path: path.display().to_string(),
+        app_version: archive.manifest.app_version.clone(),
+        created_at: archive.manifest.created_at.to_rfc3339(),
+        files: archive.manifest.files.len(),
+        decoded_bytes: archive.manifest.files.iter().map(|file| file.bytes).sum(),
+    }
+}
+
+/// Export to Downloads by default, or to an explicit path supplied by the UI.
+#[tauri::command]
+pub fn backup_export(
+    state: State<'_, AppState>,
+    path: Option<String>,
+) -> CommandResult<BackupSummary> {
+    let now = chrono::Utc::now();
+    let destination = match path.filter(|value| !value.trim().is_empty()) {
+        Some(value) => std::path::PathBuf::from(value),
+        None => {
+            let home = veronica_core::paths::home_dir()
+                .ok_or_else(|| "cannot resolve your home directory".to_string())?;
+            home.join("Downloads").join(format!(
+                "Veronica-backup-{}.veronica-backup",
+                now.format("%Y-%m-%d-%H%M%S")
+            ))
+        }
+    };
+    let archive = veronica_core::BackupArchive::collect(
+        &state.directories,
+        env!("CARGO_PKG_VERSION"),
+        now,
+    )
+    .map_err(fail)?;
+    archive.save(&destination).map_err(fail)?;
+    Ok(backup_summary(&destination, &archive))
+}
+
+#[tauri::command]
+pub fn backup_inspect(path: String) -> CommandResult<BackupSummary> {
+    let source = std::path::PathBuf::from(path);
+    let archive = veronica_core::BackupArchive::load(&source).map_err(fail)?;
+    Ok(backup_summary(&source, &archive))
+}
+
+#[tauri::command]
+pub fn backup_import(
+    app: AppHandle,
+    path: String,
+    confirm: bool,
+) -> CommandResult<veronica_core::ImportReport> {
+    if !confirm {
+        return Err("confirm the import before replacing matching files".into());
+    }
+    let source = std::path::PathBuf::from(path);
+    let archive = veronica_core::BackupArchive::load(&source).map_err(fail)?;
+    let state = app.state::<AppState>();
+    let report = archive.restore(&state.directories).map_err(fail)?;
+    state.reload_persistent_data().map_err(fail)?;
+    let _ = app.emit("settings-updated", "backup-import");
+    let _ = app.emit("usage-updated", "backup-import");
+    Ok(report)
+}
+
+/// Match the process-owned idle inhibitor to Edith's Keep Awake switch.
+pub async fn sync_prevent_sleep(app: &AppHandle, enabled: bool) -> CommandResult<()> {
+    if !enabled {
+        app.state::<AppState>()
+            .prevent_sleep
+            .lock()
+            .expect("prevent sleep lock")
+            .take();
+        return Ok(());
+    }
+    if app
+        .state::<AppState>()
+        .prevent_sleep
+        .lock()
+        .expect("prevent sleep lock")
+        .is_some()
+    {
+        return Ok(());
+    }
+
+    let connection = zbus::Connection::system()
+        .await
+        .map_err(|error| format!("cannot reach systemd-logind: {error}"))?;
+    let inhibitor = veronica_system::power::inhibit(
+        &connection,
+        veronica_system::power::InhibitWhat::Idle,
+        "Veronica",
+        "Keep Awake is enabled",
+        veronica_system::power::InhibitMode::Block,
+    )
+    .await
+    .map_err(fail)?;
+
+    *app.state::<AppState>()
+        .prevent_sleep
+        .lock()
+        .expect("prevent sleep lock") = Some(inhibitor);
+    Ok(())
+}
+
+/// Match the process-owned logind inhibitor to the stored Lid Awake switch.
+pub async fn sync_lid_awake(app: &AppHandle, enabled: bool) -> CommandResult<()> {
+    if !enabled {
+        app.state::<AppState>()
+            .lid_awake
+            .lock()
+            .expect("lid awake lock")
+            .take();
+        return Ok(());
+    }
+
+    if app
+        .state::<AppState>()
+        .lid_awake
+        .lock()
+        .expect("lid awake lock")
+        .is_some()
+    {
+        return Ok(());
+    }
+
+    let connection = zbus::Connection::system()
+        .await
+        .map_err(|error| format!("cannot reach systemd-logind: {error}"))?;
+    let inhibitor = veronica_system::power::inhibit(
+        &connection,
+        veronica_system::power::InhibitWhat::IdleAndLidSwitch,
+        "Veronica",
+        "Lid Awake is enabled",
+        veronica_system::power::InhibitMode::Block,
+    )
+    .await
+    .map_err(fail)?;
+
+    *app.state::<AppState>()
+        .lid_awake
+        .lock()
+        .expect("lid awake lock") = Some(inhibitor);
     Ok(())
 }
 
@@ -205,6 +439,31 @@ pub fn settings_set(
 pub fn system_snapshot(state: State<'_, AppState>) -> CommandResult<SystemSnapshot> {
     let mut sampler = state.sampler.lock().expect("sampler lock");
     Ok(sampler.sample())
+}
+
+#[tauri::command]
+pub async fn system_processes() -> CommandResult<Vec<veronica_system::metrics::RunningProcess>> {
+    tauri::async_runtime::spawn_blocking(veronica_system::metrics::running_processes)
+        .await
+        .map_err(|error| format!("cannot read running processes: {error}"))
+}
+
+#[tauri::command]
+pub fn system_quit_process(pid: u32) -> CommandResult<()> {
+    veronica_system::metrics::terminate_process(pid).map_err(fail)
+}
+
+#[tauri::command]
+pub async fn herdr_board() -> CommandResult<veronica_system::herdr::HerdrBoard> {
+    tauri::async_runtime::spawn_blocking(veronica_system::herdr::board)
+        .await
+        .map_err(|error| format!("cannot read Herdr: {error}"))?
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub fn herdr_open(session: String, pane_id: Option<String>) -> CommandResult<()> {
+    veronica_system::herdr::open_terminal(&session, pane_id.as_deref()).map_err(fail)
 }
 
 #[tauri::command]
@@ -303,6 +562,17 @@ pub async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<Agend
         happening_now: agenda::happening_now(&remaining, now).cloned(),
         days: agenda::group_by_day(&remaining, now),
     })
+}
+
+/// Open the user's normal GNOME calendar application without sending calendar
+/// data anywhere. `gtk-launch` respects the installed desktop entry.
+#[tauri::command]
+pub fn calendar_open() -> CommandResult<()> {
+    std::process::Command::new("gtk-launch")
+        .arg("org.gnome.Calendar")
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("cannot open GNOME Calendar: {error}"))
 }
 
 /// The notification history, newest first.
@@ -491,6 +761,377 @@ pub struct ClipRow {
     pub last_seen: String,
 }
 
+// -- presenter ---------------------------------------------------------------
+
+/// The resolved presenter state, plus what detection currently sees.
+#[tauri::command]
+pub async fn presenter_state(app: AppHandle) -> CommandResult<crate::presenter::PresenterView> {
+    // Detection is only meaningful while the feature is on, and introspecting
+    // the compositor for a screen nobody asked about would be pointless work.
+    let enabled = app
+        .state::<AppState>()
+        .settings_snapshot()
+        .bool_or("presenterEnabled", false);
+    let share = if enabled {
+        veronica_system::screencast::detect().await
+    } else {
+        veronica_system::screencast::ScreenShareState::default()
+    };
+    Ok(crate::presenter::view(&app.state::<AppState>(), share))
+}
+
+/// Presenter's own actions, so the interface does not have to know which
+/// settings key each one writes.
+#[tauri::command]
+pub fn presenter_set(
+    app: AppHandle,
+    action: String,
+) -> CommandResult<()> {
+    let state = app.state::<AppState>();
+    let (key, value) = match action.as_str() {
+        "enable" => ("presenterEnabled", serde_json::Value::Bool(true)),
+        "disable" => ("presenterEnabled", serde_json::Value::Bool(false)),
+        "start" => ("presenterMode", serde_json::Value::Bool(true)),
+        "stop" => ("presenterMode", serde_json::Value::Bool(false)),
+        // Dismiss the *current* detected share without turning detection off.
+        // Cleared automatically when that share ends.
+        "dismiss" => ("presenterAutoPaused", serde_json::Value::Bool(true)),
+        "resume" => ("presenterAutoPaused", serde_json::Value::Bool(false)),
+        other => return Err(format!("unknown presenter action: {other}")),
+    };
+    state.set_setting(key, value).map_err(fail)?;
+    let _ = app.emit("settings-updated", "presenter");
+    Ok(())
+}
+
+// -- alerts ------------------------------------------------------------------
+
+/// Everything the Alerts screen needs in one call: the resolved switches, the
+/// windows currently being watched, and when each reminder would next fire.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlertsView {
+    pub settings: veronica_usage::alerts::NotifySettings,
+    /// Seconds between polls, after clamping.
+    pub poll_seconds: u64,
+    pub session: Option<WatchedWindow>,
+    pub week: Option<WatchedWindow>,
+    /// Why there is nothing to watch, when that is the case.
+    pub note: Option<String>,
+    pub session_reminder_at: Option<String>,
+    pub week_reminder_at: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchedWindow {
+    pub percent: f64,
+    pub resets_at: Option<String>,
+    /// "2 h 14 min", or absent when the provider gave no reset time.
+    pub resets_in: Option<String>,
+    pub level: veronica_usage::limits::UsageLevel,
+    pub zone: veronica_usage::limits::PacingZone,
+}
+
+#[tauri::command]
+pub async fn alerts_view(app: AppHandle) -> CommandResult<AlertsView> {
+    use veronica_usage::alerts::{self, NotifySettings};
+    use veronica_usage::limits::{
+        level_for_risk, pacing_delta, pacing_zone, smart_risk, LimitWindow, LimitWindowKind,
+    };
+
+    let settings = app.state::<AppState>().settings_snapshot();
+    let notify = NotifySettings::from_settings(&settings);
+    let poll_seconds = crate::alerts::poll_interval(&settings).as_secs();
+    let now = chrono::Utc::now();
+
+    let describe = |window: LimitWindow, kind: LimitWindowKind| WatchedWindow {
+        percent: window.percent,
+        resets_at: window.resets_at.map(|at| at.to_rfc3339()),
+        resets_in: window
+            .resets_at
+            .filter(|at| *at > now)
+            .map(|at| alerts::countdown(now, at)),
+        level: if notify.smart_color {
+            level_for_risk(smart_risk(
+                window.percent,
+                window.resets_at,
+                kind.duration_secs(),
+                notify.pacing_margin,
+                now,
+            ))
+        } else {
+            veronica_usage::limits::UsageLevel::from_percent(window.percent, notify.thresholds)
+        },
+        zone: window
+            .resets_at
+            .map(|at| {
+                pacing_zone(
+                    pacing_delta(window.percent, at, kind.duration_secs(), now),
+                    notify.pacing_margin,
+                )
+            })
+            .unwrap_or(veronica_usage::limits::PacingZone::OnTrack),
+    };
+
+    // Read directly rather than through the gauge collector, because the alerts
+    // watch Claude's two windows specifically, as Edith's notifier does.
+    let (session, week, note) = match veronica_usage::claude::limits_for_user(now).await {
+        Ok(Some(limits)) => (limits.session, limits.week, None),
+        Ok(None) => (
+            None,
+            None,
+            Some("Claude is not signed in on this computer, so there is nothing to watch.".into()),
+        ),
+        Err(error) => (None, None, Some(format!("{error:#}"))),
+    };
+
+    Ok(AlertsView {
+        poll_seconds,
+        session: session.map(|window| describe(window, LimitWindowKind::Session)),
+        week: week.map(|window| describe(window, LimitWindowKind::Weekly)),
+        session_reminder_at: alerts::reminder_fire_at(
+            session.and_then(|window| window.resets_at),
+            notify.reminder_session_offset_min,
+            now,
+        )
+        .filter(|_| notify.reminder_session)
+        .map(|at| at.to_rfc3339()),
+        week_reminder_at: alerts::reminder_fire_at(
+            week.and_then(|window| window.resets_at),
+            notify.reminder_weekly_offset_min,
+            now,
+        )
+        .filter(|_| notify.reminder_weekly)
+        .map(|at| at.to_rfc3339()),
+        note,
+        settings: notify,
+    })
+}
+
+/// Post one sample banner, so the user can confirm alerts arrive at all.
+///
+/// Deliberately leaves the notifier state untouched: consuming a real edge to
+/// prove notifications work would suppress the alert it was testing.
+#[tauri::command]
+pub async fn alerts_test() -> CommandResult<String> {
+    let connection = zbus::Connection::session()
+        .await
+        .map_err(|error| format!("no session bus, so no notifications: {error}"))?;
+    match crate::alerts::send_test(&connection).await {
+        Ok(_) => Ok("Sent — check your notification list if no banner appeared.".to_string()),
+        Err(error) => Err(fail(error)),
+    }
+}
+
+/// Forget the remembered levels and zones.
+///
+/// Useful after changing thresholds: the next poll then treats the current state
+/// as a fresh edge rather than comparing it against the old scale.
+#[tauri::command]
+pub fn alerts_reset(state: State<'_, AppState>) -> CommandResult<()> {
+    let path = state.directories.alerts_state_file();
+    let mut notifier = veronica_usage::alerts::NotifierState::load(&path);
+    notifier.reset_tracking();
+    notifier.save(&path).map_err(fail)
+}
+
+// -- colour picker -----------------------------------------------------------
+
+/// One recorded swatch, with every representation the interface offers so the
+/// grid needs no second call to show or copy a colour.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SwatchRow {
+    pub id: u64,
+    pub hex: String,
+    pub red: f64,
+    pub green: f64,
+    pub blue: f64,
+    pub profile: String,
+    pub profile_label: &'static str,
+    pub picked_at: String,
+    /// Keyed by format id, e.g. `hex` or `gdkRgba`.
+    pub formats: std::collections::BTreeMap<&'static str, String>,
+    /// Whether a dark label is legible on this colour.
+    pub prefers_dark_text: bool,
+}
+
+fn swatch_row(swatch: &veronica_core::Swatch) -> SwatchRow {
+    use veronica_core::CopyFormat;
+    SwatchRow {
+        id: swatch.id,
+        hex: swatch.hex(),
+        red: swatch.red,
+        green: swatch.green,
+        blue: swatch.blue,
+        profile: swatch.profile.key().to_string(),
+        profile_label: swatch.profile.title(),
+        picked_at: swatch.picked_at.to_rfc3339(),
+        formats: CopyFormat::ALL
+            .iter()
+            .map(|format| (format.key(), swatch.format(*format)))
+            .collect(),
+        prefers_dark_text: swatch.prefers_dark_text(),
+    }
+}
+
+/// Which copy formats exist, so the interface never hard-codes the list.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormatOption {
+    pub id: &'static str,
+    pub label: &'static str,
+}
+
+#[tauri::command]
+pub fn color_formats() -> CommandResult<Vec<FormatOption>> {
+    Ok(veronica_core::CopyFormat::ALL
+        .iter()
+        .map(|format| FormatOption {
+            id: format.key(),
+            label: format.title(),
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub fn color_swatches(state: State<'_, AppState>) -> CommandResult<Vec<SwatchRow>> {
+    let history =
+        veronica_core::SwatchHistory::load(&state.directories.swatches_file()).map_err(fail)?;
+    Ok(history.swatches().iter().map(swatch_row).collect())
+}
+
+/// Open the eyedropper, record what comes back and copy it.
+///
+/// The recording happens before the copy, so a session without any clipboard
+/// route still keeps the colour the user just sampled; the reply says whether
+/// the copy landed and by which route.
+#[tauri::command]
+pub async fn color_pick(app: AppHandle) -> CommandResult<PickResult> {
+    use veronica_core::swatches::{srgb_to_display_p3, ColorProfile, CopyFormat, SwatchHistory};
+
+    let (path, format, profile, limit) = {
+        let state = app.state::<AppState>();
+        let settings = state.settings_snapshot();
+        (
+            state.directories.swatches_file(),
+            CopyFormat::parse(settings.string("colorPickerCopyFormat").unwrap_or("hex")),
+            ColorProfile::parse(settings.string("colorPickerProfile").unwrap_or("srgb")),
+            SwatchHistory::clamp_limit(
+                settings
+                    .get("colorPickerHistorySize")
+                    .and_then(|value| value.as_u64())
+                    .unwrap_or(veronica_core::swatches::DEFAULT_HISTORY_SIZE as u64)
+                    as usize,
+            ),
+        )
+    };
+
+    let picked = veronica_system::color::pick().await.map_err(fail)?;
+    let (red, green, blue) = match profile {
+        ColorProfile::Srgb => (picked.red, picked.green, picked.blue),
+        ColorProfile::DisplayP3 => srgb_to_display_p3(picked.red, picked.green, picked.blue),
+    };
+
+    let mut history = SwatchHistory::load(&path).map_err(fail)?;
+    let swatch = history.record(red, green, blue, profile, chrono::Utc::now(), limit);
+    history.save(&path).map_err(fail)?;
+
+    let value = swatch.format(format);
+    let (copied_via, copy_error) = match veronica_system::selection::write(&value).await {
+        Ok(writer) => (Some(writer.title()), None),
+        Err(error) => (None, Some(format!("{error:#}"))),
+    };
+
+    let _ = app.emit("swatches-updated", swatch.id);
+    Ok(PickResult {
+        swatch: swatch_row(&swatch),
+        value,
+        format: format.key(),
+        source: picked.source.title(),
+        copied_via,
+        copy_error,
+    })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PickResult {
+    pub swatch: SwatchRow,
+    /// The text that was put on the clipboard, in the configured format.
+    pub value: String,
+    pub format: &'static str,
+    /// Which backend opened the eyedropper.
+    pub source: &'static str,
+    pub copied_via: Option<&'static str>,
+    /// Set when the colour was recorded but could not be copied.
+    pub copy_error: Option<String>,
+}
+
+/// Copy one recorded swatch again, in the requested or configured format.
+#[tauri::command]
+pub async fn color_copy(
+    app: AppHandle,
+    id: u64,
+    format: Option<String>,
+) -> CommandResult<CopyResult> {
+    use veronica_core::CopyFormat;
+
+    let (path, configured) = {
+        let state = app.state::<AppState>();
+        let settings = state.settings_snapshot();
+        (
+            state.directories.swatches_file(),
+            CopyFormat::parse(settings.string("colorPickerCopyFormat").unwrap_or("hex")),
+        )
+    };
+    let chosen = format
+        .as_deref()
+        .map(CopyFormat::parse)
+        .unwrap_or(configured);
+
+    let history = veronica_core::SwatchHistory::load(&path).map_err(fail)?;
+    let swatch = history
+        .get(id)
+        .ok_or_else(|| format!("no swatch {id}"))?;
+    let value = swatch.format(chosen);
+    let writer = veronica_system::selection::write(&value)
+        .await
+        .map_err(fail)?;
+    Ok(CopyResult {
+        value,
+        format: chosen.key(),
+        copied_via: writer.title(),
+    })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CopyResult {
+    pub value: String,
+    pub format: &'static str,
+    pub copied_via: &'static str,
+}
+
+#[tauri::command]
+pub fn color_forget(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
+    let path = state.directories.swatches_file();
+    let mut history = veronica_core::SwatchHistory::load(&path).map_err(fail)?;
+    if !history.remove(id) {
+        return Err(format!("no swatch {id}"));
+    }
+    history.save(&path).map_err(fail)
+}
+
+#[tauri::command]
+pub fn color_clear(state: State<'_, AppState>) -> CommandResult<()> {
+    let path = state.directories.swatches_file();
+    let mut history = veronica_core::SwatchHistory::load(&path).map_err(fail)?;
+    history.clear();
+    history.save(&path).map_err(fail)
+}
+
 #[tauri::command]
 pub fn clipboard_remove(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
     use veronica_core::ClipboardHistory;
@@ -557,6 +1198,166 @@ mod tests {
             assert!(
                 super::open_external(refused.to_string()).is_err(),
                 "{refused:?} should be refused"
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod wire_shape_tests {
+    //! The interface reads these payloads by field name, and a nested struct
+    //! does not inherit its parent's `rename_all`. That mismatch compiles, ships
+    //! and renders as `undefined`, so every shape the interface depends on is
+    //! pinned here rather than assumed.
+
+    use super::*;
+
+    /// Every key in a JSON object, recursively, as `parent.child` paths.
+    fn keys(value: &serde_json::Value, prefix: &str, out: &mut Vec<String>) {
+        if let serde_json::Value::Object(map) = value {
+            for (key, nested) in map {
+                let path = if prefix.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{prefix}.{key}")
+                };
+                out.push(path.clone());
+                keys(nested, &path, out);
+            }
+        }
+    }
+
+    fn assert_camel_case<T: Serialize>(value: &T, label: &str) {
+        let json = serde_json::to_value(value).expect("serialisable");
+        let mut found = Vec::new();
+        keys(&json, "", &mut found);
+        assert!(!found.is_empty(), "{label} serialised to nothing");
+        for path in &found {
+            let leaf = path.rsplit('.').next().unwrap();
+            assert!(
+                !leaf.contains('_'),
+                "{label} exposes snake_case at {path}; the interface reads camelCase"
+            );
+        }
+    }
+
+    #[test]
+    fn the_swatch_row_is_camel_case_throughout() {
+        let swatch = veronica_core::Swatch {
+            id: 1,
+            red: 0.2,
+            green: 0.4,
+            blue: 0.6,
+            profile: veronica_core::ColorProfile::DisplayP3,
+            picked_at: chrono::Utc::now(),
+        };
+        let row = swatch_row(&swatch);
+        assert_camel_case(&row, "SwatchRow");
+
+        let json = serde_json::to_value(&row).unwrap();
+        // Spot-check the names the colour page reads directly.
+        assert_eq!(json["hex"], "#336699");
+        assert!(json["prefersDarkText"].is_boolean());
+        assert!(json["profileLabel"].is_string());
+        assert!(json["pickedAt"].is_string());
+        // Format ids are map keys, not renamed fields, so they stay as written.
+        assert!(json["formats"]["gdkRgba"].is_string());
+    }
+
+    #[test]
+    fn the_pick_result_is_camel_case_throughout() {
+        let result = PickResult {
+            swatch: swatch_row(&veronica_core::Swatch {
+                id: 1,
+                red: 0.0,
+                green: 0.0,
+                blue: 0.0,
+                profile: veronica_core::ColorProfile::Srgb,
+                picked_at: chrono::Utc::now(),
+            }),
+            value: "#000000".into(),
+            format: "hex",
+            source: "GNOME Shell",
+            copied_via: Some("wl-copy"),
+            copy_error: None,
+        };
+        assert_camel_case(&result, "PickResult");
+        let json = serde_json::to_value(&result).unwrap();
+        assert!(json["copiedVia"].is_string());
+        assert!(json["copyError"].is_null());
+        assert!(json["swatch"]["prefersDarkText"].is_boolean());
+    }
+
+    #[test]
+    fn the_watched_window_is_camel_case_throughout() {
+        let window = WatchedWindow {
+            percent: 81.0,
+            resets_at: Some("2026-08-27T18:00:00Z".into()),
+            resets_in: Some("2 h 14 min".into()),
+            level: veronica_usage::limits::UsageLevel::Orange,
+            zone: veronica_usage::limits::PacingZone::OnTrack,
+        };
+        assert_camel_case(&window, "WatchedWindow");
+        let json = serde_json::to_value(&window).unwrap();
+        assert_eq!(json["resetsIn"], "2 h 14 min");
+        // The enums are values rather than field names, and the interface's
+        // unions match them exactly.
+        assert_eq!(json["level"], "orange");
+        assert_eq!(json["zone"], "onTrack");
+    }
+
+    #[test]
+    fn the_alerts_view_is_camel_case_including_its_nested_settings() {
+        let view = AlertsView {
+            settings: veronica_usage::alerts::NotifySettings::default(),
+            poll_seconds: 60,
+            session: None,
+            week: None,
+            note: None,
+            session_reminder_at: None,
+            week_reminder_at: None,
+        };
+        assert_camel_case(&view, "AlertsView");
+        let json = serde_json::to_value(&view).unwrap();
+        assert!(json["pollSeconds"].is_number());
+        // This nesting is the one that actually broke: a struct two levels down.
+        assert!(json["settings"]["thresholds"]["warningPercent"].is_number());
+    }
+
+    #[test]
+    fn the_presenter_view_is_camel_case_including_the_flattened_state() {
+        let view = crate::presenter::PresenterView {
+            state: veronica_core::PresenterState::default(),
+            active: false,
+            blurred_classes: vec!["blur-money"],
+            share: veronica_system::screencast::ScreenShareState::default(),
+        };
+        assert_camel_case(&view, "PresenterView");
+        let json = serde_json::to_value(&view).unwrap();
+        // Flattened, so the state's fields sit at the top level.
+        assert!(json["autoEnabled"].is_boolean());
+        assert!(json["blurredClasses"].is_array());
+        assert!(json["share"]["screencastSessions"].is_number());
+    }
+
+    #[test]
+    fn the_extension_report_carries_the_settings_key_the_interface_toggles() {
+        // Without this the interface needs its own copy of all fifteen keys.
+        let report = veronica_core::Diagnostics::collect(
+            &veronica_core::AppDirectories::with_env(
+                std::path::Path::new("/tmp"),
+                Default::default(),
+            ),
+            veronica_core::DesktopSession::unknown(),
+            &veronica_core::Settings::default(),
+        );
+        let json = serde_json::to_value(&report).unwrap();
+        let extensions = json["extensions"].as_array().expect("extensions");
+        assert!(!extensions.is_empty());
+        for entry in extensions {
+            assert!(
+                entry["defaultsKey"].as_str().is_some_and(|key| !key.is_empty()),
+                "an extension without a settings key cannot be toggled: {entry}"
             );
         }
     }

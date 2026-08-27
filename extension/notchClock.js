@@ -1,12 +1,9 @@
 /* The notch: Veronica's own replacement for the clock and its dropdown.
  *
- * Only used when the user has opted into full top-bar replacement. It reuses
- * GNOME's own Calendar, DBusEventSource and CalendarMessageList classes —
- * the exact widgets the stock dropdown is built from — so the calendar and
- * notifications are the real thing, not a reimplementation. The card layout
- * (now-playing beside usage rings, compact action tiles) follows the same
- * visual language as the macOS app this is a port of, adapted to what a
- * GNOME popup menu can hold.
+ * The menu is intentionally not GNOME's date/calendar popup with extra rows.
+ * It is the small 580px Edith shelf: tabs, now playing, two limit rings and
+ * quick actions. Notifications remain real GNOME widgets, available from the
+ * shelf's bell tab rather than permanently making the popup two columns wide.
  */
 
 import Clutter from 'gi://Clutter';
@@ -14,17 +11,11 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-import * as Calendar from 'resource:///org/gnome/shell/ui/calendar.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { NowPlayingCard } from './nowPlaying.js';
-import {
-    refreshClipboardSection,
-    refreshMachineLine,
-} from './sections.js';
-import { UsageCard } from './usageCard.js';
-import { emptyLabel, launchApp, runJson } from './lib.js';
+import { NotchPanel } from './notchPanel.js';
+import { SystemStatsIndicator } from './systemStats.js';
 
 /** How often the clock label is redrawn. Minute precision does not need a
  * faster tick, and a faster one would only cost battery for no visible change. */
@@ -32,7 +23,7 @@ const CLOCK_TICK_SECONDS = 15;
 
 export const NotchButton = GObject.registerClass(
 class NotchButton extends PanelMenu.Button {
-    _init(clipboardWatcher, cancellable) {
+    _init(clipboardWatcher, cancellable, settings) {
         super._init(0.5, 'Veronica', false);
         this._clipboardWatcher = clipboardWatcher;
         this._cancellable = cancellable;
@@ -43,6 +34,13 @@ class NotchButton extends PanelMenu.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         this.add_child(this._clockLabel);
+
+        // Edith's menu bar CPU/memory readout, in the position Ubuntu has for
+        // it. Governed by menuBarSystemStats; off means no timer at all.
+        this._stats = new SystemStatsIndicator(settings);
+        this.add_child(this._stats.actor);
+        this._stats.enable();
+
         this._tick();
         this._clockTimeoutId = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT_IDLE,
@@ -54,11 +52,18 @@ class NotchButton extends PanelMenu.Button {
         );
 
         this._buildMenu();
+        this.menu.actor.add_style_class_name('veronica-notch-shell-menu');
+        this._installNotchAnimation();
 
         this.menu.connect('open-state-changed', (_menu, isOpen) => {
             if (isOpen)
                 this.refresh().catch(() => {});
+            else
+                this._notchPanel?.onMenuClosed();
         });
+        // Restore persisted power actions at login without waiting for the
+        // user to open the notch for the first time.
+        this.refresh().catch(() => {});
     }
 
     _tick() {
@@ -67,111 +72,114 @@ class NotchButton extends PanelMenu.Button {
     }
 
     _buildMenu() {
-        const layout = new St.BoxLayout({ style_class: 'veronica-notch-menu' });
-
-        // The real notification list — the same widget the stock dropdown
-        // shows, so notification behaviour (grouping, dismissal, actions) is
-        // exactly what the user already knows. Width-constrained so an empty
-        // "No Notifications" placeholder does not dominate the popup.
-        //
-        // CalendarMessageList's own _init() sets style_class itself, ignoring
-        // whatever the constructor is given, so the class has to be added
-        // after construction rather than passed in — confirmed live, the
-        // constructor-supplied class was silently dropped and the list came
-        // out at its unconstrained default width (432px).
-        this._messageList = new Calendar.CalendarMessageList();
-        this._messageList.add_style_class_name('veronica-notch-messages');
-        layout.add_child(this._messageList);
-
-        const column = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'veronica-notch-column',
-        });
-
-        // The real calendar, backed by the same event source the stock
-        // dropdown uses, so recurring events and every configured calendar
-        // show up exactly as they do there.
-        this._eventSource = new Calendar.DBusEventSource();
-        this._calendar = new Calendar.Calendar();
-        this._calendar.setEventSource(this._eventSource);
-        column.add_child(this._calendar);
-
-        // Now-playing and usage rings side by side, mirroring the app's own
-        // home view: the two things worth a glance sit together, everything
-        // else is a tap away.
-        const glanceRow = new St.BoxLayout({ style_class: 'veronica-glance-row' });
-        this._nowPlaying = new NowPlayingCard();
-        this._usage = new UsageCard();
-        glanceRow.add_child(this._nowPlaying.actor);
-        glanceRow.add_child(this._usage.actor);
-        column.add_child(glanceRow);
-
-        this._machineLine = new St.Label({ style_class: 'veronica-machine-line' });
-        column.add_child(this._machineLine);
-
-        this._clipboardCard = new St.BoxLayout({
-            style_class: 'veronica-card veronica-clip-card',
-            orientation: Clutter.Orientation.VERTICAL,
-        });
-        this._clipboardRows = new St.BoxLayout({ orientation: Clutter.Orientation.VERTICAL });
-        this._clipboardCard.add_child(this._clipboardRows);
-        // refreshClipboardSection expects a Section-shaped object; this
-        // adapter gives it one without pulling in the heading/wrapper the
-        // dropdown's plainer rows use.
-        this._clipboardSection = {
-            get isLive() { return this.actor !== null; },
-            actor: this._clipboardCard,
-            clear: () => this._clipboardRows.destroy_all_children(),
-            add: child => this._clipboardRows.add_child(child),
-            destroy: () => {},
-        };
-        column.add_child(this._clipboardCard);
-
-        column.add_child(this._actionsRow());
-
-        layout.add_child(column);
-
+        this._notchPanel = new NotchPanel(
+            this._clipboardWatcher,
+            this._cancellable,
+            () => this.menu.close(),
+            theme => this._applyTheme(theme)
+        );
         const item = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
-        item.add_child(layout);
+        item.add_style_class_name('veronica-notch-root-item');
+        item.add_child(this._notchPanel.actor);
         this.menu.addMenuItem(item);
     }
 
-    _actionsRow() {
-        const row = new St.BoxLayout({ style_class: 'veronica-actions-row' });
-        row.add_child(this._actionTile('view-app-grid-symbolic', 'Open Veronica', () => {
-            this.menu.close();
-            launchApp();
-        }));
-        row.add_child(this._actionTile('view-refresh-symbolic', 'Refresh usage', () => {
-            runJson(['usage', 'refresh']).catch(() => {});
-        }));
-        return row;
+    _applyTheme(theme) {
+        const actor = this.menu?.actor;
+        if (!actor)
+            return;
+        for (const name of ['light', 'dark', 'midnight', 'aubergine', 'forest'])
+            actor.remove_style_class_name(`veronica-theme-${name}`);
+        actor.add_style_class_name(`veronica-theme-${theme}`);
     }
 
-    _actionTile(iconName, label, onClicked) {
-        const button = new St.Button({ style_class: 'veronica-action-tile', can_focus: true, x_expand: true });
-        const content = new St.BoxLayout({ style_class: 'veronica-action-content' });
-        content.add_child(new St.Icon({ icon_name: iconName, style_class: 'veronica-action-icon' }));
-        content.add_child(new St.Label({ text: label, style_class: 'veronica-action-label', y_align: Clutter.ActorAlign.CENTER }));
-        button.set_child(content);
-        button.connect('clicked', onClicked);
-        return button;
+    /**
+     * A two-layer Dynamic-Island morph.
+     *
+     * Animating text while the whole popup is heavily scaled caused the
+     * one-frame shimmer on open. The black surface now expands at full opacity
+     * while its contents fade in just behind it, matching macOS's separation
+     * between shape morph and content reveal.
+     */
+    _installNotchAnimation() {
+        const box = this.menu._boxPointer;
+        if (!box)
+            return;
+
+        box.open = (animate, onComplete) => {
+            box.remove_all_transitions();
+            box.bin.remove_all_transitions();
+            box.set_pivot_point(0.5, 0);
+            box.opacity = 255;
+            box.translation_y = animate ? -4 : 0;
+            box.scale_x = animate ? 0.36 : 1;
+            box.scale_y = animate ? 0.12 : 1;
+            box.bin.opacity = animate ? 0 : 255;
+            box._muteKeys = false;
+            box._muteInput = true;
+            box.show();
+            box.ease({
+                translation_y: 0,
+                scale_x: 1,
+                scale_y: 1,
+                duration: animate ? 300 : 0,
+                mode: Clutter.AnimationMode.EASE_OUT_EXPO,
+                onComplete: () => {
+                    box._muteInput = false;
+                    onComplete?.();
+                },
+            });
+            box.bin.ease({
+                opacity: 255,
+                delay: animate ? 72 : 0,
+                duration: animate ? 170 : 0,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+        };
+
+        box.close = (animate, onComplete) => {
+            if (!box.visible)
+                return;
+            box._muteInput = true;
+            box._muteKeys = true;
+            box.remove_all_transitions();
+            box.bin.remove_all_transitions();
+            box.set_pivot_point(0.5, 0);
+            box.bin.ease({
+                opacity: animate ? 0 : 255,
+                duration: animate ? 85 : 0,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+            box.ease({
+                opacity: 255,
+                translation_y: animate ? -4 : 0,
+                scale_x: animate ? 0.36 : 1,
+                scale_y: animate ? 0.12 : 1,
+                duration: animate ? 210 : 0,
+                mode: Clutter.AnimationMode.EASE_IN_EXPO,
+                onComplete: () => {
+                    box.hide();
+                    box.opacity = 255;
+                    box.bin.opacity = 255;
+                    box.translation_y = 0;
+                    box.scale_x = 1;
+                    box.scale_y = 1;
+                    onComplete?.();
+                },
+            });
+        };
     }
 
     async refresh() {
-        this._clipboardSection.clear();
-        this._clipboardSection.add(emptyLabel('Reading…'));
-        await Promise.all([
-            this._usage.refresh(this._cancellable),
-            refreshClipboardSection(
-                this._clipboardSection,
-                this._cancellable,
-                this._clipboardWatcher,
-                () => this.menu.close()
-            ),
-            refreshMachineLine(() => this._machineLine, this._cancellable),
-            this._nowPlaying.refresh(this._cancellable),
-        ]);
+        await this._notchPanel?.refresh();
+    }
+
+    cleanKeys() {
+        this._notchPanel?.startCleanKeys();
+    }
+
+    pickColor() {
+        this._notchPanel?.pickColor();
     }
 
     destroy() {
@@ -179,12 +187,10 @@ class NotchButton extends PanelMenu.Button {
             GLib.Source.remove(this._clockTimeoutId);
             this._clockTimeoutId = 0;
         }
-        this._eventSource?.destroy();
-        this._usage?.destroy();
-        this._nowPlaying?.destroy();
-        // Nulled rather than left dangling, so refreshMachineLine's getter
-        // correctly reports "gone" instead of writing to a destroyed actor.
-        this._machineLine = null;
+        this._stats?.disable();
+        this._stats = null;
+        this._notchPanel?.destroy();
+        this._notchPanel = null;
         super.destroy();
     }
 });

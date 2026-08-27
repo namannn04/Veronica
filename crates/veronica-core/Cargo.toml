@@ -10,3 +10,6 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 directories = { workspace = true }
 chrono = { workspace = true }
+base64 = "0.22"
+sha2 = "0.10"
+walkdir = "2"

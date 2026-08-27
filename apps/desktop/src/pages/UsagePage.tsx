@@ -175,7 +175,7 @@ export function UsagePage() {
       <LimitRings />
 
       {board && (
-        <>
+        <div className="usage-sensitive">
           <div className="grid tiles">
             <Tile
               label="Spend"
@@ -258,7 +258,7 @@ export function UsagePage() {
             </div>
             <ProjectList projects={board.projects} />
           </section>
-        </>
+        </div>
       )}
     </>
   );

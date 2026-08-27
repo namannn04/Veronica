@@ -5,18 +5,26 @@
 //! the extension catalogue and settings.
 
 pub mod capabilities;
+pub mod backup;
 pub mod clipboard;
 pub mod extensions;
+pub mod focus_dim;
 pub mod paths;
+pub mod presenter;
 pub mod session;
 pub mod settings;
+pub mod swatches;
 
 pub use capabilities::{Capabilities, Capability, CapabilityState};
+pub use backup::{BackupArchive, BackupManifest, ImportReport};
 pub use clipboard::{ClipEntry, ClipboardHistory};
 pub use extensions::{ExtensionAvailability, ExtensionEntry, ExtensionGroup, ENTRIES};
+pub use focus_dim::{DisplayMode, FocusDimSettings};
 pub use paths::{AppDirectories, APP_ID};
+pub use presenter::{BlurCategory, PresenterState};
 pub use session::{DesktopSession, SessionKind};
 pub use settings::Settings;
+pub use swatches::{ColorProfile, CopyFormat, Swatch, SwatchHistory};
 
 /// Version of the running build, from Cargo.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -50,6 +58,9 @@ pub struct ExtensionReport {
     pub title: &'static str,
     pub subtitle: &'static str,
     pub icon: &'static str,
+    /// The settings key holding this extension's on/off state. Sent to the
+    /// interface so the catalogue stays the single source of it.
+    pub defaults_key: &'static str,
     pub group: ExtensionGroup,
     pub featured: bool,
     pub enabled: bool,
@@ -71,6 +82,7 @@ impl Diagnostics {
                 title: entry.title,
                 subtitle: entry.subtitle,
                 icon: entry.icon,
+                defaults_key: entry.defaults_key,
                 group: entry.group,
                 featured: entry.featured,
                 enabled: settings.extension_enabled(entry),

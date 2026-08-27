@@ -42,11 +42,11 @@ export function ExtensionsPage({
   }, [diagnostics, group, query]);
 
   const toggle = async (entry: ExtensionReport) => {
-    const key = defaultsKeyFor(entry.id);
-    if (!key) return;
+    // The key comes from the catalogue rather than a copy here, so the two
+    // cannot drift as extensions are added.
     setBusy(entry.id);
     try {
-      await ipc.settingsSet(key, !entry.enabled);
+      await ipc.settingsSet(entry.defaultsKey, !entry.enabled);
       onChanged();
     } finally {
       setBusy(null);
@@ -139,29 +139,4 @@ function reasonFor(diagnostics: Diagnostics | null, capability: string): string 
   const state = diagnostics?.capabilities.states[capability];
   if (!state) return "";
   return "reason" in state ? state.reason : "";
-}
-
-/**
- * The settings key each extension stores its on/off state under. These match
- * Edith's keys so a shared configuration reads the same on both platforms.
- */
-function defaultsKeyFor(id: string): string | null {
-  const keys: Record<string, string> = {
-    usage: "tabUsageEnabled",
-    herdr: "tabHerdrEnabled",
-    system: "tabSystemEnabled",
-    machines: "tabMachinesEnabled",
-    companion: "tabCompanionEnabled",
-    systemStats: "menuBarSystemStats",
-    micMute: "micMuteEnabled",
-    lidAwake: "lidAwakeEnabled",
-    music: "tabMusicEnabled",
-    calendar: "tabCalendarEnabled",
-    notchShelf: "notchShelfEnabled",
-    clipboard: "clipboardEnabled",
-    focusDim: "focusDimEnabled",
-    presenter: "presenterEnabled",
-    colorPicker: "colorPickerEnabled",
-  };
-  return keys[id] ?? null;
 }

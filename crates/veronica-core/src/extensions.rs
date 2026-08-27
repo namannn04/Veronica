@@ -1,9 +1,14 @@
 //! The extension catalogue.
 //!
-//! Ported one-for-one from Edith's `ExtensionRegistry`: same ids, same groups,
-//! same required and optional capabilities, same defaults keys. Only the user
-//! visible wording changes, because Edith's copy says "Mac" and "menu bar"
-//! where Ubuntu says "computer" and "top bar".
+//! Ported from Edith's `ExtensionRegistry`: same ids, same groups, same defaults
+//! keys. The user-visible wording changes where Edith's copy says "Mac" and
+//! "menu bar" and Ubuntu says "computer" and "top bar".
+//!
+//! One entry's capabilities differ deliberately. Edith's Music plays a local
+//! folder, so it *requires* local playback; on Ubuntu the same page drives every
+//! player through MPRIS, so that is what it requires, with local playback
+//! optional. Requiring a capability Veronica has not built would report the
+//! working feature as unavailable, which is the opposite of honest.
 //!
 //! Availability is derived, never stored: an extension is available when every
 //! required capability is supported, degraded when only optional ones are
@@ -119,7 +124,7 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         defaults_key: "tabHerdrEnabled",
         required_capabilities: &[HerdrSessions],
         optional_capabilities: &[],
-        required_tools: &[],
+        required_tools: &["herdr"],
     },
     ExtensionEntry {
         id: "system",
@@ -196,14 +201,18 @@ pub const ENTRIES: &[ExtensionEntry] = &[
     ExtensionEntry {
         id: "music",
         title: "Music",
-        subtitle: "Plays your local music folder, with media keys.",
+        // Edith's Music plays a local folder; on Ubuntu the same page drives
+        // every player through MPRIS, which is the thing that actually exists
+        // here. Local playback is listed as optional rather than required, so
+        // the extension reports as working-but-partial instead of unavailable.
+        subtitle: "Controls every player through MPRIS: Spotify, a browser tab, VLC.",
         icon: "music",
         group: G::Media,
         featured: false,
         defaults_key: "tabMusicEnabled",
-        required_capabilities: &[LocalMusicPlayback],
-        optional_capabilities: &[MediaControls],
-        required_tools: &["yt-dlp"],
+        required_capabilities: &[ExternalMediaControl],
+        optional_capabilities: &[LocalMusicPlayback, MediaControls],
+        required_tools: &[],
     },
     ExtensionEntry {
         id: "calendar",
@@ -244,7 +253,7 @@ pub const ENTRIES: &[ExtensionEntry] = &[
     ExtensionEntry {
         id: "focusDim",
         title: "Focus Dim",
-        subtitle: "Dims everything behind your active app.",
+        subtitle: "Dims everything behind the window you are working in.",
         icon: "contrast",
         group: G::Utilities,
         featured: false,
@@ -308,8 +317,13 @@ mod tests {
     use crate::session::{DesktopSession, SessionKind};
 
     fn caps(kind: SessionKind) -> Capabilities {
+        gnome_caps(kind, false)
+    }
+
+    fn gnome_caps(kind: SessionKind, is_gnome: bool) -> Capabilities {
         Capabilities::resolve(&DesktopSession {
             kind,
+            is_gnome,
             has_global_shortcuts_portal: true,
             has_container_runtime: true,
             ..DesktopSession::unknown()
@@ -344,16 +358,39 @@ mod tests {
     }
 
     #[test]
-    fn focus_dim_is_unavailable_on_wayland_and_available_on_x11() {
+    fn focus_dim_follows_the_shell_rather_than_the_display_protocol() {
+        // The dimming is drawn inside GNOME Shell, so it is available on Wayland
+        // — where no client could do it — and unavailable on a non-GNOME
+        // desktop, whichever protocol that desktop runs.
         let entry = entry("focusDim").unwrap();
-        assert!(matches!(
-            entry.availability(&caps(SessionKind::Wayland)),
-            ExtensionAvailability::Unavailable { .. }
-        ));
-        assert_eq!(
-            entry.availability(&caps(SessionKind::X11)),
-            ExtensionAvailability::Available
-        );
+        for kind in [SessionKind::Wayland, SessionKind::X11] {
+            assert_eq!(
+                entry.availability(&gnome_caps(kind, true)),
+                ExtensionAvailability::Available,
+                "GNOME {kind:?}"
+            );
+            assert!(
+                matches!(
+                    entry.availability(&gnome_caps(kind, false)),
+                    ExtensionAvailability::Unavailable { .. }
+                ),
+                "non-GNOME {kind:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn music_works_through_mpris_and_only_degrades_for_local_playback() {
+        // Requiring local playback, as Edith does, would report a working MPRIS
+        // page as unavailable. Degraded is the truthful reading: it works, and
+        // one optional part is missing.
+        let entry = entry("music").unwrap();
+        match entry.availability(&caps(SessionKind::Wayland)) {
+            ExtensionAvailability::Degraded { missing } => {
+                assert!(missing.contains(&LocalMusicPlayback));
+            }
+            other => panic!("expected degraded, got {other:?}"),
+        }
     }
 
     #[test]

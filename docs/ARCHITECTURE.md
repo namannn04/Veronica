@@ -30,16 +30,16 @@ platform layer against Linux services.
 
 | Path | Responsibility |
 | --- | --- |
-| `crates/veronica-core` | XDG paths, capability model, extension catalogue, settings. No GUI or toolkit dependency. |
-| `crates/veronica-usage` | Collector driver, `usage.json` schema 8 decoding, dashboard rollups, rate-limit maths. |
-| `crates/veronica-system` | procfs metrics, logind inhibitors, PipeWire audio, D-Bus notifications, portal probing. |
+| `crates/veronica-core` | XDG paths, capability model, extension catalogue, settings, presenter and Focus Dim models, clipboard and swatch history. No GUI or toolkit dependency. |
+| `crates/veronica-usage` | Collector driver, `usage.json` schema 8 decoding, dashboard rollups, rate-limit maths, alert decisions. |
+| `crates/veronica-system` | procfs metrics, logind inhibitors, PipeWire audio, D-Bus notifications, portal probing, screen colour sampling, clipboard writing, screen-share detection. |
 | `crates/veronica-media` | MPRIS control and local playback. |
 | `crates/veronica-calendar` | Agenda from GNOME's calendar server, join links from Evolution Data Server. |
 | `crates/veronica-machines` | The fleet: host model, the probe, and running it locally or over SSH. |
 | `crates/veronica-cli` | The `vr` binary. |
 | `apps/desktop` | Tauri application: Rust commands plus the React interface. |
 | `resources/refresh-usage` | The bundled usage collector. |
-| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown. |
+| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture and Focus Dim's overlay — everything only the compositor can do. |
 | `packaging/` | Debian package, AppImage, desktop entry and AppStream metadata. |
 
 ## The usage collector is shared, not reimplemented
@@ -105,6 +105,19 @@ Edith's Swift produces for the rate-limit maths — the smoothstep ramps, the
 risk blend, the zone hysteresis and the budget states. Run `cargo test
 --workspace`.
 
+The shell extension's pure logic is tested too, with `cd extension && npm test`.
+Anything testable is kept in a module that imports nothing from `gi://`, so it
+runs under plain node: `procStats.js` holds the procfs arithmetic behind the top
+bar readout, `focusDimMath.js` holds Focus Dim's clamps.
+
+Two things are worth verifying against the running desktop rather than in a test,
+because they depend on the compositor:
+
+```bash
+cargo run -p veronica-system --example detect-share   # what presenter mode sees
+vr alerts test                                        # that banners arrive
+```
+
 ## The top bar
 
 GNOME's top bar and its clock dropdown belong to the shell. An application
@@ -124,6 +137,105 @@ The extension holds no domain logic. Every figure it shows comes from
 number, and the extension stays small enough to audit. It finds the dropdown's
 right-hand column by the shell's own style class, `datemenu-calendar-column`,
 rather than by private field names, which move between releases without notice.
+
+## Alerts
+
+`veronica-usage/src/alerts.rs` is a port of Edith's `LimitNotifierLogic`: the same
+five kinds of alert, the same edge-triggering, the same wording. Two things had to
+change, both because freedesktop notifications are not
+`UNUserNotificationCenter`:
+
+- **Reminders are fired, not scheduled.** macOS lets Edith hand a future
+  notification to the OS. There is no equivalent here, so the poll fires the
+  reminder when its moment arrives, and the persisted state records which reset
+  instant has already been covered — otherwise a thirty-second poll would fire it
+  repeatedly for one window.
+- **Banners are replaced by numeric id.** macOS reuses a string identifier; the
+  freedesktop server hands back a `u32`. The state remembers the last id per
+  alert, so a rising threshold updates one banner instead of stacking five.
+
+The runner is `apps/desktop/src-tauri/src/alerts.rs`. It reads Claude's limits
+directly rather than through the gauge collector, because the alerts watch those
+two windows specifically, as Edith's notifier does. While the master switch is off
+it makes no provider request at all, which is why a fresh install is silent and
+costs nothing.
+
+The notifier state is persisted under `state/alerts.json`. Losing it is harmless —
+it re-alerts once — so a missing or corrupt file reads as a fresh state rather
+than a failure.
+
+`vr usage alerts` is a dry run: it loads the same state and settings and reports
+what a poll at this instant would post, without writing anything. That is the
+thing to reach for when an alert did not fire when expected.
+
+## Presenter mode
+
+Three switches, not one: `presenterEnabled` (does the feature exist),
+`presenterMode` (the user's own toggle) and `presenterAutoActive` (Veronica
+noticed a share). The gate is Edith's, unchanged:
+
+```
+active = enabled && (manual || auto_active)
+```
+
+Collapsing them would mean a detected share could not be dismissed without also
+turning the feature off.
+
+Detection is the only part that differs from macOS. Edith watches for a display
+being captured or mirrored; on Ubuntu the equivalent signal is an active
+compositor screencast session. Every well-behaved sharing path on Wayland — a
+browser tab, Zoom, OBS, GNOME's own recorder — goes through xdg-desktop-portal,
+which asks Mutter for a session, and Mutter exports one object per live session
+under a collection:
+
+```
+/org/gnome/Mutter/ScreenCast/Session/u8
+/org/gnome/Mutter/RemoteDesktop/Session/u3
+```
+
+So the count of that collection's children is the number of sessions.
+Introspecting the *service root* is not enough: it gains a single `Session` child
+whatever the number beneath it, which would under-report every time.
+`veronica-system/src/screencast.rs` reads the collection, and a test pins that
+distinction so the shortcut is not reintroduced.
+
+The result is written to the settings rather than held in memory, because three
+processes need it: the app blurs its own figures, the shell extension blurs the
+notch's, and `vr presenter status` reports it. One file they all read is the only
+arrangement in which those three cannot disagree.
+
+`cargo run -p veronica-system --example detect-share` prints what detection sees,
+which is what to run when presenter mode did not activate during a call.
+
+## Focus Dim and the compositor
+
+Edith stacks its own translucent windows beneath the focused one. A Wayland
+client cannot: it may not position itself, raise itself, or learn what else is on
+screen. The compositor can, so on Ubuntu the overlay is drawn by the shell
+extension — one actor per monitor inside `global.window_group`, with the window
+that stays bright raised above it.
+
+That makes the capability depend on the *shell* rather than on the display
+protocol: available on GNOME Wayland, where no client could do it, and
+unavailable on a non-GNOME X11 desktop, where a client could but nothing has been
+written. `capabilities.rs` resolves it that way and a test pins it.
+
+The overlay is inside the window group rather than over the stage, so the panel,
+the overview and Veronica's own notch are never covered.
+
+## Honest capabilities
+
+A capability with no implementation behind it resolves to `IntegrationRequired`
+with a reason, never `Available`. Two do so today — local music playback and the
+Companion backend — and the Extensions page therefore shows "Partial" or
+"Unavailable" with the reason rather than "Ready" for a switch that would do
+nothing. A test asserts that neither can claim availability, because the value of
+the whole capability model is that the interface can be trusted.
+
+The extension catalogue's `defaults_key` is serialised to the interface for the
+same reason: the settings key each extension toggles is the catalogue's to know,
+and a copy of the fifteen keys in TypeScript would drift the first time one was
+added.
 
 ## Reaching other machines
 
@@ -204,72 +316,33 @@ The gauge itself lives in one place, `veronica-usage::gauges`, which the CLI, th
 application and the shell extension all read. A ring in the top bar therefore
 cannot disagree with the same figure on the dashboard.
 
-## Full top-bar replacement
+## Notch clock replacement
 
-The top-bar extension has a second, optional layer beyond the clock-dropdown
-sections: it can replace the whole of GNOME's own top-bar chrome with
-Veronica's — the clock and its calendar/notification popup, and the network,
-Bluetooth, volume and battery cluster — built from the same widgets and
-libraries the stock ones use rather than reimplemented on top of something
-else:
+The extension replaces only GNOME's center date button and its popup with the
+compact Edith shelf. Ubuntu Quick Settings remains the single owner of network,
+Bluetooth, volume and battery:
 
-- The clock's popup reuses GNOME's own `Calendar`, `CalendarMessageList` and
-  `DBusEventSource` classes from
-  `resource:///org/gnome/shell/ui/calendar.js` — the exact widgets the stock
-  dropdown is built from. The calendar and notification list are the real
-  thing, not a reimplementation; what Veronica adds beside them (agent usage
-  and rate limits, now-playing, clipboard history, machine state) is what the
-  shell has no notion of. `CalendarMessageList`'s constructor ignores whatever
-  `style_class` it is given and sets its own, so the width cap that keeps an
-  empty "No Notifications" placeholder from dominating the popup has to be
-  applied with `add_style_class_name()` after construction instead.
-- Network, Bluetooth, volume and battery come from `NM`, BlueZ over D-Bus,
-  `Gvc` (the same PipeWire binding gnome-shell's own status/volume.js uses),
-  and `UPowerGlib` respectively.
-- The card layout — now-playing and usage rings side by side, a compact
-  machine-status line, a clipboard card, quick-action tiles below — mirrors
-  the macOS app's own notch design: `St.DrawingArea` and Cairo draw the
-  percentage rings (`extension/ring.js`), and everything else is `St.BoxLayout`
-  cards styled with a shared `.veronica-card` background rather than visible
-  borders.
+- The Notifications tab reuses GNOME's `CalendarMessageList` class but constrains
+  it to the shelf height, so it scrolls instead of creating the stock two-column
+  calendar popup shown beside the shelf.
+- `extension/notchPanel.js` owns the Edith-style surface. Home places
+  now-playing and two usage rings side by side with quick actions below;
+  Clipboard provides copy and delete interactions.
+  `St.DrawingArea` and Cairo draw the percentage rings (`extension/ring.js`).
+  Files and Camera remain visible with explicit backend status
+  until their Linux implementations exist, avoiding the old dead-toggle state.
 
-This is the highest-risk piece of the top bar integration — it touches
-indicators and chrome the user relies on for basic system state — so three
-things about it are deliberate:
+Three things about it are deliberate:
 
-- **Off by default, gated by a setting Veronica already reads elsewhere**
-  (`topBarReplacement` in `veronica-core::Settings`), rather than activating the
-  moment the extension is enabled. `vr config set topBarReplacement true`
-  turns it on; `false` turns it off. The extension polls the setting every ten
-  seconds rather than requiring a restart to notice a change.
-- **The stock chrome is hidden, never destroyed.** `Main.panel.statusArea.quickSettings`
-  and `dateMenu` are set invisible and nothing more; disabling the replacement,
-  disabling the extension entirely, or even the extension crashing all leave
-  those actors intact, so GNOME's own clock and icons reappear exactly as they
-  were with one flag flip and no lost state. (GNOME 43 folded the old
-  `aggregateMenu` into `quickSettings`; targeting the stale name doesn't throw
-  — `Main.panel.statusArea` just returns `undefined` for it — so the stock
-  icons keep showing right next to Veronica's, duplicated, with nothing in the
-  logs to say why. Caught by a user report rather than a test, since nothing
-  about it fails loudly.)
-- **Each piece fails independently.** The status cluster and the notch clock
-  are built in separate `try`/`catch` blocks, and within the status cluster
-  each of the four indicators is its own — one missing binding (no Bluetooth
-  adapter, no UPower battery) or one construction failure never takes down
-  anything else.
-
-Configuring an actual connection — joining a new wifi network, pairing a
-Bluetooth device — is deliberately not reimplemented; clicking an indicator
-opens the matching GNOME Settings panel, which already does that well.
-
-Built and verified against a disposable headless shell before ever reaching a
-real session, the same way the rest of the extension was: real readings only,
-nothing simulated. That process caught a genuine bug before it shipped — `Gvc`
-signals `default-sink-changed` with `id = -1` while the default sink is still
-resolving, and passing that through to `lookup_output_id`, which expects a
-`uint32`, threw on marshalling. The fix follows gnome-shell's own volume
-indicator: ask the control for `get_default_sink()` directly rather than
-trusting the signal's argument.
+- **The notch follows extension state.** Enabling the extension shows it;
+  disabling the extension restores the stock date menu. There is no second mode
+  that injects Veronica sections into GNOME's calendar dropdown.
+- **The stock clock is hidden, never destroyed.** `dateMenu` is set invisible
+  and nothing more, so disabling the extension restores it with
+  no lost state.
+- **Quick Settings is never touched.** Keeping GNOME's native status controls
+  avoids duplicate Wi-Fi, Bluetooth, speaker and battery icons and preserves
+  the complete Ubuntu system menu.
 
 ### Testing this without touching a real session
 

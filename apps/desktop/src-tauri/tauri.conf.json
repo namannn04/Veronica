@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Veronica",
-  "version": "0.1.0",
+  "version": "0.1.8",
   "identifier": "io.github.namannn04.Veronica",
   "build": {
     "beforeDevCommand": "bun run dev",
@@ -55,7 +55,13 @@
     "linux": {
       "deb": {
         "depends": [
-          "jq"
+          "jq",
+          "zenity",
+          "libglib2.0-bin",
+          "gir1.2-gstreamer-1.0",
+          "gir1.2-gst-plugins-base-1.0",
+          "gstreamer1.0-plugins-base",
+          "gstreamer1.0-plugins-good"
         ],
         "recommends": [
           "bun",
@@ -71,16 +77,21 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/lib.js": "../../../extension/lib.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/stylesheet.css": "../../../extension/stylesheet.css",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/clipboard.js": "../../../extension/clipboard.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/power.js": "../../../extension/power.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/volume.js": "../../../extension/volume.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/network.js": "../../../extension/network.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/bluetooth.js": "../../../extension/bluetooth.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/cameraPreview.js": "../../../extension/cameraPreview.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/actionBridge.js": "../../../extension/actionBridge.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/inhibitors.js": "../../../extension/inhibitors.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/sections.js": "../../../extension/sections.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/nowPlaying.js": "../../../extension/nowPlaying.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchClock.js": "../../../extension/notchClock.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchPanel.js": "../../../extension/notchPanel.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/ring.js": "../../../extension/ring.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/usageCard.js": "../../../extension/usageCard.js"
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/usageCard.js": "../../../extension/usageCard.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/settings.js": "../../../extension/settings.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/procStats.js": "../../../extension/procStats.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/systemStats.js": "../../../extension/systemStats.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/focusDim.js": "../../../extension/focusDim.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/focusDimMath.js": "../../../extension/focusDimMath.js"
         }
       },
       "appimage": {

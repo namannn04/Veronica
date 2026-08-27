@@ -55,6 +55,16 @@ pub enum UsageCommand {
         #[arg(long, default_value_t = 85)]
         critical: i64,
     },
+    /// What the alert notifier would do right now.
+    ///
+    /// A dry run: it reads the live windows and the stored notifier state, then
+    /// reports which alerts a poll at this instant would post. Nothing is
+    /// posted and no state is written, so it is safe to run repeatedly.
+    Alerts {
+        /// Also print every switch, so a misfiring alert can be traced to one.
+        #[arg(long)]
+        settings: bool,
+    },
     /// Run the collector and rewrite usage.json.
     Refresh {
         /// Print each collector phase as it completes.
@@ -269,6 +279,124 @@ pub async fn run(
                         block,
                         money(cell.cost)
                     ));
+                }
+                out.trim_end().to_string()
+            })
+        }
+
+        UsageCommand::Alerts { settings: show_settings } => {
+            use veronica_usage::alerts::{self, NotifierState, NotifySettings};
+
+            let stored = veronica_core::Settings::load(&directories.settings_file())?;
+            let notify = NotifySettings::from_settings(&stored);
+            let now = chrono::Utc::now();
+
+            // A copy of the persisted state, so the dry run cannot consume the
+            // edge a real poll would fire on.
+            let mut state = NotifierState::load(&directories.alerts_state_file());
+            let (session, week, note) =
+                match veronica_usage::claude::limits_for_user(now).await {
+                    Ok(Some(limits)) => (limits.session, limits.week, None),
+                    Ok(None) => (
+                        None,
+                        None,
+                        Some("Claude is not signed in on this computer".to_string()),
+                    ),
+                    Err(error) => (None, None, Some(format!("{error:#}"))),
+                };
+
+            let mut would_post =
+                alerts::decide(session, week, &notify, &mut state, now);
+            would_post.extend(alerts::due_reminders(
+                session, week, &notify, &mut state, now,
+            ));
+
+            #[derive(serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Report<'a> {
+                enabled: bool,
+                note: Option<String>,
+                session: Option<Preview>,
+                week: Option<Preview>,
+                would_post: &'a [alerts::LimitAlert],
+                session_reminder_at: Option<String>,
+                week_reminder_at: Option<String>,
+                #[serde(skip_serializing_if = "Option::is_none")]
+                settings: Option<&'a NotifySettings>,
+            }
+
+            #[derive(serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Preview {
+                percent: f64,
+                resets_in: Option<String>,
+            }
+
+            let preview = |window: Option<veronica_usage::limits::LimitWindow>| {
+                window.map(|window| Preview {
+                    percent: window.percent,
+                    resets_in: window
+                        .resets_at
+                        .filter(|at| *at > now)
+                        .map(|at| alerts::countdown(now, at)),
+                })
+            };
+
+            let report = Report {
+                enabled: notify.master,
+                note: note.clone(),
+                session: preview(session),
+                week: preview(week),
+                would_post: &would_post,
+                session_reminder_at: alerts::reminder_fire_at(
+                    session.and_then(|w| w.resets_at),
+                    notify.reminder_session_offset_min,
+                    now,
+                )
+                .filter(|_| notify.reminder_session)
+                .map(|at| at.to_rfc3339()),
+                week_reminder_at: alerts::reminder_fire_at(
+                    week.and_then(|w| w.resets_at),
+                    notify.reminder_weekly_offset_min,
+                    now,
+                )
+                .filter(|_| notify.reminder_weekly)
+                .map(|at| at.to_rfc3339()),
+                settings: show_settings.then_some(&notify),
+            };
+
+            output.emit(&report, || {
+                use std::fmt::Write;
+                let mut out = String::new();
+                let _ = writeln!(
+                    out,
+                    "alerts are {}",
+                    if notify.master { "on" } else { "off (vr config set notifyMaster true)" }
+                );
+                if let Some(note) = &note {
+                    let _ = writeln!(out, "note      {note}");
+                }
+                for (label, window) in [("session", session), ("weekly ", week)] {
+                    if let Some(window) = window {
+                        let left = window
+                            .resets_at
+                            .filter(|at| *at > now)
+                            .map(|at| alerts::countdown(now, at))
+                            .unwrap_or_else(|| "unknown".into());
+                        let _ = writeln!(
+                            out,
+                            "{label}   {:>5.1}%  resets in {left}",
+                            window.percent
+                        );
+                    }
+                }
+                if would_post.is_empty() {
+                    let _ = writeln!(out, "\nnothing would be posted right now");
+                } else {
+                    let _ = writeln!(out, "\nwould post now:");
+                    for alert in &would_post {
+                        let _ = writeln!(out, "  [{}] {} — {}", alert.id, alert.title, alert.body);
+                    }
                 }
                 out.trim_end().to_string()
             })

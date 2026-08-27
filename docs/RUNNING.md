@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Install the built package
-sudo apt install ./target/release/bundle/deb/Veronica_0.1.0_amd64.deb
+sudo apt install ./target/release/bundle/deb/Veronica_0.1.8_amd64.deb
 
 # 2. Launch it
 veronica              # or find "Veronica" in Activities
@@ -18,12 +18,10 @@ gives a menu with Refresh usage, Toggle notch, and Quit.
 
 ## The top bar
 
-Veronica does not draw a panel of its own. It adds sections to the top bar's
-real clock dropdown — the one that already shows notifications, media and the
-calendar — through a GNOME Shell extension. Whatever the shell already does
-well is left alone; Veronica contributes what the shell has no idea about:
-agent usage and spend, and machine state. A small indicator also appears in the
-status area on the right, showing today's spend.
+Veronica replaces only the center date button and its popup with the compact
+Edith-style shelf. It does not inject agent data into GNOME's large calendar
+dropdown and does not add a spend indicator to the right side. Ubuntu Quick
+Settings remains the single owner of Wi-Fi, Bluetooth, volume and battery.
 
 The Debian package installs the extension system-wide. Because GNOME Shell only
 scans for extensions at startup, and Wayland has no way to restart the shell in
@@ -44,7 +42,21 @@ From a source checkout, install it for your user instead:
 Left-click the tray icon to open the window; right-click for a menu with
 Refresh usage and Quit.
 
-### If nothing appears in the dropdown
+### If the old or duplicated top bar still appears
+
+GNOME gives a user-installed extension under `~/.local/share` priority over the
+system copy from the Debian package. Move an old checkout aside, then log out:
+
+```bash
+gnome-extensions disable veronica@namannn04.github.io
+mv ~/.local/share/gnome-shell/extensions/veronica@namannn04.github.io \
+  ~/.local/share/gnome-shell/extensions/veronica@namannn04.github.io.old
+```
+
+After the next login, enable the system copy. `gnome-extensions info` should
+show its path under `/usr/share/gnome-shell/extensions/`.
+
+### If nothing appears in the notch
 
 - `gnome-extensions info veronica@namannn04.github.io` should say `State: ACTIVE`.
   `ERROR` means it threw, and the reason is in the journal.
@@ -54,12 +66,8 @@ Refresh usage and Quit.
   journalctl --user -f | grep -i veronica
   ```
 
-  On a healthy start it logs `added sections to the clock dropdown` and the path
-  it found `vr` at.
-- `clock dropdown layout not recognised` means the shell's popup changed shape
-  and the sections fell back to a plain menu item. The extension looks for the
-  actor with style class `datemenu-calendar-column`; that is what to re-check
-  against a newer GNOME.
+  On a healthy start it logs `compact Edith notch enabled` and the path it found
+  `vr` at.
 - `vr at "not found"` means the CLI is not where the shell can see it. A shell
   extension does not inherit a login shell's `PATH`, so the extension checks
   `/usr/bin/vr`, `/usr/local/bin/vr` and `~/.local/bin/vr` in that order.
@@ -72,37 +80,17 @@ Refresh usage and Quit.
   gsettings get org.gnome.shell disable-user-extensions   # want: false
   ```
 
-## Full top-bar replacement (clock, calendar, notifications, network, Bluetooth, volume, battery)
+## Compact notch
 
-Off by default. To turn it on:
-
-```bash
-vr config set topBarReplacement true
-```
-
-Veronica's own clock, calendar/notification popup, network, Bluetooth, volume
-and battery all appear in the real top bar within about ten seconds — no
-relogin needed for this part, only for the extension itself the first time. To
-go back to GNOME's originals:
-
-```bash
-vr config set topBarReplacement false
-```
-
-GNOME's own clock and icons were only ever hidden, never destroyed, so they
-reappear exactly as they were with nothing lost. Clicking a Veronica network or
-Bluetooth indicator opens the matching GNOME Settings panel for anything that
-needs configuring — joining a new wifi network, pairing a device — rather than
-a reimplementation of that UI. The calendar and notification list inside
-Veronica's clock popup are GNOME's own real widgets, so they behave exactly as
-the stock dropdown's do.
-
-If an indicator never appears: `journalctl --user -f | grep -i veronica` logs
-each one's first successful reading (with `VERONICA_LOG` unset this needs
-`G_MESSAGES_DEBUG=all` on gnome-shell's own environment to see, since these are
-debug-level). A missing indicator most often means the matching system service
-is not running — no Bluetooth adapter, no UPower battery on a desktop — in
-which case that one indicator simply stays hidden rather than showing an error.
+The notch is active whenever the GNOME extension is active. Home contains live
+MPRIS music, usage rings, Keep Awake and Lid Awake. The bell tab embeds GNOME's
+real notification list in a fixed-height section so notifications scroll rather
+than stretching the popup. Files can be added, opened, removed and persist across
+logins. Camera previews the real webcam inside the notch and releases it as soon
+as the preview or notch closes. Clean Keys grabs and blocks the keyboard,
+Presenter masks sensitive values, and Pick Color copies a GNOME-picked hex value
+to the clipboard. The same five quick actions are available from the desktop app.
+Disabling Veronica restores GNOME's stock date button and calendar dropdown.
 
 ## Developing the extension
 
@@ -143,6 +131,87 @@ cd apps/desktop && bunx tauri build --bundles deb
 Both steps are needed: the bundler copies `target/release/vr` into the package,
 so a clean checkout must build the CLI first.
 
+To update an existing installation with the package you just built:
+
+```bash
+sudo apt install --reinstall ./target/release/bundle/deb/Veronica_0.1.8_amd64.deb
+```
+
+## Backup and restore
+
+Settings › Backup can export to Downloads, inspect an existing archive, and
+restore it after explicit confirmation. The archive includes Veronica's
+configuration, persistent data, and state; disposable cache and runtime files
+are deliberately excluded. Imports verify every path, size, and SHA-256 digest
+before writing anything.
+
+The same flow is available without opening the app:
+
+```bash
+vr backup export
+vr backup inspect ./Veronica-backup-2026-08-27.veronica-backup
+vr backup import ./Veronica-backup-2026-08-27.veronica-backup --confirm
+```
+
+## Alerts
+
+Alerts are off until you ask for them, and while they are off Veronica makes no
+request to any provider on their behalf.
+
+```bash
+vr config set notifyMaster true   # or Settings › Alerts
+vr usage alerts                   # a dry run: what a poll now would post
+vr alerts test                    # post one banner, to check they arrive
+vr alerts state                   # what the notifier is comparing against
+```
+
+Every alert is edge-triggered: it fires when a window *crosses* a level or a
+pacing zone, not while it sits there. So the usual reason an expected alert did
+not appear is that the crossing already happened — `vr alerts state` shows the
+level being compared against, and `vr alerts clear` forgets it so the next poll
+starts from where you are now. That is also worth doing after changing a
+threshold, since the stored comparison is then against the old scale.
+
+## Presenter mode
+
+```bash
+vr presenter enable
+vr presenter status        # the blur state, and what detection sees
+vr presenter start         # blur now; stop, dismiss and resume also exist
+vr presenter blur calendar off   # reveal one category deliberately
+```
+
+Detection watches the compositor's screencast sessions, which is the path every
+well-behaved screen share on Wayland takes. If presenter mode did not activate
+during a call:
+
+```bash
+cargo run -p veronica-system --example detect-share
+```
+
+That prints the session counts, or says why detection could not run at all — a
+desktop with no Mutter reports "cannot tell" rather than a quiet screen, so
+presenter mode still works by hand there.
+
+`dismiss` applies to the share happening now; once it ends, the next one blurs
+again. Turning detection off entirely is `vr config set presenterAutoEnabled
+false`.
+
+## Focus Dim and the top bar readout
+
+Both are drawn by the shell extension, because only the compositor can place a
+dim behind another application's window or draw live text in the top bar.
+
+```bash
+vr focus-dim on
+vr focus-dim intensity 60          # a percentage, capped at 90
+vr focus-dim mode dimUnfocused     # or perScreenFront
+vr config set menuBarSystemStats true   # CPU and memory beside the clock
+```
+
+Both react as soon as the setting changes: the extension watches the settings
+file rather than polling, so there is no delay and no subprocess.
+
 ## Troubleshooting
 
 **Every window says "Could not connect to 127.0.0.1".** The binary was built
@@ -166,6 +235,22 @@ choice is respected and the compositor decides the placement instead.
 **No notifications in the notch.** Veronica reads them by watching the session
 bus, which needs the bus to permit monitoring. `vr diagnose` reports the session
 it resolved; the feature is absent rather than fatal if monitoring is refused.
+
+**"cannot put text on the clipboard".** Writing the clipboard on Wayland needs
+the compositor, so Veronica asks its shell extension. The message names every
+route it tried. If it says the extension has "no such method", the installed
+extension predates the feature: reinstall it and log out and back in, since
+Wayland cannot reload a changed extension in place. `wl-clipboard` or `xclip`
+also work as fallbacks.
+
+**Focus Dim or the top bar readout does nothing.** Both live in the extension, so
+a stale install has neither. `gnome-extensions list | grep veronica` confirms it
+is present; a changed extension needs a fresh login. On a desktop that is not
+GNOME, `vr focus-dim status` says so rather than pretending the switch worked.
+
+**The colour picker never returns.** It waits for a click and is cancelled with
+Escape; cancelling exits non-zero with a plain message rather than recording a
+colour. A pick abandoned entirely times out after five minutes.
 
 ## Logging
 

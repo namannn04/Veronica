@@ -1,0 +1,9 @@
+{
+  "name": "veronica-gnome-extension",
+  "private": true,
+  "//": "GNOME Shell 45+ extensions are ES modules. Declaring it lets node and editor tooling read this directory correctly; GNOME itself only reads metadata.json.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  }
+}

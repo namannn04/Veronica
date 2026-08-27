@@ -221,7 +221,6 @@ impl Capabilities {
         set(FileShelf, CapabilityState::Available);
         set(SystemMetrics, CapabilityState::Available);
         set(MachineManagement, CapabilityState::Available);
-        set(LocalMusicPlayback, CapabilityState::Available);
 
         // Standard freedesktop services, present on any modern desktop.
         set(Notifications, CapabilityState::Available);
@@ -235,13 +234,28 @@ impl Capabilities {
         set(RunningApplications, CapabilityState::Available);
         set(ScreenShareDetection, CapabilityState::Available);
 
+        // Not yet built. Reported as such rather than as available, so the
+        // Extensions page says "Partial" with a reason instead of "Ready" for a
+        // feature that does nothing.
+        set(
+            LocalMusicPlayback,
+            CapabilityState::integration(
+                "Playing files from a local music folder needs a GStreamer pipeline, which \
+                 Veronica has not built yet. External players work through MPRIS.",
+            ),
+        );
+
         set(
             CompanionService,
             if session.has_container_runtime {
-                CapabilityState::Available
+                CapabilityState::integration(
+                    "A container runtime is present, but Veronica does not yet ship the \
+                     Companion backend's deployment.",
+                )
             } else {
                 CapabilityState::integration(
-                    "Install Docker or Podman to host the Companion backend.",
+                    "Install Docker or Podman, and wait for Veronica to ship the Companion \
+                     backend's deployment.",
                 )
             },
         );
@@ -297,15 +311,23 @@ impl Capabilities {
                 )
             },
         );
+        // Dimming behind another application's window is the compositor's job:
+        // no client can place something between two windows it does not own.
+        // Veronica's GNOME Shell extension draws it, which is why this does not
+        // depend on Wayland versus X11 but on whether the shell is GNOME.
         set(
             WindowDimming,
-            if wayland {
-                CapabilityState::integration(
-                    "Dimming other windows requires the compositor. Install the GNOME Shell \
-                     companion extension, or use an X11 session.",
+            if session.is_gnome {
+                CapabilityState::permission(
+                    "Enable the Veronica GNOME Shell extension, which draws the dimming \
+                     inside the compositor.",
                 )
             } else {
-                CapabilityState::Available
+                CapabilityState::integration(
+                    "Dimming behind another app's window needs the compositor, and on this \
+                     desktop nothing exposes that. GNOME can, through Veronica's shell \
+                     extension.",
+                )
             },
         );
         set(
@@ -393,17 +415,42 @@ mod tests {
     }
 
     #[test]
-    fn window_dimming_needs_help_on_wayland_but_not_on_x11() {
-        let wayland = Capabilities::resolve(&session(SessionKind::Wayland));
-        let x11 = Capabilities::resolve(&session(SessionKind::X11));
-        assert!(matches!(
-            wayland.state(Capability::WindowDimming),
-            CapabilityState::IntegrationRequired { .. }
-        ));
-        assert_eq!(
-            x11.state(Capability::WindowDimming),
-            &CapabilityState::Available
-        );
+    fn window_dimming_follows_the_shell_not_the_display_protocol() {
+        // The dimming is drawn by the GNOME Shell extension, so it works on
+        // Wayland — where a client could never do it — and not on a non-GNOME
+        // X11 desktop, where a client could but nothing has been written.
+        for kind in [SessionKind::Wayland, SessionKind::X11] {
+            let mut gnome = session(kind);
+            gnome.is_gnome = true;
+            assert!(
+                Capabilities::resolve(&gnome).is_supported(Capability::WindowDimming),
+                "GNOME {kind:?} should support dimming through the extension"
+            );
+
+            let mut other = session(kind);
+            other.is_gnome = false;
+            assert!(matches!(
+                Capabilities::resolve(&other).state(Capability::WindowDimming),
+                CapabilityState::IntegrationRequired { .. }
+            ));
+        }
+    }
+
+    #[test]
+    fn an_unbuilt_feature_is_never_reported_as_available() {
+        // The whole point of the model is that the interface can be honest. A
+        // capability with no implementation behind it must say so, or the
+        // Extensions page shows "Ready" for a switch that does nothing.
+        let caps = Capabilities::resolve(&session(SessionKind::Wayland));
+        for capability in [Capability::LocalMusicPlayback, Capability::CompanionService] {
+            assert!(
+                matches!(
+                    caps.state(capability),
+                    CapabilityState::IntegrationRequired { .. }
+                ),
+                "{capability:?} has no implementation and must not claim to be available"
+            );
+        }
     }
 
     #[test]
@@ -439,6 +486,16 @@ mod tests {
         let caps = Capabilities::resolve(&s);
         assert!(!caps.is_supported(Capability::CompanionService));
         assert!(caps.is_supported(Capability::UsageCollection));
+
+        // And the reason distinguishes the two causes, so the user knows whether
+        // installing Docker would help.
+        let with_runtime = Capabilities::resolve(&session(SessionKind::Wayland));
+        let (a, b) = (
+            format!("{:?}", with_runtime.state(Capability::CompanionService)),
+            format!("{:?}", caps.state(Capability::CompanionService)),
+        );
+        assert_ne!(a, b, "the same reason for both causes tells the user nothing");
+        assert!(b.contains("Install Docker"));
     }
 
     #[test]

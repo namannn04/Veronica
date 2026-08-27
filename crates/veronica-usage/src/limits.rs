@@ -83,6 +83,11 @@ impl ProviderLimits {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// Serialised inside `NotifySettings` and read by the alerts pane, so the field
+// names have to be camelCase like every other type the interface sees. Without
+// this the nested struct keeps its snake_case names while its parent renames,
+// and the interface reads two undefineds.
+#[serde(rename_all = "camelCase")]
 pub struct UsageThresholds {
     pub warning_percent: i64,
     pub critical_percent: i64,

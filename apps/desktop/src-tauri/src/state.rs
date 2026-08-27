@@ -13,6 +13,11 @@ pub struct AppState {
     pub directories: AppDirectories,
     pub session: Mutex<DesktopSession>,
     pub settings: Mutex<Settings>,
+    /// A logind descriptor held while Lid Awake is enabled. Dropping it
+    /// immediately restores the normal lid and idle behaviour.
+    pub lid_awake: Mutex<Option<veronica_system::power::InhibitorLock>>,
+    /// Separate from Lid Awake: this one only blocks the idle sleep timer.
+    pub prevent_sleep: Mutex<Option<veronica_system::power::InhibitorLock>>,
     /// The last collected usage document, so the UI can render immediately on
     /// launch instead of waiting for a refresh.
     pub usage: Mutex<Option<UsageDocument>>,
@@ -42,6 +47,8 @@ impl AppState {
             directories,
             session: Mutex::new(session),
             settings: Mutex::new(settings),
+            lid_awake: Mutex::new(None),
+            prevent_sleep: Mutex::new(None),
             usage: Mutex::new(usage),
             sampler: Mutex::new(MetricsSampler::new()),
             refreshing: Mutex::new(false),
@@ -65,6 +72,15 @@ impl AppState {
         let mut settings = self.settings.lock().expect("settings lock");
         settings.set(key, value);
         settings.save(&self.directories.settings_file())?;
+        Ok(())
+    }
+
+    /// Refresh process-local caches after a backup import replaced files.
+    pub fn reload_persistent_data(&self) -> Result<()> {
+        let settings = Settings::load(&self.directories.settings_file())?;
+        *self.settings.lock().expect("settings lock") = settings;
+        let usage = veronica_usage::collector::read_document(&self.directories.usage_file())?;
+        *self.usage.lock().expect("usage lock") = usage;
         Ok(())
     }
 }

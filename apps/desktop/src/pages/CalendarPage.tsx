@@ -4,124 +4,42 @@ import { ipc } from "../lib/ipc";
 import { eventSlot, untilLabel } from "../lib/format";
 import type { AgendaView, CalendarEvent } from "../lib/types";
 
-const RANGES = [7, 14, 30];
+const PAGE_DAYS = 14;
 
-/**
- * The agenda.
- *
- * Events come from GNOME's calendar server, so every configured calendar is
- * included — local, Google, Nextcloud — with recurrences already expanded.
- */
 export function CalendarPage() {
   const [view, setView] = useState<AgendaView | null>(null);
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState(PAGE_DAYS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      setView(await ipc.calendarAgenda(days, true));
-      setError(null);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
+    try { setView(await ipc.calendarAgenda(days, true)); setError(null); }
+    catch (reason) { setError(String(reason)); }
+    finally { setLoading(false); }
   }, [days]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>Calendar</h1>
-          <div className="page-sub">
-            {view?.nextUp
-              ? `Next: ${view.nextUp.summary} ${untilLabel(view.nextUp.start)}`
-              : "Every calendar configured on this computer"}
-          </div>
-        </div>
-        <button className="button" onClick={load} disabled={loading}>
-          {loading ? "Reading…" : "Refresh"}
-        </button>
-      </div>
+  return <div className="calendar-page">
+    <div className="page-head edith-head"><div><h1>Calendar</h1>{view?.nextUp && <div className="page-sub">Next: {view.nextUp.summary} {untilLabel(view.nextUp.start)}</div>}</div><div className="head-actions"><button className="button" onClick={() => void load()} disabled={loading}>{loading ? "Reading…" : "Refresh"}</button><button className="button primary" onClick={() => void ipc.calendarOpen().catch((reason) => setError(String(reason)))}>Open Calendar ↗</button></div></div>
 
-      {error && <div className="banner error">{error}</div>}
+    {error && <div className="banner error">{error}</div>}
+    {!view && loading && <CalendarSkeleton />}
+    {view && !view.hasCalendars && <div className="empty calendar-empty"><div className="empty-glyph">▣</div><h3>Calendar access is ready</h3><p>Add an account in Ubuntu Settings › Online Accounts, or create a local calendar. Every configured calendar appears here automatically.</p><button className="button primary" onClick={() => void ipc.calendarOpen()}>Open Calendar</button></div>}
+    {view?.hasCalendars && view.days.length === 0 && !loading && <div className="empty calendar-empty"><div className="empty-glyph">✓</div><h3>Clear runway</h3><p>Nothing scheduled in the next {days} days.</p></div>}
 
-      <div className="toolbar">
-        <div className="segmented" role="group" aria-label="Range">
-          {RANGES.map((range) => (
-            <button key={range} aria-pressed={days === range} onClick={() => setDays(range)}>
-              {range}d
-            </button>
-          ))}
-        </div>
-      </div>
+    {view?.happeningNow && <section className="calendar-now blur-calendar"><div><span>Happening now</span><strong>{view.happeningNow.summary}</strong><small>{eventSlot(view.happeningNow.start, view.happeningNow.end, view.happeningNow.allDay)}</small></div>{view.happeningNow.joinUrl && <button className="button primary" onClick={() => void ipc.openExternal(view.happeningNow!.joinUrl!)}>Join meeting</button>}</section>}
 
-      {view && !view.hasCalendars && (
-        <div className="empty">
-          <h3>No calendars configured</h3>
-          <p>
-            Add an account in Settings › Online Accounts, or create a local
-            calendar, and your agenda appears here.
-          </p>
-        </div>
-      )}
+    {view && view.days.length > 0 && <div className="agenda-list blur-calendar">{view.days.map((day) => <section className="agenda-day" key={day.date}><div className="agenda-date"><strong>{day.label}</strong><span>{new Date(`${day.date}T12:00:00`).toLocaleDateString([], { month: "short", day: "numeric" })}</span></div><div className="agenda-events">{day.events.map((event) => <EventRow key={`${event.eventUid}-${event.start}`} event={event} />)}</div></section>)}</div>}
 
-      {view?.hasCalendars && view.days.length === 0 && !loading && (
-        <div className="empty">
-          <h3>Nothing scheduled</h3>
-          <p>No events in the next {days} days.</p>
-        </div>
-      )}
-
-      {view?.happeningNow && (
-        <section className="card" style={{ marginBottom: 12 }}>
-          <div className="card-head">
-            <h2>Happening now</h2>
-          </div>
-          <EventRow event={view.happeningNow} highlight />
-        </section>
-      )}
-
-      {view?.days.map((day) => (
-        <section className="card" key={day.date} style={{ marginBottom: 12 }}>
-          <div className="card-head">
-            <h2>{day.label}</h2>
-            <span className="card-note">{day.date}</span>
-          </div>
-          {day.events.map((event) => (
-            <EventRow key={`${event.eventUid}-${event.start}`} event={event} />
-          ))}
-        </section>
-      ))}
-    </>
-  );
+    {view?.hasCalendars && view.days.length > 0 && <button className="load-more" onClick={() => setDays((value) => value + PAGE_DAYS)} disabled={loading}>{loading ? "Loading…" : `Load ${PAGE_DAYS} more days`}</button>}
+  </div>;
 }
 
-function EventRow({ event, highlight }: { event: CalendarEvent; highlight?: boolean }) {
-  return (
-    <div className="event-row">
-      <span className={`event-slot${event.allDay ? " all-day" : ""}`}>
-        {eventSlot(event.start, event.end, event.allDay)}
-      </span>
-      <span className="event-summary" title={event.summary}>
-        {event.summary}
-      </span>
-      {highlight && <span className="pill good">Now</span>}
-      {event.joinUrl && (
-        <button
-          className="button primary"
-          onClick={() => void ipc.openExternal(event.joinUrl!)}
-          title={event.joinUrl}
-        >
-          Join
-        </button>
-      )}
-    </div>
-  );
+function EventRow({ event }: { event: CalendarEvent }) {
+  const start = new Date(event.start);
+  return <article className="agenda-event"><div className="agenda-time"><strong>{event.allDay ? "All day" : start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</strong>{!event.allDay && <span>{eventSlot(event.start, event.end, false).split("–").at(-1)}</span>}</div><i aria-hidden="true" /><div className="agenda-summary"><strong className="event-summary" title={event.summary}>{event.summary}</strong><span>{event.allDay ? "All-day event" : start.toLocaleDateString([], { weekday: "long" })}</span></div>{event.joinUrl && <button className="join-button" onClick={() => void ipc.openExternal(event.joinUrl!)} title={event.joinUrl}>Join <span>▸</span></button>}</article>;
 }
+
+function CalendarSkeleton() { return <div className="calendar-skeleton" aria-label="Reading calendar"><i /><i /><i /></div>; }

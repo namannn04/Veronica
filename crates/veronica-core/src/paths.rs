@@ -109,6 +109,17 @@ impl AppDirectories {
         self.data.join("clipboard.json")
     }
 
+    /// Colours sampled with the picker, newest first.
+    pub fn swatches_file(&self) -> PathBuf {
+        self.data.join("swatches.json")
+    }
+
+    /// What the alert notifier remembers between polls, so a restart does not
+    /// re-fire an alert the user has already seen.
+    pub fn alerts_state_file(&self) -> PathBuf {
+        self.state.join("alerts.json")
+    }
+
     /// Unix socket the CLI uses to reach a running app instance.
     pub fn ipc_socket(&self) -> PathBuf {
         self.runtime.join("veronica.sock")

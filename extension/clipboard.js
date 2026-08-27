@@ -107,12 +107,19 @@ export class ClipboardWatcher {
         }
     }
 
-    /** Put text back on the clipboard. */
-    write(text) {
+    /**
+     * Put text back on the clipboard.
+     *
+     * `notify` is off for writes made on someone else's behalf — the colour
+     * picker and the desktop app both report the copy themselves, and a second
+     * banner from inside the shell would be a duplicate.
+     */
+    write(text, notify = true) {
         this._lastWriteAt = GLib.get_monotonic_time() / 1000;
         this._lastText = text;
         St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, text);
-        Main.notify('Veronica', 'Copied to the clipboard');
+        if (notify)
+            Main.notify('Veronica', 'Copied to the clipboard');
     }
 }
 

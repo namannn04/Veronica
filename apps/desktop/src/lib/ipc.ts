@@ -4,7 +4,15 @@ import { invoke } from "@tauri-apps/api/core";
 
 import type {
   AgendaView,
+  AlertsView,
+  BackupSummary,
+  ImportReport,
+  PresenterView,
   ClipRow,
+  CopyFormatOption,
+  CopyResult,
+  PickResult,
+  SwatchRow,
   GaugeReport,
   DesktopNotification,
   Machine,
@@ -14,6 +22,8 @@ import type {
   MediaAction,
   NowPlaying,
   SystemSnapshot,
+  RunningProcess,
+  HerdrBoard,
   UsageView,
   VolumeState,
 } from "./types";
@@ -32,10 +42,37 @@ export const ipc = {
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
   settingsSet: (key: string, value: unknown) =>
     invoke<void>("settings_set", { key, value }),
+  backupExport: (path: string | null = null) =>
+    invoke<BackupSummary>("backup_export", { path }),
+  backupInspect: (path: string) => invoke<BackupSummary>("backup_inspect", { path }),
+  backupImport: (path: string, confirm: boolean) =>
+    invoke<ImportReport>("backup_import", { path, confirm }),
+  shellAction: (action: "cleanKeys" | "pickColor") =>
+    invoke<void>("shell_action", { action }),
 
   clipboardList: (query: string) => invoke<ClipRow[]>("clipboard_list", { query }),
   clipboardRemove: (id: number) => invoke<void>("clipboard_remove", { id }),
   clipboardClear: () => invoke<void>("clipboard_clear"),
+
+  presenterState: () => invoke<PresenterView>("presenter_state"),
+  /** One of enable, disable, start, stop, dismiss, resume. */
+  presenterSet: (action: string) => invoke<void>("presenter_set", { action }),
+
+  alertsView: () => invoke<AlertsView>("alerts_view"),
+  /** Posts one sample banner without consuming a real alert's edge. */
+  alertsTest: () => invoke<string>("alerts_test"),
+  /** Forgets the remembered levels, so the next poll starts fresh. */
+  alertsReset: () => invoke<void>("alerts_reset"),
+
+  colorFormats: () => invoke<CopyFormatOption[]>("color_formats"),
+  colorSwatches: () => invoke<SwatchRow[]>("color_swatches"),
+  /** Opens the compositor's eyedropper; resolves once a pixel is clicked. */
+  colorPick: () => invoke<PickResult>("color_pick"),
+  /** `format` of null uses the configured one. */
+  colorCopy: (id: number, format: string | null) =>
+    invoke<CopyResult>("color_copy", { id, format }),
+  colorForget: (id: number) => invoke<void>("color_forget", { id }),
+  colorClear: () => invoke<void>("color_clear"),
 
   machinesProbe: () => invoke<MachineReport[]>("machines_probe"),
   machinesAdd: (target: string, name: string | null, port: number | null) =>
@@ -44,12 +81,18 @@ export const ipc = {
   machinesDiscover: () => invoke<string[]>("machines_discover"),
 
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
+  systemProcesses: () => invoke<RunningProcess[]>("system_processes"),
+  systemQuitProcess: (pid: number) => invoke<void>("system_quit_process", { pid }),
+  herdrBoard: () => invoke<HerdrBoard>("herdr_board"),
+  herdrOpen: (session: string, paneId: string | null = null) =>
+    invoke<void>("herdr_open", { session, paneId }),
   microphoneState: () => invoke<VolumeState>("microphone_state"),
   microphoneToggle: () => invoke<VolumeState>("microphone_toggle"),
 
   /** `withLinks` costs one D-Bus round trip per event; skip it for the notch. */
   calendarAgenda: (days: number, withLinks: boolean) =>
     invoke<AgendaView>("calendar_agenda", { days, withLinks }),
+  calendarOpen: () => invoke<void>("calendar_open"),
 
   mediaNowPlaying: () => invoke<NowPlaying | null>("media_now_playing"),
   mediaControl: (action: MediaAction) =>
@@ -60,9 +103,6 @@ export const ipc = {
     invoke<void>("notifications_dismiss", { id }),
   notificationsClear: () => invoke<void>("notifications_clear"),
 
-  /** `pinned` keeps the island open and gives it focus so Escape works. */
-  notchSetExpanded: (expanded: boolean, pinned: boolean) =>
-    invoke<void>("notch_set_expanded", { expanded, pinned }),
   showMainWindow: () => invoke<void>("show_main_window"),
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };

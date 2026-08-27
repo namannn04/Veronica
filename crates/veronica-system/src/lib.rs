@@ -5,11 +5,15 @@
 //! notifications and portal access from D-Bus.
 
 pub mod audio;
+pub mod color;
 pub mod metrics;
+pub mod herdr;
 pub mod notifications;
 pub mod notify;
 pub mod portal;
 pub mod power;
+pub mod screencast;
+pub mod selection;
 
 pub use metrics::{MetricsSampler, SystemSnapshot};
 pub use notifications::Notification;

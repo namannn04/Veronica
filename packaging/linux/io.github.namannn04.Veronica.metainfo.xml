@@ -11,9 +11,11 @@
   <description>
     <p>
       Veronica replaces a shelf of single-purpose utilities with one native
-      application. It tracks coding-agent usage, monitors this machine and your
-      SSH hosts, controls media and audio, and adds a hover island to the top
-      bar.
+      application. It tracks coding-agent usage and alerts on rate limits,
+      monitors this machine and your SSH hosts, controls media and audio, keeps a
+      clipboard and colour-swatch history, blurs sensitive figures while you share
+      your screen, dims everything behind the window you are working in, and puts
+      Veronica's own shelf in the top bar.
     </p>
     <p>Usage data never leaves the machine. There is no account and no telemetry.</p>
   </description>
@@ -30,6 +32,35 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.8" date="2026-08-27">
+      <description>
+        <p>
+          Adds rate-limit alerts, the colour picker with a swatch history,
+          presenter mode with automatic screen-share detection, Focus Dim, and a
+          CPU and memory readout beside the top bar clock. Makes the clipboard
+          history reachable from the app, and reports a capability Veronica has
+          not built as such rather than as available.
+        </p>
+      </description>
+    </release>
+    <release version="0.1.7" date="2026-08-25">
+      <description><p>Adds a synchronized Claude/Codex limit switcher and six shared app/notch appearance themes.</p></description>
+    </release>
+    <release version="0.1.6" date="2026-08-23">
+      <description><p>Fixes webcam capability negotiation and makes the five Edith quick actions functional from both the notch and desktop app.</p></description>
+    </release>
+    <release version="0.1.5" date="2026-08-23">
+      <description><p>Adds a privacy-scoped live camera preview inside the notch, corrects Home layout sizing, and refines the active-tab capsule.</p></description>
+    </release>
+    <release version="0.1.4" date="2026-08-23">
+      <description><p>Removes the notch halo and replaces the overshooting popup transition with a flicker-free two-layer macOS-style surface morph.</p></description>
+    </release>
+    <release version="0.1.2" date="2026-08-23">
+      <description><p>Adds fully rounded Dynamic-Island-style motion and functional file shelf, keyboard cleaning, presenter privacy, color picker, and camera actions.</p></description>
+    </release>
+    <release version="0.1.1" date="2026-08-22">
+      <description><p>Uses the compact Edith-style center notch, preserves Ubuntu Quick Settings, and removes the separate usage indicator and injected calendar sections.</p></description>
+    </release>
     <release version="0.1.0" date="2026-08-20">
       <description>
         <p>First release: agent usage dashboard, system monitor, the notch island and the vr CLI.</p>

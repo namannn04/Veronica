@@ -22,11 +22,24 @@ package. `bun` is recommended rather than required: the collector uses it to run
 ## Tests
 
 ```bash
-cargo test --workspace
+cargo test --workspace          # the crates and the app
+cd extension && npm test        # the shell extension's pure logic
 ```
 
 The portable crates carry the interesting coverage, including parity tests that
 pin the values Edith's Swift produces for the rate-limit maths.
+
+The shell extension's tests cover the parts that can run without a shell: the
+procfs arithmetic behind the top bar's CPU and memory readout, and Focus Dim's
+clamps. Those live in modules that import nothing from `gi://` — `procStats.js`
+and `focusDimMath.js` — precisely so they are testable; the widgets that use them
+are not. `extension/package.json` exists to declare the directory as ES modules
+for node and editors, and is not installed.
+
+Focus Dim's clamps exist in both Rust and JavaScript on purpose. The Rust copy
+stops a bad value being *stored*; the JavaScript copy stops a hand-edited
+settings file being *applied*, which matters because an overlay at full opacity
+would leave the user unable to see the desktop well enough to undo it.
 
 ## Running during development
 
