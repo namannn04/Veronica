@@ -10,6 +10,7 @@
 //! duration rather than by name, so the shorter one is the session window and
 //! the longer one the weekly window.
 
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -85,7 +86,42 @@ pub fn parse_snapshot(snapshot: &Value) -> CodexLimits {
 
 /// Whether the codex command is available at all.
 pub fn is_available() -> bool {
-    veronica_core::session::which("codex").is_some()
+    codex_binary().is_some()
+}
+
+/// Locate Codex in both shell and desktop-launch environments. GNOME starts
+/// desktop entries with a deliberately small PATH, while the Codex desktop app
+/// ships its CLI inside `/usr/lib/chatgpt/resources`.
+pub fn codex_binary() -> Option<PathBuf> {
+    let override_path = std::env::var_os("VERONICA_CODEX_BIN").map(PathBuf::from);
+    codex_binary_from(
+        override_path,
+        veronica_core::session::which("codex"),
+        veronica_core::paths::home_dir().as_deref(),
+    )
+}
+
+fn codex_binary_from(
+    override_path: Option<PathBuf>,
+    path_match: Option<PathBuf>,
+    home: Option<&Path>,
+) -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    candidates.extend(override_path);
+    candidates.extend(path_match);
+    candidates.push(PathBuf::from("/usr/lib/chatgpt/resources/codex"));
+    candidates.push(PathBuf::from("/usr/local/bin/codex"));
+    candidates.push(PathBuf::from("/usr/bin/codex"));
+    if let Some(home) = home {
+        candidates.push(home.join(".local/bin/codex"));
+        candidates.push(home.join(".npm-global/bin/codex"));
+    }
+    candidates.into_iter().find(|path| {
+        use std::os::unix::fs::PermissionsExt;
+        path.metadata()
+            .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false)
+    })
 }
 
 /// Ask `codex app-server` for the account's rate limits.
@@ -94,14 +130,15 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
         bail!("the codex command is not installed");
     }
 
-    let mut child = Command::new("codex")
+    let binary = codex_binary().context("the codex command is not installed")?;
+    let mut child = Command::new(&binary)
         .arg("app-server")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
-        .context("cannot start codex app-server")?;
+        .with_context(|| format!("cannot start {} app-server", binary.display()))?;
 
     let mut stdin = child.stdin.take().context("no stdin for codex")?;
     let stdout = child.stdout.take().context("no stdout for codex")?;
@@ -259,6 +296,14 @@ mod tests {
     fn an_empty_snapshot_is_empty() {
         assert!(parse_snapshot(&json!({})).is_empty());
         assert!(parse_snapshot(&json!(null)).is_empty());
+    }
+
+    #[test]
+    fn desktop_install_is_found_without_a_shell_path() {
+        let binary = PathBuf::from("/usr/lib/chatgpt/resources/codex");
+        if binary.exists() {
+            assert_eq!(codex_binary_from(None, None, None), Some(binary));
+        }
     }
 
     #[tokio::test]

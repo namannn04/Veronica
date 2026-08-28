@@ -373,6 +373,20 @@ body.surface-notch {
 
 .limits-title { display: flex; align-items: center; gap: 10px; }
 
+.provider-diagnostic {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--status-warning) 35%, var(--hairline));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--status-warning) 8%, var(--raised));
+}
+
+.provider-diagnostic strong { font-size: 12px; }
+.provider-diagnostic span { color: var(--ink-secondary); font-size: 12px; }
+
 .provider-selector {
   display: inline-flex;
   flex: none;

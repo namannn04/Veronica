@@ -209,7 +209,7 @@ mod tests {
         pairs
             .iter()
             .map(|(key, value)| {
-                (key.to_string(), OwnedValue::try_from(value.clone()).unwrap())
+                (key.to_string(), OwnedValue::try_from(value).unwrap())
             })
             .collect()
     }

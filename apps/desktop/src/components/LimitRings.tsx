@@ -27,6 +27,7 @@ export function LimitRings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<LimitProvider>("Claude");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   // Ticks once a second so the "resets in" text counts down between reads.
   const [, setTick] = useState(0);
 
@@ -36,9 +37,10 @@ export function LimitRings() {
       const [limits, settings] = await Promise.all([ipc.usageLimits(), ipc.settingsAll()]);
       setReport(limits);
       setProvider(limitProviderOf(settings.limitsProvider));
+      setLastUpdated(new Date());
       setError(null);
     } catch (e) {
-      setError(String(e));
+      setError(readableError(e));
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ export function LimitRings() {
       <div className="card-head">
         <div className="limits-title"><ProviderSelector value={provider} onChange={(next) => void selectProvider(next)} /><h2>Rate limits</h2></div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="card-note">Straight from your provider</span>
+          <span className="card-note">{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Straight from your provider"}</span>
           <button className="button" onClick={load} disabled={loading}>
             {loading ? "Reading…" : "Refresh"}
           </button>
@@ -105,12 +107,26 @@ export function LimitRings() {
       )}
 
       {report?.notes.filter((note) => note.startsWith(provider)).map((note) => (
-        <p className="card-note" key={note} style={{ marginTop: 8 }}>
-          {note}
-        </p>
+        <div className="provider-diagnostic" key={note}>
+          <strong>{provider} needs attention</strong>
+          <span>{providerNote(note)}</span>
+        </div>
       ))}
     </section>
   );
+}
+
+function readableError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/^Error:\s*/i, "");
+}
+
+function providerNote(note: string): string {
+  const detail = note.replace(/^[^:]+:\s*/, "");
+  if (/not installed/i.test(detail)) return "Codex could not be located. Install Codex or set VERONICA_CODEX_BIN to its executable.";
+  if (/sign in|log in|unauthorized|unauthenticated|401/i.test(detail)) return `Sign in to ${note.split(":", 1)[0]} again, then refresh.`;
+  if (/network|dns|connect|sending request/i.test(detail)) return "The provider could not be reached. Check your connection and refresh.";
+  return detail;
 }
 
 /**
