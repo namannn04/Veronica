@@ -14,6 +14,7 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import { ClipboardWatcher } from './clipboard.js';
 import { FocusDim } from './focusDim.js';
 import { ActionBridge } from './actionBridge.js';
+import { AttentionTracker } from './attention.js';
 import { findCli } from './lib.js';
 import { PanelReplacement } from './panelReplacement.js';
 import { SettingsWatcher } from './settings.js';
@@ -31,6 +32,9 @@ export default class VeronicaExtension extends Extension {
         // it lives here rather than in the app.
         this._focusDim = new FocusDim(this._settings);
         this._focusDim.enable();
+
+        this._attention = new AttentionTracker(this._settings);
+        this._attention.enable();
 
         this._clipboard = new ClipboardWatcher();
         if (this._clipboard.enable())
@@ -50,6 +54,8 @@ export default class VeronicaExtension extends Extension {
     }
 
     disable() {
+        this._attention?.disable();
+        this._attention = null;
         this._actionBridge?.disable();
         this._actionBridge = null;
 

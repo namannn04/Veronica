@@ -11,6 +11,7 @@ mod tray;
 
 use anyhow::Result;
 use tauri::{Emitter, Manager, WindowEvent};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use veronica_core::AppDirectories;
 
 use state::AppState;
@@ -63,6 +64,21 @@ fn run() -> Result<()> {
     directories.prepare()?;
 
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    if event.state() == ShortcutState::Pressed
+                        && shortcut.matches(tauri_plugin_global_shortcut::Modifiers::CONTROL | tauri_plugin_global_shortcut::Modifiers::ALT, tauri_plugin_global_shortcut::Code::KeyV)
+                    {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             commands::diagnostics,
             commands::capabilities,
@@ -78,8 +94,13 @@ fn run() -> Result<()> {
             commands::attention_start,
             commands::attention_stop,
             commands::attention_history,
+            commands::attention_overview,
+            commands::attention_settings,
+            commands::attention_settings_save,
             commands::shell_action,
             commands::system_snapshot,
+            commands::power_status,
+            commands::update_check,
             commands::system_processes,
             commands::system_quit_process,
             commands::herdr_board,
@@ -88,6 +109,7 @@ fn run() -> Result<()> {
             commands::microphone_toggle,
             commands::media_now_playing,
             commands::media_control,
+            commands::music_library,
             commands::calendar_agenda,
             commands::calendar_open,
             commands::machines_probe,
@@ -126,6 +148,14 @@ fn run() -> Result<()> {
 
             tray::install(&handle)?;
 
+            // A desktop-wide, portal-aware accelerator. Registration can be
+            // refused by the compositor or collide with another app; that is
+            // non-fatal and surfaced by diagnostics/logs instead of preventing
+            // Veronica from starting.
+            if let Err(error) = app.global_shortcut().register("Ctrl+Alt+V") {
+                tracing::warn!(target: "veronica", "cannot register Ctrl+Alt+V: {error}");
+            }
+
             if let Some(window) = app.get_webview_window("main") {
                 window.show()?;
             }
@@ -140,7 +170,10 @@ fn run() -> Result<()> {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
                 loop {
                     interval.tick().await;
-                    let path = watch_settings.state::<AppState>().directories.settings_file();
+                    let path = watch_settings
+                        .state::<AppState>()
+                        .directories
+                        .settings_file();
                     let Ok(settings) = veronica_core::Settings::load(&path) else {
                         continue;
                     };

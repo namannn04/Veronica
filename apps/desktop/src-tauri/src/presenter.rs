@@ -32,9 +32,7 @@ pub async fn run(app: AppHandle) {
     loop {
         let enabled = {
             let state = app.state::<AppState>();
-            state
-                .settings_snapshot()
-                .bool_or("presenterEnabled", false)
+            state.settings_snapshot().bool_or("presenterEnabled", false)
         };
 
         if !enabled {
@@ -92,13 +90,19 @@ fn clear_detection(app: &AppHandle) {
     let state = app.state::<AppState>();
     let settings = state.settings_snapshot();
     if !settings.bool_or("presenterAutoActive", false)
-        && settings.string("presenterAutoReason").unwrap_or_default().is_empty()
+        && settings
+            .string("presenterAutoReason")
+            .unwrap_or_default()
+            .is_empty()
     {
         return;
     }
     for (key, value) in [
         ("presenterAutoActive", serde_json::Value::Bool(false)),
-        ("presenterAutoReason", serde_json::Value::String(String::new())),
+        (
+            "presenterAutoReason",
+            serde_json::Value::String(String::new()),
+        ),
         ("presenterAutoPaused", serde_json::Value::Bool(false)),
     ] {
         if let Err(error) = state.set_setting(key, value) {
@@ -122,7 +126,10 @@ pub struct PresenterView {
     pub share: veronica_system::screencast::ScreenShareState,
 }
 
-pub fn view(state: &AppState, share: veronica_system::screencast::ScreenShareState) -> PresenterView {
+pub fn view(
+    state: &AppState,
+    share: veronica_system::screencast::ScreenShareState,
+) -> PresenterView {
     let presenter = PresenterState::read(&state.settings_snapshot());
     PresenterView {
         active: presenter.active(),
@@ -154,7 +161,10 @@ mod tests {
         // Presenter mode that activates half a minute in has already leaked the
         // figures it exists to hide.
         assert!(POLL.as_secs() <= 3, "poll was {:?}", POLL);
-        assert!(IDLE_CHECK >= POLL, "idling should be no busier than working");
+        assert!(
+            IDLE_CHECK >= POLL,
+            "idling should be no busier than working"
+        );
     }
 
     #[test]

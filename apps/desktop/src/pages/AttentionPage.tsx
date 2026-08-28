@@ -1,40 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import { ipc } from "../lib/ipc";
-import type { AttentionFocusSession, AttentionStatus } from "../lib/types";
+import type { AttentionFocusSession, AttentionOverview, AttentionSettings, AttentionStatus } from "../lib/types";
 
-function duration(seconds: number) {
-  const value = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(value / 3600);
-  const minutes = Math.floor((value % 3600) / 60);
-  return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
-}
+type Section = "overview" | "timeline" | "focus" | "settings";
+const duration = (raw: number) => { const s=Math.max(0,Math.floor(raw)); const h=Math.floor(s/3600); const m=Math.floor(s%3600/60); return h?`${h}h ${m}m`:m?`${m}m`:`${s}s`; };
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/^Error:\s*/, "");
 
 export function AttentionPage() {
-  const [status, setStatus] = useState<AttentionStatus | null>(null);
-  const [history, setHistory] = useState<AttentionFocusSession[]>([]);
-  const [name, setName] = useState("Deep work");
-  const [minutes, setMinutes] = useState(45);
-  const [now, setNow] = useState(Date.now());
-  const [error, setError] = useState("");
-  const refresh = useCallback(async () => {
-    try {
-      const [next, sessions] = await Promise.all([ipc.attentionStatus(), ipc.attentionHistory()]);
-      setStatus(next); setHistory(sessions); setError("");
-    } catch (cause) { setError(String(cause)); }
-  }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
-  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
-  const active = status?.active;
-  const remaining = active ? active.plannedDurationSeconds - Math.floor((now - Date.parse(active.startedAt)) / 1000) : 0;
-  const start = async () => { try { await ipc.attentionStart(name, minutes * 60); await refresh(); } catch (cause) { setError(String(cause)); } };
-  const stop = async () => { try { await ipc.attentionStop(); await refresh(); } catch (cause) { setError(String(cause)); } };
+  const [section,setSection]=useState<Section>("overview"); const [days,setDays]=useState(1);
+  const [status,setStatus]=useState<AttentionStatus|null>(null); const [overview,setOverview]=useState<AttentionOverview|null>(null); const [settings,setSettings]=useState<AttentionSettings|null>(null); const [history,setHistory]=useState<AttentionFocusSession[]>([]);
+  const [name,setName]=useState("Deep work"); const [minutes,setMinutes]=useState(45); const [now,setNow]=useState(Date.now()); const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
+  const refresh=useCallback(async()=>{try{const [s,o,c,h]=await Promise.all([ipc.attentionStatus(),ipc.attentionOverview(days),ipc.attentionSettings(),ipc.attentionHistory()]);setStatus(s);setOverview(o);setSettings(c);setHistory(h);setError("");}catch(e){setError(message(e));}},[days]);
+  useEffect(()=>{void refresh();},[refresh]); useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id);},[]);
+  const save=async(next:AttentionSettings)=>{setSettings(next);setSaving(true);try{await ipc.attentionSettingsSave(next);setError("");await refresh();}catch(e){setError(message(e));}finally{setSaving(false);}};
+  const active=status?.active; const remaining=active?active.plannedDurationSeconds-Math.floor((now-Date.parse(active.startedAt))/1000):0; const max=Math.max(1,...(overview?.applications.map(row=>row[1])??[]));
+  const start=async()=>{try{await ipc.attentionStart(name,minutes*60);await refresh();}catch(e){setError(message(e));}}; const stop=async()=>{try{await ipc.attentionStop();await refresh();}catch(e){setError(message(e));}};
   return <div className="page attention-page">
-    <div className="page-head edith-head"><div><h1>Attention</h1><div className="page-sub">Protect focused work and keep a private local history</div></div></div>
-    {error && <div className="notice error">{error}</div>}
-    <section className="card attention-focus">
-      {active ? <><span className="eyebrow">FOCUSING ON</span><h2>{active.name}</h2><div className="attention-clock">{remaining >= 0 ? duration(remaining) : `Overtime ${duration(-remaining)}`}</div><button className="button primary" onClick={() => void stop()}>Finish session</button></> : <><h2>Start a focus session</h2><div className="backup-path"><input value={name} onChange={event => setName(event.target.value)} aria-label="Session name"/><input type="number" min="1" max="1440" value={minutes} onChange={event => setMinutes(Number(event.target.value))} aria-label="Minutes"/><button className="button primary" onClick={() => void start()}>Start</button></div></>}
-    </section>
-    <div className="metric-grid"><div className="metric-card"><span>Completed</span><strong>{status?.completedSessions ?? 0}</strong></div><div className="metric-card"><span>Total focus</span><strong>{duration(status?.totalFocusSeconds ?? 0)}</strong></div></div>
-    <section className="card"><div className="card-head"><h2>Focus history</h2></div>{history.length ? <div className="list">{history.map(item => <div className="list-row" key={item.id}><div><strong>{item.name}</strong><small>{new Date(item.startedAt).toLocaleString()}</small></div><span>{duration((Date.parse(item.endedAt ?? item.startedAt) - Date.parse(item.startedAt)) / 1000)}</span></div>)}</div> : <p className="quiet">Completed sessions will appear here.</p>}</section>
+    <div className="page-head edith-head"><div><h1>Attention</h1><div className="page-sub">Private application activity and protected focus sessions</div></div><div className="head-actions"><select value={days} onChange={e=>setDays(Number(e.target.value))}><option value={1}>Today</option><option value={7}>7 days</option><option value={30}>30 days</option></select><button className="button" onClick={()=>void refresh()}>Refresh</button></div></div>
+    <div className="pill-tabs">{(["overview","timeline","focus","settings"] as Section[]).map(item=><button className={section===item?"active":""} onClick={()=>setSection(item)} key={item}>{item[0].toUpperCase()+item.slice(1)}</button>)}</div>
+    {error&&<div className="banner error">{error}</div>}{!settings?.enabled&&section!=="settings"&&<div className="provider-diagnostic"><strong>Tracking is off</strong><span>Enable it in Settings. Existing history remains local.</span></div>}
+    {section==="overview"&&<><div className="metric-grid attention-metrics">{[["Active",overview?.activeSeconds??0],["Focused",overview?.focusedSeconds??0],["Idle",overview?.idleSeconds??0]].map(([label,value])=><div className="metric-card" key={String(label)}><span>{label}</span><strong>{duration(Number(value))}</strong></div>)}<div className="metric-card"><span>Context switches</span><strong>{overview?.contextSwitches??0}</strong></div></div><section className="card"><div className="card-head"><h2>Applications</h2><span className="card-note">local only</span></div><div className="attention-bars">{overview?.applications.length?overview.applications.map(([app,seconds])=><div className="attention-bar" key={app}><span>{app}</span><div><i style={{width:`${seconds/max*100}%`}}/></div><b>{duration(seconds)}</b></div>):<p className="quiet">Activity appears after tracking is enabled.</p>}</div></section></>}
+    {section==="timeline"&&<section className="card"><div className="card-head"><h2>Timeline</h2></div><div className="list">{overview?.events.slice().reverse().map(event=><div className="list-row" key={event.id}><div><strong>{event.idle?"Idle":event.application}</strong><small>{event.title||new Date(event.startedAt).toLocaleString()}</small></div><span>{duration(event.durationSeconds)}</span></div>)}</div></section>}
+    {section==="focus"&&<><section className="card attention-focus">{active?<><span className="eyebrow">FOCUSING ON</span><h2>{active.name}</h2><div className="attention-clock">{remaining>=0?duration(remaining):`Overtime ${duration(-remaining)}`}</div><button className="button primary" onClick={()=>void stop()}>Finish session</button></>:<><h2>Start a focus session</h2><div className="backup-path"><input value={name} onChange={e=>setName(e.target.value)} aria-label="Session name"/><input type="number" min="1" max="1440" value={minutes} onChange={e=>setMinutes(Number(e.target.value))}/><button className="button primary" onClick={()=>void start()}>Start</button></div></>}</section><section className="card"><div className="card-head"><h2>Focus history</h2></div><div className="list">{history.map(item=><div className="list-row" key={item.id}><div><strong>{item.name}</strong><small>{new Date(item.startedAt).toLocaleString()}</small></div><span>{duration((Date.parse(item.endedAt??item.startedAt)-Date.parse(item.startedAt))/1000)}</span></div>)}</div></section></>}
+    {section==="settings"&&settings&&<section className="card attention-settings"><div className="setting-row"><div><strong>Enable Attention</strong><small>Track focused applications through GNOME Shell.</small></div><input type="checkbox" checked={settings.enabled} onChange={e=>void save({...settings,enabled:e.target.checked})}/></div><div className="setting-row"><div><strong>Privacy</strong><small>Application-only never stores window titles.</small></div><select value={settings.privacy} onChange={e=>void save({...settings,privacy:e.target.value as AttentionSettings["privacy"]})}><option value="applications">Applications only</option><option value="detailed">Detailed titles</option></select></div><div className="setting-row"><div><strong>Idle threshold</strong><small>Time without input before activity is idle.</small></div><select value={settings.idleThresholdSeconds} onChange={e=>void save({...settings,idleThresholdSeconds:Number(e.target.value)})}>{[60,300,600,900].map(v=><option value={v} key={v}>{duration(v)}</option>)}</select></div><p className="card-note">{saving?"Saving…":"Saved locally. Nothing is uploaded."}</p><div className="card-head"><h2>Categories</h2></div>{settings.categories.map((category,index)=><div className="attention-category" key={category.id}><input value={category.name} onChange={e=>{const categories=[...settings.categories];categories[index]={...category,name:e.target.value};setSettings({...settings,categories});}}/><input aria-label={`${category.name} applications`} value={category.applications.join(", ")} onChange={e=>{const categories=[...settings.categories];categories[index]={...category,applications:e.target.value.split(",").map(v=>v.trim()).filter(Boolean)};setSettings({...settings,categories});}} onBlur={()=>settings&&void save(settings)}/></div>)}</section>}
   </div>;
 }

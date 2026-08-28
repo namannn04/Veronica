@@ -2047,3 +2047,12 @@ th.sortable:hover {
 .attention-clock { font-size: 48px; font-weight: 700; margin: 14px 0 24px; font-variant-numeric: tabular-nums; }
 .attention-focus .backup-path { max-width: 680px; margin: 18px auto 0; }
 .attention-focus input[type="number"] { max-width: 110px; }
+.attention-metrics { margin: 14px 0; }
+.attention-bars { display: grid; gap: 12px; }
+.attention-bar { display: grid; grid-template-columns: minmax(100px, 1fr) 3fr 60px; align-items: center; gap: 12px; }
+.attention-bar > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attention-bar > div { height: 7px; border-radius: 99px; background: var(--grid); overflow: hidden; }
+.attention-bar i { display: block; height: 100%; border-radius: inherit; background: var(--sage); }
+.attention-bar b { color: var(--ink-secondary); text-align: right; font-weight: 560; }
+.attention-settings { display: grid; gap: 2px; }
+.attention-category { display: grid; grid-template-columns: minmax(120px, .7fr) 2fr; gap: 10px; padding: 8px 0; }

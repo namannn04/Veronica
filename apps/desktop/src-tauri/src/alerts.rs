@@ -200,9 +200,16 @@ fn window_json(window: LimitWindow) -> serde_json::Value {
 /// wording it uses for an expired login is stable and specific.
 pub fn is_credential_failure(message: &str) -> bool {
     let lowered = message.to_lowercase();
-    ["expired", "sign in", "log in", "unauthorized", "unauthenticated", "401"]
-        .iter()
-        .any(|needle| lowered.contains(needle))
+    [
+        "expired",
+        "sign in",
+        "log in",
+        "unauthorized",
+        "unauthenticated",
+        "401",
+    ]
+    .iter()
+    .any(|needle| lowered.contains(needle))
 }
 
 /// A window actually running out is worth interrupting for; pace advice is not.

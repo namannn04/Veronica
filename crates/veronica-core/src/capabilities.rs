@@ -184,11 +184,10 @@ impl Capabilities {
     pub fn state(&self, capability: Capability) -> &CapabilityState {
         /// Returned for a capability the resolver did not cover, so callers
         /// always get a state rather than an option.
-        static UNKNOWN: LazyLock<CapabilityState> = LazyLock::new(|| {
-            CapabilityState::Unsupported {
+        static UNKNOWN: LazyLock<CapabilityState> =
+            LazyLock::new(|| CapabilityState::Unsupported {
                 reason: "Capability has no platform implementation.".to_string(),
-            }
-        });
+            });
         self.states.get(&capability).unwrap_or(&UNKNOWN)
     }
 
@@ -226,6 +225,7 @@ impl Capabilities {
         set(Notifications, CapabilityState::Available);
         set(ExternalMediaControl, CapabilityState::Available);
         set(MediaControls, CapabilityState::Available);
+        set(LocalMusicPlayback, CapabilityState::Available);
         set(PreventSleep, CapabilityState::Available);
         set(ApplicationAudio, CapabilityState::Available);
         set(MicrophoneControl, CapabilityState::Available);
@@ -233,17 +233,6 @@ impl Capabilities {
         set(CalendarEvents, CapabilityState::Available);
         set(RunningApplications, CapabilityState::Available);
         set(ScreenShareDetection, CapabilityState::Available);
-
-        // Not yet built. Reported as such rather than as available, so the
-        // Extensions page says "Partial" with a reason instead of "Ready" for a
-        // feature that does nothing.
-        set(
-            LocalMusicPlayback,
-            CapabilityState::integration(
-                "Playing files from a local music folder needs a GStreamer pipeline, which \
-                 Veronica has not built yet. External players work through MPRIS.",
-            ),
-        );
 
         set(
             CompanionService,
@@ -442,7 +431,7 @@ mod tests {
         // capability with no implementation behind it must say so, or the
         // Extensions page shows "Ready" for a switch that does nothing.
         let caps = Capabilities::resolve(&session(SessionKind::Wayland));
-        for capability in [Capability::LocalMusicPlayback, Capability::CompanionService] {
+        for capability in [Capability::CompanionService] {
             assert!(
                 matches!(
                     caps.state(capability),
@@ -466,8 +455,7 @@ mod tests {
 
         // X11 hands the clipboard to anyone who asks.
         assert_eq!(
-            Capabilities::resolve(&session(SessionKind::X11))
-                .state(Capability::ClipboardHistory),
+            Capabilities::resolve(&session(SessionKind::X11)).state(Capability::ClipboardHistory),
             &CapabilityState::Available
         );
     }
@@ -494,7 +482,10 @@ mod tests {
             format!("{:?}", with_runtime.state(Capability::CompanionService)),
             format!("{:?}", caps.state(Capability::CompanionService)),
         );
-        assert_ne!(a, b, "the same reason for both causes tells the user nothing");
+        assert_ne!(
+            a, b,
+            "the same reason for both causes tells the user nothing"
+        );
         assert!(b.contains("Install Docker"));
     }
 

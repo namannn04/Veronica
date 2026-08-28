@@ -161,12 +161,7 @@ pub mod formatting {
     }
 
     pub fn hex(red: f64, green: f64, blue: f64) -> String {
-        format!(
-            "#{:02X}{:02X}{:02X}",
-            byte(red),
-            byte(green),
-            byte(blue)
-        )
+        format!("#{:02X}{:02X}{:02X}", byte(red), byte(green), byte(blue))
     }
 
     pub fn rgb(red: f64, green: f64, blue: f64) -> String {
@@ -255,11 +250,7 @@ pub fn srgb_to_display_p3(red: f64, green: f64, blue: f64) -> (f64, f64, f64) {
         [0.033_194_199_2, 0.966_805_800_8, 0.0],
         [0.017_082_631_0, 0.072_397_402_1, 0.910_519_967_0],
     ];
-    let linear = [
-        srgb_decode(red),
-        srgb_decode(green),
-        srgb_decode(blue),
-    ];
+    let linear = [srgb_decode(red), srgb_decode(green), srgb_decode(blue)];
     let mut out = [0.0f64; 3];
     for (row, coefficients) in M.iter().enumerate() {
         out[row] = coefficients
@@ -414,7 +405,10 @@ mod tests {
         let red = 0.2;
         let green = 0.4;
         let blue = 0.6;
-        assert_eq!(formatting::string(red, green, blue, CopyFormat::Hex), "#336699");
+        assert_eq!(
+            formatting::string(red, green, blue, CopyFormat::Hex),
+            "#336699"
+        );
         assert_eq!(
             formatting::string(red, green, blue, CopyFormat::Rgb),
             "rgb(51, 102, 153)"
@@ -511,7 +505,11 @@ mod tests {
         let mut history = SwatchHistory::default();
         history.record(0.1, 0.2, 0.3, ColorProfile::Srgb, at(0), 10);
         history.record(0.1, 0.2, 0.3, ColorProfile::Srgb, at(5), 10);
-        assert_eq!(history.len(), 2, "the history records picks, not a colour set");
+        assert_eq!(
+            history.len(),
+            2,
+            "the history records picks, not a colour set"
+        );
     }
 
     #[test]
@@ -538,7 +536,10 @@ mod tests {
         let c = history.record(0.2, 0.2, 0.2, ColorProfile::Srgb, at(2), 10);
         assert_ne!(c.id, b.id);
         assert_ne!(c.id, a.id);
-        assert!(!history.remove(b.id), "removing twice reports nothing removed");
+        assert!(
+            !history.remove(b.id),
+            "removing twice reports nothing removed"
+        );
     }
 
     #[test]
@@ -594,7 +595,12 @@ mod tests {
             profile: ColorProfile::Srgb,
             picked_at: at(0),
         };
-        let dark = Swatch { red: 0.05, green: 0.05, blue: 0.1, ..light.clone() };
+        let dark = Swatch {
+            red: 0.05,
+            green: 0.05,
+            blue: 0.1,
+            ..light.clone()
+        };
         assert!(light.prefers_dark_text());
         assert!(!dark.prefers_dark_text());
     }

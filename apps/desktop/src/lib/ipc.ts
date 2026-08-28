@@ -9,6 +9,8 @@ import type {
   ImportReport,
   AttentionFocusSession,
   AttentionStatus,
+  AttentionOverview,
+  AttentionSettings,
   PresenterView,
   ClipRow,
   CopyFormatOption,
@@ -28,6 +30,9 @@ import type {
   HerdrBoard,
   UsageView,
   VolumeState,
+  LocalTrack,
+  PowerStatus,
+  UpdateInfo,
 } from "./types";
 
 export const ipc = {
@@ -54,6 +59,9 @@ export const ipc = {
     invoke<AttentionFocusSession>("attention_start", { name, durationSeconds }),
   attentionStop: () => invoke<AttentionFocusSession>("attention_stop"),
   attentionHistory: () => invoke<AttentionFocusSession[]>("attention_history"),
+  attentionOverview: (days: number) => invoke<AttentionOverview>("attention_overview", { days }),
+  attentionSettings: () => invoke<AttentionSettings>("attention_settings"),
+  attentionSettingsSave: (settings: AttentionSettings) => invoke<void>("attention_settings_save", { settings }),
   shellAction: (action: "cleanKeys" | "pickColor") =>
     invoke<void>("shell_action", { action }),
 
@@ -88,6 +96,8 @@ export const ipc = {
   machinesDiscover: () => invoke<string[]>("machines_discover"),
 
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
+  powerStatus: () => invoke<PowerStatus>("power_status"),
+  updateCheck: () => invoke<UpdateInfo>("update_check"),
   systemProcesses: () => invoke<RunningProcess[]>("system_processes"),
   systemQuitProcess: (pid: number) => invoke<void>("system_quit_process", { pid }),
   herdrBoard: () => invoke<HerdrBoard>("herdr_board"),
@@ -104,6 +114,7 @@ export const ipc = {
   mediaNowPlaying: () => invoke<NowPlaying | null>("media_now_playing"),
   mediaControl: (action: MediaAction) =>
     invoke<void>("media_control", { action }),
+  musicLibrary: () => invoke<LocalTrack[]>("music_library"),
 
   notificationsList: () => invoke<DesktopNotification[]>("notifications_list"),
   notificationsDismiss: (id: number) =>

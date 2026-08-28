@@ -458,6 +458,13 @@ export interface AttentionStatus {
   completedSessions: number;
   totalFocusSeconds: number;
 }
+export interface AttentionCategory { id: string; name: string; color: string; applications: string[]; }
+export interface AttentionSettings { enabled: boolean; idleThresholdSeconds: number; privacy: "applications" | "detailed"; categories: AttentionCategory[]; }
+export interface AttentionEvent { id: string; startedAt: string; durationSeconds: number; application: string; title: string | null; idle: boolean; }
+export interface AttentionOverview { from: string; to: string; activeSeconds: number; idleSeconds: number; focusedSeconds: number; contextSwitches: number; applications: [string, number][]; categories: [string, number][]; events: AttentionEvent[]; }
+export interface LocalTrack { id: string; path: string; title: string; artist: string; album: string; artPath: string | null; }
+export interface PowerStatus { hasLid: boolean; lidAwakeActive: boolean; preventSleepActive: boolean; }
+export interface UpdateInfo { currentVersion: string; latestVersion: string; updateAvailable: boolean; releaseUrl: string; packageUrl: string | null; publishedAt: string | null; notes: string; }
 
 export type UsageLevel = "green" | "orange" | "red";
 export type PacingZone = "chill" | "onTrack" | "warning" | "hot";

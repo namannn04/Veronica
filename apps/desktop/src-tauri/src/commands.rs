@@ -5,7 +5,7 @@
 //! `{:#}` format keeps the whole context chain so the UI can show a real reason
 //! rather than "failed".
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 use veronica_core::{Capabilities, Diagnostics};
 use veronica_system::metrics::SystemSnapshot;
@@ -318,12 +318,9 @@ pub fn backup_export(
             ))
         }
     };
-    let archive = veronica_core::BackupArchive::collect(
-        &state.directories,
-        env!("CARGO_PKG_VERSION"),
-        now,
-    )
-    .map_err(fail)?;
+    let archive =
+        veronica_core::BackupArchive::collect(&state.directories, env!("CARGO_PKG_VERSION"), now)
+            .map_err(fail)?;
     archive.save(&destination).map_err(fail)?;
     Ok(backup_summary(&destination, &archive))
 }
@@ -355,7 +352,9 @@ pub fn backup_import(
 }
 
 #[tauri::command]
-pub fn attention_status(state: State<'_, AppState>) -> CommandResult<veronica_core::AttentionStatus> {
+pub fn attention_status(
+    state: State<'_, AppState>,
+) -> CommandResult<veronica_core::AttentionStatus> {
     veronica_core::AttentionRepository::new(state.directories.attention_dir())
         .status(chrono::Utc::now())
         .map_err(fail)
@@ -390,6 +389,55 @@ pub fn attention_history(
         .map_err(fail)?;
     sessions.reverse();
     Ok(sessions)
+}
+
+#[tauri::command]
+pub fn attention_overview(
+    state: State<'_, AppState>,
+    days: i64,
+) -> CommandResult<veronica_core::AttentionOverview> {
+    let now = chrono::Utc::now();
+    veronica_core::AttentionRepository::new(state.directories.attention_dir())
+        .overview(now - chrono::Duration::days(days.clamp(1, 365)), now)
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub fn attention_settings(
+    state: State<'_, AppState>,
+) -> CommandResult<veronica_core::AttentionSettings> {
+    veronica_core::AttentionRepository::new(state.directories.attention_dir())
+        .load_settings()
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub fn attention_settings_save(
+    app: AppHandle,
+    settings: veronica_core::AttentionSettings,
+) -> CommandResult<()> {
+    let state = app.state::<AppState>();
+    veronica_core::AttentionRepository::new(state.directories.attention_dir())
+        .save_settings(&settings)
+        .map_err(fail)?;
+    let mut shared = state.settings.lock().expect("settings mutex poisoned");
+    shared.set("tabAttentionEnabled", serde_json::json!(settings.enabled));
+    shared.set(
+        "attentionPrivacy",
+        serde_json::json!(match settings.privacy {
+            veronica_core::AttentionPrivacy::Detailed => "detailed",
+            _ => "applications",
+        }),
+    );
+    shared.set(
+        "attentionIdleSeconds",
+        serde_json::json!(settings.idle_threshold_seconds),
+    );
+    shared
+        .save(&state.directories.settings_file())
+        .map_err(fail)?;
+    let _ = app.emit("settings-updated", ());
+    Ok(())
 }
 
 /// Match the process-owned idle inhibitor to Edith's Keep Awake switch.
@@ -473,6 +521,136 @@ pub async fn sync_lid_awake(app: &AppHandle, enabled: bool) -> CommandResult<()>
     Ok(())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerStatus {
+    pub has_lid: bool,
+    pub lid_awake_active: bool,
+    pub prevent_sleep_active: bool,
+}
+
+/// Report actual process-owned locks, rather than echoing the saved switches.
+#[tauri::command]
+pub fn power_status(state: State<'_, AppState>) -> PowerStatus {
+    PowerStatus {
+        has_lid: veronica_system::power::has_lid(),
+        lid_awake_active: state.lid_awake.lock().expect("lid awake lock").is_some(),
+        prevent_sleep_active: state
+            .prevent_sleep
+            .lock()
+            .expect("prevent sleep lock")
+            .is_some(),
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    pub current_version: String,
+    pub latest_version: String,
+    pub update_available: bool,
+    pub release_url: String,
+    pub package_url: Option<String>,
+    pub published_at: Option<String>,
+    pub notes: String,
+}
+
+#[derive(Deserialize)]
+struct GithubRelease {
+    tag_name: String,
+    html_url: String,
+    published_at: Option<String>,
+    body: Option<String>,
+    assets: Vec<GithubAsset>,
+}
+
+#[derive(Deserialize)]
+struct GithubAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+fn version_parts(value: &str) -> Vec<u64> {
+    value
+        .trim_start_matches(['v', 'V'])
+        .split('.')
+        .map(|part| {
+            part.split(['-', '+'])
+                .next()
+                .unwrap_or("0")
+                .parse()
+                .unwrap_or(0)
+        })
+        .collect()
+}
+
+fn newer_version(latest: &str, current: &str) -> bool {
+    let mut latest = version_parts(latest);
+    let mut current = version_parts(current);
+    let width = latest.len().max(current.len());
+    latest.resize(width, 0);
+    current.resize(width, 0);
+    latest > current
+}
+
+/// Check the signed-in user's normal network path for the latest GitHub release.
+/// Curl has an explicit timeout, redirect policy and failure status so the UI can
+/// never hang indefinitely or mistake an HTML error page for release metadata.
+#[tauri::command]
+pub async fn update_check() -> CommandResult<UpdateInfo> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let fetch = |url: &str| std::process::Command::new("curl")
+            .args([
+                "--fail", "--silent", "--show-error", "--location",
+                "--max-time", "12", "--header", "Accept: application/vnd.github+json",
+                "--header", "X-GitHub-Api-Version: 2022-11-28",
+                url,
+            ])
+            .output()
+            .map_err(|error| format!("cannot run curl to check updates: {error}"));
+        let current = env!("CARGO_PKG_VERSION").to_string();
+        let release_output = fetch("https://api.github.com/repos/namannn04/Veronica/releases/latest")?;
+        if release_output.status.success() {
+            let release: GithubRelease = serde_json::from_slice(&release_output.stdout)
+                .map_err(|error| format!("GitHub returned invalid release data: {error}"))?;
+            let package_url = release.assets.iter()
+                .find(|asset| asset.name.ends_with("_amd64.deb") || asset.name.ends_with(".AppImage"))
+                .map(|asset| asset.browser_download_url.clone());
+            return Ok(UpdateInfo {
+                update_available: newer_version(&release.tag_name, &current),
+                current_version: current,
+                latest_version: release.tag_name.trim_start_matches(['v', 'V']).to_string(),
+                release_url: release.html_url,
+                package_url,
+                published_at: release.published_at,
+                notes: release.body.unwrap_or_default(),
+            });
+        }
+
+        // Before the first packaged Release GitHub answers 404. Fall back to
+        // the source manifest so current installations still get a truthful
+        // answer instead of a permanent error.
+        let manifest_output = fetch("https://raw.githubusercontent.com/namannn04/Veronica/main/apps/desktop/src-tauri/tauri.conf.json")?;
+        if !manifest_output.status.success() {
+            let detail = String::from_utf8_lossy(&manifest_output.stderr);
+            return Err(format!("cannot check Veronica releases: {}", detail.trim()));
+        }
+        let manifest: serde_json::Value = serde_json::from_slice(&manifest_output.stdout)
+            .map_err(|error| format!("GitHub returned an invalid Veronica manifest: {error}"))?;
+        let latest = manifest.get("version").and_then(|value| value.as_str())
+            .ok_or_else(|| "Veronica's online manifest has no version".to_string())?;
+        Ok(UpdateInfo {
+            update_available: newer_version(latest, &current),
+            current_version: current,
+            latest_version: latest.to_string(),
+            release_url: "https://github.com/namannn04/Veronica".to_string(),
+            package_url: None,
+            published_at: None,
+            notes: "No packaged GitHub Release has been published yet.".to_string(),
+        })
+    }).await.map_err(|error| format!("update check failed: {error}"))?
+}
+
 #[tauri::command]
 pub fn system_snapshot(state: State<'_, AppState>) -> CommandResult<SystemSnapshot> {
     let mut sampler = state.sampler.lock().expect("sampler lock");
@@ -511,7 +689,9 @@ pub async fn microphone_state() -> CommandResult<veronica_system::audio::VolumeS
 
 #[tauri::command]
 pub async fn microphone_toggle() -> CommandResult<veronica_system::audio::VolumeState> {
-    veronica_system::audio::toggle_microphone().await.map_err(fail)
+    veronica_system::audio::toggle_microphone()
+        .await
+        .map_err(fail)
 }
 
 /// What is playing, or `None` when no MPRIS player is registered.
@@ -524,16 +704,15 @@ pub async fn media_now_playing() -> CommandResult<Option<veronica_media::NowPlay
     let connection = zbus::Connection::session()
         .await
         .map_err(|e| format!("cannot reach the session bus: {e}"))?;
-    let mut playing = veronica_media::now_playing(&connection).await.map_err(fail)?;
+    let mut playing = veronica_media::now_playing(&connection)
+        .await
+        .map_err(fail)?;
 
     // Replace the file:// art URL with an inline copy the webview can render.
     // Unusable art becomes None so the interface shows its placeholder rather
     // than an empty tile.
     if let Some(playing) = playing.as_mut() {
-        playing.art_url = playing
-            .art_url
-            .as_deref()
-            .and_then(crate::art::to_data_url);
+        playing.art_url = playing.art_url.as_deref().and_then(crate::art::to_data_url);
     }
     Ok(playing)
 }
@@ -557,6 +736,17 @@ pub async fn media_control(action: String) -> CommandResult<()> {
     veronica_media::control(&connection, transport)
         .await
         .map_err(fail)
+}
+
+#[tauri::command]
+pub fn music_library() -> CommandResult<Vec<veronica_media::LocalTrack>> {
+    let home = veronica_core::paths::home_dir()
+        .ok_or_else(|| "cannot resolve home directory".to_string())?;
+    let root = home.join("Music");
+    if !root.exists() {
+        return Ok(Vec::new());
+    }
+    veronica_media::scan_library(&root).map_err(fail)
 }
 
 #[derive(Serialize)]
@@ -684,7 +874,9 @@ pub fn machines_add(
 ) -> CommandResult<veronica_machines::Machine> {
     use veronica_machines::host;
 
-    let label = name.filter(|n| !n.trim().is_empty()).unwrap_or_else(|| target.clone());
+    let label = name
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| target.clone());
     let id = host::slugify(&label);
     if id == "local" {
         return Err("\"local\" is reserved for this computer".to_string());
@@ -763,14 +955,10 @@ pub fn machines_discover(state: State<'_, AppState>) -> CommandResult<Vec<String
 
 /// The clipboard history, newest first.
 #[tauri::command]
-pub fn clipboard_list(
-    state: State<'_, AppState>,
-    query: String,
-) -> CommandResult<Vec<ClipRow>> {
+pub fn clipboard_list(state: State<'_, AppState>, query: String) -> CommandResult<Vec<ClipRow>> {
     use veronica_core::ClipboardHistory;
 
-    let history =
-        ClipboardHistory::load(&state.directories.clipboard_db()).map_err(fail)?;
+    let history = ClipboardHistory::load(&state.directories.clipboard_db()).map_err(fail)?;
     Ok(history
         .search(&query)
         .into_iter()
@@ -821,10 +1009,7 @@ pub async fn presenter_state(app: AppHandle) -> CommandResult<crate::presenter::
 /// Presenter's own actions, so the interface does not have to know which
 /// settings key each one writes.
 #[tauri::command]
-pub fn presenter_set(
-    app: AppHandle,
-    action: String,
-) -> CommandResult<()> {
+pub fn presenter_set(app: AppHandle, action: String) -> CommandResult<()> {
     let state = app.state::<AppState>();
     let (key, value) = match action.as_str() {
         "enable" => ("presenterEnabled", serde_json::Value::Bool(true)),
@@ -1130,9 +1315,7 @@ pub async fn color_copy(
         .unwrap_or(configured);
 
     let history = veronica_core::SwatchHistory::load(&path).map_err(fail)?;
-    let swatch = history
-        .get(id)
-        .ok_or_else(|| format!("no swatch {id}"))?;
+    let swatch = history.get(id).ok_or_else(|| format!("no swatch {id}"))?;
     let value = swatch.format(chosen);
     let writer = veronica_system::selection::write(&value)
         .await
@@ -1207,9 +1390,8 @@ pub fn show_main_window(app: AppHandle) -> CommandResult<()> {
 pub fn open_external(target: String) -> CommandResult<()> {
     // Only http(s) and absolute local paths, so a crafted string cannot be used
     // to launch an arbitrary command through the handler.
-    let allowed = target.starts_with("https://")
-        || target.starts_with("http://")
-        || target.starts_with('/');
+    let allowed =
+        target.starts_with("https://") || target.starts_with("http://") || target.starts_with('/');
     if !allowed {
         return Err(format!("refusing to open {target:?}"));
     }
@@ -1222,6 +1404,16 @@ pub fn open_external(target: String) -> CommandResult<()> {
 
 #[cfg(test)]
 mod tests {
+    use super::newer_version;
+
+    #[test]
+    fn update_versions_compare_numerically_and_ignore_release_prefixes() {
+        assert!(newer_version("v0.2.0", "0.1.99"));
+        assert!(newer_version("1.0.1", "1.0.0"));
+        assert!(!newer_version("0.1.8", "0.1.8"));
+        assert!(!newer_version("0.1.7", "0.1.8"));
+    }
+
     #[test]
     fn only_web_urls_and_absolute_paths_are_openable() {
         // A relative or scheme-less string could otherwise reach a handler that
@@ -1394,7 +1586,9 @@ mod wire_shape_tests {
         assert!(!extensions.is_empty());
         for entry in extensions {
             assert!(
-                entry["defaultsKey"].as_str().is_some_and(|key| !key.is_empty()),
+                entry["defaultsKey"]
+                    .as_str()
+                    .is_some_and(|key| !key.is_empty()),
                 "an extension without a settings key cannot be toggled: {entry}"
             );
         }

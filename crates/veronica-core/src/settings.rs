@@ -134,7 +134,10 @@ mod tests {
     #[test]
     fn coerces_json_literals_for_compound_values() {
         assert_eq!(Settings::coerce("[1,2]"), serde_json::json!([1, 2]));
-        assert_eq!(Settings::coerce(r#""quoted""#), Value::String("quoted".into()));
+        assert_eq!(
+            Settings::coerce(r#""quoted""#),
+            Value::String("quoted".into())
+        );
     }
 
     #[test]
@@ -168,7 +171,10 @@ mod tests {
         let settings = Settings::default();
         let usage = crate::extensions::entry("usage").unwrap();
         let color = crate::extensions::entry("colorPicker").unwrap();
-        assert!(settings.extension_enabled(usage), "featured is on by default");
+        assert!(
+            settings.extension_enabled(usage),
+            "featured is on by default"
+        );
         assert!(!settings.extension_enabled(color), "unfeatured is off");
     }
 }

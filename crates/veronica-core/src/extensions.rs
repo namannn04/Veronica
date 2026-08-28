@@ -61,9 +61,13 @@ pub struct ExtensionEntry {
 pub enum ExtensionAvailability {
     Available,
     /// Works, but some optional capability is missing, so part of it is off.
-    Degraded { missing: Vec<Capability> },
+    Degraded {
+        missing: Vec<Capability>,
+    },
     /// A required capability is missing, so the extension cannot run.
-    Unavailable { missing: Vec<Capability> },
+    Unavailable {
+        missing: Vec<Capability>,
+    },
 }
 
 impl ExtensionEntry {
@@ -295,10 +299,7 @@ pub fn entry(id: &str) -> Option<&'static ExtensionEntry> {
 /// Search and category filter, matching Edith's marketplace behaviour: an
 /// empty query matches everything and matching is case-insensitive across
 /// title and subtitle.
-pub fn filter(
-    query: &str,
-    group: Option<ExtensionGroup>,
-) -> Vec<&'static ExtensionEntry> {
+pub fn filter(query: &str, group: Option<ExtensionGroup>) -> Vec<&'static ExtensionEntry> {
     let needle = query.trim().to_lowercase();
     ENTRIES
         .iter()
@@ -380,17 +381,12 @@ mod tests {
     }
 
     #[test]
-    fn music_works_through_mpris_and_only_degrades_for_local_playback() {
-        // Requiring local playback, as Edith does, would report a working MPRIS
-        // page as unavailable. Degraded is the truthful reading: it works, and
-        // one optional part is missing.
+    fn music_is_available_with_mpris_and_local_playback() {
         let entry = entry("music").unwrap();
-        match entry.availability(&caps(SessionKind::Wayland)) {
-            ExtensionAvailability::Degraded { missing } => {
-                assert!(missing.contains(&LocalMusicPlayback));
-            }
-            other => panic!("expected degraded, got {other:?}"),
-        }
+        assert_eq!(
+            entry.availability(&caps(SessionKind::Wayland)),
+            ExtensionAvailability::Available
+        );
     }
 
     #[test]

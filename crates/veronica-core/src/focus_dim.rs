@@ -119,9 +119,7 @@ impl FocusDimSettings {
             animation_secs: clamp_animation_secs(
                 settings.f64_or("focusDimAnimationDuration", default.animation_secs),
             ),
-            mode: DisplayMode::parse(
-                settings.string("focusDimOtherDisplaysMode").unwrap_or(""),
-            ),
+            mode: DisplayMode::parse(settings.string("focusDimOtherDisplaysMode").unwrap_or("")),
         }
     }
 
@@ -147,7 +145,10 @@ mod tests {
     #[test]
     fn defaults_match_ediths() {
         let settings = FocusDimSettings::default();
-        assert!(!settings.enabled, "an unfeatured extension is off by default");
+        assert!(
+            !settings.enabled,
+            "an unfeatured extension is off by default"
+        );
         assert_eq!(settings.intensity, 0.45);
         assert_eq!(settings.animation_secs, 0.25);
         assert_eq!(settings.mode, DisplayMode::PerScreenFront);
@@ -200,7 +201,10 @@ mod tests {
     fn an_unknown_mode_falls_back_to_the_default() {
         assert_eq!(DisplayMode::parse("nonsense"), DisplayMode::PerScreenFront);
         assert_eq!(DisplayMode::parse(""), DisplayMode::PerScreenFront);
-        assert_eq!(DisplayMode::parse("dimUnfocused"), DisplayMode::DimUnfocused);
+        assert_eq!(
+            DisplayMode::parse("dimUnfocused"),
+            DisplayMode::DimUnfocused
+        );
         assert_eq!(
             DisplayMode::parse("DIMUNFOCUSED"),
             DisplayMode::DimUnfocused,

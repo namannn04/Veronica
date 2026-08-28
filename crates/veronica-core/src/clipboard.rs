@@ -43,11 +43,7 @@ impl ClipEntry {
     /// Newlines and runs of spaces are collapsed so a copied code block reads as
     /// one legible line rather than blowing up the row height.
     pub fn preview(&self) -> String {
-        let collapsed = self
-            .text
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ");
+        let collapsed = self.text.split_whitespace().collect::<Vec<_>>().join(" ");
         if collapsed.chars().count() <= PREVIEW_CHARS {
             return collapsed;
         }
@@ -89,9 +85,7 @@ impl ClipboardHistory {
                 Ok(history)
             }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(error) => {
-                Err(error).with_context(|| format!("cannot read {}", path.display()))
-            }
+            Err(error) => Err(error).with_context(|| format!("cannot read {}", path.display())),
         }
     }
 
@@ -215,7 +209,11 @@ mod tests {
         assert_eq!(history.entries.len(), 2, "no duplicate row");
         assert_eq!(history.entries[0].text, "keep");
         assert_eq!(history.entries[0].count, 2);
-        assert_eq!(history.entries[0].first_seen, at(0), "first seen is preserved");
+        assert_eq!(
+            history.entries[0].first_seen,
+            at(0),
+            "first seen is preserved"
+        );
         assert_eq!(history.entries[0].last_seen, at(2));
     }
 
@@ -292,7 +290,10 @@ mod tests {
         let id = history.record("gone", at(0), DEFAULT_LIMIT).unwrap();
         history.record("stays", at(1), DEFAULT_LIMIT);
         assert!(history.remove(id));
-        assert!(!history.remove(id), "removing twice reports nothing removed");
+        assert!(
+            !history.remove(id),
+            "removing twice reports nothing removed"
+        );
         assert_eq!(history.entries.len(), 1);
         history.clear();
         assert!(history.entries.is_empty());

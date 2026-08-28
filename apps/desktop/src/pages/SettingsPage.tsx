@@ -10,7 +10,7 @@ import {
   storedLimitProvider,
   type LimitProvider,
 } from "../lib/preferences";
-import type { Diagnostics } from "../lib/types";
+import type { Diagnostics, PowerStatus, UpdateInfo } from "../lib/types";
 import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
 import { PresenterPane } from "./PresenterPane";
@@ -30,10 +30,12 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
   const [tab, setTab] = useState<Tab>("general");
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [notice, setNotice] = useState("");
+  const [power, setPower] = useState<PowerStatus | null>(null);
 
   useEffect(() => {
     const refresh = () => void ipc.settingsAll().then(setValues).catch(() => setNotice("Settings connect when Veronica runs as the desktop app."));
     refresh();
+    void ipc.powerStatus().then(setPower).catch(() => {});
     const changed = listen("settings-updated", refresh);
     return () => { void changed.then((unlisten) => unlisten()); };
   }, []);
@@ -59,8 +61,8 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
         <Toggle label="CPU and memory indicator" detail="Show compact live system usage beside the clock." checked={Boolean(values.menuBarSystemStats)} onChange={(value) => void set("menuBarSystemStats", value)} />
       </SettingsGroup>
       <SettingsGroup title="Power" subtitle="Linux-native systemd/logind inhibitors.">
-        <Toggle label="Keep Awake" detail="Prevent automatic sleep while enabled." checked={Boolean(values.preventSleep)} onChange={(value) => void set("preventSleep", value)} />
-        <Toggle label="Lid Awake" detail="Keep the session awake when a laptop lid closes." checked={Boolean(values.lidAwakeEnabled)} onChange={(value) => void set("lidAwakeEnabled", value)} />
+        <Toggle label="Keep Awake" detail={power?.preventSleepActive ? "Active — systemd-logind is holding the idle inhibitor." : "Prevent automatic sleep while enabled."} checked={Boolean(values.preventSleep)} onChange={(value) => void set("preventSleep", value).then(() => ipc.powerStatus().then(setPower))} />
+        <Toggle label="Lid Awake" detail={power && !power.hasLid ? "No laptop lid was detected on this computer." : power?.lidAwakeActive ? "Active — lid-close and idle sleep are both inhibited." : "Keep the session awake when a laptop lid closes."} checked={Boolean(values.lidAwakeEnabled)} onChange={(value) => void set("lidAwakeEnabled", value).then(() => ipc.powerStatus().then(setPower))} />
       </SettingsGroup>
     </div>}
     {tab === "alerts" && <div className="settings-embedded"><AlertsPane /></div>}
@@ -78,10 +80,10 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       </SettingsGroup>
     </div>}
     {tab === "permissions" && <div className="settings-embedded"><DiagnosticsPage diagnostics={diagnostics} /></div>}
-    {tab === "shortcuts" && <Info title="Global shortcuts" body={diagnostics?.session.hasGlobalShortcutsPortal ? "The GNOME Global Shortcuts portal is available. Shortcut recording will appear here as features gain bindings." : "The Global Shortcuts portal is unavailable in this session. Veronica does not capture keys behind GNOME's back."} />}
+    {tab === "shortcuts" && <section className="settings-group"><div><h2>Global shortcuts</h2><p>Handled by the desktop shortcut service; Veronica never records arbitrary keys.</p></div><div className="settings-box"><div className="setting-row"><div><strong>Show Veronica</strong><small>Open, unminimize and focus the app from anywhere.</small></div><kbd>Ctrl + Alt + V</kbd></div><div className="setting-row"><div><strong>Desktop support</strong><small>{diagnostics?.session.hasGlobalShortcutsPortal ? "GNOME Global Shortcuts portal detected." : "Portal not advertised; X11 registration may still work. A conflict is logged without breaking startup."}</small></div><span className={`pill ${diagnostics?.session.hasGlobalShortcutsPortal ? "good" : "warning"}`}>{diagnostics?.session.hasGlobalShortcutsPortal ? "Portal ready" : "Fallback"}</span></div></div></section>}
     {tab === "terminal" && <Info title="Command line" body="The vr command uses the same Veronica data and settings as this app." code={`vr diagnose\nvr config list\nvr usage dashboard\nvr machines probe\nvr clipboard list`} />}
     {tab === "backup" && <div className="settings-embedded"><BackupPane /></div>}
-    {tab === "updates" && <Info title="Software updates" body={`Veronica ${diagnostics?.version ?? ""} is installed. Automatic update checking is not implemented yet; install a newly built .deb to update without losing settings.`} />}
+    {tab === "updates" && <UpdatePane current={diagnostics?.version ?? ""} />}
   </>;
 }
 
@@ -104,3 +106,15 @@ function Modes({ value, onChange }: { value: string; onChange: (mode: string) =>
 }
 
 function Info({ title, body, code }: { title: string; body: string; code?: string }) { return <section className="settings-info"><div className="info-glyph">V</div><h2>{title}</h2><p>{body}</p>{code && <pre>{code}</pre>}</section>; }
+
+function UpdatePane({ current }: { current: string }) {
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const check = async () => {
+    setBusy(true); setError("");
+    try { setUpdate(await ipc.updateCheck()); } catch (reason) { setError(String(reason)); }
+    finally { setBusy(false); }
+  };
+  return <section className="settings-group"><div><h2>Software updates</h2><p>Checks Veronica's official GitHub releases. Nothing downloads or installs without your click.</p></div><div className="settings-box"><div className="setting-row"><div><strong>Installed version</strong><small>{update ? update.updateAvailable ? `Version ${update.latestVersion} is available.` : "You are up to date." : "Run a check when you want; no background tracking."}</small></div><span className={`pill ${update?.updateAvailable ? "warning" : "good"}`}>v{current}</span></div>{error && <div className="banner error">{error}</div>}<div className="setting-row"><div><strong>{update?.updateAvailable ? `Download Veronica ${update.latestVersion}` : "Check GitHub releases"}</strong><small>{update?.publishedAt ? `Published ${new Date(update.publishedAt).toLocaleDateString()}` : "Uses a 12-second timeout and reports network errors."}</small></div>{update?.updateAvailable ? <button className="button primary" onClick={() => void ipc.openExternal(update.packageUrl ?? update.releaseUrl)}>Download update</button> : <button className="button" disabled={busy} onClick={() => void check()}>{busy ? "Checking…" : "Check now"}</button>}</div>{update?.updateAvailable && <div className="setting-row"><div><strong>Install after downloading</strong><small>Your settings and history remain in your home directory.</small></div><code>sudo apt install --reinstall ./Veronica_{update.latestVersion}_amd64.deb</code></div>}</div></section>;
+}

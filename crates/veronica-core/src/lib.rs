@@ -4,9 +4,9 @@
 //! the `vr` CLI and the tests can share one definition of paths, capabilities,
 //! the extension catalogue and settings.
 
-pub mod capabilities;
-pub mod backup;
 pub mod attention;
+pub mod backup;
+pub mod capabilities;
 pub mod clipboard;
 pub mod extensions;
 pub mod focus_dim;
@@ -16,9 +16,12 @@ pub mod session;
 pub mod settings;
 pub mod swatches;
 
-pub use capabilities::{Capabilities, Capability, CapabilityState};
+pub use attention::{
+    AttentionCategory, AttentionEvent, AttentionFocusSession, AttentionOverview, AttentionPrivacy,
+    AttentionRepository, AttentionSettings, AttentionStatus,
+};
 pub use backup::{BackupArchive, BackupManifest, ImportReport};
-pub use attention::{AttentionFocusSession, AttentionRepository, AttentionStatus};
+pub use capabilities::{Capabilities, Capability, CapabilityState};
 pub use clipboard::{ClipEntry, ClipboardHistory};
 pub use extensions::{ExtensionAvailability, ExtensionEntry, ExtensionGroup, ENTRIES};
 pub use focus_dim::{DisplayMode, FocusDimSettings};

@@ -213,7 +213,10 @@ mod tests {
         ]));
         assert!(!state.manual);
         assert!(state.active());
-        assert_eq!(state.auto_reason.as_deref(), Some("Screen sharing is active"));
+        assert_eq!(
+            state.auto_reason.as_deref(),
+            Some("Screen sharing is active")
+        );
     }
 
     #[test]
@@ -272,7 +275,10 @@ mod tests {
         let state = PresenterState::read(&stored(&[("presenterEnabled", json!(true))]));
         assert_eq!(state.categories.len(), BlurCategory::ALL.len());
         for category in BlurCategory::ALL {
-            assert!(!state.blurs(category), "{category:?} blurred while inactive");
+            assert!(
+                !state.blurs(category),
+                "{category:?} blurred while inactive"
+            );
         }
     }
 

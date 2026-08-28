@@ -129,10 +129,10 @@ impl NowPlaying {
 
 /// The metadata keys MPRIS defines, extracted defensively: players disagree on
 /// which they populate, and several omit the album or the art entirely.
-pub fn read_metadata(metadata: &std::collections::HashMap<String, OwnedValue>) -> (String, String, String, Option<String>, Option<i64>) {
-    let text = |key: &str| -> String {
-        metadata.get(key).and_then(as_text).unwrap_or_default()
-    };
+pub fn read_metadata(
+    metadata: &std::collections::HashMap<String, OwnedValue>,
+) -> (String, String, String, Option<String>, Option<i64>) {
+    let text = |key: &str| -> String { metadata.get(key).and_then(as_text).unwrap_or_default() };
 
     // xesam:artist is a list; the first non-empty entry is the primary artist.
     let artist = metadata
@@ -146,9 +146,18 @@ pub fn read_metadata(metadata: &std::collections::HashMap<String, OwnedValue>) -
         .and_then(as_text)
         .filter(|url| !url.is_empty());
 
-    let length = metadata.get("mpris:length").and_then(as_integer).filter(is_real_length);
+    let length = metadata
+        .get("mpris:length")
+        .and_then(as_integer)
+        .filter(is_real_length);
 
-    (text("xesam:title"), artist, text("xesam:album"), art, length)
+    (
+        text("xesam:title"),
+        artist,
+        text("xesam:album"),
+        art,
+        length,
+    )
 }
 
 /// Every MPRIS player currently on the session bus.
@@ -187,7 +196,12 @@ pub async fn active_player(connection: &Connection) -> Result<Option<String>> {
     Ok(first)
 }
 
-async fn property(connection: &Connection, bus: &str, interface: &str, name: &str) -> Result<OwnedValue> {
+async fn property(
+    connection: &Connection,
+    bus: &str,
+    interface: &str,
+    name: &str,
+) -> Result<OwnedValue> {
     let reply = connection
         .call_method(
             Some(bus),

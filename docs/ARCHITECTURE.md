@@ -226,8 +226,8 @@ the overview and Veronica's own notch are never covered.
 ## Honest capabilities
 
 A capability with no implementation behind it resolves to `IntegrationRequired`
-with a reason, never `Available`. Two do so today — local music playback and the
-Companion backend — and the Extensions page therefore shows "Partial" or
+with a reason, never `Available`. The Companion backend does so today, and the
+Extensions page therefore shows "Partial" or
 "Unavailable" with the reason rather than "Ready" for a switch that would do
 nothing. A test asserts that neither can claim availability, because the value of
 the whole capability model is that the interface can be trusted.

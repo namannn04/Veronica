@@ -21,7 +21,8 @@ veronica-calendar = { workspace = true }
 veronica-machines = { workspace = true }
 zbus = { workspace = true }
 
-tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset"] }
+tauri-plugin-global-shortcut = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

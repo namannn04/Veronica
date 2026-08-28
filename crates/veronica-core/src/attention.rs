@@ -53,6 +53,96 @@ pub struct AttentionStatus {
     pub total_focus_seconds: i64,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AttentionPrivacy {
+    Applications,
+    Detailed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttentionCategory {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+    pub applications: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct AttentionSettings {
+    pub enabled: bool,
+    pub idle_threshold_seconds: i64,
+    pub privacy: AttentionPrivacy,
+    pub categories: Vec<AttentionCategory>,
+}
+
+impl Default for AttentionSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            idle_threshold_seconds: 300,
+            privacy: AttentionPrivacy::Applications,
+            categories: vec![
+                AttentionCategory {
+                    id: "focus".into(),
+                    name: "Focus".into(),
+                    color: "#55755f".into(),
+                    applications: vec![
+                        "code".into(),
+                        "codex".into(),
+                        "terminal".into(),
+                        "jetbrains".into(),
+                    ],
+                },
+                AttentionCategory {
+                    id: "communication".into(),
+                    name: "Communication".into(),
+                    color: "#2a78d6".into(),
+                    applications: vec![
+                        "slack".into(),
+                        "discord".into(),
+                        "teams".into(),
+                        "zoom".into(),
+                    ],
+                },
+                AttentionCategory {
+                    id: "entertainment".into(),
+                    name: "Entertainment".into(),
+                    color: "#d97757".into(),
+                    applications: vec!["spotify".into(), "vlc".into(), "steam".into()],
+                },
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttentionEvent {
+    pub id: String,
+    pub started_at: DateTime<Utc>,
+    pub duration_seconds: i64,
+    pub application: String,
+    pub title: Option<String>,
+    pub idle: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AttentionOverview {
+    pub from: DateTime<Utc>,
+    pub to: DateTime<Utc>,
+    pub active_seconds: i64,
+    pub idle_seconds: i64,
+    pub focused_seconds: i64,
+    pub context_switches: usize,
+    pub applications: Vec<(String, i64)>,
+    pub categories: Vec<(String, i64)>,
+    pub events: Vec<AttentionEvent>,
+}
+
 #[derive(Debug, Clone)]
 pub struct AttentionRepository {
     root: PathBuf,
@@ -69,6 +159,176 @@ impl AttentionRepository {
 
     pub fn history_file(&self) -> PathBuf {
         self.root.join("focus.jsonl")
+    }
+
+    fn settings_file(&self) -> PathBuf {
+        self.root.join("settings.json")
+    }
+    fn events_file(&self) -> PathBuf {
+        self.root.join("events.jsonl")
+    }
+
+    pub fn load_settings(&self) -> Result<AttentionSettings> {
+        match fs::read(self.settings_file()) {
+            Ok(body) => Ok(serde_json::from_slice(&body).context("invalid Attention settings")?),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                Ok(AttentionSettings::default())
+            }
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    pub fn save_settings(&self, settings: &AttentionSettings) -> Result<()> {
+        if !(30..=3600).contains(&settings.idle_threshold_seconds) {
+            bail!("idle threshold must be between 30 seconds and 1 hour");
+        }
+        atomic_json(&self.settings_file(), settings)
+    }
+
+    pub fn record(
+        &self,
+        application: &str,
+        title: Option<&str>,
+        idle: bool,
+        duration_seconds: i64,
+        now: DateTime<Utc>,
+    ) -> Result<Option<AttentionEvent>> {
+        let settings = self.load_settings()?;
+        if !settings.enabled {
+            return Ok(None);
+        }
+        let application = application.trim();
+        if application.is_empty() || !(1..=120).contains(&duration_seconds) {
+            return Ok(None);
+        }
+        fs::create_dir_all(&self.root)?;
+        let event = AttentionEvent {
+            id: format!("{}-{}", now.timestamp_millis(), std::process::id()),
+            started_at: now - Duration::seconds(duration_seconds),
+            duration_seconds,
+            application: application.chars().take(120).collect(),
+            title: if settings.privacy == AttentionPrivacy::Detailed {
+                title.map(|value| value.chars().take(240).collect())
+            } else {
+                None
+            },
+            idle,
+        };
+        let mut events = self.events()?;
+        if let Some(last) = events.last_mut() {
+            let gap = (event.started_at
+                - (last.started_at + Duration::seconds(last.duration_seconds)))
+            .num_seconds()
+            .abs();
+            if gap <= 3
+                && last.application == event.application
+                && last.title == event.title
+                && last.idle == event.idle
+            {
+                last.duration_seconds += event.duration_seconds;
+                let merged = last.clone();
+                self.write_events(&events)?;
+                return Ok(Some(merged));
+            }
+        }
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.events_file())?;
+        file.write_all(&serde_json::to_vec(&event)?)?;
+        file.write_all(b"\n")?;
+        Ok(Some(event))
+    }
+
+    pub fn events(&self) -> Result<Vec<AttentionEvent>> {
+        let body = match fs::read_to_string(self.events_file()) {
+            Ok(body) => body,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(error) => return Err(error.into()),
+        };
+        body.lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| serde_json::from_str(line).context("invalid Attention event"))
+            .collect()
+    }
+
+    fn write_events(&self, events: &[AttentionEvent]) -> Result<()> {
+        let body = events
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<std::result::Result<Vec<_>, _>>()?
+            .join("\n")
+            + "\n";
+        let path = self.events_file();
+        let temporary = self
+            .root
+            .join(format!(".events-{}.tmp", std::process::id()));
+        fs::write(&temporary, body)?;
+        fs::rename(temporary, path)?;
+        Ok(())
+    }
+
+    pub fn overview(&self, from: DateTime<Utc>, to: DateTime<Utc>) -> Result<AttentionOverview> {
+        let settings = self.load_settings()?;
+        let events: Vec<_> = self
+            .events()?
+            .into_iter()
+            .filter(|event| {
+                event.started_at < to
+                    && event.started_at + Duration::seconds(event.duration_seconds) > from
+            })
+            .collect();
+        let mut apps = std::collections::HashMap::<String, i64>::new();
+        let mut categories = std::collections::HashMap::<String, i64>::new();
+        let mut active = 0;
+        let mut idle = 0;
+        let mut focused = 0;
+        let mut switches = 0;
+        let mut previous = None;
+        for event in &events {
+            if event.idle {
+                idle += event.duration_seconds;
+                continue;
+            }
+            active += event.duration_seconds;
+            *apps.entry(event.application.clone()).or_default() += event.duration_seconds;
+            if previous.as_ref() != Some(&event.application) && previous.is_some() {
+                switches += 1;
+            }
+            previous = Some(event.application.clone());
+            let lower = event.application.to_lowercase();
+            let category = settings
+                .categories
+                .iter()
+                .find(|category| {
+                    category
+                        .applications
+                        .iter()
+                        .any(|pattern| lower.contains(&pattern.to_lowercase()))
+                })
+                .map(|category| category.id.clone())
+                .unwrap_or_else(|| "unclassified".into());
+            *categories.entry(category.clone()).or_default() += event.duration_seconds;
+            if category == "focus" {
+                focused += event.duration_seconds;
+            }
+        }
+        let sort = |map: std::collections::HashMap<String, i64>| {
+            let mut rows: Vec<_> = map.into_iter().collect();
+            rows.sort_by_key(|row| std::cmp::Reverse(row.1));
+            rows
+        };
+        Ok(AttentionOverview {
+            from,
+            to,
+            active_seconds: active,
+            idle_seconds: idle,
+            focused_seconds: focused,
+            context_switches: switches,
+            applications: sort(apps),
+            categories: sort(categories),
+            events,
+        })
     }
 
     pub fn start_focus(
@@ -239,5 +499,68 @@ mod tests {
                 .remaining_seconds(now() + Duration::minutes(15)),
             900
         );
+    }
+
+    #[test]
+    fn disabled_tracking_records_nothing_and_application_privacy_drops_titles() {
+        let repository = repository();
+        assert!(repository
+            .record("Code", Some("secret.rs"), false, 10, now())
+            .unwrap()
+            .is_none());
+        let mut settings = repository.load_settings().unwrap();
+        settings.enabled = true;
+        repository.save_settings(&settings).unwrap();
+        let event = repository
+            .record("Code", Some("secret.rs"), false, 10, now())
+            .unwrap()
+            .unwrap();
+        assert_eq!(event.title, None);
+    }
+
+    #[test]
+    fn consecutive_pulses_merge_and_summary_classifies_them() {
+        let repository = repository();
+        let mut settings = repository.load_settings().unwrap();
+        settings.enabled = true;
+        repository.save_settings(&settings).unwrap();
+        repository
+            .record("Visual Studio Code", None, false, 10, now())
+            .unwrap();
+        repository
+            .record(
+                "Visual Studio Code",
+                None,
+                false,
+                10,
+                now() + Duration::seconds(10),
+            )
+            .unwrap();
+        repository
+            .record("Away", None, true, 5, now() + Duration::seconds(15))
+            .unwrap();
+        let events = repository.events().unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].duration_seconds, 20);
+        let overview = repository
+            .overview(now() - Duration::minutes(1), now() + Duration::minutes(1))
+            .unwrap();
+        assert_eq!(overview.active_seconds, 20);
+        assert_eq!(overview.idle_seconds, 5);
+        assert_eq!(overview.focused_seconds, 20);
+    }
+
+    #[test]
+    fn detailed_privacy_keeps_a_bounded_title() {
+        let repository = repository();
+        let mut settings = repository.load_settings().unwrap();
+        settings.enabled = true;
+        settings.privacy = AttentionPrivacy::Detailed;
+        repository.save_settings(&settings).unwrap();
+        let event = repository
+            .record("Terminal", Some(&"x".repeat(300)), false, 10, now())
+            .unwrap()
+            .unwrap();
+        assert_eq!(event.title.unwrap().chars().count(), 240);
     }
 }

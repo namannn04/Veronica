@@ -1,8 +1,8 @@
 //! `vr attention` — durable focus timers, usable with the desktop app closed.
 
 use anyhow::{Context, Result};
-use chrono::Utc;
-use veronica_core::{AppDirectories, AttentionRepository};
+use chrono::{Duration, Utc};
+use veronica_core::{AppDirectories, AttentionPrivacy, AttentionRepository, Settings};
 
 use crate::format::{countdown, table, Output};
 
@@ -17,6 +17,32 @@ pub enum AttentionCommand {
     History {
         #[arg(long, default_value_t = 20)]
         limit: usize,
+    },
+    /// Summarise application activity for recent days.
+    Summary {
+        #[arg(long, default_value_t = 1)]
+        days: i64,
+    },
+    /// Enable/disable tracking and choose its privacy level.
+    Configure {
+        #[arg(long)]
+        enabled: Option<bool>,
+        #[arg(long, value_parser = ["applications", "detailed"])]
+        privacy: Option<String>,
+        #[arg(long)]
+        idle_seconds: Option<i64>,
+    },
+    /// Record one compositor pulse. Used by Veronica's GNOME extension.
+    #[command(hide = true)]
+    Record {
+        #[arg(long)]
+        application: String,
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long)]
+        idle: bool,
+        #[arg(long, default_value_t = 10)]
+        seconds: i64,
     },
 }
 
@@ -112,6 +138,76 @@ pub fn run(directories: &AppDirectories, command: &AttentionCommand, output: Out
                     table(&["started", "name", "duration"], &rows)
                 }
             })
+        }
+        AttentionCommand::Summary { days } => {
+            let from = now - Duration::days((*days).clamp(1, 365));
+            let overview = repository.overview(from, now)?;
+            output.emit(&overview, || {
+                format!(
+                    "{} active · {} focused · {} idle · {} context switches",
+                    countdown(overview.active_seconds),
+                    countdown(overview.focused_seconds),
+                    countdown(overview.idle_seconds),
+                    overview.context_switches
+                )
+            })
+        }
+        AttentionCommand::Configure {
+            enabled,
+            privacy,
+            idle_seconds,
+        } => {
+            let mut settings = repository.load_settings()?;
+            if let Some(enabled) = enabled {
+                settings.enabled = *enabled;
+            }
+            if let Some(privacy) = privacy {
+                settings.privacy = if privacy == "detailed" {
+                    AttentionPrivacy::Detailed
+                } else {
+                    AttentionPrivacy::Applications
+                };
+            }
+            if let Some(seconds) = idle_seconds {
+                settings.idle_threshold_seconds = *seconds;
+            }
+            repository.save_settings(&settings)?;
+            let mut shared = Settings::load(&directories.settings_file())?;
+            shared.set("tabAttentionEnabled", serde_json::json!(settings.enabled));
+            shared.set(
+                "attentionPrivacy",
+                serde_json::json!(if settings.privacy == AttentionPrivacy::Detailed {
+                    "detailed"
+                } else {
+                    "applications"
+                }),
+            );
+            shared.set(
+                "attentionIdleSeconds",
+                serde_json::json!(settings.idle_threshold_seconds),
+            );
+            shared.save(&directories.settings_file())?;
+            output.emit(&settings, || {
+                format!(
+                    "Attention tracking {} · {:?} privacy · idle after {}",
+                    if settings.enabled {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    },
+                    settings.privacy,
+                    countdown(settings.idle_threshold_seconds)
+                )
+            })
+        }
+        AttentionCommand::Record {
+            application,
+            title,
+            idle,
+            seconds,
+        } => {
+            let event = repository.record(application, title.as_deref(), *idle, *seconds, now)?;
+            output.emit(&event, || String::new())
         }
     }
 }

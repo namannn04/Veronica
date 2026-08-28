@@ -164,7 +164,9 @@ impl BackupArchive {
             if file.bytes > MAX_FILE_BYTES {
                 bail!("{} exceeds the per-file restore limit", file.path);
             }
-            total = total.checked_add(file.bytes).context("restore size overflow")?;
+            total = total
+                .checked_add(file.bytes)
+                .context("restore size overflow")?;
             if total > MAX_ARCHIVE_BYTES {
                 bail!("backup expands beyond the restore limit");
             }
@@ -291,9 +293,18 @@ mod tests {
         let target = dirs(&target_root);
         let report = archive.restore(&target).unwrap();
         assert_eq!(report.files_restored, 3);
-        assert_eq!(std::fs::read(target.settings_file()).unwrap(), b"{\"appearance\":\"dark\"}");
-        assert_eq!(std::fs::read(target.data.join("usage/usage.json")).unwrap(), b"usage");
-        assert_eq!(std::fs::read(target.state.join("alerts.json")).unwrap(), b"alerts");
+        assert_eq!(
+            std::fs::read(target.settings_file()).unwrap(),
+            b"{\"appearance\":\"dark\"}"
+        );
+        assert_eq!(
+            std::fs::read(target.data.join("usage/usage.json")).unwrap(),
+            b"usage"
+        );
+        assert_eq!(
+            std::fs::read(target.state.join("alerts.json")).unwrap(),
+            b"alerts"
+        );
         assert!(!target.cache.join("throw-away").exists());
     }
 
@@ -316,7 +327,12 @@ mod tests {
     fn traversal_and_unknown_roots_are_rejected() {
         let root = sandbox("paths");
         let dirs = dirs(&root);
-        for path in ["../escape", "data/../../escape", "/absolute", "cache/secret"] {
+        for path in [
+            "../escape",
+            "data/../../escape",
+            "/absolute",
+            "cache/secret",
+        ] {
             assert!(destination_for(&dirs, path).is_err(), "accepted {path}");
         }
         assert_eq!(

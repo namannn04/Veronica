@@ -112,6 +112,9 @@ The AppImage does not install the `vr` command; use the Debian package for that.
 - **One place for every player** — anything that speaks MPRIS: Spotify, a browser
   tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
   progress bar that knows the difference between a track and a live stream.
+- **Local library** — music under `~/Music` is indexed without uploading it,
+  searchable by title, artist or album, and plays directly with queue, seeking,
+  volume and hardware media-key support.
 
 **Machines**
 
