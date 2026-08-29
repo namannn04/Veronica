@@ -2070,3 +2070,31 @@ th.sortable:hover {
 .machine-container-list > div { min-height: 57px; display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 11px; border-bottom: 1px solid var(--grid); }
 .machine-container-list > div > div { display: flex; gap: 6px; }
 .empty.compact { min-height: 80px; padding: 20px; }
+
+/* -- companion ------------------------------------------------------------ */
+.companion-page { min-height: 100%; }
+.recording-clock { display: inline-flex; align-items: center; gap: 7px; color: var(--status-critical); font-variant-numeric: tabular-nums; font-weight: 650; }
+.recording-clock i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 15%, transparent); animation: pulse 1.2s ease-in-out infinite; }
+.companion-layout { display: grid; grid-template-columns: minmax(250px, .72fr) minmax(420px, 1.5fr); gap: 12px; min-height: 570px; }
+.companion-list { padding: 0; overflow: hidden; }
+.companion-search { padding: 10px; border-bottom: 1px solid var(--hairline); }
+.companion-search input { width: 100%; }
+.companion-list > div:last-child { max-height: 520px; overflow: auto; }
+.companion-list > div > button { width: 100%; min-height: 78px; display: grid; grid-template-columns: 27px minmax(0, 1fr); gap: 7px; padding: 11px; text-align: left; border-bottom: 1px solid var(--grid); }
+.companion-list > div > button:hover, .companion-list > div > button.active { background: var(--raised); }
+.companion-list > div > button.active { box-shadow: inset 3px 0 var(--accent); }
+.companion-kind { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; color: var(--accent); background: var(--accent-soft); }
+.companion-list strong, .companion-list small, .companion-list em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.companion-list small { margin-top: 5px; color: var(--ink-secondary); font-size: 11px; }
+.companion-list em { margin-top: 5px; color: var(--ink-muted); font-size: 10px; font-style: normal; }
+.companion-editor { padding: 17px; display: flex; flex-direction: column; min-height: 570px; }
+.companion-editor-head { display: flex; align-items: center; gap: 12px; color: var(--ink-muted); font-size: 11px; }
+.companion-editor-head label { display: flex; align-items: center; gap: 5px; margin-left: auto; }
+.companion-title { width: 100%; margin: 16px 0 10px; padding: 5px 2px 12px; border: 0; border-bottom: 1px solid var(--hairline); background: transparent; color: var(--ink); font-size: 25px; font-weight: 700; outline: none; }
+.companion-body { width: 100%; min-height: 330px; flex: 1; resize: none; padding: 12px 2px; border: 0; background: transparent; color: var(--ink-secondary); font: inherit; font-size: 14px; line-height: 1.65; outline: none; }
+.companion-audio { width: 100%; margin: 7px 0 3px; accent-color: var(--accent); }
+.companion-editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 11px; border-top: 1px solid var(--hairline); }
+.companion-editor-actions > span { margin-right: auto; color: var(--ink-muted); font-size: 10.5px; }
+.button.danger { color: var(--status-critical); }
+.companion-activity { display: grid; gap: 12px; }
+@media (max-width: 900px) { .companion-layout { grid-template-columns: 1fr; } .companion-editor { min-height: 480px; } }

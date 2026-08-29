@@ -98,8 +98,7 @@ impl DesktopSession {
     pub fn primary_desktop(raw: &str) -> String {
         raw.split(':')
             .map(str::trim)
-            .filter(|part| !part.is_empty())
-            .next_back()
+            .rfind(|part| !part.is_empty())
             .unwrap_or("unknown")
             .to_string()
     }

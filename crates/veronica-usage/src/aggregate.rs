@@ -215,11 +215,13 @@ pub fn by_model(
                 continue;
             }
             for row in rows {
-                let entry = map.entry(row.model_name.clone()).or_insert_with(|| NamedAmount {
-                    name: row.model_name.clone(),
-                    label: row.model_name.clone(),
-                    ..Default::default()
-                });
+                let entry = map
+                    .entry(row.model_name.clone())
+                    .or_insert_with(|| NamedAmount {
+                        name: row.model_name.clone(),
+                        label: row.model_name.clone(),
+                        ..Default::default()
+                    });
                 accumulate(entry, row);
             }
         }
@@ -397,13 +399,13 @@ pub fn projects(
     for project in &mut list {
         // The same chat appears on every day it was active; keep the latest
         // record for each id so totals are not double counted in the drilldown.
-        project.chats.sort_by(|a, b| {
-            a.id.cmp(&b.id).then_with(|| b.last_ts.cmp(&a.last_ts))
-        });
+        project
+            .chats
+            .sort_by(|a, b| a.id.cmp(&b.id).then_with(|| b.last_ts.cmp(&a.last_ts)));
         project.chats.dedup_by(|a, b| a.id == b.id);
         project
             .chats
-            .sort_by(|a, b| b.last_ts.cmp(&a.last_ts));
+            .sort_by_key(|chat| std::cmp::Reverse(chat.last_ts));
     }
     list.sort_by(|a, b| {
         b.cost
@@ -484,14 +486,23 @@ mod tests {
             sources: vec!["cli".into(), "codex".into()],
             default_sources: vec!["cli".into(), "codex".into()],
             sessions: vec![
-                SessionRef { id: "a".into(), source: "cli".into() },
-                SessionRef { id: "b".into(), source: "codex".into() },
+                SessionRef {
+                    id: "a".into(),
+                    source: "cli".into(),
+                },
+                SessionRef {
+                    id: "b".into(),
+                    source: "codex".into(),
+                },
             ],
             ..Default::default()
         };
         doc.source_meta.insert(
             "cli".into(),
-            crate::models::SourceMeta { label: "Claude Code".into(), tool: "Claude Code".into() },
+            crate::models::SourceMeta {
+                label: "Claude Code".into(),
+                tool: "Claude Code".into(),
+            },
         );
 
         let mut day1 = DailyEntry {
@@ -499,17 +510,32 @@ mod tests {
             hours: (0..24).map(|_| HourBucket::default()).collect(),
             ..Default::default()
         };
-        day1.by_source.insert("cli".into(), vec![row("opus", 10.0, 100)]);
-        day1.by_source.insert("codex".into(), vec![row("gpt", 5.0, 50)]);
-        day1.hours[9].by_source.insert("cli".into(), Amount { tokens: 100, cost: 10.0 });
-        day1.hours[9].by_source.insert("codex".into(), Amount { tokens: 50, cost: 5.0 });
+        day1.by_source
+            .insert("cli".into(), vec![row("opus", 10.0, 100)]);
+        day1.by_source
+            .insert("codex".into(), vec![row("gpt", 5.0, 50)]);
+        day1.hours[9].by_source.insert(
+            "cli".into(),
+            Amount {
+                tokens: 100,
+                cost: 10.0,
+            },
+        );
+        day1.hours[9].by_source.insert(
+            "codex".into(),
+            Amount {
+                tokens: 50,
+                cost: 5.0,
+            },
+        );
 
         let mut day2 = DailyEntry {
             period: "2026-08-19".into(),
             hours: (0..24).map(|_| HourBucket::default()).collect(),
             ..Default::default()
         };
-        day2.by_source.insert("cli".into(), vec![row("opus", 1.0, 10)]);
+        day2.by_source
+            .insert("cli".into(), vec![row("opus", 1.0, 10)]);
 
         let mut project = ProjectEntry {
             project_name: "veronica".into(),
@@ -521,11 +547,19 @@ mod tests {
         };
         project.by_source.insert(
             "cli".into(),
-            SourceDetail { tokens: 100, cost: 10.0, ..Default::default() },
+            SourceDetail {
+                tokens: 100,
+                cost: 10.0,
+                ..Default::default()
+            },
         );
         project.by_source.insert(
             "codex".into(),
-            SourceDetail { tokens: 50, cost: 5.0, ..Default::default() },
+            SourceDetail {
+                tokens: 50,
+                cost: 5.0,
+                ..Default::default()
+            },
         );
         project.chats.push(ChatEntry {
             id: "chat1".into(),
@@ -620,7 +654,11 @@ mod tests {
         let low = cells.iter().find(|c| c.period == "2026-08-19").unwrap();
         let high = cells.iter().find(|c| c.period == "2026-08-18").unwrap();
         assert_eq!(high.level, 4);
-        assert!(low.level >= 1 && low.level < high.level, "low was {}", low.level);
+        assert!(
+            low.level >= 1 && low.level < high.level,
+            "low was {}",
+            low.level
+        );
     }
 
     #[test]
@@ -748,7 +786,10 @@ mod tests {
 
     #[test]
     fn an_empty_document_produces_an_empty_dashboard_without_panicking() {
-        let doc = UsageDocument { schema_version: 8, ..Default::default() };
+        let doc = UsageDocument {
+            schema_version: 8,
+            ..Default::default()
+        };
         let board = dashboard(&doc, &DayRange::default(), &SourceSelection::All);
         assert_eq!(board.totals.cost, 0.0);
         assert_eq!(board.by_hour.len(), 24);

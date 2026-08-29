@@ -1,6 +1,9 @@
 //! Shared application state.
 
+use std::path::PathBuf;
+use std::process::Child;
 use std::sync::Mutex;
+use std::time::Instant;
 
 use anyhow::Result;
 use veronica_core::{AppDirectories, DesktopSession, Settings};
@@ -28,6 +31,14 @@ pub struct AppState {
     pub refreshing: Mutex<bool>,
     /// Notifications seen on the bus, newest first and bounded.
     pub notifications: Mutex<Vec<veronica_system::Notification>>,
+    /// Native PipeWire recorder held between the Start and Stop IPC calls.
+    pub companion_recording: Mutex<Option<CompanionRecording>>,
+}
+
+pub struct CompanionRecording {
+    pub child: Child,
+    pub path: PathBuf,
+    pub started: Instant,
 }
 
 impl AppState {
@@ -53,6 +64,7 @@ impl AppState {
             sampler: Mutex::new(MetricsSampler::new()),
             refreshing: Mutex::new(false),
             notifications: Mutex::new(Vec::new()),
+            companion_recording: Mutex::new(None),
         })
     }
 
@@ -82,5 +94,17 @@ impl AppState {
         let usage = veronica_usage::collector::read_document(&self.directories.usage_file())?;
         *self.usage.lock().expect("usage lock") = usage;
         Ok(())
+    }
+}
+
+impl Drop for AppState {
+    fn drop(&mut self) {
+        if let Ok(recording) = self.companion_recording.get_mut() {
+            if let Some(recording) = recording.as_mut() {
+                let _ = recording.child.kill();
+                let _ = recording.child.wait();
+                let _ = std::fs::remove_file(&recording.path);
+            }
+        }
     }
 }

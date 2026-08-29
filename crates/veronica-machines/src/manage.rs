@@ -353,7 +353,7 @@ mod tests {
     #[test]
     fn directory_parser_preserves_names_and_sorts_folders_first() {
         let listing =
-            "P\0/home/n\0E\0f\012\01700000000.0\0z song.mp3\0E\0d\04096\01700000001.0\0Music\0";
+            "P\x00/home/n\x00E\x00f\x0012\x001700000000.0\x00z song.mp3\x00E\x00d\x004096\x001700000001.0\x00Music\x00";
         let parsed = parse_directory(listing).unwrap();
         assert_eq!(parsed.path, "/home/n");
         assert_eq!(parsed.entries[0].name, "Music");

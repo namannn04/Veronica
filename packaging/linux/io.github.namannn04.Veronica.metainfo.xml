@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.9" date="2026-08-30">
+      <description>
+        <p>Adds the local-first Companion with searchable notes, native PipeWire voice memos and private Attention activity. Completes Machines file, terminal and container tools, five global shortcuts, local music and Attention tracking.</p>
+      </description>
+    </release>
     <release version="0.1.8" date="2026-08-27">
       <description>
         <p>

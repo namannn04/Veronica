@@ -160,7 +160,7 @@ mod tests {
         // than a focus aid, so Edith caps it below that and so does this.
         assert_eq!(clamp_intensity(1.0), MAX_INTENSITY);
         assert_eq!(clamp_intensity(50.0), MAX_INTENSITY);
-        assert!(MAX_INTENSITY < 1.0);
+        const { assert!(MAX_INTENSITY < 1.0) };
     }
 
     #[test]

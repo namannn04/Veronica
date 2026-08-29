@@ -207,7 +207,7 @@ pub fn run(directories: &AppDirectories, command: &AttentionCommand, output: Out
             seconds,
         } => {
             let event = repository.record(application, title.as_deref(), *idle, *seconds, now)?;
-            output.emit(&event, || String::new())
+            output.emit(&event, String::new)
         }
     }
 }

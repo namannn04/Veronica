@@ -5,6 +5,7 @@ import { AboutPage } from "./pages/AboutPage";
 import { AttentionPage } from "./pages/AttentionPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
+import { CompanionPage } from "./pages/CompanionPage";
 import { ColorPickerPage } from "./pages/ColorPickerPage";
 import { ExtensionsPage } from "./pages/ExtensionsPage";
 import { MachinesPage } from "./pages/MachinesPage";
@@ -14,7 +15,6 @@ import { UsagePage } from "./pages/UsagePage";
 import { HomePage } from "./pages/HomePage";
 import { HerdrPage } from "./pages/HerdrPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { UnavailablePage } from "./pages/UnavailablePage";
 import { ipc } from "./lib/ipc";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
@@ -146,7 +146,7 @@ export function App() {
         {route === "attention" && <AttentionPage />}
         {route === "clipboard" && <ClipboardPage />}
         {route === "color" && <ColorPickerPage />}
-        {route === "companion" && <UnavailablePage title="Companion" description="Notes and voice memos still need recording, storage and playback implementations for Linux." />}
+        {route === "companion" && <CompanionPage />}
         {route === "extensions" && (
           <ExtensionsPage diagnostics={diagnostics} onChanged={loadDiagnostics} />
         )}

@@ -226,11 +226,10 @@ the overview and Veronica's own notch are never covered.
 ## Honest capabilities
 
 A capability with no implementation behind it resolves to `IntegrationRequired`
-with a reason, never `Available`. The Companion backend does so today, and the
-Extensions page therefore shows "Partial" or
-"Unavailable" with the reason rather than "Ready" for a switch that would do
-nothing. A test asserts that neither can claim availability, because the value of
-the whole capability model is that the interface can be trusted.
+with a reason, never `Available`. Companion is now implemented locally with an
+atomic XDG-data index and PipeWire recordings, so it correctly resolves as
+available without a container runtime. Tests pin both the implementation state
+and the no-Docker behavior.
 
 The extension catalogue's `defaults_key` is serialised to the interface for the
 same reason: the settings key each extension toggles is the catalogue's to know,

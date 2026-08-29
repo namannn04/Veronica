@@ -4801,7 +4801,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "veronica-calendar"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4814,7 +4814,7 @@ dependencies = [
 
 [[package]]
 name = "veronica-cli"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4835,7 +4835,7 @@ dependencies = [
 
 [[package]]
 name = "veronica-core"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4844,12 +4844,13 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "walkdir",
 ]
 
 [[package]]
 name = "veronica-desktop"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4875,7 +4876,7 @@ dependencies = [
 
 [[package]]
 name = "veronica-machines"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4889,7 +4890,7 @@ dependencies = [
 
 [[package]]
 name = "veronica-media"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "serde",
@@ -4901,7 +4902,7 @@ dependencies = [
 
 [[package]]
 name = "veronica-system"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4917,7 +4918,7 @@ dependencies = [
 
 [[package]]
 name = "veronica-usage"
-version = "0.1.8"
+version = "0.1.9"
 dependencies = [
  "anyhow",
  "chrono",

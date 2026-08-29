@@ -112,7 +112,7 @@ impl Capability {
             CalendarEvents => "Evolution Data Server (D-Bus)",
             CameraPreview => "xdg-desktop-portal Camera",
             ClipboardHistory => "Wayland data-control / GNOME Shell",
-            CompanionService => "Docker or Podman",
+            CompanionService => "Local XDG data + PipeWire",
             ExternalMediaControl | MediaControls => "MPRIS2 (D-Bus)",
             FileShelf => "In-process",
             GlobalPaste => "xdg-desktop-portal RemoteDesktop",
@@ -234,20 +234,7 @@ impl Capabilities {
         set(RunningApplications, CapabilityState::Available);
         set(ScreenShareDetection, CapabilityState::Available);
 
-        set(
-            CompanionService,
-            if session.has_container_runtime {
-                CapabilityState::integration(
-                    "A container runtime is present, but Veronica does not yet ship the \
-                     Companion backend's deployment.",
-                )
-            } else {
-                CapabilityState::integration(
-                    "Install Docker or Podman, and wait for Veronica to ship the Companion \
-                     backend's deployment.",
-                )
-            },
-        );
+        set(CompanionService, CapabilityState::Available);
 
         // Portal-gated: the portal exists, the user approves on first use.
         set(
@@ -420,20 +407,12 @@ mod tests {
     }
 
     #[test]
-    fn an_unbuilt_feature_is_never_reported_as_available() {
-        // The whole point of the model is that the interface can be honest. A
-        // capability with no implementation behind it must say so, or the
-        // Extensions page shows "Ready" for a switch that does nothing.
+    fn companion_is_available_without_an_external_service() {
         let caps = Capabilities::resolve(&session(SessionKind::Wayland));
-        for capability in [Capability::CompanionService] {
-            assert!(
-                matches!(
-                    caps.state(capability),
-                    CapabilityState::IntegrationRequired { .. }
-                ),
-                "{capability:?} has no implementation and must not claim to be available"
-            );
-        }
+        assert_eq!(
+            caps.state(Capability::CompanionService),
+            &CapabilityState::Available
+        );
     }
 
     #[test]
@@ -462,25 +441,12 @@ mod tests {
     }
 
     #[test]
-    fn missing_container_runtime_degrades_companion_only() {
+    fn companion_does_not_depend_on_a_container_runtime() {
         let mut s = session(SessionKind::Wayland);
         s.has_container_runtime = false;
         let caps = Capabilities::resolve(&s);
-        assert!(!caps.is_supported(Capability::CompanionService));
+        assert!(caps.is_supported(Capability::CompanionService));
         assert!(caps.is_supported(Capability::UsageCollection));
-
-        // And the reason distinguishes the two causes, so the user knows whether
-        // installing Docker would help.
-        let with_runtime = Capabilities::resolve(&session(SessionKind::Wayland));
-        let (a, b) = (
-            format!("{:?}", with_runtime.state(Capability::CompanionService)),
-            format!("{:?}", caps.state(Capability::CompanionService)),
-        );
-        assert_ne!(
-            a, b,
-            "the same reason for both causes tells the user nothing"
-        );
-        assert!(b.contains("Install Docker"));
     }
 
     #[test]

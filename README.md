@@ -22,7 +22,7 @@ troubleshoot.
 The Debian package is the recommended route on Ubuntu:
 
 ```
-sudo apt install ./Veronica_0.1.8_amd64.deb
+sudo apt install ./Veronica_0.1.9_amd64.deb
 ```
 
 That installs the app, the `vr` command line tool, the desktop entry, the
@@ -32,8 +32,8 @@ collector needs.
 An AppImage is also published for other distributions:
 
 ```
-chmod +x Veronica_0.1.8_amd64.AppImage
-./Veronica_0.1.8_amd64.AppImage
+chmod +x Veronica_0.1.9_amd64.AppImage
+./Veronica_0.1.9_amd64.AppImage
 ```
 
 Ubuntu 24.04 and later no longer ship the FUSE 2 runtime an AppImage needs to
@@ -41,7 +41,7 @@ mount itself. Either install it once with `sudo apt install libfuse2t64`, or run
 the image without it:
 
 ```
-./Veronica_0.1.8_amd64.AppImage --appimage-extract
+./Veronica_0.1.9_amd64.AppImage --appimage-extract
 ./squashfs-root/AppRun
 ```
 
@@ -254,8 +254,9 @@ Veronica resolves each of its 25 capabilities against the running session and
 reports the result, with the service it talks to, on the Diagnostics page and in
 `vr diagnose`. Nothing is silently disabled.
 
-Three capabilities need help on a Wayland session, because a Wayland compositor
-deliberately withholds them from applications:
+Compositor-owned features ask for permission or the GNOME extension when the
+session requires it. Local music, keyboard cleaning and Companion all have
+native Linux implementations and no longer need external integration.
 
 A note on the calendar: GNOME's calendar server expands recurring events but
 does not pass an event's location or description through, so Veronica reads those
@@ -263,18 +264,16 @@ per event from Evolution Data Server to recover join links. That costs one D-Bus
 call per event, which is why the notch's agenda skips it and the Calendar page
 does not.
 
-| Capability | Why | Route |
-| --- | --- | --- |
-| Keyboard lock | Needs an exclusive evdev grab | Membership of the `input` group |
-| Local music playback | Not built yet; external players work through MPRIS | — |
-| Companion | The backend's deployment is not shipped yet | — |
-
-Clipboard history and Focus Dim were both in this table until the shell extension
+Clipboard history and Focus Dim were restricted until the shell extension
 existed. Capture and dimming now happen inside the compositor, which is the only
 thing a Wayland session lets read the selection or place one window behind
 another. Veronica reports a capability it has not built as needing integration
 rather than as available, so the Extensions page never shows "Ready" for a switch
 that would do nothing.
+
+**Companion** is local-first: notes and searchable voice-memo metadata are stored
+under the XDG data directory, recordings use PipeWire, and the complete folder is
+included in Veronica backup/restore. It needs no Docker service or account.
 
 Everything else has a working route: PipeWire for audio and mic mute, logind for
 prevent-sleep and lid-awake, MPRIS for media, Evolution Data Server for

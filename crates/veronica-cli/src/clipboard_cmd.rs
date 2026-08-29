@@ -65,10 +65,10 @@ pub async fn run(
             match history.record(text, Utc::now(), *limit) {
                 Some(id) => {
                     history.save(&path)?;
-                    output.emit(&json!({ "recorded": id }), || String::new())
+                    output.emit(&json!({ "recorded": id }), String::new)
                 }
                 // Blank or oversized: not an error, just nothing to keep.
-                None => output.emit(&json!({ "recorded": null }), || String::new()),
+                None => output.emit(&json!({ "recorded": null }), String::new),
             }
         }
 

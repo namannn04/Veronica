@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Install the built package
-sudo apt install ./target/release/bundle/deb/Veronica_0.1.8_amd64.deb
+sudo apt install ./target/release/bundle/deb/Veronica_0.1.9_amd64.deb
 
 # 2. Launch it
 veronica              # or find "Veronica" in Activities
@@ -134,7 +134,7 @@ so a clean checkout must build the CLI first.
 To update an existing installation with the package you just built:
 
 ```bash
-sudo apt install --reinstall ./target/release/bundle/deb/Veronica_0.1.8_amd64.deb
+sudo apt install --reinstall ./target/release/bundle/deb/Veronica_0.1.9_amd64.deb
 ```
 
 ## Backup and restore

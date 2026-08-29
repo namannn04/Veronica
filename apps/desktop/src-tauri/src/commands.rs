@@ -356,6 +356,193 @@ pub fn backup_import(
     Ok(report)
 }
 
+fn companion_repository(state: &AppState) -> veronica_core::CompanionRepository {
+    veronica_core::CompanionRepository::new(state.directories.companion_dir())
+}
+
+#[tauri::command]
+pub fn companion_list(
+    state: State<'_, AppState>,
+    query: String,
+) -> CommandResult<Vec<veronica_core::CompanionItem>> {
+    companion_repository(&state).list(&query).map_err(fail)
+}
+
+#[tauri::command]
+pub fn companion_note_create(
+    app: AppHandle,
+    title: String,
+    body: String,
+) -> CommandResult<veronica_core::CompanionItem> {
+    let item = companion_repository(&app.state::<AppState>())
+        .create_note(&title, &body, chrono::Utc::now())
+        .map_err(fail)?;
+    let _ = app.emit("companion-updated", item.id);
+    Ok(item)
+}
+
+#[tauri::command]
+pub fn companion_update(
+    app: AppHandle,
+    id: u64,
+    title: String,
+    body: String,
+    pinned: bool,
+) -> CommandResult<veronica_core::CompanionItem> {
+    let item = companion_repository(&app.state::<AppState>())
+        .update(id, &title, &body, pinned, chrono::Utc::now())
+        .map_err(fail)?;
+    let _ = app.emit("companion-updated", item.id);
+    Ok(item)
+}
+
+#[tauri::command]
+pub fn companion_remove(app: AppHandle, id: u64) -> CommandResult<()> {
+    companion_repository(&app.state::<AppState>())
+        .remove(id)
+        .map_err(fail)?;
+    let _ = app.emit("companion-updated", id);
+    Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanionRecordingStatus {
+    pub recording: bool,
+    pub elapsed_seconds: u64,
+}
+
+#[tauri::command]
+pub fn companion_recording_status(state: State<'_, AppState>) -> CompanionRecordingStatus {
+    let recording = state
+        .companion_recording
+        .lock()
+        .expect("companion recording lock");
+    CompanionRecordingStatus {
+        recording: recording.is_some(),
+        elapsed_seconds: recording
+            .as_ref()
+            .map(|recording| recording.started.elapsed().as_secs())
+            .unwrap_or(0),
+    }
+}
+
+#[tauri::command]
+pub fn companion_record_start(state: State<'_, AppState>) -> CommandResult<()> {
+    let mut active = state
+        .companion_recording
+        .lock()
+        .expect("companion recording lock");
+    if active.is_some() {
+        return Err("a voice memo is already recording".to_string());
+    }
+    let repository = companion_repository(&state);
+    let directory = repository.recordings_dir();
+    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+    let path = directory.join(format!(
+        "voice-{}-{}.wav",
+        chrono::Utc::now().timestamp_millis(),
+        std::process::id()
+    ));
+    let mut child = std::process::Command::new("pw-record")
+        .args([
+            "--media-category",
+            "Capture",
+            "--media-role",
+            "Communication",
+            "--rate",
+            "48000",
+            "--channels",
+            "1",
+        ])
+        .arg(&path)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|error| format!("cannot start PipeWire recorder: {error}"))?;
+    std::thread::sleep(std::time::Duration::from_millis(120));
+    if let Some(status) = child.try_wait().map_err(|error| error.to_string())? {
+        let _ = std::fs::remove_file(&path);
+        return Err(format!("PipeWire recorder exited immediately ({status})"));
+    }
+    *active = Some(crate::state::CompanionRecording {
+        child,
+        path,
+        started: std::time::Instant::now(),
+    });
+    Ok(())
+}
+
+fn stop_companion_process(recording: &mut crate::state::CompanionRecording) {
+    let _ = std::process::Command::new("kill")
+        .args(["-INT", &recording.child.id().to_string()])
+        .status();
+    for _ in 0..20 {
+        if recording.child.try_wait().ok().flatten().is_some() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let _ = recording.child.kill();
+    let _ = recording.child.wait();
+}
+
+#[tauri::command]
+pub fn companion_record_stop(app: AppHandle) -> CommandResult<veronica_core::CompanionItem> {
+    let state = app.state::<AppState>();
+    let mut recording = state
+        .companion_recording
+        .lock()
+        .expect("companion recording lock")
+        .take()
+        .ok_or_else(|| "no voice memo is recording".to_string())?;
+    stop_companion_process(&mut recording);
+    let bytes = std::fs::metadata(&recording.path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0);
+    if bytes <= 44 {
+        let _ = std::fs::remove_file(&recording.path);
+        return Err("the microphone produced no audio; check PipeWire input access".to_string());
+    }
+    let item = companion_repository(&state)
+        .add_voice(
+            &recording.path,
+            recording.started.elapsed().as_secs().max(1),
+            chrono::Utc::now(),
+        )
+        .map_err(fail)?;
+    let _ = app.emit("companion-updated", item.id);
+    Ok(item)
+}
+
+#[tauri::command]
+pub fn companion_record_cancel(state: State<'_, AppState>) -> CommandResult<()> {
+    let Some(mut recording) = state
+        .companion_recording
+        .lock()
+        .expect("companion recording lock")
+        .take()
+    else {
+        return Ok(());
+    };
+    stop_companion_process(&mut recording);
+    let _ = std::fs::remove_file(recording.path);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn companion_audio(state: State<'_, AppState>, id: u64) -> CommandResult<String> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    let path = companion_repository(&state).audio_path(id).map_err(fail)?;
+    let metadata = std::fs::metadata(&path).map_err(|error| error.to_string())?;
+    if metadata.len() > 64 * 1024 * 1024 {
+        return Err("voice memo is too large to play in the app".to_string());
+    }
+    let bytes = std::fs::read(path).map_err(|error| error.to_string())?;
+    Ok(format!("data:audio/wav;base64,{}", STANDARD.encode(bytes)))
+}
+
 #[tauri::command]
 pub fn attention_status(
     state: State<'_, AppState>,

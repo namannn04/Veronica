@@ -33,8 +33,8 @@ use chrono::{DateTime, Duration, Local, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::limits::{
-    level_for_risk, pacing_delta, pacing_zone, smart_risk, LimitWindow, LimitWindowKind, PacingZone,
-    UsageLevel, UsageThresholds, DEFAULT_CRITICAL_PERCENT, DEFAULT_WARN_PERCENT,
+    level_for_risk, pacing_delta, pacing_zone, smart_risk, LimitWindow, LimitWindowKind,
+    PacingZone, UsageLevel, UsageThresholds, DEFAULT_CRITICAL_PERCENT, DEFAULT_WARN_PERCENT,
 };
 
 /// How long after a token-expiry alert before another may fire. Matches Edith's
@@ -273,7 +273,12 @@ pub fn decide(
     }
     let mut alerts = Vec::new();
 
-    let session_pacing = pacing_for(session, LimitWindowKind::Session, settings.pacing_margin, now);
+    let session_pacing = pacing_for(
+        session,
+        LimitWindowKind::Session,
+        settings.pacing_margin,
+        now,
+    );
     let weekly_pacing = pacing_for(week, LimitWindowKind::Weekly, settings.pacing_margin, now);
 
     if settings.track_session {
@@ -472,8 +477,7 @@ fn check_surface(
 
     // A weekly window can rise on pace alone while the figure is still low.
     // Saying "almost capped" there would be wrong, so it gets its own wording.
-    let pace_driven =
-        settings.smart_color && current > absolute && kind == LimitWindowKind::Weekly;
+    let pace_driven = settings.smart_color && current > absolute && kind == LimitWindowKind::Weekly;
 
     if current > prior {
         return vec![escalation(kind, current, window, pacing, pace_driven, now)];
@@ -692,7 +696,7 @@ mod tests {
     fn nothing_fires_while_the_master_switch_is_off() {
         let mut state = NotifierState::default();
         let settings = NotifySettings::default();
-        assert!(settings.master == false, "alerts must be opt-in");
+        assert!(!settings.master, "alerts must be opt-in");
         let alerts = decide(
             Some(window(99.0, 60)),
             Some(window(99.0, 60)),
@@ -701,7 +705,11 @@ mod tests {
             at(0),
         );
         assert!(alerts.is_empty());
-        assert_eq!(state, NotifierState::default(), "state must not move either");
+        assert_eq!(
+            state,
+            NotifierState::default(),
+            "state must not move either"
+        );
     }
 
     #[test]
@@ -760,9 +768,18 @@ mod tests {
         };
         let mut state = NotifierState::default();
         let rising = decide(Some(window(90.0, 600)), None, &settings, &mut state, at(0));
-        assert!(rising.iter().any(|a| a.id == "escalation_session"), "got {rising:?}");
+        assert!(
+            rising.iter().any(|a| a.id == "escalation_session"),
+            "got {rising:?}"
+        );
 
-        let quiet = decide(Some(window(2.0, 17_900)), None, &settings, &mut state, at(700));
+        let quiet = decide(
+            Some(window(2.0, 17_900)),
+            None,
+            &settings,
+            &mut state,
+            at(700),
+        );
         assert!(
             !quiet.iter().any(|alert| alert.id.starts_with("recovery_")),
             "recovery is switched off, got {quiet:?}"
@@ -776,7 +793,7 @@ mod tests {
         // 40% of the week used a fifth of the way in: way ahead of an even burn,
         // nowhere near the cap. Saying "almost capped" here would be wrong.
         let mut state = NotifierState::default();
-        let week = window(40.0, (WEEK - WEEK / 5) as i64);
+        let week = window(40.0, WEEK - WEEK / 5);
         let alerts = decide(None, Some(week), &on(), &mut state, at(0));
         let escalation = alerts
             .iter()
@@ -793,7 +810,10 @@ mod tests {
         // A session at 70% with four hours still to go: ahead of pace.
         let mut state = NotifierState::default();
         let alerts = decide(Some(window(70.0, 14_400)), None, &on(), &mut state, at(0));
-        let pacing: Vec<&LimitAlert> = alerts.iter().filter(|a| a.id.starts_with("pacing_")).collect();
+        let pacing: Vec<&LimitAlert> = alerts
+            .iter()
+            .filter(|a| a.id.starts_with("pacing_"))
+            .collect();
         assert_eq!(pacing.len(), 1, "got {alerts:?}");
         assert_eq!(pacing[0].id, "pacing_session_hot");
         assert_eq!(state.session_pacing, PacingZone::Hot);
@@ -811,7 +831,10 @@ mod tests {
             &mut quiet_state,
             at(0),
         );
-        assert!(!quiet.iter().any(|a| a.id.starts_with("pacing_")), "got {quiet:?}");
+        assert!(
+            !quiet.iter().any(|a| a.id.starts_with("pacing_")),
+            "got {quiet:?}"
+        );
         assert_eq!(quiet_state.session_pacing, PacingZone::Hot);
     }
 
@@ -873,8 +896,12 @@ mod tests {
             resets_at: None,
         };
         let alerts = decide(Some(unknown), None, &on(), &mut state, at(0));
-        assert_eq!(alerts.len(), 1, "no reset time means no pacing zone, so only \
-                                     the level alert fires: {alerts:?}");
+        assert_eq!(
+            alerts.len(),
+            1,
+            "no reset time means no pacing zone, so only \
+                                     the level alert fires: {alerts:?}"
+        );
         assert_eq!(alerts[0].id, "escalation_session");
         assert_eq!(alerts[0].body, "Limit almost reached");
     }
@@ -897,7 +924,10 @@ mod tests {
         // The reloaded state is at red, so the same window is silent.
         let mut restarted = reloaded;
         let quiet = decide(Some(window(90.0, 600)), None, &on(), &mut restarted, at(5));
-        assert!(quiet.is_empty(), "a restart must not re-alert, got {quiet:?}");
+        assert!(
+            quiet.is_empty(),
+            "a restart must not re-alert, got {quiet:?}"
+        );
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -942,8 +972,7 @@ mod tests {
     #[test]
     fn every_kind_of_tracking_counts() {
         for mutate in [
-            (|s: &mut NotifierState| s.session_level = UsageLevel::Red)
-                as fn(&mut NotifierState),
+            (|s: &mut NotifierState| s.session_level = UsageLevel::Red) as fn(&mut NotifierState),
             |s| s.weekly_level = UsageLevel::Orange,
             |s| s.session_pacing = PacingZone::Hot,
             |s| s.weekly_pacing = PacingZone::Chill,
@@ -959,9 +988,11 @@ mod tests {
 
     #[test]
     fn clearing_tracking_keeps_the_banner_ids_so_old_banners_are_still_replaceable() {
-        let mut state = NotifierState::default();
-        state.session_level = UsageLevel::Red;
-        state.session_reminder_for = Some(at(0));
+        let mut state = NotifierState {
+            session_level: UsageLevel::Red,
+            session_reminder_for: Some(at(0)),
+            ..NotifierState::default()
+        };
         state.record_banner("escalation_session", 7);
         state.reset_tracking();
         assert_eq!(state.session_level, UsageLevel::Green);
@@ -990,19 +1021,37 @@ mod tests {
         };
         // Reset in 45 minutes: outside a 30-minute offset, so nothing yet.
         let mut state = NotifierState::default();
-        let early = due_reminders(Some(window(50.0, 45 * 60)), None, &settings, &mut state, at(0));
+        let early = due_reminders(
+            Some(window(50.0, 45 * 60)),
+            None,
+            &settings,
+            &mut state,
+            at(0),
+        );
         assert!(early.is_empty(), "got {early:?}");
         assert_eq!(state.session_reminder_for, None);
 
         // Reset in 20 minutes: inside the offset.
-        let due = due_reminders(Some(window(50.0, 20 * 60)), None, &settings, &mut state, at(0));
+        let due = due_reminders(
+            Some(window(50.0, 20 * 60)),
+            None,
+            &settings,
+            &mut state,
+            at(0),
+        );
         assert_eq!(due.len(), 1, "got {due:?}");
         assert_eq!(due[0].id, "reminder_session");
         assert_eq!(due[0].title, "Session resets in 30 min");
         assert_eq!(state.session_reminder_for, Some(at(20 * 60)));
 
         // Polled again for the same reset: already covered.
-        let again = due_reminders(Some(window(50.0, 20 * 60)), None, &settings, &mut state, at(30));
+        let again = due_reminders(
+            Some(window(50.0, 20 * 60)),
+            None,
+            &settings,
+            &mut state,
+            at(30),
+        );
         assert!(again.is_empty(), "a poll must not re-fire, got {again:?}");
     }
 
@@ -1014,7 +1063,13 @@ mod tests {
             ..on()
         };
         let mut state = NotifierState::default();
-        due_reminders(Some(window(50.0, 20 * 60)), None, &settings, &mut state, at(0));
+        due_reminders(
+            Some(window(50.0, 20 * 60)),
+            None,
+            &settings,
+            &mut state,
+            at(0),
+        );
         // A different reset instant is a different window.
         let next = due_reminders(
             Some(window(50.0, 5 * 3600 + 20 * 60)),
@@ -1117,7 +1172,10 @@ mod tests {
         // at-or-past the reminder and before the reset, so it would never fire.
         for nonsense in [-30, 0] {
             let mut stored = veronica_core::Settings::default();
-            stored.set("notifyReminderSessionOffsetMin", serde_json::json!(nonsense));
+            stored.set(
+                "notifyReminderSessionOffsetMin",
+                serde_json::json!(nonsense),
+            );
             stored.set("notifyReminderWeeklyOffsetMin", serde_json::json!(nonsense));
             let read = NotifySettings::from_settings(&stored);
             assert_eq!(read.reminder_session_offset_min, 30, "offset {nonsense}");
@@ -1147,7 +1205,10 @@ mod tests {
         };
         assert!(token_expired(&off, &mut state, at(0)).is_none());
         assert!(token_expired(&NotifySettings::default(), &mut state, at(0)).is_none());
-        assert_eq!(state.token_expired_at, None, "a suppressed alert must not debounce");
+        assert_eq!(
+            state.token_expired_at, None,
+            "a suppressed alert must not debounce"
+        );
     }
 
     // -- settings and formatting -------------------------------------------

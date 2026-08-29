@@ -119,6 +119,11 @@ impl AppDirectories {
         self.data.join("attention")
     }
 
+    /// Local Companion notes, index and voice recordings.
+    pub fn companion_dir(&self) -> PathBuf {
+        self.data.join("companion")
+    }
+
     /// What the alert notifier remembers between polls, so a restart does not
     /// re-fire an alert the user has already seen.
     pub fn alerts_state_file(&self) -> PathBuf {

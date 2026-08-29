@@ -164,7 +164,7 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         defaults_key: "tabCompanionEnabled",
         required_capabilities: &[CompanionService],
         optional_capabilities: &[],
-        required_tools: &["docker"],
+        required_tools: &[],
     },
     ExtensionEntry {
         id: "systemStats",

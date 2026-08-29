@@ -8,6 +8,7 @@ pub mod attention;
 pub mod backup;
 pub mod capabilities;
 pub mod clipboard;
+pub mod companion;
 pub mod extensions;
 pub mod focus_dim;
 pub mod paths;
@@ -23,6 +24,7 @@ pub use attention::{
 pub use backup::{BackupArchive, BackupManifest, ImportReport};
 pub use capabilities::{Capabilities, Capability, CapabilityState};
 pub use clipboard::{ClipEntry, ClipboardHistory};
+pub use companion::{CompanionItem, CompanionKind, CompanionRepository};
 pub use extensions::{ExtensionAvailability, ExtensionEntry, ExtensionGroup, ENTRIES};
 pub use focus_dim::{DisplayMode, FocusDimSettings};
 pub use paths::{AppDirectories, APP_ID};

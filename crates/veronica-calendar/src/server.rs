@@ -89,9 +89,13 @@ pub async fn events(connection: &Connection, days: i64) -> Result<Vec<Event>> {
         .context("cannot subscribe to calendar events")?;
 
     connection
-        .call_method(Some(BUS), PATH, Some(INTERFACE), "SetTimeRange", &(
-            since, until, true,
-        ))
+        .call_method(
+            Some(BUS),
+            PATH,
+            Some(INTERFACE),
+            "SetTimeRange",
+            &(since, until, true),
+        )
         .await
         .context("the calendar server refused the time range")?;
 
@@ -124,11 +128,9 @@ pub async fn events(connection: &Connection, days: i64) -> Result<Vec<Event>> {
                     let removed: Vec<(String, String)> =
                         ids.iter().map(|id| agenda::parse_event_id(id)).collect();
                     collected.retain(|event| {
-                        !removed
-                            .iter()
-                            .any(|(source, uid)| {
-                                event.source_uid == *source && event.event_uid == *uid
-                            })
+                        !removed.iter().any(|(source, uid)| {
+                            event.source_uid == *source && event.event_uid == *uid
+                        })
                     });
                 }
                 timeout = QUIET_PERIOD;
@@ -174,47 +176,6 @@ fn convert(raw: RawEvent) -> Option<Event> {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn converts_the_tuple_the_server_actually_sends() {
-        // Captured from a live GNOME 50 session.
-        let raw: RawEvent = (
-            "veronica-test\nveronica-test-1\n".to_string(),
-            "Standup".to_string(),
-            1_787_178_600,
-            1_787_180_400,
-            HashMap::new(),
-        );
-        let event = convert(raw).expect("should convert");
-        assert_eq!(event.source_uid, "veronica-test");
-        assert_eq!(event.event_uid, "veronica-test-1");
-        assert_eq!(event.summary, "Standup");
-        assert_eq!(event.duration().num_minutes(), 30);
-        assert!(!event.all_day);
-    }
-
-    #[test]
-    fn an_end_before_the_start_is_clamped_rather_than_negative() {
-        let raw: RawEvent = (
-            "cal\nuid\n".to_string(),
-            "Broken".to_string(),
-            1_787_180_400,
-            1_787_178_600,
-            HashMap::new(),
-        );
-        let event = convert(raw).expect("should still convert");
-        // Clamped to zero length rather than reported as negative. Such an event
-        // is listed until its start passes, then counts as over, which is the
-        // only consistent reading of a zero-length span.
-        assert_eq!(event.duration().num_seconds(), 0);
-        assert!(!event.has_ended(event.start - chrono::Duration::seconds(1)));
-        assert!(event.has_ended(event.start));
-    }
-}
-
 // -- Join links ------------------------------------------------------------
 
 /// Evolution Data Server, which holds the detail the shell's server omits.
@@ -247,11 +208,7 @@ async fn open_calendar(connection: &Connection, source_uid: &str) -> Result<Stri
 }
 
 /// Fetch one event's raw `VEVENT`.
-async fn fetch_object(
-    connection: &Connection,
-    path: &str,
-    event_uid: &str,
-) -> Result<String> {
+async fn fetch_object(connection: &Connection, path: &str, event_uid: &str) -> Result<String> {
     let reply = connection
         .call_method(
             Some(EDS_BUS),
@@ -299,10 +256,7 @@ pub async fn enrich_join_links(connection: &Connection, events: &mut [Event]) {
             None => {
                 let resolved = open_calendar(connection, &event.source_uid).await.ok();
                 if resolved.is_none() {
-                    tracing::debug!(
-                        "cannot open calendar {} for join links",
-                        event.source_uid
-                    );
+                    tracing::debug!("cannot open calendar {} for join links", event.source_uid);
                 }
                 paths.insert(event.source_uid.clone(), resolved.clone());
                 resolved
@@ -332,4 +286,45 @@ pub async fn events_with_links(connection: &Connection, days: i64) -> Result<Vec
     let mut list = events(connection, days).await?;
     enrich_join_links(connection, &mut list).await;
     Ok(list)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converts_the_tuple_the_server_actually_sends() {
+        // Captured from a live GNOME 50 session.
+        let raw: RawEvent = (
+            "veronica-test\nveronica-test-1\n".to_string(),
+            "Standup".to_string(),
+            1_787_178_600,
+            1_787_180_400,
+            HashMap::new(),
+        );
+        let event = convert(raw).expect("should convert");
+        assert_eq!(event.source_uid, "veronica-test");
+        assert_eq!(event.event_uid, "veronica-test-1");
+        assert_eq!(event.summary, "Standup");
+        assert_eq!(event.duration().num_minutes(), 30);
+        assert!(!event.all_day);
+    }
+
+    #[test]
+    fn an_end_before_the_start_is_clamped_rather_than_negative() {
+        let raw: RawEvent = (
+            "cal\nuid\n".to_string(),
+            "Broken".to_string(),
+            1_787_180_400,
+            1_787_178_600,
+            HashMap::new(),
+        );
+        let event = convert(raw).expect("should still convert");
+        // Clamped to zero length rather than reported as negative. Such an event
+        // is listed until its start passes, then counts as over, which is the
+        // only consistent reading of a zero-length span.
+        assert_eq!(event.duration().num_seconds(), 0);
+        assert!(!event.has_ended(event.start - chrono::Duration::seconds(1)));
+        assert!(event.has_ended(event.start));
+    }
 }
