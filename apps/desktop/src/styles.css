@@ -2056,3 +2056,17 @@ th.sortable:hover {
 .attention-bar b { color: var(--ink-secondary); text-align: right; font-weight: 560; }
 .attention-settings { display: grid; gap: 2px; }
 .attention-category { display: grid; grid-template-columns: minmax(120px, .7fr) 2fr; gap: 10px; padding: 8px 0; }
+.machine-actions { display: flex; gap: 8px; margin-top: 12px; }
+.machine-actions [aria-pressed="true"] { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 48%, var(--hairline)); background: var(--accent-soft); }
+.machine-tool { margin-top: 10px; border: 1px solid var(--hairline); border-radius: 11px; overflow: hidden; background: var(--plane); }
+.machine-path { min-height: 42px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid var(--hairline); }
+.machine-path code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-secondary); }
+.machine-file-list { max-height: 330px; overflow: auto; }
+.machine-file-list > button { width: 100%; min-height: 43px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 11px; text-align: left; border-bottom: 1px solid var(--grid); }
+.machine-file-list > button:hover { background: var(--raised); }
+.machine-file-list strong, .machine-file-list small, .machine-container-list strong, .machine-container-list small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.machine-file-list small, .machine-container-list small { color: var(--ink-muted); font-size: 10.5px; margin-top: 2px; }
+.machine-file-icon { color: var(--accent); }
+.machine-container-list > div { min-height: 57px; display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 11px; border-bottom: 1px solid var(--grid); }
+.machine-container-list > div > div { display: flex; gap: 6px; }
+.empty.compact { min-height: 80px; padding: 20px; }

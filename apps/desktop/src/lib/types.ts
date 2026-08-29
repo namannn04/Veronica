@@ -287,6 +287,9 @@ export interface Machine {
   name: string;
   reach: MachineReach;
 }
+export interface MachineFile { name: string; path: string; kind: "directory" | "file" | "link" | "other"; sizeBytes: number; modifiedUnix: number; }
+export interface MachineDirectory { path: string; parent: string | null; entries: MachineFile[]; }
+export interface ContainerInfo { id: string; name: string; image: string; status: string; state: string; engine: "docker" | "podman"; }
 
 export interface MachineDisk {
   mountPoint: string;

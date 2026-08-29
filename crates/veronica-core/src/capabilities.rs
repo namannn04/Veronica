@@ -260,19 +260,7 @@ impl Capabilities {
                 "The colour picker asks the desktop portal for one screen sample per pick.",
             ),
         );
-        set(
-            GlobalShortcuts,
-            if session.has_global_shortcuts_portal {
-                CapabilityState::permission(
-                    "Approve the shortcut list once in the desktop portal dialog.",
-                )
-            } else {
-                CapabilityState::integration(
-                    "This desktop has no GlobalShortcuts portal; bind the shortcut manually \
-                     in Settings › Keyboard.",
-                )
-            },
-        );
+        set(GlobalShortcuts, CapabilityState::Available);
         set(
             GlobalPaste,
             CapabilityState::permission(
@@ -336,10 +324,16 @@ impl Capabilities {
 
         set(
             InputSuppression,
-            CapabilityState::integration(
-                "The keyboard-cleaning lock needs an exclusive evdev grab, which requires \
-                 membership of the 'input' group.",
-            ),
+            if session.is_gnome {
+                CapabilityState::permission(
+                    "Enable Veronica's GNOME extension; Shell takes a compositor modal grab \
+                     while keyboard cleaning mode is open.",
+                )
+            } else {
+                CapabilityState::integration(
+                    "Keyboard cleaning mode currently needs Veronica's GNOME Shell extension.",
+                )
+            },
         );
 
         // Without a graphical session there is no compositor, portal or tray to

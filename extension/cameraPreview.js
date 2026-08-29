@@ -37,6 +37,7 @@ export class CameraPreview {
         this._bus = null;
         this._busSignalId = 0;
         this._framePollId = 0;
+        this._startupTimeoutId = 0;
         this._hasFrame = false;
 
         this._content = new St.ImageContent({
@@ -86,6 +87,19 @@ export class CameraPreview {
                 this._pullFrame();
                 return this.isRunning ? GLib.SOURCE_CONTINUE : GLib.SOURCE_REMOVE;
             });
+            // Some broken V4L2 drivers enter PLAYING but never deliver a frame
+            // or an error. Fail visibly instead of leaving "Starting camera…"
+            // on screen forever.
+            this._startupTimeoutId = GLib.timeout_add_seconds(
+                GLib.PRIORITY_DEFAULT,
+                8,
+                () => {
+                    this._startupTimeoutId = 0;
+                    if (this.isRunning && !this._hasFrame)
+                        this._reportError('No camera frame arrived within 8 seconds');
+                    return GLib.SOURCE_REMOVE;
+                }
+            );
         } catch (error) {
             this.stop();
             throw error;
@@ -124,6 +138,10 @@ export class CameraPreview {
             this._content.set_bytes(...args);
             if (!this._hasFrame) {
                 this._hasFrame = true;
+                if (this._startupTimeoutId) {
+                    GLib.Source.remove(this._startupTimeoutId);
+                    this._startupTimeoutId = 0;
+                }
                 this._onFrame?.();
             }
         } catch (error) {
@@ -142,6 +160,10 @@ export class CameraPreview {
     }
 
     stop() {
+        if (this._startupTimeoutId) {
+            GLib.Source.remove(this._startupTimeoutId);
+            this._startupTimeoutId = 0;
+        }
         if (this._framePollId) {
             GLib.Source.remove(this._framePollId);
             this._framePollId = 0;

@@ -45,6 +45,7 @@ export default class VeronicaExtension extends Extension {
         this._actionBridge = new ActionBridge({
             cleanKeys: () => this._panelReplacement?.cleanKeys(),
             pickColor: () => this._panelReplacement?.pickColor(),
+            showClipboard: () => this._panelReplacement?.showClipboard(),
             // Silent: the caller reports the copy, so a second banner from
             // inside the shell would be a duplicate.
             writeClipboard: text => this._clipboard?.write(text, false),

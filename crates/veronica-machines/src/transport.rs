@@ -53,11 +53,7 @@ pub fn ssh_args(target: &str, port: Option<u16>, script: &str, timeout: Duration
 }
 
 /// Run a shell script on a machine and return its stdout.
-pub async fn run_script(
-    machine: &Machine,
-    script: &str,
-    timeout: Duration,
-) -> Result<String> {
+pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> Result<String> {
     let mut command = match &machine.reach {
         Reach::Local => {
             let mut command = Command::new("sh");
@@ -95,7 +91,7 @@ pub async fn run_script(
     if !output.status.success() {
         let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
         bail!(
-            "{} refused the probe: {}",
+            "{} refused the request: {}",
             machine.name,
             if detail.is_empty() {
                 format!("exit status {}", output.status)
@@ -234,7 +230,10 @@ mod tests {
         ];
         let reports = probe_fleet(&machines, Duration::from_secs(6)).await;
         assert_eq!(reports.len(), 2);
-        assert!(reports[0].stats.is_some(), "the local machine should answer");
+        assert!(
+            reports[0].stats.is_some(),
+            "the local machine should answer"
+        );
         assert!(reports[0].error.is_none());
         assert!(reports[1].stats.is_none(), "the invalid host should not");
         assert!(reports[1].error.is_some(), "and should say why");

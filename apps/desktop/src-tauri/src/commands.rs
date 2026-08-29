@@ -197,8 +197,13 @@ pub async fn shell_action(action: String) -> CommandResult<()> {
     let method = match action.as_str() {
         "cleanKeys" => "CleanKeys",
         "pickColor" => "PickColor",
+        "showClipboard" => "ShowClipboard",
         _ => return Err(format!("unknown Shell action: {action}")),
     };
+    call_shell_method(method).await
+}
+
+pub(crate) async fn call_shell_method(method: &str) -> CommandResult<()> {
     let connection = zbus::Connection::session()
         .await
         .map_err(|error| format!("cannot reach the GNOME session bus: {error}"))?;
@@ -213,7 +218,7 @@ pub async fn shell_action(action: String) -> CommandResult<()> {
         .await
         .map_err(|error| {
             format!(
-                "Veronica's GNOME extension is unavailable; enable it before using {action}: {error}"
+                "Veronica's GNOME extension is unavailable; enable it before using {method}: {error}"
             )
         })?;
     Ok(())
@@ -842,6 +847,20 @@ pub fn notifications_clear(state: State<'_, AppState>) -> CommandResult<()> {
 /// Settings key holding the stored fleet, shared with the CLI.
 const MACHINES_KEY: &str = "machines";
 
+fn machine_by_id(state: &AppState, id: &str) -> CommandResult<veronica_machines::Machine> {
+    let stored = state
+        .settings_snapshot()
+        .get(MACHINES_KEY)
+        .and_then(|value| {
+            serde_json::from_value::<Vec<veronica_machines::Machine>>(value.clone()).ok()
+        })
+        .unwrap_or_default();
+    veronica_machines::fleet(stored)
+        .into_iter()
+        .find(|machine| machine.id == id)
+        .ok_or_else(|| format!("no machine called {id}"))
+}
+
 /// Probe every machine in the fleet.
 ///
 /// One unreachable host reports its own error rather than failing the view, so
@@ -951,6 +970,86 @@ pub fn machines_discover(state: State<'_, AppState>) -> CommandResult<Vec<String
                 .any(|machine| machine.ssh_target() == Some(alias.as_str()))
         })
         .collect())
+}
+
+#[tauri::command]
+pub fn machines_terminal(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+    let machine = machine_by_id(&state, &id)?;
+    veronica_machines::manage::open_terminal(&machine).map_err(fail)
+}
+
+#[tauri::command]
+pub async fn machines_files(
+    state: State<'_, AppState>,
+    id: String,
+    path: Option<String>,
+) -> CommandResult<veronica_machines::MachineDirectory> {
+    let machine = machine_by_id(&state, &id)?;
+    veronica_machines::manage::list_directory(
+        &machine,
+        path.as_deref(),
+        veronica_machines::DEFAULT_TIMEOUT,
+    )
+    .await
+    .map_err(fail)
+}
+
+#[tauri::command]
+pub async fn machines_file_download(
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+) -> CommandResult<String> {
+    let machine = machine_by_id(&state, &id)?;
+    if machine.is_local() {
+        if !std::path::Path::new(&path).is_file() {
+            return Err("selected path is not a file".to_string());
+        }
+        return Ok(path);
+    }
+    let downloads = veronica_core::paths::home_dir()
+        .ok_or_else(|| "cannot resolve Downloads directory".to_string())?
+        .join("Downloads");
+    let destination = veronica_machines::manage::download_file(
+        &machine,
+        &path,
+        &downloads,
+        veronica_machines::DEFAULT_TIMEOUT,
+    )
+    .await
+    .map_err(fail)?;
+    Ok(destination.display().to_string())
+}
+
+#[tauri::command]
+pub async fn machines_containers(
+    state: State<'_, AppState>,
+    id: String,
+) -> CommandResult<Vec<veronica_machines::ContainerInfo>> {
+    let machine = machine_by_id(&state, &id)?;
+    veronica_machines::manage::containers(&machine, veronica_machines::DEFAULT_TIMEOUT)
+        .await
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub async fn machines_container_action(
+    state: State<'_, AppState>,
+    id: String,
+    engine: String,
+    container: String,
+    action: String,
+) -> CommandResult<()> {
+    let machine = machine_by_id(&state, &id)?;
+    veronica_machines::manage::container_action(
+        &machine,
+        &engine,
+        &container,
+        &action,
+        veronica_machines::DEFAULT_TIMEOUT,
+    )
+    .await
+    .map_err(fail)
 }
 
 /// The clipboard history, newest first.

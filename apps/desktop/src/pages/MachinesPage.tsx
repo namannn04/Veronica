@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import { bytes, countdown, percent } from "../lib/format";
-import type { MachineReport } from "../lib/types";
+import type { ContainerInfo, MachineDirectory, MachineReport } from "../lib/types";
 
 /** How often to re-probe while the page is open. */
 const TICK_MS = 5000;
@@ -172,8 +172,37 @@ function MachineCard({
   busy: boolean;
 }) {
   const { machine, stats, error } = report;
+  const [tool, setTool] = useState<"files" | "containers" | null>(null);
+  const [directory, setDirectory] = useState<MachineDirectory | null>(null);
+  const [containers, setContainers] = useState<ContainerInfo[]>([]);
+  const [toolBusy, setToolBusy] = useState(false);
+  const [toolError, setToolError] = useState("");
   const reach =
     machine.reach.kind === "local" ? "this computer" : `ssh ${machine.reach.target}`;
+
+  const loadFiles = async (path: string | null = null) => {
+    setTool("files"); setToolBusy(true); setToolError("");
+    try { setDirectory(await ipc.machinesFiles(machine.id, path)); }
+    catch (reason) { setToolError(String(reason)); }
+    finally { setToolBusy(false); }
+  };
+  const loadContainers = async () => {
+    setTool("containers"); setToolBusy(true); setToolError("");
+    try { setContainers(await ipc.machinesContainers(machine.id)); }
+    catch (reason) { setToolError(String(reason)); }
+    finally { setToolBusy(false); }
+  };
+  const openFile = async (path: string) => {
+    setToolBusy(true); setToolError("");
+    try { await ipc.openExternal(await ipc.machinesFileDownload(machine.id, path)); }
+    catch (reason) { setToolError(String(reason)); }
+    finally { setToolBusy(false); }
+  };
+  const act = async (container: ContainerInfo, action: "start" | "stop" | "restart") => {
+    setToolBusy(true); setToolError("");
+    try { await ipc.machinesContainerAction(machine.id, container.engine, container.id, action); await loadContainers(); }
+    catch (reason) { setToolError(String(reason)); setToolBusy(false); }
+  };
 
   return (
     <section className="card">
@@ -188,6 +217,7 @@ function MachineCard({
         </h2>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span className="card-note mono">{reach}</span>
+          <button className="button" disabled={!stats || toolBusy} onClick={() => void ipc.machinesTerminal(machine.id).catch((reason) => setToolError(String(reason)))}>Terminal</button>
           {onRemove && (
             <button
               className="button"
@@ -240,6 +270,14 @@ function MachineCard({
               />
             ))}
           </div>
+          <div className="machine-actions">
+            <button className="button" aria-pressed={tool === "files"} onClick={() => void loadFiles(directory?.path ?? null)}>Files</button>
+            <button className="button" aria-pressed={tool === "containers"} onClick={() => void loadContainers()}>Containers</button>
+            {tool && <button className="button" onClick={() => { setTool(null); setToolError(""); }}>Close</button>}
+          </div>
+          {toolError && <div className="banner error">{toolError}</div>}
+          {tool === "files" && <div className="machine-tool"><div className="machine-path"><button className="button" disabled={!directory?.parent || toolBusy} onClick={() => void loadFiles(directory?.parent ?? null)}>↑</button><code>{directory?.path ?? "Loading…"}</code><button className="button" disabled={toolBusy} onClick={() => void loadFiles(directory?.path ?? null)}>Refresh</button></div>{directory && directory.entries.length > 0 ? <div className="machine-file-list">{directory.entries.map((entry) => <button key={entry.path} disabled={toolBusy} onClick={() => entry.kind === "directory" ? void loadFiles(entry.path) : void openFile(entry.path)}><span className="machine-file-icon">{entry.kind === "directory" ? "▰" : "▤"}</span><span><strong>{entry.name}</strong><small>{entry.kind === "directory" ? "Folder" : bytes(entry.sizeBytes)}</small></span><span>›</span></button>)}</div> : !toolBusy && <div className="empty compact"><p>This folder is empty.</p></div>}</div>}
+          {tool === "containers" && <div className="machine-tool">{containers.length > 0 ? <div className="machine-container-list">{containers.map((container) => <div key={`${container.engine}-${container.id}`}><span className={`pill ${container.state === "running" ? "good" : "warning"}`}>{container.state}</span><span><strong>{container.name}</strong><small>{container.image} · {container.status}</small></span><div>{container.state === "running" ? <button className="button" disabled={toolBusy} onClick={() => void act(container, "stop")}>Stop</button> : <button className="button" disabled={toolBusy} onClick={() => void act(container, "start")}>Start</button>}<button className="button" disabled={toolBusy} onClick={() => void act(container, "restart")}>Restart</button></div></div>)}</div> : !toolBusy && <div className="empty compact"><p>No Docker or Podman containers found.</p></div>}</div>}
         </>
       )}
     </section>

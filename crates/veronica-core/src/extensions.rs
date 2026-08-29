@@ -390,16 +390,12 @@ mod tests {
     }
 
     #[test]
-    fn system_is_degraded_not_unavailable_when_only_an_optional_capability_is_missing() {
-        // InputSuppression is optional for `system` and needs the input group,
-        // so the extension must still run with the lock switched off.
+    fn system_is_available_on_gnome_with_compositor_input_suppression() {
         let entry = entry("system").unwrap();
-        match entry.availability(&caps(SessionKind::Wayland)) {
-            ExtensionAvailability::Degraded { missing } => {
-                assert_eq!(missing, vec![InputSuppression]);
-            }
-            other => panic!("expected degraded, got {other:?}"),
-        }
+        assert_eq!(
+            entry.availability(&gnome_caps(SessionKind::Wayland, true)),
+            ExtensionAvailability::Available
+        );
     }
 
     #[test]

@@ -30,6 +30,10 @@ export class PanelReplacement {
         this._notch?.pickColor();
     }
 
+    showClipboard() {
+        this._notch?.showClipboard();
+    }
+
     /** Hide only the stock date menu and show Veronica's own. Safe to call twice. */
     enable(clipboardWatcher, cancellable, settings) {
         if (this._active)

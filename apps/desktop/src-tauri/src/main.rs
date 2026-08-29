@@ -11,7 +11,7 @@ mod tray;
 
 use anyhow::Result;
 use tauri::{Emitter, Manager, WindowEvent};
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use veronica_core::AppDirectories;
 
 use state::AppState;
@@ -59,6 +59,54 @@ fn force_x11_backend() {
     }
 }
 
+fn matches(shortcut: &Shortcut, code: Code) -> bool {
+    shortcut.matches(Modifiers::CONTROL | Modifiers::ALT, code)
+}
+
+fn show_route(app: &tauri::AppHandle, route: &str) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+    let _ = app.emit("navigate", route);
+}
+
+fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
+    if matches(shortcut, Code::KeyV) {
+        show_route(app, "home");
+    } else if matches(shortcut, Code::KeyB) {
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if commands::call_shell_method("ShowClipboard").await.is_err() {
+                show_route(&handle, "clipboard");
+            }
+        });
+    } else if matches(shortcut, Code::KeyM) {
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            match veronica_system::audio::toggle_microphone().await {
+                Ok(state) => {
+                    let _ = handle.emit("microphone-updated", state);
+                }
+                Err(error) => tracing::warn!(target: "veronica", "mic shortcut failed: {error:#}"),
+            }
+        });
+    } else if matches(shortcut, Code::KeyP) {
+        tauri::async_runtime::spawn(async {
+            if let Err(error) = commands::call_shell_method("PickColor").await {
+                tracing::warn!(target: "veronica", "color shortcut failed: {error}");
+            }
+        });
+    } else if matches(shortcut, Code::KeyK) {
+        tauri::async_runtime::spawn(async {
+            if let Err(error) = commands::call_shell_method("CleanKeys").await {
+                tracing::warn!(target: "veronica", "clean-keys shortcut failed: {error}");
+            }
+        });
+    }
+}
+
 fn run() -> Result<()> {
     let directories = AppDirectories::current()?;
     directories.prepare()?;
@@ -67,14 +115,8 @@ fn run() -> Result<()> {
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
-                    if event.state() == ShortcutState::Pressed
-                        && shortcut.matches(tauri_plugin_global_shortcut::Modifiers::CONTROL | tauri_plugin_global_shortcut::Modifiers::ALT, tauri_plugin_global_shortcut::Code::KeyV)
-                    {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.unminimize();
-                            let _ = window.set_focus();
-                        }
+                    if event.state() == ShortcutState::Pressed {
+                        handle_shortcut(app, shortcut);
                     }
                 })
                 .build(),
@@ -116,6 +158,11 @@ fn run() -> Result<()> {
             commands::machines_add,
             commands::machines_remove,
             commands::machines_discover,
+            commands::machines_terminal,
+            commands::machines_files,
+            commands::machines_file_download,
+            commands::machines_containers,
+            commands::machines_container_action,
             commands::clipboard_list,
             commands::clipboard_remove,
             commands::clipboard_clear,
@@ -152,8 +199,16 @@ fn run() -> Result<()> {
             // refused by the compositor or collide with another app; that is
             // non-fatal and surfaced by diagnostics/logs instead of preventing
             // Veronica from starting.
-            if let Err(error) = app.global_shortcut().register("Ctrl+Alt+V") {
-                tracing::warn!(target: "veronica", "cannot register Ctrl+Alt+V: {error}");
+            for shortcut in [
+                "Ctrl+Alt+V",
+                "Ctrl+Alt+B",
+                "Ctrl+Alt+M",
+                "Ctrl+Alt+P",
+                "Ctrl+Alt+K",
+            ] {
+                if let Err(error) = app.global_shortcut().register(shortcut) {
+                    tracing::warn!(target: "veronica", "cannot register {shortcut}: {error}");
+                }
             }
 
             if let Some(window) = app.get_webview_window("main") {

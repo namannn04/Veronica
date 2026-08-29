@@ -68,6 +68,11 @@ export class NotchPanel {
         return this.actor !== null;
     }
 
+    showTab(id) {
+        if (this._panels.has(id))
+            this._selectTab(id);
+    }
+
     _header() {
         const header = new St.BoxLayout({ style_class: 'veronica-shelf-header' });
         for (const [id, icon, title] of TABS) {

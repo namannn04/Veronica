@@ -21,6 +21,7 @@ const XML = `
   <interface name="${ACTION_INTERFACE}">
     <method name="CleanKeys"/>
     <method name="PickColor"/>
+    <method name="ShowClipboard"/>
     <method name="WriteClipboard">
       <arg type="s" direction="in" name="text"/>
     </method>
@@ -34,6 +35,7 @@ export class ActionBridge {
         this._object = Gio.DBusExportedObject.wrapJSObject(XML, {
             CleanKeys: () => this._actions?.cleanKeys?.(),
             PickColor: () => this._actions?.pickColor?.(),
+            ShowClipboard: () => this._actions?.showClipboard?.(),
             WriteClipboard: text => this._actions?.writeClipboard?.(text),
         });
     }

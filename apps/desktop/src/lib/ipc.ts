@@ -21,6 +21,8 @@ import type {
   DesktopNotification,
   Machine,
   MachineReport,
+  MachineDirectory,
+  ContainerInfo,
   Dashboard,
   Diagnostics,
   MediaAction,
@@ -62,7 +64,7 @@ export const ipc = {
   attentionOverview: (days: number) => invoke<AttentionOverview>("attention_overview", { days }),
   attentionSettings: () => invoke<AttentionSettings>("attention_settings"),
   attentionSettingsSave: (settings: AttentionSettings) => invoke<void>("attention_settings_save", { settings }),
-  shellAction: (action: "cleanKeys" | "pickColor") =>
+  shellAction: (action: "cleanKeys" | "pickColor" | "showClipboard") =>
     invoke<void>("shell_action", { action }),
 
   clipboardList: (query: string) => invoke<ClipRow[]>("clipboard_list", { query }),
@@ -94,6 +96,15 @@ export const ipc = {
     invoke<Machine>("machines_add", { target, name, port }),
   machinesRemove: (id: string) => invoke<void>("machines_remove", { id }),
   machinesDiscover: () => invoke<string[]>("machines_discover"),
+  machinesTerminal: (id: string) => invoke<void>("machines_terminal", { id }),
+  machinesFiles: (id: string, path: string | null = null) =>
+    invoke<MachineDirectory>("machines_files", { id, path }),
+  machinesFileDownload: (id: string, path: string) =>
+    invoke<string>("machines_file_download", { id, path }),
+  machinesContainers: (id: string) =>
+    invoke<ContainerInfo[]>("machines_containers", { id }),
+  machinesContainerAction: (id: string, engine: string, container: string, action: "start" | "stop" | "restart") =>
+    invoke<void>("machines_container_action", { id, engine, container, action }),
 
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
   powerStatus: () => invoke<PowerStatus>("power_status"),

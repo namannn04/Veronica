@@ -124,8 +124,18 @@ The AppImage does not install the `vr` command; use the Debian package for that.
   config aliases, keys, agent and jump hosts apply unchanged, and Veronica never
   handles a key or a passphrase.
 - **Discovery** — aliases in `~/.ssh/config` are offered as one-click additions.
+- **Files and terminals** — browse a local or remote home directory, download a
+  file safely through SFTP, or open the host in the installed terminal.
+- **Containers** — list Docker or Podman containers on any machine and start,
+  stop or restart them without installing a Veronica agent on that host.
 - **Honest failures** — an unreachable host says why, and never delays or hides
   the machines that answered.
+
+**Global shortcuts**
+
+- `Ctrl+Alt+V` opens Veronica, `Ctrl+Alt+B` opens Clipboard, `Ctrl+Alt+M`
+  toggles the microphone, `Ctrl+Alt+P` picks a colour, and `Ctrl+Alt+K` enters
+  keyboard-cleaning mode. GNOME Shell performs compositor-only actions.
 
 **Clipboard**
 

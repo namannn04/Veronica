@@ -182,6 +182,11 @@ class NotchButton extends PanelMenu.Button {
         this._notchPanel?.pickColor();
     }
 
+    showClipboard() {
+        this._notchPanel?.showTab('clipboard');
+        this.menu.open();
+    }
+
     destroy() {
         if (this._clockTimeoutId) {
             GLib.Source.remove(this._clockTimeoutId);

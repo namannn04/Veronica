@@ -80,7 +80,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       </SettingsGroup>
     </div>}
     {tab === "permissions" && <div className="settings-embedded"><DiagnosticsPage diagnostics={diagnostics} /></div>}
-    {tab === "shortcuts" && <section className="settings-group"><div><h2>Global shortcuts</h2><p>Handled by the desktop shortcut service; Veronica never records arbitrary keys.</p></div><div className="settings-box"><div className="setting-row"><div><strong>Show Veronica</strong><small>Open, unminimize and focus the app from anywhere.</small></div><kbd>Ctrl + Alt + V</kbd></div><div className="setting-row"><div><strong>Desktop support</strong><small>{diagnostics?.session.hasGlobalShortcutsPortal ? "GNOME Global Shortcuts portal detected." : "Portal not advertised; X11 registration may still work. A conflict is logged without breaking startup."}</small></div><span className={`pill ${diagnostics?.session.hasGlobalShortcutsPortal ? "good" : "warning"}`}>{diagnostics?.session.hasGlobalShortcutsPortal ? "Portal ready" : "Fallback"}</span></div></div></section>}
+    {tab === "shortcuts" && <section className="settings-group"><div><h2>Global shortcuts</h2><p>Handled by the desktop shortcut service; Veronica never records arbitrary keys.</p></div><div className="settings-box"><ShortcutRow title="Show Veronica" detail="Open, unminimize and focus the app." keys="Ctrl + Alt + V"/><ShortcutRow title="Clipboard" detail="Open the notch clipboard, or the app as fallback." keys="Ctrl + Alt + B"/><ShortcutRow title="Microphone mute" detail="Toggle the default PipeWire microphone system-wide." keys="Ctrl + Alt + M"/><ShortcutRow title="Pick color" detail="Open GNOME's eyedropper and save the swatch." keys="Ctrl + Alt + P"/><ShortcutRow title="Clean keys" detail="Take a compositor modal grab until you click Done." keys="Ctrl + Alt + K"/><div className="setting-row"><div><strong>Desktop backend</strong><small>{diagnostics?.session.hasGlobalShortcutsPortal ? "GNOME portal detected; X11-compatible backend is also available." : "Veronica uses its XWayland global-hotkey backend in this GNOME session."}</small></div><span className="pill good">Active</span></div></div></section>}
     {tab === "terminal" && <Info title="Command line" body="The vr command uses the same Veronica data and settings as this app." code={`vr diagnose\nvr config list\nvr usage dashboard\nvr machines probe\nvr clipboard list`} />}
     {tab === "backup" && <div className="settings-embedded"><BackupPane /></div>}
     {tab === "updates" && <UpdatePane current={diagnostics?.version ?? ""} />}
@@ -106,6 +106,7 @@ function Modes({ value, onChange }: { value: string; onChange: (mode: string) =>
 }
 
 function Info({ title, body, code }: { title: string; body: string; code?: string }) { return <section className="settings-info"><div className="info-glyph">V</div><h2>{title}</h2><p>{body}</p>{code && <pre>{code}</pre>}</section>; }
+function ShortcutRow({ title, detail, keys }: { title: string; detail: string; keys: string }) { return <div className="setting-row"><div><strong>{title}</strong><small>{detail}</small></div><kbd>{keys}</kbd></div>; }
 
 function UpdatePane({ current }: { current: string }) {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);

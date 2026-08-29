@@ -88,8 +88,12 @@ export function App() {
   // The portal probe finishes after launch, which can change what is available.
   useEffect(() => {
     const resolved = listen("session-resolved", () => void loadDiagnostics());
+    const navigate = listen<string>("navigate", (event) => {
+      if (NAV.some((item) => item.id === event.payload)) setRoute(event.payload as Route);
+    });
     return () => {
       void resolved.then((un) => un());
+      void navigate.then((un) => un());
     };
   }, [loadDiagnostics]);
 
