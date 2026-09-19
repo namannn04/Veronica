@@ -50,6 +50,8 @@ export type NavItem = {
   id: Route;
   label: string;
   icon: ReactNode;
+  /** Extension catalogue id; absent pages are part of Veronica itself. */
+  extensionId?: string;
   /** What the page is for, shown in the palette. */
   hint: string;
   keywords: string;
@@ -70,31 +72,31 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Agents",
     items: [
       { id: "home", label: "Home", icon: <HomeIcon />, hint: "The dashboard", keywords: "dashboard start overview clocks" },
-      { id: "usage", label: "Agent Usage", icon: <UsageIcon />, hint: "Spend, tokens and rate limits", keywords: "claude codex cursor cost spend tokens limits rings" },
-      { id: "herdr", label: "Herdr", icon: <HerdrIcon />, hint: "Agent sessions and panes", keywords: "sessions panes tmux" },
-      { id: "quinjet", label: "Quinjet", icon: <QuinjetIcon />, hint: "Review workspaces", keywords: "review worktree git projects" },
-      { id: "attention", label: "Attention", icon: <AttentionIcon />, hint: "Focus sessions", keywords: "focus pomodoro timer deep work" },
+      { id: "usage", label: "Agent Usage", icon: <UsageIcon />, extensionId: "usage", hint: "Spend, tokens and rate limits", keywords: "claude codex cursor cost spend tokens limits rings" },
+      { id: "herdr", label: "Herdr", icon: <HerdrIcon />, extensionId: "herdr", hint: "Agent sessions and panes", keywords: "sessions panes tmux" },
+      { id: "quinjet", label: "Quinjet", icon: <QuinjetIcon />, extensionId: "quinjet", hint: "Review workspaces", keywords: "review worktree git projects" },
+      { id: "attention", label: "Attention", icon: <AttentionIcon />, extensionId: "attention", hint: "Focus sessions", keywords: "focus pomodoro timer deep work" },
     ],
   },
   {
     label: "This computer",
     items: [
-      { id: "system", label: "System", icon: <SystemIcon />, hint: "CPU, memory, disks and audio", keywords: "cpu memory ram disk temperature sensors audio volume bluetooth processes" },
-      { id: "machines", label: "Machines", icon: <MachinesIcon />, hint: "This computer and SSH hosts", keywords: "ssh remote servers hosts docker containers wake" },
-      { id: "maintenance", label: "App Maintenance", icon: <MaintenanceIcon />, hint: "Updates, packages and cleanup", keywords: "apt snap flatpak update upgrade packages clean cache trash" },
-      { id: "database", label: "Database", icon: <DatabaseIcon />, hint: "Browse and query databases", keywords: "sql postgres mysql sqlite redis query tables" },
+      { id: "system", label: "System", icon: <SystemIcon />, extensionId: "system", hint: "CPU, memory, disks and audio", keywords: "cpu memory ram disk temperature sensors audio volume bluetooth processes" },
+      { id: "machines", label: "Machines", icon: <MachinesIcon />, extensionId: "machines", hint: "This computer and SSH hosts", keywords: "ssh remote servers hosts docker containers wake" },
+      { id: "maintenance", label: "App Maintenance", icon: <MaintenanceIcon />, extensionId: "appMaintenance", hint: "Updates, packages and cleanup", keywords: "apt snap flatpak update upgrade packages clean cache trash" },
+      { id: "database", label: "Database", icon: <DatabaseIcon />, extensionId: "database", hint: "Browse and query databases", keywords: "sql postgres mysql sqlite redis query tables" },
     ],
   },
   {
     label: "Tools",
     items: [
-      { id: "media", label: "Music", icon: <MusicIcon />, hint: "Local library and players", keywords: "music player spotify mpris tracks audio playback" },
-      { id: "calendar", label: "Calendar", icon: <CalendarIcon />, hint: "Today and the days ahead", keywords: "meetings events agenda schedule" },
-      { id: "clipboard", label: "Clipboard", icon: <ClipboardIcon />, hint: "What you have copied", keywords: "copy paste history snippets" },
-      { id: "color", label: "Color Picker", icon: <ColorIcon />, hint: "Sample and keep colours", keywords: "colour eyedropper hex rgb swatch pick" },
-      { id: "emoji", label: "Emoji", icon: <EmojiIcon />, hint: "Search and insert emoji", keywords: "emoji symbol character insert" },
-      { id: "audit", label: "Site Audit", icon: <AuditIcon />, hint: "Crawl a site for problems", keywords: "seo crawl website meta sitemap links" },
-      { id: "companion", label: "Companion", icon: <CompanionIcon />, hint: "Notes and voice memos", keywords: "notes memo record voice scratchpad" },
+      { id: "media", label: "Music", icon: <MusicIcon />, extensionId: "music", hint: "Local library and players", keywords: "music player spotify mpris tracks audio playback" },
+      { id: "calendar", label: "Calendar", icon: <CalendarIcon />, extensionId: "calendar", hint: "Today and the days ahead", keywords: "meetings events agenda schedule" },
+      { id: "clipboard", label: "Clipboard", icon: <ClipboardIcon />, extensionId: "clipboard", hint: "What you have copied", keywords: "copy paste history snippets" },
+      { id: "color", label: "Color Picker", icon: <ColorIcon />, extensionId: "colorPicker", hint: "Sample and keep colours", keywords: "colour eyedropper hex rgb swatch pick" },
+      { id: "emoji", label: "Emoji", icon: <EmojiIcon />, extensionId: "emoji", hint: "Search and insert emoji", keywords: "emoji symbol character insert" },
+      { id: "audit", label: "Site Audit", icon: <AuditIcon />, extensionId: "seoAudit", hint: "Crawl a site for problems", keywords: "seo crawl website meta sitemap links" },
+      { id: "companion", label: "Companion", icon: <CompanionIcon />, extensionId: "companion", hint: "Notes and voice memos", keywords: "notes memo record voice scratchpad" },
     ],
   },
   {
@@ -117,6 +119,28 @@ export function isRoute(value: unknown): value is Route {
   return typeof value === "string" && ROUTES.has(value);
 }
 
+/** Rail groups after applying the extension catalogue's shared switches. */
+export function visibleNavGroups(enabledExtensions?: ReadonlySet<string>): NavGroup[] {
+  if (enabledExtensions === undefined) return NAV_GROUPS;
+  return NAV_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => item.extensionId === undefined || enabledExtensions.has(item.extensionId),
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
+/** Whether a route can be opened under the current extension switches. */
+export function routeIsVisible(route: Route, enabledExtensions?: ReadonlySet<string>): boolean {
+  const item = NAV_ITEMS.find((candidate) => candidate.id === route);
+  return item !== undefined
+    && (item.extensionId === undefined
+      || enabledExtensions === undefined
+      || enabledExtensions.has(item.extensionId));
+}
+
 /**
  * Entries matching `query`, best first.
  *
@@ -124,11 +148,11 @@ export function isRoute(value: unknown): value is Route {
  * label outranks one in the middle, so typing "cal" puts Calendar above Color
  * Picker rather than leaving the order to chance.
  */
-export function searchNav(query: string): NavItem[] {
+export function searchNav(query: string, items: NavItem[] = NAV_ITEMS): NavItem[] {
   const needle = query.trim().toLowerCase();
-  if (!needle) return NAV_ITEMS;
+  if (!needle) return items;
   const scored: { item: NavItem; score: number }[] = [];
-  for (const item of NAV_ITEMS) {
+  for (const item of items) {
     const label = item.label.toLowerCase();
     const score = label.startsWith(needle)
       ? 0
@@ -142,6 +166,6 @@ export function searchNav(query: string): NavItem[] {
     if (score >= 0) scored.push({ item, score });
   }
   return scored
-    .sort((a, b) => a.score - b.score || NAV_ITEMS.indexOf(a.item) - NAV_ITEMS.indexOf(b.item))
+    .sort((a, b) => a.score - b.score || items.indexOf(a.item) - items.indexOf(b.item))
     .map((entry) => entry.item);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { searchNav, type Route } from "../lib/navigation";
+import { searchNav, type NavItem, type Route } from "../lib/navigation";
 import { SearchIcon } from "./icons";
 
 /**
@@ -16,17 +16,19 @@ export function CommandPalette({
   open,
   onClose,
   onNavigate,
+  items,
 }: {
   open: boolean;
   onClose: () => void;
   onNavigate: (route: Route) => void;
+  items: NavItem[];
 }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const results = searchNav(query);
+  const results = searchNav(query, items);
   // A filter that removed the highlighted row must not leave the highlight
   // pointing past the end, or Enter would do nothing.
   const index = Math.min(active, Math.max(results.length - 1, 0));

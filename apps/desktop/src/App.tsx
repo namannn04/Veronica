@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AboutPage } from "./pages/AboutPage";
 import { AttentionPage } from "./pages/AttentionPage";
@@ -22,7 +22,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { CommandPalette } from "./components/CommandPalette";
 import { SearchIcon } from "./components/icons";
 import { ipc, listenEvent } from "./lib/ipc";
-import { NAV_GROUPS, isRoute, type Route } from "./lib/navigation";
+import { isRoute, routeIsVisible, visibleNavGroups, type Route } from "./lib/navigation";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 
@@ -30,6 +30,25 @@ export function App() {
   const [route, setRoute] = useState<Route>("home");
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const enabledExtensions = useMemo(() => {
+    if (diagnostics === null) return undefined;
+    return new Set(
+      diagnostics.extensions
+        .filter((extension) => extension.enabled)
+        .map((extension) => extension.id),
+    );
+  }, [diagnostics]);
+  // One filtered tree feeds both the rail and Ctrl+K, so their reachability
+  // cannot drift when a switch changes.
+  const navGroups = useMemo(
+    () => visibleNavGroups(enabledExtensions),
+    [enabledExtensions],
+  );
+  const navItems = useMemo(
+    () => navGroups.flatMap((group) => group.items),
+    [navGroups],
+  );
 
   const loadDiagnostics = useCallback(async () => {
     try {
@@ -65,27 +84,34 @@ export function App() {
     document.querySelector(".content")?.scrollTo({ top: 0 });
   }, [route]);
 
+  useEffect(() => {
+    if (!routeIsVisible(route, enabledExtensions)) setRoute("home");
+  }, [enabledExtensions, route]);
+
   // The portal probe finishes after launch, which can change what is available.
   useEffect(() => {
     const resolved = listenEvent("session-resolved", () => void loadDiagnostics());
     const navigate = listenEvent<string>("navigate", (event) => {
-      if (isRoute(event.payload)) setRoute(event.payload);
+      if (isRoute(event.payload)) {
+        setRoute(routeIsVisible(event.payload, enabledExtensions) ? event.payload : "home");
+      }
     });
     return () => {
       void resolved.then((un) => un());
       void navigate.then((un) => un());
     };
-  }, [loadDiagnostics]);
+  }, [enabledExtensions, loadDiagnostics]);
 
   useEffect(() => {
     const updated = listenEvent("settings-updated", () => {
       void ipc.settingsAll().then(applySettings).catch(() => {});
       void applyPresenterState();
+      void loadDiagnostics();
     });
     return () => {
       void updated.then((un) => un());
     };
-  }, [applySettings, applyPresenterState]);
+  }, [applySettings, applyPresenterState, loadDiagnostics]);
 
   // Ctrl+K opens the palette from anywhere, including from inside a text field,
   // which is the whole point of a jump-to shortcut.
@@ -120,7 +146,7 @@ export function App() {
         </button>
 
         <div className="nav-list">
-          {NAV_GROUPS.map((group) => (
+          {navGroups.map((group) => (
             <div key={group.label} className="nav-group">
               <div className="nav-section">{group.label}</div>
               {group.items.map((item) => (
@@ -167,6 +193,7 @@ export function App() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         onNavigate={setRoute}
+        items={navItems}
       />
     </div>
   );
