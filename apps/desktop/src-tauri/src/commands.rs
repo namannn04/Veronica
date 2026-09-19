@@ -354,6 +354,7 @@ pub async fn settings_set(
             .set_setting(&key, value)
             .map_err(fail)?;
     }
+    crate::sync_global_shortcuts(&app, &app.state::<AppState>().settings_snapshot());
     let _ = app.emit("settings-updated", &key);
     Ok(())
 }
@@ -426,6 +427,7 @@ pub fn backup_import(
     let state = app.state::<AppState>();
     let report = archive.restore(&state.directories).map_err(fail)?;
     state.reload_persistent_data().map_err(fail)?;
+    crate::sync_global_shortcuts(&app, &state.settings_snapshot());
     let _ = app.emit("settings-updated", "backup-import");
     let _ = app.emit("usage-updated", "backup-import");
     Ok(report)
