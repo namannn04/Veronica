@@ -17,6 +17,7 @@ use std::collections::BTreeMap;
 use std::process::Stdio;
 use std::time::Duration;
 
+use anyhow::Context;
 use serde::Serialize;
 use veronica_core::tools::ToolSpec;
 
@@ -175,6 +176,231 @@ pub fn unmet(
             .filter(|tool| !installed(tool))
             .collect(),
     }
+}
+
+/// What `install` did, or what it left for the user to do.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "outcome", rename_all = "camelCase")]
+pub enum Outcome {
+    AlreadyInstalled {
+        path: String,
+        version: String,
+    },
+    Installed {
+        path: String,
+        version: String,
+    },
+    /// Veronica ran nothing. `command` is what would do it when there is one
+    /// Veronica could have run, and `instruction` stands alone either way.
+    NotRun {
+        command: Option<String>,
+        instruction: &'static str,
+        reason: String,
+    },
+}
+
+/// Get a tool, or say why that is not Veronica's to do.
+///
+/// Edith's `ed tools install`: a tool that is already there is reported, not
+/// reinstalled, and nothing here can remove one. The routes differ by what
+/// they need.
+///
+/// npm runs unprivileged and is never escalated. `npm install -g` under
+/// `pkexec` would install into root's prefix, which is a worse outcome than
+/// the failure it was meant to avoid, so a prefix the user cannot write to is
+/// reported with the instruction rather than worked around.
+///
+/// apt needs root, and follows the rule the rest of Veronica follows: without
+/// `--yes` the command is printed, with it the command runs through `pkexec`,
+/// so the desktop's own dialog asks the user to authenticate. Veronica never
+/// writes `sudo` on their behalf.
+pub async fn install(tool: &ToolSpec, assume_yes: bool) -> anyhow::Result<Outcome> {
+    if let Readiness::Installed { path, version } = readiness(tool).await {
+        return Ok(Outcome::AlreadyInstalled { path, version });
+    }
+
+    let argv: Vec<String> = match tool.install {
+        veronica_core::tools::Install::Npm { package } => {
+            // Asked before running rather than diagnosed afterwards: on a
+            // stock Ubuntu the global prefix is /usr/local, npm fails with a
+            // forty-line EACCES trace, and its own advice is to re-run as
+            // root — which would install the tool into root's prefix, where
+            // the user cannot run it.
+            if let Some(reason) = npm_prefix_problem().await {
+                return Ok(Outcome::NotRun {
+                    command: Some(format!("npm install -g {package}")),
+                    instruction: tool.instruction,
+                    reason,
+                });
+            }
+            vec!["npm".into(), "install".into(), "-g".into(), package.into()]
+        }
+        veronica_core::tools::Install::Apt { package } => {
+            crate::packages::validate_name(package)?;
+            let argv = vec![
+                "apt-get".to_string(),
+                "install".to_string(),
+                "-y".to_string(),
+                package.to_string(),
+            ];
+            let wrapped = crate::packages::privileged_command(crate::packages::Source::Apt, &argv);
+            if !assume_yes {
+                return Ok(Outcome::NotRun {
+                    command: Some(wrapped.join(" ")),
+                    instruction: tool.instruction,
+                    reason: "Installing it needs root. Run it yourself, or pass --yes to \
+                             authenticate through the desktop's own dialog."
+                        .to_string(),
+                });
+            }
+            wrapped
+        }
+        veronica_core::tools::Install::Manual => {
+            return Ok(Outcome::NotRun {
+                command: None,
+                instruction: tool.instruction,
+                reason: format!("{} has no install Veronica can drive.", tool.display_name),
+            })
+        }
+    };
+
+    run_streaming(&argv).await?;
+
+    // An install that reports success and leaves nothing on the search path is
+    // the npm-prefix-not-on-PATH case, and it is worth saying plainly: the
+    // package is on disk and the tool still will not run.
+    match readiness(tool).await {
+        Readiness::Installed { path, version } => Ok(Outcome::Installed { path, version }),
+        Readiness::Error { detail } => anyhow::bail!("{detail}"),
+        Readiness::Uninstalled => anyhow::bail!(
+            "`{}` succeeded, but no `{}` appeared anywhere Veronica looks. Its install \
+             prefix is probably not one of {}.",
+            argv.join(" "),
+            tool.executable,
+            veronica_core::tools::search_path()
+                .iter()
+                .map(|directory| directory.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    }
+}
+
+/// Why `npm install -g` would fail here, or `None` when it would work.
+///
+/// Writability is established by writing: a directory Veronica creates and
+/// removes at once. Reading the mode bits would mean reasoning about the
+/// effective uid, the group list, ACLs and the mount's read-only flag, and
+/// getting any of those wrong produces the confident wrong answer that is
+/// worse than no check at all.
+async fn npm_prefix_problem() -> Option<String> {
+    let Some(npm) = veronica_core::tools::locate_in(&veronica_core::tools::search_path(), "npm")
+    else {
+        return Some(
+            "npm is not installed, and this tool is published as an npm package. Install \
+             Node.js — `sudo apt install nodejs npm` — and try again."
+                .to_string(),
+        );
+    };
+
+    let output = tokio::time::timeout(
+        PROBE_TIMEOUT,
+        tokio::process::Command::new(&npm)
+            .args(["prefix", "-g"])
+            .stdin(Stdio::null())
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .ok()?
+    .ok()?;
+    let prefix = std::path::PathBuf::from(first_line(&output.stdout)?);
+
+    // npm writes packages under <prefix>/lib/node_modules and links them into
+    // <prefix>/bin, so the nearest directory that already exists is the one
+    // whose permissions decide the outcome.
+    let target = prefix.join("lib/node_modules");
+    let existing = target
+        .ancestors()
+        .find(|directory| directory.is_dir())?
+        .to_path_buf();
+
+    let probe = existing.join(format!(".veronica-write-probe-{}", std::process::id()));
+    match std::fs::create_dir(&probe) {
+        Ok(()) => {
+            let _ = std::fs::remove_dir(&probe);
+            None
+        }
+        Err(_) => Some(format!(
+            "npm's global prefix is {}, which you cannot write to, and Veronica will not run \
+             npm as root: that installs the tool into root's prefix, where you cannot run it. \
+             Point npm at a prefix you own instead — `npm config set prefix ~/.npm-global` — \
+             and make sure ~/.npm-global/bin is on your PATH. Veronica already looks there.",
+            existing.display()
+        )),
+    }
+}
+
+/// Run an install, with its output on stderr as it happens.
+///
+/// Not captured and not on stdout: an install can be a silent minute, and
+/// stdout carries exactly one document, so the log belongs on the other
+/// stream — which is where `vr` puts every log already.
+async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
+    use tokio::io::{AsyncBufReadExt, BufReader};
+
+    let mut child = tokio::process::Command::new(&argv[0])
+        .args(&argv[1..])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("cannot run {}", argv[0]))?;
+
+    let mut out = BufReader::new(child.stdout.take().expect("piped")).lines();
+    let mut err = BufReader::new(child.stderr.take().expect("piped")).lines();
+
+    // Both streams are drained together: reading one to the end first lets the
+    // other fill its pipe buffer and block the installer forever. Each is
+    // tracked separately and the loop ends only when both have, because a
+    // finished stream answers instantly and would otherwise win every race and
+    // cut the other one off mid-log.
+    let (mut out_done, mut err_done) = (false, false);
+    let mut tail: Vec<String> = Vec::new();
+    while !out_done || !err_done {
+        let line = tokio::select! {
+            line = out.next_line(), if !out_done => match line? {
+                Some(line) => Some(line),
+                None => { out_done = true; None }
+            },
+            line = err.next_line(), if !err_done => match line? {
+                Some(line) => Some(line),
+                None => { err_done = true; None }
+            },
+        };
+        if let Some(line) = line {
+            eprintln!("{line}");
+            tail.push(line);
+            // Only the end of the log is worth quoting back in an error.
+            if tail.len() > 10 {
+                tail.remove(0);
+            }
+        }
+    }
+
+    let status = child
+        .wait()
+        .await
+        .context("cannot wait for the installer")?;
+    if !status.success() {
+        anyhow::bail!(
+            "`{}` exited {}: {}",
+            argv.join(" "),
+            status,
+            tail.join(" | ")
+        );
+    }
+    Ok(())
 }
 
 /// The first non-empty line the tool prints for its version arguments.
@@ -357,6 +583,107 @@ mod tests {
                 assert!(veronica_core::tools::spec(id).is_some());
             }
         }
+    }
+
+    /// A tool that is not on this machine under any name, so the install
+    /// routes are reached rather than short-circuited by what happens to be
+    /// installed on the machine running the tests.
+    fn absent(install: veronica_core::tools::Install) -> ToolSpec {
+        ToolSpec {
+            id: "absent",
+            display_name: "Absent",
+            why: "Nothing needs it.",
+            executable: "veronica-no-such-tool",
+            version_args: &["--version"],
+            install,
+            instruction: "Install it by hand.",
+        }
+    }
+
+    /// Nothing Veronica can drive is still an answer, not a failure.
+    #[tokio::test]
+    async fn a_manual_route_runs_nothing_and_hands_back_the_instruction() {
+        let outcome = install(&absent(veronica_core::tools::Install::Manual), true)
+            .await
+            .unwrap();
+        match outcome {
+            Outcome::NotRun {
+                command,
+                instruction,
+                ..
+            } => {
+                assert_eq!(command, None);
+                assert_eq!(instruction, "Install it by hand.");
+            }
+            other => panic!("expected NotRun, got {other:?}"),
+        }
+    }
+
+    /// The rule the rest of Veronica follows: a change that needs root is
+    /// printed unless the user asked for the authentication dialog. Whatever
+    /// is printed is what would run, never a `sudo` invented for the message.
+    #[tokio::test]
+    async fn an_apt_route_without_yes_prints_the_command_it_would_run() {
+        let tool = absent(veronica_core::tools::Install::Apt {
+            package: "openssh-client",
+        });
+        match install(&tool, false).await.unwrap() {
+            Outcome::NotRun { command, .. } => {
+                let command = command.expect("apt has a command Veronica could run");
+                assert!(command.contains("apt-get install -y openssh-client"));
+                assert!(!command.contains("sudo"));
+                assert_eq!(
+                    command,
+                    crate::packages::privileged_command(
+                        crate::packages::Source::Apt,
+                        &[
+                            "apt-get".into(),
+                            "install".into(),
+                            "-y".into(),
+                            "openssh-client".into()
+                        ]
+                    )
+                    .join(" ")
+                );
+            }
+            other => panic!("expected NotRun, got {other:?}"),
+        }
+    }
+
+    /// Both streams have to be read to the end, and this script proves it:
+    /// stdout closes a second before stderr says anything. A loop that stops
+    /// at the first exhausted stream is finished by then, and loses the error
+    /// — which is the line that mattered.
+    #[tokio::test]
+    async fn a_failed_install_quotes_the_end_of_both_its_streams() {
+        let (_root, script) = write_script(
+            "#!/bin/sh\necho 'to stdout'\nexec 1>&-\nsleep 1\necho 'to stderr' >&2\nexit 3\n",
+        );
+        let error = run_streaming(&[script.display().to_string()])
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("to stdout"), "{error}");
+        assert!(error.contains("to stderr"), "{error}");
+    }
+
+    /// An installer noisier than a pipe buffer must not wedge. npm is, on a
+    /// cold cache.
+    #[tokio::test]
+    async fn an_installer_louder_than_a_pipe_buffer_still_finishes() {
+        let (_root, script) = write_script(
+            "#!/bin/sh\ni=0\nwhile [ $i -lt 1200 ]; do\n  \
+             echo \"out $i ----------------------------------------------------------------\"\n  \
+             echo \"err $i ----------------------------------------------------------------\" >&2\n  \
+             i=$((i+1))\ndone\n",
+        );
+        let ran = tokio::time::timeout(
+            Duration::from_secs(30),
+            run_streaming(&[script.display().to_string()]),
+        )
+        .await
+        .expect("a full pipe buffer must not deadlock");
+        assert!(ran.is_ok());
     }
 
     /// The directory is returned alongside the path because dropping it

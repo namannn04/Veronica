@@ -407,6 +407,7 @@ vr backup inspect <file>     verify and describe an archive without restoring
 vr backup import <file> --confirm  validate and restore an archive atomically
 vr extensions                what can run on this session, and why not
 vr tools                     the command line programs the extensions need
+vr tools install <tool>      fetch one, when there is a route Veronica can drive
 vr config set <key> <value>  every setting the UI exposes
 ```
 

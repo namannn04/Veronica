@@ -7,11 +7,15 @@
 //!
 //! `vr tools` on its own runs `ls`, and `list` is the same command.
 //!
+//! `install` reports a tool that is already there rather than reinstalling it,
+//! and can never remove one: uninstalling stays with apt, npm or `rm`.
+//!
 //! Every tool is listed on every run, whether or not the extension that wants
 //! it is switched on, because "why is Herdr empty" is asked by people who have
 //! not thought about extensions at all.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use veronica_system::tools::Outcome;
 
 use crate::format::{self, Output};
 
@@ -20,6 +24,15 @@ pub enum ToolCommand {
     /// Every tool, with whether it is installed, its version, and why.
     #[command(alias = "list")]
     Ls,
+    /// Fetch one tool, when Veronica has a route it can drive.
+    Install {
+        /// A tool id, as `ls` prints it.
+        tool: String,
+        /// Authenticate through the desktop's own dialog for a route that
+        /// needs root. Without it, that command is printed rather than run.
+        #[arg(long)]
+        yes: bool,
+    },
 }
 
 pub async fn run(command: &ToolCommand, output: Output) -> Result<()> {
@@ -49,6 +62,39 @@ pub async fn run(command: &ToolCommand, output: Output) -> Result<()> {
                     rendered.push_str(&format!("\n\n{}  {}", report.id, report.note()));
                 }
                 rendered
+            })
+        }
+
+        ToolCommand::Install { tool, yes } => {
+            let spec = veronica_core::tools::spec(tool).with_context(|| {
+                let known: Vec<&str> = veronica_core::tools::CATALOG
+                    .iter()
+                    .map(|tool| tool.id)
+                    .collect();
+                format!("no tool called '{tool}'; try one of {}", known.join(", "))
+            })?;
+            let outcome = veronica_system::tools::install(spec, *yes).await?;
+            // A route Veronica cannot drive is not a failure of this command:
+            // it ran, and the answer is the instruction. Scripts read the
+            // outcome rather than the exit code to tell the two apart.
+            output.emit(&outcome, || match &outcome {
+                Outcome::AlreadyInstalled { path, version } => {
+                    format!(
+                        "{} {version} is already installed at {path}",
+                        spec.display_name
+                    )
+                }
+                Outcome::Installed { path, version } => {
+                    format!("installed {} {version} at {path}", spec.display_name)
+                }
+                Outcome::NotRun {
+                    command,
+                    instruction,
+                    reason,
+                } => match command {
+                    Some(command) => format!("{reason}\n\n{command}"),
+                    None => format!("{reason}\n\n{instruction}"),
+                },
             })
         }
     }
