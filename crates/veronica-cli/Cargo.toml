@@ -9,10 +9,15 @@ name = "vr"
 path = "src/main.rs"
 
 [dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "charset", "http2", "gzip"] }
+url = "2"
 veronica-core = { workspace = true }
 veronica-usage = { workspace = true }
 veronica-system = { workspace = true }
 veronica-media = { workspace = true }
+veronica-audit = { workspace = true }
+veronica-database = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
 veronica-calendar = { workspace = true }
 veronica-machines = { workspace = true }
 zbus = { workspace = true }

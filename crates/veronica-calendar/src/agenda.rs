@@ -73,9 +73,7 @@ pub fn parse_event_id(raw: &str) -> (String, String) {
 /// rather than flagging them, so the only way to tell is to check the boundaries
 /// and that the span is at least a day.
 pub fn is_all_day(start: DateTime<Local>, end: DateTime<Local>) -> bool {
-    let at_midnight = |value: DateTime<Local>| {
-        value.time() == chrono::NaiveTime::MIN
-    };
+    let at_midnight = |value: DateTime<Local>| value.time() == chrono::NaiveTime::MIN;
     at_midnight(start) && at_midnight(end) && (end - start) >= Duration::days(1)
 }
 
@@ -172,7 +170,11 @@ pub fn deduplicate(events: Vec<Event>) -> Vec<Event> {
         latest.insert(event.key(), event);
     }
     let mut list: Vec<Event> = latest.into_values().collect();
-    list.sort_by(|a, b| a.start.cmp(&b.start).then_with(|| a.summary.cmp(&b.summary)));
+    list.sort_by(|a, b| {
+        a.start
+            .cmp(&b.start)
+            .then_with(|| a.summary.cmp(&b.summary))
+    });
     list
 }
 
@@ -250,7 +252,10 @@ mod tests {
     #[test]
     fn a_malformed_event_id_still_yields_two_fields() {
         assert_eq!(parse_event_id(""), (String::new(), String::new()));
-        assert_eq!(parse_event_id("onlysource"), ("onlysource".to_string(), String::new()));
+        assert_eq!(
+            parse_event_id("onlysource"),
+            ("onlysource".to_string(), String::new())
+        );
     }
 
     #[test]
@@ -263,7 +268,10 @@ mod tests {
     #[test]
     fn a_timed_event_is_not_all_day_even_if_it_starts_at_midnight() {
         assert!(!is_all_day(at("2026-08-20", 0, 0), at("2026-08-20", 1, 0)));
-        assert!(!is_all_day(at("2026-08-20", 9, 30), at("2026-08-20", 10, 0)));
+        assert!(!is_all_day(
+            at("2026-08-20", 9, 30),
+            at("2026-08-20", 10, 0)
+        ));
         // A zero-length midnight event is not a day.
         assert!(!is_all_day(at("2026-08-20", 0, 0), at("2026-08-20", 0, 0)));
     }
@@ -287,7 +295,11 @@ mod tests {
     fn groups_events_into_ordered_days() {
         let now = at("2026-08-20", 9, 0);
         let events = vec![
-            event("Design review", at("2026-08-21", 15, 0), at("2026-08-21", 16, 0)),
+            event(
+                "Design review",
+                at("2026-08-21", 15, 0),
+                at("2026-08-21", 16, 0),
+            ),
             event("Standup", at("2026-08-20", 9, 30), at("2026-08-20", 10, 0)),
         ];
         let days = group_by_day(&events, now);
@@ -316,7 +328,11 @@ mod tests {
     fn an_all_day_event_does_not_leak_into_the_following_day() {
         // Its end is an exclusive midnight, so a naive range would add a day.
         let now = at("2026-08-20", 9, 0);
-        let events = vec![event("Holiday", at("2026-08-20", 0, 0), at("2026-08-21", 0, 0))];
+        let events = vec![event(
+            "Holiday",
+            at("2026-08-20", 0, 0),
+            at("2026-08-21", 0, 0),
+        )];
         let days = group_by_day(&events, now);
         assert_eq!(days.len(), 1, "should cover one day only");
         assert_eq!(days[0].date, "2026-08-20");
@@ -325,17 +341,27 @@ mod tests {
     #[test]
     fn a_multi_day_event_appears_on_every_day_it_covers() {
         let now = at("2026-08-20", 9, 0);
-        let events = vec![event("Conference", at("2026-08-20", 0, 0), at("2026-08-23", 0, 0))];
+        let events = vec![event(
+            "Conference",
+            at("2026-08-20", 0, 0),
+            at("2026-08-23", 0, 0),
+        )];
         let days = group_by_day(&events, now);
         assert_eq!(days.len(), 3);
-        assert_eq!(days.iter().map(|d| d.date.as_str()).collect::<Vec<_>>(),
-                   vec!["2026-08-20", "2026-08-21", "2026-08-22"]);
+        assert_eq!(
+            days.iter().map(|d| d.date.as_str()).collect::<Vec<_>>(),
+            vec!["2026-08-20", "2026-08-21", "2026-08-22"]
+        );
     }
 
     #[test]
     fn a_timed_event_spanning_midnight_appears_on_both_days() {
         let now = at("2026-08-20", 9, 0);
-        let events = vec![event("Deploy window", at("2026-08-20", 23, 0), at("2026-08-21", 1, 0))];
+        let events = vec![event(
+            "Deploy window",
+            at("2026-08-20", 23, 0),
+            at("2026-08-21", 1, 0),
+        )];
         let days = group_by_day(&events, now);
         assert_eq!(days.len(), 2);
     }
@@ -389,7 +415,11 @@ mod tests {
     fn happening_now_finds_the_soonest_ending_current_event() {
         let now = at("2026-08-20", 9, 45);
         let events = vec![
-            event("Long block", at("2026-08-20", 9, 0), at("2026-08-20", 12, 0)),
+            event(
+                "Long block",
+                at("2026-08-20", 9, 0),
+                at("2026-08-20", 12, 0),
+            ),
             event("Standup", at("2026-08-20", 9, 30), at("2026-08-20", 10, 0)),
         ];
         assert_eq!(happening_now(&events, now).unwrap().summary, "Standup");

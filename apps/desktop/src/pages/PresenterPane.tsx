@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import { BLUR_CATEGORIES, blurKey } from "../lib/preferences";
 import type { PresenterView } from "../lib/types";
 
@@ -30,7 +29,7 @@ export function PresenterPane() {
     void load();
     // The detector writes its findings to the settings, so this is how a share
     // starting mid-session reaches the screen.
-    const changed = listen("settings-updated", () => void load());
+    const changed = listenEvent("settings-updated", () => void load());
     return () => {
       void changed.then((un) => un());
     };

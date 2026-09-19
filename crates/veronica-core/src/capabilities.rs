@@ -20,51 +20,63 @@ pub enum Capability {
     CameraPreview,
     ClipboardHistory,
     CompanionService,
+    DatabaseBroker,
+    EmojiInsertion,
     ExternalMediaControl,
     FileShelf,
     GlobalPaste,
     HerdrSessions,
     GlobalShortcuts,
     InputSuppression,
+    KeystrokeObservation,
     LocalMusicPlayback,
+    LocalTerminal,
     MachineManagement,
     MediaControls,
     MicrophoneControl,
     Notifications,
+    PackageManagement,
     PreventSleep,
     RunningApplications,
     ScreenColorSampling,
     ScreenShareDetection,
     ShellIntegration,
+    SiteAuditing,
     SystemMetrics,
     UsageCollection,
     WindowDimming,
 }
 
 impl Capability {
-    pub const ALL: [Capability; 25] = [
+    pub const ALL: [Capability; 31] = [
         Capability::ApplicationAudio,
         Capability::BluetoothMonitoring,
         Capability::CalendarEvents,
         Capability::CameraPreview,
         Capability::ClipboardHistory,
         Capability::CompanionService,
+        Capability::DatabaseBroker,
+        Capability::EmojiInsertion,
         Capability::ExternalMediaControl,
         Capability::FileShelf,
         Capability::GlobalPaste,
         Capability::HerdrSessions,
         Capability::GlobalShortcuts,
         Capability::InputSuppression,
+        Capability::KeystrokeObservation,
         Capability::LocalMusicPlayback,
+        Capability::LocalTerminal,
         Capability::MachineManagement,
         Capability::MediaControls,
         Capability::MicrophoneControl,
         Capability::Notifications,
+        Capability::PackageManagement,
         Capability::PreventSleep,
         Capability::RunningApplications,
         Capability::ScreenColorSampling,
         Capability::ScreenShareDetection,
         Capability::ShellIntegration,
+        Capability::SiteAuditing,
         Capability::SystemMetrics,
         Capability::UsageCollection,
         Capability::WindowDimming,
@@ -80,22 +92,28 @@ impl Capability {
             CameraPreview => "Camera preview",
             ClipboardHistory => "Clipboard history",
             CompanionService => "Companion service",
+            DatabaseBroker => "Database access",
+            EmojiInsertion => "Emoji insertion",
             ExternalMediaControl => "External media control",
             FileShelf => "File shelf",
             GlobalPaste => "Paste in place",
             HerdrSessions => "Herdr sessions",
             GlobalShortcuts => "Global shortcuts",
             InputSuppression => "Input suppression",
+            KeystrokeObservation => "Keystroke observation",
             LocalMusicPlayback => "Local music playback",
+            LocalTerminal => "Local terminal",
             MachineManagement => "Machine management",
             MediaControls => "Media keys",
             MicrophoneControl => "Microphone control",
             Notifications => "Notifications",
+            PackageManagement => "Package management",
             PreventSleep => "Prevent sleep",
             RunningApplications => "Running applications",
             ScreenColorSampling => "Screen colour sampling",
             ScreenShareDetection => "Screen share detection",
             ShellIntegration => "Top bar integration",
+            SiteAuditing => "Site auditing",
             SystemMetrics => "System metrics",
             UsageCollection => "Usage collection",
             WindowDimming => "Window dimming",
@@ -113,20 +131,26 @@ impl Capability {
             CameraPreview => "xdg-desktop-portal Camera",
             ClipboardHistory => "Wayland data-control / GNOME Shell",
             CompanionService => "Local XDG data + PipeWire",
+            DatabaseBroker => "Secret Service + SQLite",
+            EmojiInsertion => "Clipboard + GNOME Shell extension",
             ExternalMediaControl | MediaControls => "MPRIS2 (D-Bus)",
             FileShelf => "In-process",
-            GlobalPaste => "xdg-desktop-portal RemoteDesktop",
+            GlobalPaste => "GNOME Shell extension",
             HerdrSessions | UsageCollection => "Filesystem",
             GlobalShortcuts => "xdg-desktop-portal GlobalShortcuts",
             InputSuppression => "libinput / evdev",
+            KeystrokeObservation => "GNOME Shell extension",
             LocalMusicPlayback => "GStreamer",
+            LocalTerminal => "GNOME Console / x-terminal-emulator",
             MachineManagement => "OpenSSH",
             Notifications => "org.freedesktop.Notifications",
+            PackageManagement => "apt / snap / flatpak",
             PreventSleep => "systemd-logind inhibitor",
             RunningApplications => "procfs + desktop entries",
             ScreenColorSampling => "xdg-desktop-portal Screenshot.PickColor",
             ScreenShareDetection => "xdg-desktop-portal ScreenCast",
             ShellIntegration => "GNOME Shell extension",
+            SiteAuditing => "HTTPS",
             SystemMetrics => "procfs / sysfs",
             WindowDimming => "Compositor",
         }
@@ -220,6 +244,11 @@ impl Capabilities {
         set(FileShelf, CapabilityState::Available);
         set(SystemMetrics, CapabilityState::Available);
         set(MachineManagement, CapabilityState::Available);
+        // Edith hosts a terminal inside itself, which is what lets it give
+        // Quinjet native tabs. Veronica opens the installed terminal instead —
+        // the same decision Herdr's port made — so this is available wherever
+        // one is installed rather than requiring an embedded emulator.
+        set(LocalTerminal, CapabilityState::Available);
 
         // Standard freedesktop services, present on any modern desktop.
         set(Notifications, CapabilityState::Available);
@@ -233,8 +262,38 @@ impl Capabilities {
         set(CalendarEvents, CapabilityState::Available);
         set(RunningApplications, CapabilityState::Available);
         set(ScreenShareDetection, CapabilityState::Available);
+        // Fetching the pages being audited is the only thing this needs, and
+        // it is the only thing it does: no result leaves the computer, and no
+        // third-party service is consulted.
+        set(SiteAuditing, CapabilityState::Available);
 
         set(CompanionService, CapabilityState::Available);
+
+        // Edith puts a broker process on this boundary because a sandboxed
+        // macOS app cannot hold a database socket. Veronica has no sandbox to
+        // cross, so it holds the socket itself; what it does need is somewhere
+        // to keep credentials, and the desktop keyring is that. Without one —
+        // over SSH — secrets fall back to a 0600 file, which works and is
+        // worse, so this reports as needing permission rather than as ready.
+        set(
+            DatabaseBroker,
+            CapabilityState::permission(
+                "Database passwords go to the desktop keyring, which asks you to unlock it \
+                 on first use. Without a keyring they fall back to a 0600 file.",
+            ),
+        );
+
+        // Reading what is installed and what could be updated needs nothing.
+        // Applying an apt or snap change needs root, which Veronica never takes
+        // on its own: it runs the change through `pkexec`, so the desktop's own
+        // dialog asks the user to authenticate.
+        set(
+            PackageManagement,
+            CapabilityState::permission(
+                "Installing or removing a package asks for authentication through pkexec. \
+                 Listing what is installed and what could be updated needs nothing.",
+            ),
+        );
 
         // Portal-gated: the portal exists, the user approves on first use.
         set(
@@ -250,10 +309,18 @@ impl Capabilities {
         set(GlobalShortcuts, CapabilityState::Available);
         set(
             GlobalPaste,
-            CapabilityState::permission(
-                "Pasting in place synthesises a key press through the RemoteDesktop portal, \
-                 which needs approval each session.",
-            ),
+            if session.is_gnome {
+                CapabilityState::permission(
+                    "Enable Veronica's GNOME Shell extension, which synthesises the key \
+                     press inside the compositor.",
+                )
+            } else {
+                CapabilityState::integration(
+                    "Synthesising a key press into a window Veronica does not own is the \
+                     compositor's job, and doing it needs a shell extension. This desktop \
+                     is not GNOME.",
+                )
+            },
         );
 
         // Wayland deliberately restricts these.
@@ -309,6 +376,44 @@ impl Capabilities {
             },
         );
 
+        // The picker itself only needs a clipboard, which always works. Typing
+        // the emoji straight into the app you were in synthesises a key press
+        // through the RemoteDesktop portal, exactly as paste-in-place does, so
+        // it carries the same approval.
+        set(
+            EmojiInsertion,
+            if session.is_gnome {
+                CapabilityState::permission(
+                    "Enable Veronica's GNOME Shell extension to type the emoji straight \
+                     into the app you were in. Copying to the clipboard needs nothing.",
+                )
+            } else {
+                CapabilityState::integration(
+                    "Typing the emoji into the app you were in needs a shell extension; \
+                     this desktop is not GNOME. The picker still copies to the clipboard.",
+                )
+            },
+        );
+
+        // Watching key presses is the compositor's job for the same reason
+        // dimming is: on Wayland no client may observe input meant for another
+        // window, and there is no permission that changes it.
+        set(
+            KeystrokeObservation,
+            if session.is_gnome {
+                CapabilityState::permission(
+                    "Enable Veronica's GNOME Shell extension, which reads key presses \
+                     inside the compositor and never consumes one.",
+                )
+            } else {
+                CapabilityState::integration(
+                    "A Wayland compositor hands key presses only to the focused window, so \
+                     showing them on screen needs a shell extension. This desktop is not \
+                     GNOME.",
+                )
+            },
+        );
+
         set(
             InputSuppression,
             if session.is_gnome {
@@ -330,6 +435,8 @@ impl Capabilities {
             for capability in [
                 CameraPreview,
                 ClipboardHistory,
+                EmojiInsertion,
+                KeystrokeObservation,
                 GlobalPaste,
                 GlobalShortcuts,
                 RunningApplications,

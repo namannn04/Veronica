@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import type { AlertsView, WatchedWindow } from "../lib/types";
 
 /**
@@ -49,8 +48,8 @@ export function AlertsPane() {
 
   // A switch flipped from the CLI or the notch reaches this screen too.
   useEffect(() => {
-    const changed = listen("settings-updated", () => void load());
-    const posted = listen("alerts-posted", () => void load());
+    const changed = listenEvent("settings-updated", () => void load());
+    const posted = listenEvent("alerts-posted", () => void load());
     return () => {
       void changed.then((un) => un());
       void posted.then((un) => un());

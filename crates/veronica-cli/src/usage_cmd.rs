@@ -2,6 +2,7 @@
 
 use anyhow::{Context, Result};
 use clap::Subcommand;
+use serde_json::json;
 use veronica_core::AppDirectories;
 use veronica_usage::aggregate::{self, DayRange, SourceSelection};
 use veronica_usage::collector;
@@ -64,6 +65,29 @@ pub enum UsageCommand {
         /// Also print every switch, so a misfiring alert can be traced to one.
         #[arg(long)]
         settings: bool,
+    },
+    /// Render usage as branded PNG cards, for sharing.
+    ///
+    /// A card never shows a repository name, a folder path, a chat title or a
+    /// dollar cost: it exists to be posted somewhere public, and those are the
+    /// four fields that would leak a client, an employer or an income.
+    Export {
+        /// Which card. Repeat for several; `all` is every one. Defaults to all.
+        #[arg(long = "card")]
+        cards: Vec<String>,
+        /// A directory, or — with exactly one card — the destination file.
+        /// Defaults to the current directory.
+        #[arg(long)]
+        output: Option<String>,
+        /// How many recent days to include; omit for the full history.
+        #[arg(long)]
+        days: Option<usize>,
+        #[arg(long = "source")]
+        sources: Vec<String>,
+        /// Write the SVG rather than a PNG. Useful with no fonts installed,
+        /// and for editing a card before posting it.
+        #[arg(long)]
+        svg: bool,
     },
     /// Run the collector and rewrite usage.json.
     Refresh {
@@ -284,7 +308,9 @@ pub async fn run(
             })
         }
 
-        UsageCommand::Alerts { settings: show_settings } => {
+        UsageCommand::Alerts {
+            settings: show_settings,
+        } => {
             use veronica_usage::alerts::{self, NotifierState, NotifySettings};
 
             let stored = veronica_core::Settings::load(&directories.settings_file())?;
@@ -294,19 +320,17 @@ pub async fn run(
             // A copy of the persisted state, so the dry run cannot consume the
             // edge a real poll would fire on.
             let mut state = NotifierState::load(&directories.alerts_state_file());
-            let (session, week, note) =
-                match veronica_usage::claude::limits_for_user(now).await {
-                    Ok(Some(limits)) => (limits.session, limits.week, None),
-                    Ok(None) => (
-                        None,
-                        None,
-                        Some("Claude is not signed in on this computer".to_string()),
-                    ),
-                    Err(error) => (None, None, Some(format!("{error:#}"))),
-                };
+            let (session, week, note) = match veronica_usage::claude::limits_for_user(now).await {
+                Ok(Some(limits)) => (limits.session, limits.week, None),
+                Ok(None) => (
+                    None,
+                    None,
+                    Some("Claude is not signed in on this computer".to_string()),
+                ),
+                Err(error) => (None, None, Some(format!("{error:#}"))),
+            };
 
-            let mut would_post =
-                alerts::decide(session, week, &notify, &mut state, now);
+            let mut would_post = alerts::decide(session, week, &notify, &mut state, now);
             would_post.extend(alerts::due_reminders(
                 session, week, &notify, &mut state, now,
             ));
@@ -371,7 +395,11 @@ pub async fn run(
                 let _ = writeln!(
                     out,
                     "alerts are {}",
-                    if notify.master { "on" } else { "off (vr config set notifyMaster true)" }
+                    if notify.master {
+                        "on"
+                    } else {
+                        "off (vr config set notifyMaster true)"
+                    }
                 );
                 if let Some(note) = &note {
                     let _ = writeln!(out, "note      {note}");
@@ -383,11 +411,8 @@ pub async fn run(
                             .filter(|at| *at > now)
                             .map(|at| alerts::countdown(now, at))
                             .unwrap_or_else(|| "unknown".into());
-                        let _ = writeln!(
-                            out,
-                            "{label}   {:>5.1}%  resets in {left}",
-                            window.percent
-                        );
+                        let _ =
+                            writeln!(out, "{label}   {:>5.1}%  resets in {left}", window.percent);
                     }
                 }
                 if would_post.is_empty() {
@@ -456,6 +481,96 @@ pub async fn run(
                     let _ = write!(out, "\n{note}");
                 }
                 out
+            })
+        }
+
+        UsageCommand::Export {
+            cards,
+            output: destination,
+            days,
+            sources,
+            svg,
+        } => {
+            use veronica_usage::cards::{self, Card};
+
+            let chosen: Vec<Card> = if cards.is_empty() {
+                Card::ALL.to_vec()
+            } else {
+                let mut chosen = Vec::new();
+                for raw in cards {
+                    let matched = Card::parse(raw).with_context(|| {
+                        let known: Vec<&str> = Card::ALL.iter().map(|c| c.key()).collect();
+                        format!("unknown card '{raw}'; try one of {}, all", known.join(", "))
+                    })?;
+                    for card in matched {
+                        if !chosen.contains(&card) {
+                            chosen.push(card);
+                        }
+                    }
+                }
+                chosen
+            };
+
+            let document = load(directories)?;
+            let range = range(&document, *days);
+            let board = aggregate::dashboard(&document, &range, &selection(sources));
+            if board.totals.tokens == 0 {
+                anyhow::bail!("no usage in this window, so there is nothing to put on a card");
+            }
+
+            let label = match (range.start.as_deref(), range.end.as_deref()) {
+                (Some(start), Some(end)) if start == end => start.to_string(),
+                (Some(start), Some(end)) => format!("{start} to {end}"),
+                _ => "all time".to_string(),
+            };
+            let extension = if *svg { "svg" } else { "png" };
+            let stamp = chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string();
+
+            // A destination that names a file is only meaningful for one card;
+            // four cards written to one path would leave one file and lose three.
+            let target = destination.as_deref().map(std::path::Path::new);
+            let single_file = match target {
+                Some(path) if chosen.len() == 1 && !path.is_dir() => path.extension().is_some(),
+                _ => false,
+            };
+            if let Some(path) = target {
+                if !single_file && !path.is_dir() {
+                    std::fs::create_dir_all(path)
+                        .with_context(|| format!("cannot create {}", path.display()))?;
+                }
+            }
+
+            let mut written = Vec::new();
+            for card in &chosen {
+                let svg_text = cards::render_svg(*card, &board, &label);
+                let bytes = if *svg {
+                    svg_text.into_bytes()
+                } else {
+                    cards::render_png(&svg_text)?
+                };
+
+                let path = if single_file {
+                    target.expect("single_file implies a target").to_path_buf()
+                } else {
+                    let directory = target
+                        .map(std::path::Path::to_path_buf)
+                        .unwrap_or_else(|| std::path::PathBuf::from("."));
+                    directory.join(cards::file_name(*card, &stamp, extension))
+                };
+
+                std::fs::write(&path, &bytes)
+                    .with_context(|| format!("cannot write {}", path.display()))?;
+                // Absolute, so the path is usable from wherever the caller is.
+                written.push(
+                    std::fs::canonicalize(&path)
+                        .unwrap_or(path)
+                        .display()
+                        .to_string(),
+                );
+            }
+
+            output.emit(&json!({ "range": label, "files": written }), || {
+                written.join("\n")
             })
         }
 

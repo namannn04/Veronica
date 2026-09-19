@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import { timeAgo } from "../lib/format";
 import type { CopyFormatOption, PickResult, SwatchRow } from "../lib/types";
 
@@ -42,8 +41,8 @@ export function ColorPickerPage() {
 
   // A pick started from the notch or the CLI lands in the same history.
   useEffect(() => {
-    const updated = listen("swatches-updated", () => void load());
-    const changed = listen("settings-updated", () => {
+    const updated = listenEvent("swatches-updated", () => void load());
+    const changed = listenEvent("settings-updated", () => {
       void ipc.settingsAll().then(setSettings).catch(() => {});
     });
     return () => {

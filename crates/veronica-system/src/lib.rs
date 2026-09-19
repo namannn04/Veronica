@@ -5,16 +5,20 @@
 //! notifications and portal access from D-Bus.
 
 pub mod audio;
+pub mod bluetooth;
 pub mod color;
-pub mod metrics;
 pub mod herdr;
+pub mod metrics;
 pub mod notifications;
 pub mod notify;
+pub mod packages;
 pub mod portal;
 pub mod power;
+pub mod quinjet;
 pub mod screencast;
 pub mod selection;
 
+pub use bluetooth::BluetoothState;
 pub use metrics::{MetricsSampler, SystemSnapshot};
 pub use notifications::Notification;
 pub use portal::PortalSupport;

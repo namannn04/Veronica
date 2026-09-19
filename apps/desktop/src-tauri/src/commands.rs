@@ -119,6 +119,81 @@ pub fn usage_view(
 
 /// Run the collector, streaming each phase to the UI as a `usage://progress`
 /// event so the refresh shows what it is doing rather than freezing.
+/// Render usage as branded PNG cards and write them somewhere the user can
+/// reach.
+///
+/// A card never shows a repository name, a folder path, a chat title or a
+/// dollar cost — see `veronica_usage::cards`, where a test enforces it.
+/// Rasterising four cards takes a moment, so it runs off the UI thread.
+#[tauri::command]
+pub async fn usage_export(
+    state: State<'_, AppState>,
+    cards: Vec<String>,
+    days: Option<usize>,
+) -> CommandResult<Vec<String>> {
+    use veronica_usage::cards::{self, Card};
+
+    let chosen: Vec<Card> = if cards.is_empty() {
+        Card::ALL.to_vec()
+    } else {
+        let mut chosen = Vec::new();
+        for raw in &cards {
+            for card in Card::parse(raw).ok_or_else(|| format!("unknown card {raw:?}"))? {
+                if !chosen.contains(&card) {
+                    chosen.push(card);
+                }
+            }
+        }
+        chosen
+    };
+
+    let (board, label) = {
+        let guard = state.usage.lock().expect("usage lock");
+        let document = guard
+            .as_ref()
+            .ok_or_else(|| "No usage has been collected yet.".to_string())?;
+        let range = match days {
+            Some(days) => veronica_usage::DayRange::last_days(document, days),
+            None => veronica_usage::DayRange::default(),
+        };
+        let label = match (range.start.as_deref(), range.end.as_deref()) {
+            (Some(start), Some(end)) if start == end => start.to_string(),
+            (Some(start), Some(end)) => format!("{start} to {end}"),
+            _ => "all time".to_string(),
+        };
+        (
+            veronica_usage::dashboard(document, &range, &veronica_usage::SourceSelection::All),
+            label,
+        )
+    };
+    if board.totals.tokens == 0 {
+        return Err("No usage in this window, so there is nothing to put on a card.".to_string());
+    }
+
+    // Pictures belong with the user's other pictures, not in a config
+    // directory they would have to be told about.
+    let directory = veronica_core::paths::home_dir()
+        .map(|home| home.join("Pictures"))
+        .filter(|pictures| pictures.is_dir())
+        .or_else(veronica_core::paths::home_dir)
+        .ok_or_else(|| "cannot resolve the home directory".to_string())?;
+    let stamp = chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut written = Vec::new();
+        for card in chosen {
+            let png = cards::render_png(&cards::render_svg(card, &board, &label)).map_err(fail)?;
+            let path = directory.join(cards::file_name(card, &stamp, "png"));
+            std::fs::write(&path, &png)
+                .map_err(|error| format!("cannot write {}: {error}", path.display()))?;
+            written.push(path.display().to_string());
+        }
+        Ok(written)
+    })
+    .await
+    .map_err(|error| format!("the export could not run: {error}"))?
+}
+
 #[tauri::command]
 pub async fn usage_refresh(app: AppHandle) -> CommandResult<String> {
     {
@@ -719,12 +794,29 @@ pub struct PowerStatus {
     pub has_lid: bool,
     pub lid_awake_active: bool,
     pub prevent_sleep_active: bool,
+    /// Seconds left on a timed session, or `None` when the switch is open-ended
+    /// or off. A countdown is the difference between "on until I say" and "on
+    /// for another eight minutes", which the switch alone cannot show.
+    pub lid_awake_remaining_secs: Option<i64>,
+    pub prevent_sleep_remaining_secs: Option<i64>,
 }
 
 /// Report actual process-owned locks, rather than echoing the saved switches.
 #[tauri::command]
 pub fn power_status(state: State<'_, AppState>) -> PowerStatus {
+    let settings = state.settings_snapshot();
+    let now = chrono::Utc::now().timestamp_millis();
     PowerStatus {
+        lid_awake_remaining_secs: veronica_core::AwakeState::read(
+            &settings,
+            veronica_core::Awake::LidAwake,
+        )
+        .remaining_secs(now),
+        prevent_sleep_remaining_secs: veronica_core::AwakeState::read(
+            &settings,
+            veronica_core::Awake::KeepAwake,
+        )
+        .remaining_secs(now),
         has_lid: veronica_system::power::has_lid(),
         lid_awake_active: state.lid_awake.lock().expect("lid awake lock").is_some(),
         prevent_sleep_active: state
@@ -856,22 +948,535 @@ pub async fn system_processes() -> CommandResult<Vec<veronica_system::metrics::R
         .map_err(|error| format!("cannot read running processes: {error}"))
 }
 
+/// The saved database connections. No credential is in a definition, which is
+/// why the whole thing can be handed to the interface.
+#[tauri::command]
+pub fn database_connections(
+    state: State<'_, AppState>,
+) -> CommandResult<Vec<veronica_database::connection::ConnectionDefinition>> {
+    veronica_database::store::MetadataStore::open(state.directories.database_store())
+        .and_then(|store| store.connections())
+        .map_err(fail)
+}
+
+/// Reach a server and report what it turned out to be.
+#[tauri::command]
+pub async fn database_test(
+    app: AppHandle,
+    connection: String,
+) -> CommandResult<veronica_database::product::ProductIdentity> {
+    let (definition, secrets) = database_context(&app, &connection)?;
+    let mut session = veronica_database::session::Session::open(&definition, &secrets)
+        .await
+        .map_err(fail)?;
+    session.identify().await.map_err(fail)
+}
+
+/// What is inside a database, one level at a time.
+#[tauri::command]
+pub async fn database_browse(
+    app: AppHandle,
+    connection: String,
+    path: Vec<String>,
+) -> CommandResult<Vec<veronica_database::identify::ObjectIdentifier>> {
+    let (definition, secrets) = database_context(&app, &connection)?;
+    let mut session = veronica_database::session::Session::open(&definition, &secrets)
+        .await
+        .map_err(fail)?;
+    let parent = (!path.is_empty()).then(|| {
+        veronica_database::identify::ObjectIdentifier::new(
+            veronica_database::identify::ObjectKind::Table,
+            path,
+        )
+    });
+    session.objects(parent.as_ref()).await.map_err(fail)
+}
+
+/// Run a statement that reads. A write is refused by the adapter.
+#[tauri::command]
+pub async fn database_query(
+    app: AppHandle,
+    connection: String,
+    statement: String,
+    limit: u32,
+    offset: u64,
+) -> CommandResult<veronica_database::paging::Page> {
+    let (definition, secrets) = database_context(&app, &connection)?;
+    let mut session = veronica_database::session::Session::open(&definition, &secrets)
+        .await
+        .map_err(fail)?;
+    session
+        .query(
+            &statement,
+            &veronica_database::paging::PageRequest {
+                page_size: veronica_database::paging::PageSize::clamped(limit),
+                offset,
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(fail)
+}
+
+/// Read a bounded page of one object.
+#[tauri::command]
+pub async fn database_read(
+    app: AppHandle,
+    connection: String,
+    path: Vec<String>,
+    limit: u32,
+    offset: u64,
+) -> CommandResult<veronica_database::paging::Page> {
+    let (definition, secrets) = database_context(&app, &connection)?;
+    let mut session = veronica_database::session::Session::open(&definition, &secrets)
+        .await
+        .map_err(fail)?;
+    session
+        .read(
+            &veronica_database::identify::ObjectIdentifier::new(
+                veronica_database::identify::ObjectKind::Table,
+                path,
+            ),
+            &veronica_database::paging::PageRequest {
+                page_size: veronica_database::paging::PageSize::clamped(limit),
+                offset,
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(fail)
+}
+
+/// What this server can be asked to do.
+#[tauri::command]
+pub async fn database_capabilities(
+    app: AppHandle,
+    connection: String,
+) -> CommandResult<veronica_database::capabilities::Report> {
+    let (definition, secrets) = database_context(&app, &connection)?;
+    let mut session = veronica_database::session::Session::open(&definition, &secrets)
+        .await
+        .map_err(fail)?;
+    session.capabilities().await.map_err(fail)
+}
+
+/// What Veronica has done, newest first.
+#[tauri::command]
+pub fn database_operations(
+    state: State<'_, AppState>,
+    limit: usize,
+) -> CommandResult<Vec<veronica_database::store::OperationRecord>> {
+    veronica_database::store::MetadataStore::open(state.directories.database_store())
+        .and_then(|store| store.operations(limit))
+        .map_err(fail)
+}
+
+/// Resolve a connection and the secret store together, since every database
+/// command needs both.
+fn database_context(
+    app: &AppHandle,
+    connection: &str,
+) -> CommandResult<(
+    veronica_database::connection::ConnectionDefinition,
+    veronica_database::secrets::SecretStore,
+)> {
+    let state = app.state::<AppState>();
+    let store = veronica_database::store::MetadataStore::open(state.directories.database_store())
+        .map_err(fail)?;
+    let definition = store.resolve(connection).map_err(fail)?;
+    let secrets =
+        veronica_database::secrets::SecretStore::new(state.directories.database_secrets_fallback());
+    Ok((definition, secrets))
+}
+
+/// Crawl a site and audit every page it lists.
+///
+/// Every run stays local: Veronica fetches the pages being audited and nothing
+/// else. Crawling takes as long as the site takes to answer, so this is one
+/// long-running command rather than a poll.
+#[tauri::command]
+pub async fn audit_site(
+    site: String,
+    limit: usize,
+    concurrency: usize,
+) -> CommandResult<veronica_audit::Report> {
+    veronica_audit::audit(&site, limit, concurrency)
+        .await
+        .map_err(fail)
+}
+
+/// Which package sources this computer has, and whether changing one needs
+/// authentication.
+#[tauri::command]
+pub async fn packages_sources() -> Vec<PackageSource> {
+    let mut sources = Vec::new();
+    for source in veronica_system::packages::Source::ALL {
+        sources.push(PackageSource {
+            available: veronica_system::packages::available(source).await,
+            needs_root: source.needs_root(),
+            source: source.title().to_string(),
+        });
+    }
+    sources
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackageSource {
+    pub source: String,
+    pub available: bool,
+    pub needs_root: bool,
+}
+
+/// What has a newer version available. Installs nothing.
+#[tauri::command]
+pub async fn packages_updates() -> Vec<veronica_system::packages::Update> {
+    veronica_system::packages::updates().await
+}
+
+/// What is installed, from every source.
+#[tauri::command]
+pub async fn packages_inventory() -> Vec<veronica_system::packages::Installed> {
+    veronica_system::packages::inventory().await
+}
+
+/// Apply updates for one source.
+///
+/// An empty `names` means everything from that source. The interface confirms
+/// first, and an apt or snap change then raises the desktop's own
+/// authentication dialog through pkexec.
+#[tauri::command]
+pub async fn packages_update(
+    source: String,
+    names: Vec<String>,
+) -> CommandResult<veronica_system::packages::UpdateResult> {
+    let source = veronica_system::packages::Source::parse(&source)
+        .ok_or_else(|| format!("unknown package source {source:?}"))?;
+    veronica_system::packages::apply_update(source, &names)
+        .await
+        .map_err(fail)
+}
+
+/// What removing a package would take with it. Changes nothing.
+#[tauri::command]
+pub async fn packages_removal_plan(
+    package: String,
+) -> CommandResult<veronica_system::packages::RemovalPlan> {
+    veronica_system::packages::removal_plan(&package)
+        .await
+        .map_err(fail)
+}
+
+/// The categories the cleaner knows, for the interface's checkboxes.
+#[tauri::command]
+pub fn cleaner_categories() -> &'static [veronica_core::CleanerCategory] {
+    veronica_core::cleaner::CATEGORIES
+}
+
+/// Measure what could be reclaimed. Reads only.
+///
+/// Walking a home directory takes a moment, so this runs off the UI thread.
+#[tauri::command]
+pub async fn cleaner_scan(categories: Vec<String>) -> CommandResult<veronica_core::CleanerScan> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let home = veronica_core::paths::home_dir()
+            .ok_or_else(|| "cannot resolve the home directory".to_string())?;
+        let selected = if categories.is_empty() {
+            None
+        } else {
+            Some(categories)
+        };
+        Ok(veronica_core::cleaner::scan_caches(
+            &home,
+            selected.as_deref(),
+        ))
+    })
+    .await
+    .map_err(|error| format!("the scan could not run: {error}"))?
+}
+
+/// Move the scanned items to the Trash.
+///
+/// The interface passes back the items it actually showed the user, rather than
+/// this re-scanning: a scan between the display and the click could turn up
+/// something the user never saw and never agreed to. Each item's own size is
+/// re-measured, because the number on screen may be seconds old.
+#[tauri::command]
+pub async fn cleaner_clean(
+    items: Vec<veronica_core::cleaner::Item>,
+) -> CommandResult<veronica_core::cleaner::CleanReport> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let home = veronica_core::paths::home_dir()
+            .ok_or_else(|| "cannot resolve the home directory".to_string())?;
+        let mut report = veronica_core::cleaner::CleanReport::default();
+        for item in items {
+            let target = std::path::Path::new(&item.path);
+            // Refuse anything outside the home directory, whatever the caller
+            // asked for: the cleaner's whole contract is that it touches only
+            // the user's own rebuildable files.
+            if !target.starts_with(&home) {
+                report
+                    .failed
+                    .push((item.path, "outside the home directory".to_string()));
+                continue;
+            }
+            let bytes = veronica_core::cleaner::directory_size(target);
+            match veronica_core::cleaner::trash(&home, target) {
+                Ok(_) => {
+                    report.bytes_reclaimed = report.bytes_reclaimed.saturating_add(bytes);
+                    report
+                        .trashed
+                        .push(veronica_core::cleaner::Item { bytes, ..item });
+                }
+                Err(error) => report.failed.push((item.path, format!("{error:#}"))),
+            }
+        }
+        Ok(report)
+    })
+    .await
+    .map_err(|error| format!("the clean could not run: {error}"))?
+}
+
 #[tauri::command]
 pub fn system_quit_process(pid: u32) -> CommandResult<()> {
     veronica_system::metrics::terminate_process(pid).map_err(fail)
 }
 
+/// The live Herdr board.
+///
+/// Every `herdr` call inside carries its own timeout, so the page's poll
+/// cannot leave work queued behind a wedged Herdr server.
 #[tauri::command]
 pub async fn herdr_board() -> CommandResult<veronica_system::herdr::HerdrBoard> {
-    tauri::async_runtime::spawn_blocking(veronica_system::herdr::board)
-        .await
-        .map_err(|error| format!("cannot read Herdr: {error}"))?
-        .map_err(fail)
+    veronica_system::herdr::board().await.map_err(fail)
+}
+
+/// The Quinjet projects on this computer.
+///
+/// Shelling out to Quinjet and parsing its JSON is quick but not instant, so it
+/// runs off the UI thread.
+#[tauri::command]
+pub async fn quinjet_projects() -> CommandResult<QuinjetBoard> {
+    tauri::async_runtime::spawn_blocking(|| {
+        if !veronica_system::quinjet::installed() {
+            return Ok(QuinjetBoard {
+                installed: false,
+                projects: Vec::new(),
+            });
+        }
+        Ok(QuinjetBoard {
+            installed: true,
+            projects: veronica_system::quinjet::projects().map_err(fail)?,
+        })
+    })
+    .await
+    .map_err(|error| format!("cannot read Quinjet: {error}"))?
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuinjetBoard {
+    /// False rather than an error: not having Quinjet is a normal state that
+    /// the page explains, not a failure.
+    pub installed: bool,
+    pub projects: Vec<veronica_system::quinjet::Project>,
+}
+
+/// Open one worktree in the installed terminal.
+#[tauri::command]
+pub fn quinjet_open(state: State<'_, AppState>, worktree: String) -> CommandResult<()> {
+    // The appearance follows the app's own, so Quinjet does not open light
+    // inside a dark desktop. It is the scheme behind the theme that matters,
+    // not its name: Midnight and Carbon are as dark as Graphite.
+    let settings = state.settings_snapshot();
+    let appearance =
+        veronica_core::appearance::scheme(settings.string("appearance").unwrap_or("system"))
+            .name()
+            .map(str::to_string);
+    veronica_system::quinjet::open_terminal(
+        &worktree,
+        &veronica_system::quinjet::LaunchOptions {
+            theme: settings.string("quinjetTheme").map(str::to_string),
+            appearance,
+        },
+    )
+    .map_err(fail)
 }
 
 #[tauri::command]
 pub fn herdr_open(session: String, pane_id: Option<String>) -> CommandResult<()> {
     veronica_system::herdr::open_terminal(&session, pane_id.as_deref()).map_err(fail)
+}
+
+/// The per-application mixer: every stream PipeWire currently holds.
+///
+/// One `pw-dump` describes the whole graph, so the mixer refreshes with a
+/// single process rather than one call per row.
+#[tauri::command]
+pub async fn audio_streams() -> CommandResult<Vec<veronica_system::audio::AudioStream>> {
+    veronica_system::audio::streams().await.map_err(fail)
+}
+
+#[tauri::command]
+pub async fn audio_stream_volume(id: u32, volume: f32) -> CommandResult<()> {
+    veronica_system::audio::set_stream_volume(id, volume)
+        .await
+        .map_err(fail)
+}
+
+/// Flip one stream's mute and report what it became, so a row updates without
+/// re-reading the whole graph.
+#[tauri::command]
+pub async fn audio_stream_toggle_mute(id: u32) -> CommandResult<bool> {
+    veronica_system::audio::toggle_stream_muted(id)
+        .await
+        .map_err(fail)
+}
+
+/// Bluetooth adapters and devices, from BlueZ.
+///
+/// This never fails: a machine with no radio, or with the daemon stopped, is a
+/// normal outcome that comes back as `unavailable` with a reason to show.
+#[tauri::command]
+pub async fn bluetooth_state() -> veronica_system::BluetoothState {
+    veronica_system::bluetooth::state().await
+}
+
+/// The emoji catalogue's groups, for the picker's tab rail.
+///
+/// The catalogue is embedded, so this is a parse of a `&'static str` rather
+/// than a file read; it is cached in state so a hotkey-opened picker does not
+/// re-parse two thousand entries.
+#[tauri::command]
+pub fn emoji_groups(state: State<'_, AppState>) -> Vec<veronica_core::emoji::Group> {
+    state.emoji.groups.clone()
+}
+
+/// Search the catalogue, or list one group when `query` is empty.
+///
+/// Ranking happens before the group filter, deliberately: narrowing first would
+/// change which results win, and the ranking is the point.
+#[tauri::command]
+pub fn emoji_search(
+    state: State<'_, AppState>,
+    query: String,
+    group: Option<usize>,
+    limit: usize,
+) -> Vec<EmojiRow> {
+    let tone = state.emoji_tone();
+    state
+        .emoji
+        .search(&query, usize::MAX)
+        .into_iter()
+        .filter(|emoji| group.is_none_or(|index| emoji.group_index == index))
+        .take(limit)
+        .map(|emoji| EmojiRow::new(emoji, tone))
+        .collect()
+}
+
+/// The emoji you reach for most, as the ledger ranks them.
+#[tauri::command]
+pub fn emoji_recents(state: State<'_, AppState>, limit: usize) -> CommandResult<Vec<EmojiRow>> {
+    let ledger = veronica_core::emoji::UsageLedger::load(&state.directories.emoji_usage_file())
+        .map_err(fail)?;
+    let tone = state.emoji_tone();
+    Ok(ledger
+        .ranked(chrono::Utc::now().timestamp_millis(), limit)
+        .into_iter()
+        .filter_map(|character| {
+            // A character the catalogue no longer carries is dropped rather
+            // than shown as a blank cell.
+            state
+                .emoji
+                .find(&character)
+                .map(|emoji| EmojiRow::new(emoji, tone))
+        })
+        .collect())
+}
+
+/// Copy one emoji and record the pick.
+///
+/// The clipboard is the part that always works; inserting into the app you were
+/// typing in needs the RemoteDesktop portal, so it is attempted and reported
+/// rather than assumed.
+#[tauri::command]
+pub async fn emoji_copy(
+    app: AppHandle,
+    character: String,
+    insert: bool,
+) -> CommandResult<EmojiCopyResult> {
+    let (path, base) = {
+        let state = app.state::<AppState>();
+        let base = state
+            .emoji
+            // The tone variant is what gets copied; the ledger counts the base
+            // character, so picking 👋🏿 and 👋 rank as the same habit.
+            .emoji()
+            .iter()
+            .find(|emoji| emoji.character(state.emoji_tone()) == character)
+            .map(|emoji| emoji.character.clone())
+            .unwrap_or_else(|| character.clone());
+        (state.directories.emoji_usage_file(), base)
+    };
+
+    let mut ledger = veronica_core::emoji::UsageLedger::load(&path).map_err(fail)?;
+    ledger.record(&base, chrono::Utc::now().timestamp_millis());
+    ledger.save(&path).map_err(fail)?;
+
+    let copied_via = veronica_system::selection::write(&character)
+        .await
+        .map(|writer| writer.title().to_string())
+        .map_err(fail)?;
+
+    let inserted = if insert {
+        match veronica_system::selection::paste_in_place().await {
+            Ok(()) => true,
+            Err(error) => {
+                // The emoji is on the clipboard either way, so a refused portal
+                // request is reported, not raised.
+                tracing::info!(target: "veronica", "cannot insert the emoji in place: {error:#}");
+                false
+            }
+        }
+    } else {
+        false
+    };
+
+    Ok(EmojiCopyResult {
+        character,
+        copied_via,
+        inserted,
+    })
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmojiRow {
+    /// The character in the configured skin tone, which is what gets copied.
+    pub character: String,
+    pub name: String,
+    pub group_index: usize,
+    pub supports_skin_tones: bool,
+}
+
+impl EmojiRow {
+    fn new(emoji: &veronica_core::Emoji, tone: veronica_core::SkinTone) -> Self {
+        Self {
+            character: emoji.character(tone).to_string(),
+            name: emoji.name.clone(),
+            group_index: emoji.group_index,
+            supports_skin_tones: emoji.supports_skin_tones(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmojiCopyResult {
+    pub character: String,
+    pub copied_via: String,
+    /// Whether it also went into the app you were typing in.
+    pub inserted: bool,
 }
 
 #[tauri::command]
@@ -1102,6 +1707,9 @@ pub fn machines_add(
         id,
         name: label,
         reach: veronica_machines::Reach::Ssh { target, port },
+        // Wake-on-LAN is set up from the CLI, where a MAC address is something
+        // the user has to hand; the interface adds machines by SSH target.
+        mac: None,
     };
     machines.push(machine.clone());
     settings.set(
@@ -1237,6 +1845,62 @@ pub async fn machines_container_action(
     )
     .await
     .map_err(fail)
+}
+
+/// A container's recent output, tailed rather than followed.
+#[tauri::command]
+pub async fn machines_container_logs(
+    state: State<'_, AppState>,
+    id: String,
+    engine: String,
+    container: String,
+    lines: usize,
+) -> CommandResult<String> {
+    let machine = machine_by_id(&state, &id)?;
+    veronica_machines::manage::container_logs(
+        &machine,
+        &engine,
+        &container,
+        lines,
+        veronica_machines::DEFAULT_TIMEOUT,
+    )
+    .await
+    .map_err(fail)
+}
+
+/// Restart or shut down a remote machine.
+///
+/// Refused for this computer, and never escalated: the account Veronica
+/// connects as has to be permitted already. The interface confirms first.
+#[tauri::command]
+pub async fn machines_power(
+    state: State<'_, AppState>,
+    id: String,
+    action: String,
+) -> CommandResult<()> {
+    let machine = machine_by_id(&state, &id)?;
+    let parsed = veronica_machines::manage::PowerAction::parse(&action)
+        .ok_or_else(|| format!("unknown power action {action:?}"))?;
+    veronica_machines::manage::power(&machine, parsed, veronica_machines::DEFAULT_TIMEOUT)
+        .await
+        .map_err(fail)
+}
+
+/// Send a Wake-on-LAN packet to a machine that has a MAC address stored.
+///
+/// Nothing can be confirmed: the machine is not answering yet, which is the
+/// point, so this reports that the packet went out and no more.
+#[tauri::command]
+pub async fn machines_wake(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+    let machine = machine_by_id(&state, &id)?;
+    let mac = machine.mac.clone().ok_or_else(|| {
+        format!(
+            "{} has no MAC address stored; add one with \
+             `vr machines add <target> --mac aa:bb:cc:dd:ee:ff`",
+            machine.name
+        )
+    })?;
+    veronica_machines::manage::wake(&mac).map_err(fail)
 }
 
 /// The clipboard history, newest first.

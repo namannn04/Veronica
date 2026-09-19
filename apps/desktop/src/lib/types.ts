@@ -203,6 +203,8 @@ export interface HerdrAgent {
   cwd: string;
   paneId: string;
   focused: boolean;
+  /** The exact line that attaches to this agent, built by the backend. */
+  attachCommand: string;
 }
 
 export interface HerdrBoard {
@@ -210,11 +212,53 @@ export interface HerdrBoard {
   executable: string | null;
   sessions: HerdrSession[];
   agents: HerdrAgent[];
+  /** Why the board is emptier than expected, when Herdr answered oddly. */
+  error: string | null;
 }
 
 export interface VolumeState {
   volume: number;
   muted: boolean;
+}
+
+/** One application's PipeWire stream, as the per-app mixer shows it. */
+export interface AudioStream {
+  /** PipeWire node id — the handle every mixer call takes. */
+  id: number;
+  application: string;
+  mediaName: string | null;
+  direction: "playback" | "capture";
+  /** 0-1, on the scale every mixer displays, not PipeWire's cubed storage. */
+  volume: number;
+  muted: boolean;
+}
+
+export interface BluetoothAdapter {
+  id: string;
+  name: string;
+  address: string;
+  powered: boolean;
+  discovering: boolean;
+  discoverable: boolean;
+}
+
+export interface BluetoothDevice {
+  address: string;
+  name: string;
+  paired: boolean;
+  trusted: boolean;
+  connected: boolean;
+  /** null when the device publishes no battery, which is not the same as 0%. */
+  batteryPercent: number | null;
+  rssi: number | null;
+  icon: string | null;
+}
+
+export interface BluetoothState {
+  adapters: BluetoothAdapter[];
+  devices: BluetoothDevice[];
+  /** Set when BlueZ could not be reached: "cannot tell", not "nothing paired". */
+  unavailable: string | null;
 }
 
 export type PlaybackStatus = "playing" | "paused" | "stopped";
@@ -286,6 +330,8 @@ export interface Machine {
   id: string;
   name: string;
   reach: MachineReach;
+  /** Set only where the user gave one, with `vr machines add --mac`. */
+  mac?: string | null;
 }
 export interface MachineFile { name: string; path: string; kind: "directory" | "file" | "link" | "other"; sizeBytes: number; modifiedUnix: number; }
 export interface MachineDirectory { path: string; parent: string | null; entries: MachineFile[]; }
@@ -309,6 +355,20 @@ export interface MachineStats {
   swapTotalBytes: number;
   swapFreeBytes: number;
   disks: MachineDisk[];
+  temperatures: { label: string; celsius: number }[];
+  fans: { label: string; rpm: number }[];
+  gpus: MachineGpu[];
+  /** The busiest processes on that machine, hottest first. */
+  processes: { pid: number; name: string; cpuPercent: number; memoryBytes: number }[];
+}
+
+export interface MachineGpu {
+  name: string;
+  utilizationPercent: number;
+  memoryUsedBytes: number;
+  memoryTotalBytes: number;
+  /** null where the driver reports none, which is not a GPU at 0 °C. */
+  temperatureCelsius: number | null;
 }
 
 export interface MachineReport {
@@ -468,7 +528,14 @@ export interface AttentionOverview { from: string; to: string; activeSeconds: nu
 export interface CompanionItem { id: number; kind: "note" | "voice"; title: string; body: string; pinned: boolean; createdAt: string; updatedAt: string; audioPath: string | null; durationSeconds: number | null; }
 export interface CompanionRecordingStatus { recording: boolean; elapsedSeconds: number; }
 export interface LocalTrack { id: string; path: string; title: string; artist: string; album: string; artPath: string | null; }
-export interface PowerStatus { hasLid: boolean; lidAwakeActive: boolean; preventSleepActive: boolean; }
+export interface PowerStatus {
+  hasLid: boolean;
+  lidAwakeActive: boolean;
+  preventSleepActive: boolean;
+  /** Seconds left on a timed session; null when open-ended or off. */
+  lidAwakeRemainingSecs: number | null;
+  preventSleepRemainingSecs: number | null;
+}
 export interface UpdateInfo { currentVersion: string; latestVersion: string; updateAvailable: boolean; releaseUrl: string; packageUrl: string | null; publishedAt: string | null; notes: string; }
 
 export type UsageLevel = "green" | "orange" | "red";
@@ -493,4 +560,211 @@ export interface GaugeReport {
   gauges: Gauge[];
   /** Why a provider contributed nothing. */
   notes: string[];
+}
+
+export interface EmojiGroup {
+  id: string;
+  name: string;
+  /** Edith stores an SF Symbol name here; the web interface uses its own glyphs. */
+  symbol: string;
+}
+
+export interface EmojiRow {
+  /** Already in the configured skin tone, which is what gets copied. */
+  character: string;
+  name: string;
+  groupIndex: number;
+  supportsSkinTones: boolean;
+}
+
+export interface EmojiCopyResult {
+  character: string;
+  copiedVia: string;
+  /** Whether it also went into the app you were typing in. */
+  inserted: boolean;
+}
+
+export interface CleanerCategory {
+  id: string;
+  title: string;
+  /** What removing it costs — the only thing that makes an informed choice possible. */
+  cost: string;
+  family: "cache" | "project";
+  onByDefault: boolean;
+  paths: string[];
+  directoryNames: string[];
+}
+
+export interface CleanerItem { category: string; path: string; bytes: number }
+
+export interface CleanerScan {
+  items: CleanerItem[];
+  /** Total per category id, so a summary needs no second pass. */
+  totals: Record<string, number>;
+  totalBytes: number;
+}
+
+export interface CleanReport {
+  trashed: CleanerItem[];
+  /** [path, why]. One failure never stops the rest. */
+  failed: [string, string][];
+  bytesReclaimed: number;
+}
+
+export interface PackageSource {
+  source: "apt" | "snap" | "flatpak";
+  available: boolean;
+  /** Whether changing anything here raises an authentication dialog. */
+  needsRoot: boolean;
+}
+
+export interface PackageUpdate {
+  source: "apt" | "snap" | "flatpak";
+  name: string;
+  /** null where the source does not report what is installed. */
+  installedVersion: string | null;
+  availableVersion: string;
+  origin: string | null;
+}
+
+export interface PackageInstalled {
+  source: "apt" | "snap" | "flatpak";
+  name: string;
+  version: string;
+  sizeBytes: number | null;
+}
+
+export interface RemovalPlan {
+  source: "apt" | "snap" | "flatpak";
+  package: string;
+  /** Everything that would go, including the package itself. */
+  removed: string[];
+  nowUnused: string[];
+  command: string;
+  /** Whether this takes more than the package that was named. */
+  removesMoreThanAsked: boolean;
+}
+
+export interface PackageUpdateResult {
+  source: string;
+  names: string[];
+  command: string;
+  succeeded: boolean;
+  output: string;
+}
+
+export type AuditSeverity = "error" | "warning" | "notice";
+
+export interface AuditIssue {
+  code: string;
+  severity: AuditSeverity;
+  title: string;
+  detail: string;
+}
+
+export interface AuditMetadata {
+  title: string | null;
+  description: string | null;
+  canonicalUrl: string | null;
+  robots: string | null;
+  language: string | null;
+  heading: string | null;
+  openGraphTitle: string | null;
+  openGraphDescription: string | null;
+  openGraphImageUrl: string | null;
+  openGraphType: string | null;
+  twitterCard: string | null;
+  twitterTitle: string | null;
+  twitterDescription: string | null;
+  twitterImageUrl: string | null;
+  wordCount: number;
+}
+
+export interface AuditPage {
+  url: string;
+  statusCode: number | null;
+  responseMillis: number | null;
+  bytes: number;
+  metadata: AuditMetadata;
+  issues: AuditIssue[];
+  /** Set when the page could not be fetched at all — not the same as a 500. */
+  error: string | null;
+}
+
+export interface AuditReport {
+  site: string;
+  startedAt: string;
+  pages: AuditPage[];
+  errors: number;
+  warnings: number;
+  notices: number;
+  /** [code, severity, how many pages have it], most common first. */
+  byCode: [string, AuditSeverity, number][];
+}
+
+export interface QuinjetWorktree {
+  path: string;
+  head: string;
+  branch: string | null;
+  current: boolean;
+  bare: boolean;
+  detached: boolean;
+  locked: string | null;
+  prunable: string | null;
+}
+
+export interface QuinjetProject {
+  name: string;
+  commonDir: string;
+  worktrees: QuinjetWorktree[];
+}
+
+export interface QuinjetBoard {
+  /** False rather than an error: not having Quinjet is a normal state. */
+  installed: boolean;
+  projects: QuinjetProject[];
+}
+
+/** A saved connection. Never carries a credential — that is the whole point. */
+export interface DatabaseConnection {
+  id: string;
+  displayName: string;
+  productHint: string;
+  environment: { kind: string; label: string; protection: string };
+  readOnlyPolicy: "disabled" | "preferred" | "required";
+  productionPolicy: "standard" | "requireMutationPreview" | "prohibitMutations";
+  location:
+    | { kind: "network"; endpoints: { host: string; port: number; role: string }[] }
+    | { kind: "sqlite"; sqlite: { path: string; accessMode: string } }
+    | { kind: "memory"; name: string | null };
+}
+
+export interface DatabaseObject {
+  kind: string;
+  path: string[];
+  nativeIdentifier: string | null;
+}
+
+export interface DatabaseValue { kind: string; value?: unknown }
+
+export interface DatabasePage {
+  columns: { name: string; typeName: string | null }[];
+  rows: DatabaseValue[][];
+  hasMore: boolean;
+  nextOffset: number | null;
+  elapsedMillis: number;
+}
+
+export interface DatabaseOperation {
+  id: string;
+  connectionId: string;
+  connectionName: string;
+  kind: string;
+  /** Redacted: the statement, never a parameter value. */
+  summary: string;
+  outcome: "succeeded" | "failed" | "abandoned";
+  affectedRecords: number | null;
+  elapsedMillis: number;
+  error: string | null;
+  at: string;
 }

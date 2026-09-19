@@ -1,55 +1,35 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
 import { AboutPage } from "./pages/AboutPage";
 import { AttentionPage } from "./pages/AttentionPage";
+import { AuditPage } from "./pages/AuditPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
 import { CompanionPage } from "./pages/CompanionPage";
+import { DatabasePage } from "./pages/DatabasePage";
 import { ColorPickerPage } from "./pages/ColorPickerPage";
+import { EmojiPage } from "./pages/EmojiPage";
 import { ExtensionsPage } from "./pages/ExtensionsPage";
 import { MachinesPage } from "./pages/MachinesPage";
+import { MaintenancePage } from "./pages/MaintenancePage";
 import { MediaPage } from "./pages/MediaPage";
 import { SystemPage } from "./pages/SystemPage";
 import { UsagePage } from "./pages/UsagePage";
 import { HomePage } from "./pages/HomePage";
 import { HerdrPage } from "./pages/HerdrPage";
+import { QuinjetPage } from "./pages/QuinjetPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { ipc } from "./lib/ipc";
+import { CommandPalette } from "./components/CommandPalette";
+import { SearchIcon } from "./components/icons";
+import { ipc, listenEvent } from "./lib/ipc";
+import { NAV_GROUPS, isRoute, type Route } from "./lib/navigation";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
-
-type Route =
-  | "home" | "usage" | "herdr"
-  | "system"
-  | "machines"
-  | "media"
-  | "calendar"
-  | "attention"
-  | "clipboard"
-  | "color"
-  | "companion" | "extensions" | "settings" | "about";
-
-const NAV: { id: Route; label: string; icon: string }[] = [
-  { id: "home", label: "Home", icon: "⌂" },
-  { id: "usage", label: "Agent Usage", icon: "◒" },
-  { id: "herdr", label: "Herdr", icon: "◉" },
-  { id: "media", label: "Music", icon: "♫" },
-  { id: "calendar", label: "Calendar", icon: "▣" },
-  { id: "attention", label: "Attention", icon: "◎" },
-  { id: "system", label: "System", icon: "⌁" },
-  { id: "machines", label: "Machines", icon: "▤" },
-  { id: "clipboard", label: "Clipboard", icon: "❐" },
-  { id: "color", label: "Color Picker", icon: "◐" },
-  { id: "companion", label: "Companion", icon: "✦" },
-  { id: "extensions", label: "Extensions", icon: "◇" },
-  { id: "settings", label: "Settings", icon: "⚙" },
-  { id: "about", label: "About", icon: "ⓘ" },
-];
 
 export function App() {
   const [route, setRoute] = useState<Route>("home");
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const loadDiagnostics = useCallback(async () => {
     try {
@@ -87,9 +67,9 @@ export function App() {
 
   // The portal probe finishes after launch, which can change what is available.
   useEffect(() => {
-    const resolved = listen("session-resolved", () => void loadDiagnostics());
-    const navigate = listen<string>("navigate", (event) => {
-      if (NAV.some((item) => item.id === event.payload)) setRoute(event.payload as Route);
+    const resolved = listenEvent("session-resolved", () => void loadDiagnostics());
+    const navigate = listenEvent<string>("navigate", (event) => {
+      if (isRoute(event.payload)) setRoute(event.payload);
     });
     return () => {
       void resolved.then((un) => un());
@@ -98,7 +78,7 @@ export function App() {
   }, [loadDiagnostics]);
 
   useEffect(() => {
-    const updated = listen("settings-updated", () => {
+    const updated = listenEvent("settings-updated", () => {
       void ipc.settingsAll().then(applySettings).catch(() => {});
       void applyPresenterState();
     });
@@ -107,9 +87,22 @@ export function App() {
     };
   }, [applySettings, applyPresenterState]);
 
+  // Ctrl+K opens the palette from anywhere, including from inside a text field,
+  // which is the whole point of a jump-to shortcut.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <div className="shell">
-      <nav className="sidebar">
+      <nav className="sidebar" aria-label="Sections">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">
             V
@@ -120,17 +113,28 @@ export function App() {
           </div>
         </div>
 
+        <button className="nav-search" onClick={() => setPaletteOpen(true)}>
+          <SearchIcon />
+          <span>Go to…</span>
+          <kbd>Ctrl K</kbd>
+        </button>
+
         <div className="nav-list">
-          {NAV.map((item) => (
-              <button
-                key={item.id}
-                className="nav-item"
-                aria-current={route === item.id ? "page" : undefined}
-                onClick={() => setRoute(item.id)}
-              >
-                <span className="nav-glyph" aria-hidden="true">{item.icon}</span>
-                {item.label}
-              </button>
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="nav-group">
+              <div className="nav-section">{group.label}</div>
+              {group.items.map((item) => (
+                <button
+                  key={item.id}
+                  className="nav-item"
+                  aria-current={route === item.id ? "page" : undefined}
+                  onClick={() => setRoute(item.id)}
+                >
+                  <span className="nav-glyph">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       </nav>
@@ -139,13 +143,18 @@ export function App() {
         {route === "home" && <HomePage onNavigate={setRoute} />}
         {route === "usage" && <UsagePage />}
         {route === "herdr" && <HerdrPage />}
+        {route === "quinjet" && <QuinjetPage />}
         {route === "system" && <SystemPage />}
         {route === "machines" && <MachinesPage />}
+        {route === "maintenance" && <MaintenancePage />}
+        {route === "database" && <DatabasePage />}
         {route === "media" && <MediaPage />}
         {route === "calendar" && <CalendarPage />}
         {route === "attention" && <AttentionPage />}
         {route === "clipboard" && <ClipboardPage />}
         {route === "color" && <ColorPickerPage />}
+        {route === "emoji" && <EmojiPage />}
+        {route === "audit" && <AuditPage />}
         {route === "companion" && <CompanionPage />}
         {route === "extensions" && (
           <ExtensionsPage diagnostics={diagnostics} onChanged={loadDiagnostics} />
@@ -153,6 +162,12 @@ export function App() {
         {route === "settings" && <SettingsPage diagnostics={diagnostics} />}
         {route === "about" && <AboutPage diagnostics={diagnostics} />}
       </main>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={setRoute}
+      />
     </div>
   );
 }

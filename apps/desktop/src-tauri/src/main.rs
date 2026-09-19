@@ -98,6 +98,8 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
                 tracing::warn!(target: "veronica", "color shortcut failed: {error}");
             }
         });
+    } else if matches(shortcut, Code::KeyE) {
+        show_route(app, "emoji");
     } else if matches(shortcut, Code::KeyK) {
         tauri::async_runtime::spawn(async {
             if let Err(error) = commands::call_shell_method("CleanKeys").await {
@@ -126,6 +128,7 @@ fn run() -> Result<()> {
             commands::capabilities,
             commands::usage_view,
             commands::usage_refresh,
+            commands::usage_export,
             commands::usage_limits,
             commands::settings_all,
             commands::settings_set,
@@ -154,9 +157,35 @@ fn run() -> Result<()> {
             commands::update_check,
             commands::system_processes,
             commands::system_quit_process,
+            commands::audit_site,
+            commands::database_connections,
+            commands::database_test,
+            commands::database_browse,
+            commands::database_query,
+            commands::database_read,
+            commands::database_capabilities,
+            commands::database_operations,
+            commands::packages_sources,
+            commands::packages_updates,
+            commands::packages_inventory,
+            commands::packages_update,
+            commands::packages_removal_plan,
+            commands::cleaner_categories,
+            commands::cleaner_scan,
+            commands::cleaner_clean,
             commands::herdr_board,
             commands::herdr_open,
+            commands::quinjet_projects,
+            commands::quinjet_open,
             commands::microphone_state,
+            commands::emoji_groups,
+            commands::emoji_search,
+            commands::emoji_recents,
+            commands::emoji_copy,
+            commands::audio_streams,
+            commands::audio_stream_volume,
+            commands::audio_stream_toggle_mute,
+            commands::bluetooth_state,
             commands::microphone_toggle,
             commands::media_now_playing,
             commands::media_control,
@@ -172,6 +201,9 @@ fn run() -> Result<()> {
             commands::machines_file_download,
             commands::machines_containers,
             commands::machines_container_action,
+            commands::machines_container_logs,
+            commands::machines_power,
+            commands::machines_wake,
             commands::clipboard_list,
             commands::clipboard_remove,
             commands::clipboard_clear,
@@ -214,6 +246,7 @@ fn run() -> Result<()> {
                 "Ctrl+Alt+M",
                 "Ctrl+Alt+P",
                 "Ctrl+Alt+K",
+                "Ctrl+Alt+E",
             ] {
                 if let Err(error) = app.global_shortcut().register(shortcut) {
                     tracing::warn!(target: "veronica", "cannot register {shortcut}: {error}");
@@ -241,8 +274,38 @@ fn run() -> Result<()> {
                     let Ok(settings) = veronica_core::Settings::load(&path) else {
                         continue;
                     };
-                    let lid_awake = settings.bool_or("lidAwakeEnabled", false);
-                    let prevent_sleep = settings.bool_or("preventSleep", false);
+                    // A timed session's deadline lives in the file rather than
+                    // in a timer, so it survives a restart. This tick is what
+                    // enforces it: an expired pair is cleared once, here, and
+                    // the switches below then see the session as over.
+                    let now = chrono::Utc::now().timestamp_millis();
+                    let mut settings = settings;
+                    let mut expired = false;
+                    for switch in [
+                        veronica_core::Awake::KeepAwake,
+                        veronica_core::Awake::LidAwake,
+                    ] {
+                        if veronica_core::AwakeState::read(&settings, switch).has_expired(now) {
+                            settings.set(switch.enabled_key(), serde_json::Value::Bool(false));
+                            settings.set(switch.until_key(), serde_json::Value::Null);
+                            expired = true;
+                        }
+                    }
+                    if expired {
+                        if let Err(error) = settings.save(&path) {
+                            tracing::warn!(
+                                target: "veronica",
+                                "cannot end an expired awake session: {error:#}"
+                            );
+                        }
+                    }
+
+                    let lid_awake =
+                        veronica_core::AwakeState::read(&settings, veronica_core::Awake::LidAwake)
+                            .is_active(now);
+                    let prevent_sleep =
+                        veronica_core::AwakeState::read(&settings, veronica_core::Awake::KeepAwake)
+                            .is_active(now);
                     let changed = {
                         let state = watch_settings.state::<AppState>();
                         let mut current = state.settings.lock().expect("settings lock");

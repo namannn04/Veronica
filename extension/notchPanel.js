@@ -19,6 +19,7 @@ import { launchApp, runJson } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { UsageCard } from './usageCard.js';
+import { isTheme } from './themes.js';
 
 const TABS = [
     ['home', 'user-home-symbolic', 'Home'],
@@ -27,8 +28,6 @@ const TABS = [
     ['clipboard', 'edit-paste-symbolic', 'Clipboard'],
     ['camera', 'camera-photo-symbolic', 'Camera'],
 ];
-
-const THEMES = new Set(['light', 'dark', 'midnight', 'aubergine', 'forest']);
 
 export class NotchPanel {
     constructor(clipboardWatcher, cancellable, closeMenu = null, onThemeChanged = null) {
@@ -711,7 +710,7 @@ export class NotchPanel {
     }
 
     _applyTheme(value) {
-        let theme = THEMES.has(value) ? value : 'system';
+        let theme = isTheme(value) ? value : 'system';
         if (theme === 'system') {
             try {
                 const desktop = new Gio.Settings({ schema_id: 'org.gnome.desktop.interface' });

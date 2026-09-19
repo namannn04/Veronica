@@ -33,6 +33,11 @@ pub struct Machine {
     /// What to call it in the interface.
     pub name: String,
     pub reach: Reach,
+    /// The MAC address to send a Wake-on-LAN packet to. Optional, and absent
+    /// from a machine added before this existed, because a wake packet is the
+    /// one operation SSH cannot perform: the machine is not answering yet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mac: Option<String>,
 }
 
 impl Machine {
@@ -42,6 +47,21 @@ impl Machine {
             id: "local".to_string(),
             name: "This computer".to_string(),
             reach: Reach::Local,
+            mac: None,
+        }
+    }
+
+    /// A machine reached over SSH. A constructor rather than a literal so that
+    /// adding an optional field — as `mac` was — does not touch every caller.
+    pub fn ssh(id: impl Into<String>, name: impl Into<String>, target: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+            reach: Reach::Ssh {
+                target: target.into(),
+                port: None,
+            },
+            mac: None,
         }
     }
 
@@ -208,11 +228,7 @@ Host real-host
 
     #[test]
     fn the_fleet_always_leads_with_this_computer() {
-        let stored = vec![Machine {
-            id: "tuf".into(),
-            name: "Tuf".into(),
-            reach: Reach::Ssh { target: "tuf".into(), port: None },
-        }];
+        let stored = vec![Machine::ssh("tuf", "Tuf", "tuf")];
         let fleet = fleet(stored);
         assert_eq!(fleet.len(), 2);
         assert!(fleet[0].is_local());
@@ -222,17 +238,12 @@ Host real-host
     #[test]
     fn a_stored_entry_cannot_displace_or_duplicate_the_local_machine() {
         let stored = vec![
-            Machine { id: "local".into(), name: "Impostor".into(), reach: Reach::Local },
             Machine {
-                id: "tuf".into(),
-                name: "Tuf".into(),
-                reach: Reach::Ssh { target: "tuf".into(), port: None },
+                name: "Impostor".into(),
+                ..Machine::local()
             },
-            Machine {
-                id: "tuf".into(),
-                name: "Tuf again".into(),
-                reach: Reach::Ssh { target: "other".into(), port: None },
-            },
+            Machine::ssh("tuf", "Tuf", "tuf"),
+            Machine::ssh("tuf", "Tuf again", "other"),
         ];
         let fleet = fleet(stored);
         assert_eq!(fleet.len(), 2, "the impostor and the duplicate are dropped");

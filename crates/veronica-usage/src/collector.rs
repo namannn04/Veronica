@@ -30,14 +30,25 @@ pub enum CollectorEvent {
         seconds: f64,
     },
     /// Human-readable progress, e.g. "walking 6 transcript files".
-    Note { message: String },
+    Note {
+        message: String,
+    },
     /// A headline the UI shows when the run finishes.
-    Summary { name: String, detail: String },
-    Error { message: String },
+    Summary {
+        name: String,
+        detail: String,
+    },
+    Error {
+        message: String,
+    },
     /// Terminal record, carrying the total wall time.
-    Done { seconds: f64 },
+    Done {
+        seconds: f64,
+    },
     /// Anything unrecognised, kept so a newer collector still logs usefully.
-    Unknown { line: String },
+    Unknown {
+        line: String,
+    },
 }
 
 impl CollectorEvent {
@@ -103,9 +114,7 @@ impl RefreshOutcome {
         self.events
             .iter()
             .filter_map(|event| match event {
-                CollectorEvent::Summary { name, detail } => {
-                    Some((name.as_str(), detail.as_str()))
-                }
+                CollectorEvent::Summary { name, detail } => Some((name.as_str(), detail.as_str())),
                 _ => None,
             })
             .collect()

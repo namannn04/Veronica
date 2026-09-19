@@ -75,9 +75,7 @@ impl Credentials {
         match std::fs::read(path) {
             Ok(bytes) => Ok(Self::parse(&bytes)),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(error) => {
-                Err(error).with_context(|| format!("cannot read {}", path.display()))
-            }
+            Err(error) => Err(error).with_context(|| format!("cannot read {}", path.display())),
         }
     }
 
@@ -88,9 +86,7 @@ impl Credentials {
             // No expiry recorded: assume it is usable rather than churning the
             // token on every read.
             None => false,
-            Some(expires_at) => {
-                expires_at <= now + chrono::Duration::seconds(REFRESH_LEEWAY_SECS)
-            }
+            Some(expires_at) => expires_at <= now + chrono::Duration::seconds(REFRESH_LEEWAY_SECS),
         }
     }
 
@@ -112,13 +108,11 @@ impl Credentials {
     /// provider means by omitting it.
     pub fn applied(&self, response: &RefreshResponse, now: DateTime<Utc>) -> Value {
         let mut document = self.document.clone();
-        let oauth = document
-            .as_object_mut()
-            .and_then(|root| {
-                root.entry(OAUTH_KEY)
-                    .or_insert_with(|| Value::Object(Default::default()))
-                    .as_object_mut()
-            });
+        let oauth = document.as_object_mut().and_then(|root| {
+            root.entry(OAUTH_KEY)
+                .or_insert_with(|| Value::Object(Default::default()))
+                .as_object_mut()
+        });
         let Some(oauth) = oauth else {
             return document;
         };
@@ -129,9 +123,9 @@ impl Credentials {
         );
         oauth.insert(
             "expiresAt".into(),
-            Value::from(time_to_millis(now + chrono::Duration::seconds(
-                response.expires_in as i64,
-            ))),
+            Value::from(time_to_millis(
+                now + chrono::Duration::seconds(response.expires_in as i64),
+            )),
         );
         if let Some(refresh_token) = response
             .refresh_token
@@ -218,8 +212,8 @@ fn time_to_millis(time: DateTime<Utc>) -> i64 {
 /// Guard against a credentials file that is not ours to write.
 pub fn ensure_owner_only(path: &Path) -> Result<()> {
     use std::os::unix::fs::MetadataExt;
-    let metadata = std::fs::metadata(path)
-        .with_context(|| format!("cannot inspect {}", path.display()))?;
+    let metadata =
+        std::fs::metadata(path).with_context(|| format!("cannot inspect {}", path.display()))?;
     let uid = unsafe { libc_getuid() };
     if metadata.uid() != uid {
         bail!("{} belongs to another user", path.display());
@@ -282,9 +276,11 @@ mod tests {
 
     #[test]
     fn a_missing_file_is_absent_not_an_error() {
-        assert!(Credentials::read(Path::new("/nonexistent/.credentials.json"))
-            .unwrap()
-            .is_none());
+        assert!(
+            Credentials::read(Path::new("/nonexistent/.credentials.json"))
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]
@@ -299,8 +295,7 @@ mod tests {
 
     #[test]
     fn no_recorded_expiry_means_do_not_churn_the_token() {
-        let credentials =
-            Credentials::parse(br#"{"claudeAiOauth":{"accessToken":"a"}}"#).unwrap();
+        let credentials = Credentials::parse(br#"{"claudeAiOauth":{"accessToken":"a"}}"#).unwrap();
         assert!(!credentials.needs_refresh(at(0)));
     }
 
@@ -395,7 +390,10 @@ mod tests {
         Credentials::persist(&path, &credentials.applied(&response, at(0))).unwrap();
 
         let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
-        assert_eq!(mode, 0o600, "a credentials file must not be readable by others");
+        assert_eq!(
+            mode, 0o600,
+            "a credentials file must not be readable by others"
+        );
 
         let reloaded = Credentials::read(&path).unwrap().unwrap();
         assert_eq!(reloaded.access_token, "access-2");

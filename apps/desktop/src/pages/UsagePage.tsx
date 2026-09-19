@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
 import {
   DayBars,
@@ -11,7 +10,7 @@ import {
 import { LimitRings } from "../components/LimitRings";
 import { ProjectList } from "../components/ProjectList";
 import { ModelTable } from "../components/ModelTable";
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import { money, modelLabel, timeAgo, tokens } from "../lib/format";
 import type { CollectorEvent, UsageView } from "../lib/types";
 
@@ -46,13 +45,13 @@ export function UsagePage() {
   // The collector streams its phases, and any surface can trigger a refresh, so
   // this listens rather than only reacting to its own button.
   useEffect(() => {
-    const phases = listen<CollectorEvent>("usage-progress", (event) => {
+    const phases = listenEvent<CollectorEvent>("usage-progress", (event) => {
       const payload = event.payload;
       if (payload.kind === "phase") setProgress(`${payload.name} — ${payload.detail}`);
       else if (payload.kind === "note") setProgress(payload.message);
       else if (payload.kind === "error") setError(payload.message);
     });
-    const updated = listen("usage-updated", () => {
+    const updated = listenEvent("usage-updated", () => {
       void load();
     });
     return () => {
@@ -273,6 +272,23 @@ function Head({
   refreshing: boolean;
   onRefresh: () => void;
 }) {
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState("");
+
+  // Cards are for posting, so they carry no repository, path, chat title or
+  // dollar cost. The button says so rather than leaving it to be discovered.
+  const share = async () => {
+    setExporting(true); setExported("");
+    try {
+      const files = await ipc.usageExport([], null);
+      setExported(`Saved ${files.length} card${files.length === 1 ? "" : "s"} to ~/Pictures`);
+    } catch (reason) {
+      setExported(String(reason));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="page-head">
       <div>
@@ -283,9 +299,20 @@ function Head({
             : "Nothing collected yet"}
         </div>
       </div>
-      <button className="button" onClick={onRefresh} disabled={refreshing}>
-        {refreshing ? "Collecting…" : "Refresh"}
-      </button>
+      <div className="head-actions">
+        {exported && <span className="card-note">{exported}</span>}
+        <button
+          className="button"
+          onClick={() => void share()}
+          disabled={exporting || !generatedAt}
+          title="Branded PNGs with no repository, path, chat title or cost on them"
+        >
+          {exporting ? "Rendering…" : "Share cards"}
+        </button>
+        <button className="button" onClick={onRefresh} disabled={refreshing}>
+          {refreshing ? "Collecting…" : "Refresh"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,8 @@ members = [
     "crates/veronica-system",
     "crates/veronica-calendar",
     "crates/veronica-machines",
+    "crates/veronica-audit",
+    "crates/veronica-database",
     "crates/veronica-media",
     "crates/veronica-cli",
     "apps/desktop/src-tauri",
@@ -26,6 +28,8 @@ veronica-system = { path = "crates/veronica-system" }
 veronica-media = { path = "crates/veronica-media" }
 veronica-machines = { path = "crates/veronica-machines" }
 veronica-calendar = { path = "crates/veronica-calendar" }
+veronica-audit = { path = "crates/veronica-audit" }
+veronica-database = { path = "crates/veronica-database" }
 
 anyhow = "1.0"
 thiserror = "2.0"

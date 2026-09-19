@@ -15,6 +15,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { NotchPanel } from './notchPanel.js';
+import { THEMES } from './themes.js';
 import { SystemStatsIndicator } from './systemStats.js';
 
 /** How often the clock label is redrawn. Minute precision does not need a
@@ -88,7 +89,7 @@ class NotchButton extends PanelMenu.Button {
         const actor = this.menu?.actor;
         if (!actor)
             return;
-        for (const name of ['light', 'dark', 'midnight', 'aubergine', 'forest'])
+        for (const name of THEMES)
             actor.remove_style_class_name(`veronica-theme-${name}`);
         actor.add_style_class_name(`veronica-theme-${theme}`);
     }

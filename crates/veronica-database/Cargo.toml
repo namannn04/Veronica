@@ -1,0 +1,30 @@
+[package]
+name = "veronica-database"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+veronica-core = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+zbus = { workspace = true }
+futures-util = { workspace = true }
+
+hmac = "0.12"
+thiserror = { workspace = true }
+sha2 = "0.10"
+base64 = "0.22"
+uuid = { version = "1", features = ["v4", "serde"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+tokio-postgres = { version = "0.7.18", default-features = false, features = ["runtime", "with-serde_json-1", "with-uuid-1"] }
+redis = { version = "1.6.0", default-features = false, features = ["tokio-comp"] }
+mysql_async = { version = "0.37.1", default-features = false, features = ["default-rustls-no-provider"] }
+async-trait = "0.1.92"
+
+[dev-dependencies]
+tempfile = "3"

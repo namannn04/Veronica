@@ -195,6 +195,169 @@ pub async fn container_action(
     Ok(())
 }
 
+/// A container's recent output.
+///
+/// Tail rather than follow: a stream would need a channel back to the interface
+/// and a way to stop it, and what the user wants when a container misbehaves is
+/// the last screenful, not a live feed.
+pub async fn container_logs(
+    machine: &Machine,
+    engine: &str,
+    container: &str,
+    lines: usize,
+    timeout: Duration,
+) -> Result<String> {
+    if !matches!(engine, "docker" | "podman") {
+        bail!("unsupported container engine {engine:?}");
+    }
+    if container.is_empty()
+        || !container
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ".-_".contains(ch))
+    {
+        bail!("invalid container id");
+    }
+    // Capped so a runaway container cannot return a gigabyte over SSH.
+    let lines = lines.clamp(1, 2_000);
+    let script = format!(
+        "command -v {engine} >/dev/null && {engine} logs --tail {lines} {} 2>&1\n",
+        shell_quote(container)?
+    );
+    run_script(machine, &script, timeout).await
+}
+
+/// What a power action does to a machine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PowerAction {
+    Restart,
+    Shutdown,
+}
+
+impl PowerAction {
+    pub fn title(self) -> &'static str {
+        match self {
+            PowerAction::Restart => "restart",
+            PowerAction::Shutdown => "shut down",
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            PowerAction::Restart => "restart",
+            PowerAction::Shutdown => "shutdown",
+        }
+    }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw.to_lowercase().as_str() {
+            "restart" | "reboot" => Some(PowerAction::Restart),
+            "shutdown" | "poweroff" | "off" => Some(PowerAction::Shutdown),
+            _ => None,
+        }
+    }
+
+    /// `systemctl` is preferred because it asks logind, which handles a polkit
+    /// rule the user may already have; `shutdown` is the fallback for a host
+    /// without systemd.
+    fn command(self) -> &'static str {
+        match self {
+            PowerAction::Restart => {
+                "systemctl reboot 2>/dev/null || shutdown -r now 2>/dev/null || \
+                 sudo -n systemctl reboot"
+            }
+            PowerAction::Shutdown => {
+                "systemctl poweroff 2>/dev/null || shutdown -h now 2>/dev/null || \
+                 sudo -n systemctl poweroff"
+            }
+        }
+    }
+}
+
+/// Restart or shut down a machine.
+///
+/// Refused for the local machine: pulling the floor out from under the running
+/// app is never what someone clicking a row in a fleet view meant, and Ubuntu's
+/// own menu is one click away for the case where they did.
+///
+/// The far end decides whether it is allowed. Veronica never escalates: it asks
+/// logind, falls back to `shutdown`, and finally to a *non-interactive* `sudo`,
+/// which fails cleanly rather than blocking on a password prompt that has no
+/// terminal to appear on.
+pub async fn power(machine: &Machine, action: PowerAction, timeout: Duration) -> Result<()> {
+    if machine.is_local() {
+        bail!(
+            "Veronica will not {} the computer it is running on; use Ubuntu's own menu",
+            action.title()
+        );
+    }
+    // The connection dies with the machine, so a closed connection is the
+    // expected outcome rather than a failure worth reporting.
+    match run_script(machine, action.command(), timeout).await {
+        Ok(_) => Ok(()),
+        Err(error) => {
+            let text = error.to_string().to_lowercase();
+            if text.contains("closed by remote host")
+                || text.contains("connection reset")
+                || text.contains("broken pipe")
+            {
+                Ok(())
+            } else {
+                Err(error).with_context(|| {
+                    format!(
+                        "cannot {} {}; the account Veronica connects as may not be \
+                         permitted to, and Veronica never escalates on its own",
+                        action.title(),
+                        machine.name
+                    )
+                })
+            }
+        }
+    }
+}
+
+/// Wake a machine that is powered off, with a Wake-on-LAN magic packet.
+///
+/// Sent as a broadcast UDP datagram, which is the whole protocol: six 0xFF
+/// bytes followed by the MAC sixteen times. No SSH is involved, because the
+/// machine is not answering yet — which is also why this cannot report whether
+/// it worked, only that the packet went out.
+pub fn wake(mac: &str) -> Result<()> {
+    let bytes = parse_mac(mac)?;
+    let mut packet = vec![0xFF_u8; 6];
+    for _ in 0..16 {
+        packet.extend_from_slice(&bytes);
+    }
+
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0")
+        .context("cannot open a socket to send the wake packet")?;
+    socket
+        .set_broadcast(true)
+        .context("cannot broadcast on this network")?;
+    // Port 9 is the discard port, which is where magic packets conventionally
+    // go; nothing has to be listening for the NIC's firmware to see it.
+    socket
+        .send_to(&packet, "255.255.255.255:9")
+        .context("cannot send the wake packet")?;
+    Ok(())
+}
+
+/// Accept `aa:bb:cc:dd:ee:ff`, `AA-BB-CC-DD-EE-FF` and `aabbccddeeff`.
+pub fn parse_mac(mac: &str) -> Result<[u8; 6]> {
+    let cleaned: String = mac
+        .chars()
+        .filter(|character| !matches!(character, ':' | '-' | '.' | ' '))
+        .collect();
+    if cleaned.len() != 12 || !cleaned.chars().all(|c| c.is_ascii_hexdigit()) {
+        bail!("not a MAC address: {mac:?}; try aa:bb:cc:dd:ee:ff");
+    }
+    let mut bytes = [0_u8; 6];
+    for (index, byte) in bytes.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&cleaned[index * 2..index * 2 + 2], 16)
+            .expect("the characters were checked as hex above");
+    }
+    Ok(bytes)
+}
+
 pub fn open_terminal(machine: &Machine) -> Result<()> {
     let command: Vec<String> = match &machine.reach {
         Reach::Local => vec![std::env::var("SHELL").unwrap_or_else(|_| "bash".into())],
@@ -394,5 +557,82 @@ mod tests {
             .unwrap();
         assert!(directory.path.starts_with('/'));
         assert!(!directory.entries.is_empty());
+    }
+
+    #[test]
+    fn a_mac_parses_in_every_form_people_write_it() {
+        let expected = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+        for raw in [
+            "aa:bb:cc:dd:ee:ff",
+            "AA-BB-CC-DD-EE-FF",
+            "aabbccddeeff",
+            "AA:bb:CC:dd:EE:ff",
+        ] {
+            assert_eq!(parse_mac(raw).unwrap(), expected, "{raw}");
+        }
+    }
+
+    #[test]
+    fn something_that_is_not_a_mac_is_refused_rather_than_padded() {
+        for raw in [
+            "",
+            "aa:bb:cc",
+            "aa:bb:cc:dd:ee:ff:00",
+            "zz:bb:cc:dd:ee:ff",
+            "hello",
+        ] {
+            assert!(parse_mac(raw).is_err(), "{raw:?} should not parse");
+        }
+    }
+
+    #[tokio::test]
+    async fn veronica_refuses_to_power_off_the_computer_it_is_running_on() {
+        // Pulling the floor out from under the app is never what a click on a
+        // fleet row meant.
+        for action in [PowerAction::Restart, PowerAction::Shutdown] {
+            let error = power(&Machine::local(), action, Duration::from_secs(1))
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("running on"), "got {error}");
+        }
+    }
+
+    #[test]
+    fn a_power_action_is_named_by_what_people_type() {
+        assert_eq!(PowerAction::parse("reboot"), Some(PowerAction::Restart));
+        assert_eq!(PowerAction::parse("RESTART"), Some(PowerAction::Restart));
+        assert_eq!(PowerAction::parse("poweroff"), Some(PowerAction::Shutdown));
+        assert_eq!(PowerAction::parse("off"), Some(PowerAction::Shutdown));
+        assert_eq!(PowerAction::parse("explode"), None);
+    }
+
+    #[test]
+    fn a_power_command_never_escalates_interactively() {
+        // A `sudo` that can prompt would block forever on a connection with no
+        // terminal, and asking for a password the user never typed here would
+        // be the wrong thing anyway.
+        for action in [PowerAction::Restart, PowerAction::Shutdown] {
+            let command = action.command();
+            assert!(command.contains("sudo -n"), "got {command}");
+            assert!(!command.contains("sudo systemctl"), "got {command}");
+        }
+    }
+
+    #[tokio::test]
+    async fn container_logs_refuse_an_unknown_engine_or_a_shell_injection() {
+        let machine = Machine::local();
+        let timeout = Duration::from_secs(2);
+        assert!(container_logs(&machine, "rm", "abc", 10, timeout)
+            .await
+            .is_err());
+        assert!(
+            container_logs(&machine, "docker", "a; rm -rf /", 10, timeout)
+                .await
+                .is_err()
+        );
+        assert!(container_logs(&machine, "docker", "", 10, timeout)
+            .await
+            .is_err());
     }
 }

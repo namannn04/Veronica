@@ -84,9 +84,10 @@ pub async fn run(
         PresenterCommand::Disable => Some(("presenterEnabled", json!(false))),
         PresenterCommand::Dismiss => Some(("presenterAutoPaused", json!(true))),
         PresenterCommand::Resume => Some(("presenterAutoPaused", json!(false))),
-        PresenterCommand::Blur { category: raw, value } => {
-            Some((category(raw)?.key(), json!(*value)))
-        }
+        PresenterCommand::Blur {
+            category: raw,
+            value,
+        } => Some((category(raw)?.key(), json!(*value))),
     };
 
     if let Some((key, value)) = write {
@@ -96,9 +97,7 @@ pub async fn run(
         if matches!(command, PresenterCommand::Start | PresenterCommand::Stop)
             && !settings.bool_or("presenterEnabled", false)
         {
-            anyhow::bail!(
-                "presenter mode is not enabled; run `vr presenter enable` first"
-            );
+            anyhow::bail!("presenter mode is not enabled; run `vr presenter enable` first");
         }
         settings.set(key, value);
         settings.save(&path)?;
@@ -147,7 +146,11 @@ pub async fn run(
                 out,
                 "detection  {}{}",
                 on_off(state.auto_enabled),
-                if state.auto_paused { " (this share dismissed)" } else { "" }
+                if state.auto_paused {
+                    " (this share dismissed)"
+                } else {
+                    ""
+                }
             );
             let _ = writeln!(
                 out,

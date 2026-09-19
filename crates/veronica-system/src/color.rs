@@ -215,7 +215,10 @@ fn triple(result: &HashMap<String, OwnedValue>) -> Result<(f64, f64, f64)> {
 
     let fields = structure.fields();
     if fields.len() != 3 {
-        bail!("the colour had {} components rather than three", fields.len());
+        bail!(
+            "the colour had {} components rather than three",
+            fields.len()
+        );
     }
     let mut channels = [0.0f64; 3];
     for (index, field) in fields.iter().enumerate() {
@@ -270,7 +273,10 @@ mod tests {
 
     #[test]
     fn reads_the_three_doubles_the_shell_and_portal_both_send() {
-        assert_eq!(triple(&vardict(ddd(0.25, 0.5, 0.75))).unwrap(), (0.25, 0.5, 0.75));
+        assert_eq!(
+            triple(&vardict(ddd(0.25, 0.5, 0.75))).unwrap(),
+            (0.25, 0.5, 0.75)
+        );
     }
 
     #[test]

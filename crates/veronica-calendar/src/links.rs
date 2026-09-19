@@ -54,7 +54,12 @@ fn host_of(url: &str) -> Option<String> {
 
 /// Strip trailing punctuation a URL picks up from prose, e.g. "…1234567890."
 fn trim_punctuation(token: &str) -> &str {
-    token.trim_matches(|c: char| matches!(c, '.' | ',' | ';' | ':' | ')' | '(' | '<' | '>' | '"' | '\''))
+    token.trim_matches(|c: char| {
+        matches!(
+            c,
+            '.' | ',' | ';' | ':' | ')' | '(' | '<' | '>' | '"' | '\''
+        )
+    })
 }
 
 #[cfg(test)]
@@ -84,13 +89,17 @@ mod tests {
     #[test]
     fn matches_subdomains_of_a_meeting_host() {
         assert!(is_meeting_url("https://acme.zoom.us/j/123"));
-        assert!(is_meeting_url("https://teams.microsoft.com/l/meetup-join/x"));
+        assert!(is_meeting_url(
+            "https://teams.microsoft.com/l/meetup-join/x"
+        ));
     }
 
     #[test]
     fn does_not_match_a_host_that_merely_ends_with_the_same_letters() {
         assert!(!is_meeting_url("https://notzoom.us/j/123"));
-        assert!(!is_meeting_url("https://evilmeet.google.com.attacker.test/x"));
+        assert!(!is_meeting_url(
+            "https://evilmeet.google.com.attacker.test/x"
+        ));
     }
 
     #[test]

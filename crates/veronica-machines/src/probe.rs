@@ -2,8 +2,10 @@
 //!
 //! One shell snippet gathers everything in a single round trip, because over
 //! SSH each extra command is another whole connection's latency. The snippet
-//! reads only procfs and `df`, so it needs no privileges and nothing installed
-//! on the far end beyond a POSIX shell.
+//! reads procfs, sysfs, `df` and `ps`, so it needs no privileges and nothing
+//! installed on the far end beyond a POSIX shell. GPUs are the one exception:
+//! they are read from `nvidia-smi` where it exists, and simply absent where it
+//! does not, because there is no vendor-neutral file to read them from.
 //!
 //! CPU usage cannot be read from a single sample: `/proc/stat` holds cumulative
 //! counters, so a percentage requires two reads and the difference between
@@ -29,6 +31,34 @@ echo "cpu2 $(grep '^cpu ' /proc/stat)"
 grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo | sed 's/^/mem /'
 df -B1 --output=target,size,avail -x tmpfs -x devtmpfs -x squashfs -x overlay 2>/dev/null \
   | tail -n +2 | sed 's/^/disk /'
+# Thermal zones and hwmon both expose millidegrees with a label beside them.
+# Two globs rather than one because the label file is named differently in each.
+for zone in /sys/class/thermal/thermal_zone*; do
+  [ -r "$zone/temp" ] || continue
+  echo "temp $(cat "$zone/type" 2>/dev/null || echo zone) $(cat "$zone/temp")"
+done 2>/dev/null
+for input in /sys/class/hwmon/hwmon*/temp*_input; do
+  [ -r "$input" ] || continue
+  # A multi-channel chip names each channel in a sibling _label file; without
+  # one, every channel would come back under the same chip name.
+  channel="$(cat "${input%_input}_label" 2>/dev/null)"
+  chip="$(cat "$(dirname "$input")/name" 2>/dev/null || echo hwmon)"
+  [ -n "$channel" ] && chip="$chip $channel"
+  echo "temp $chip $(cat "$input")"
+done 2>/dev/null
+# Fans, where the board exposes them. RPM, not millidegrees.
+for input in /sys/class/hwmon/hwmon*/fan*_input; do
+  [ -r "$input" ] || continue
+  echo "fan $(basename "$input" _input) $(cat "$input")"
+done 2>/dev/null
+# GPUs. Only NVIDIA publishes this without a vendor library, so an AMD or Intel
+# machine reports none rather than a wrong number.
+command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi \
+  --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu \
+  --format=csv,noheader,nounits 2>/dev/null | sed 's/^/gpu /'
+# The busiest processes, which is what a fleet view is for: finding the box
+# that is pegged and the thing pegging it.
+ps -eo pid=,pcpu=,rss=,comm= --sort=-pcpu 2>/dev/null | head -n 8 | sed 's/^/proc /'
 "#;
 
 /// Cumulative CPU jiffies from one `/proc/stat` sample.
@@ -95,6 +125,45 @@ impl DiskUsage {
     }
 }
 
+/// One temperature sensor on the machine being probed.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Temperature {
+    pub label: String,
+    pub celsius: f64,
+}
+
+/// One fan, in RPM.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Fan {
+    pub label: String,
+    pub rpm: u32,
+}
+
+/// One GPU, as `nvidia-smi` reports it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Gpu {
+    pub name: String,
+    pub utilization_percent: f64,
+    pub memory_used_bytes: u64,
+    pub memory_total_bytes: u64,
+    /// `None` where the driver does not report one, rather than a zero that
+    /// would read as a GPU running at freezing point.
+    pub temperature_celsius: Option<f64>,
+}
+
+/// One of the busiest processes on the machine.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteProcess {
+    pub pid: u32,
+    pub name: String,
+    pub cpu_percent: f64,
+    pub memory_bytes: u64,
+}
+
 /// A machine's state at one moment.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -110,6 +179,11 @@ pub struct MachineStats {
     pub swap_total_bytes: u64,
     pub swap_free_bytes: u64,
     pub disks: Vec<DiskUsage>,
+    pub temperatures: Vec<Temperature>,
+    pub fans: Vec<Fan>,
+    pub gpus: Vec<Gpu>,
+    /// The busiest processes, hottest first.
+    pub processes: Vec<RemoteProcess>,
 }
 
 impl MachineStats {
@@ -123,6 +197,15 @@ impl MachineStats {
             return 0.0;
         }
         self.memory_used_bytes() as f64 / self.memory_total_bytes as f64 * 100.0
+    }
+
+    /// The hottest sensor, which is the one a fleet view should show.
+    pub fn peak_temperature(&self) -> Option<&Temperature> {
+        self.temperatures.iter().max_by(|left, right| {
+            left.celsius
+                .partial_cmp(&right.celsius)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     }
 
     /// The filesystem the user most likely means, for a one-line summary.
@@ -169,8 +252,10 @@ pub fn parse(output: &str) -> MachineStats {
                 stats.uptime_secs = rest.parse::<f64>().map(|v| v as u64).unwrap_or(0);
             }
             "load" => {
-                let values: Vec<f64> =
-                    rest.split_whitespace().filter_map(|v| v.parse().ok()).collect();
+                let values: Vec<f64> = rest
+                    .split_whitespace()
+                    .filter_map(|v| v.parse().ok())
+                    .collect();
                 for (index, value) in values.into_iter().take(3).enumerate() {
                     stats.load_average[index] = value;
                 }
@@ -214,9 +299,106 @@ pub fn parse(output: &str) -> MachineStats {
                     }
                 }
             }
+            "temp" => {
+                // "temp <label> <millidegrees>", and a label may contain spaces.
+                let fields: Vec<&str> = rest.split_whitespace().collect();
+                if fields.len() < 2 {
+                    continue;
+                }
+                let Some(milli) = fields[fields.len() - 1].parse::<f64>().ok() else {
+                    continue;
+                };
+                let celsius = milli / 1000.0;
+                // Sensors that are off or unplugged report zero or a nonsense
+                // value; showing them would fill the panel with noise.
+                if !(1.0..=150.0).contains(&celsius) {
+                    continue;
+                }
+                stats.temperatures.push(Temperature {
+                    label: fields[..fields.len() - 1].join(" "),
+                    celsius,
+                });
+            }
+            "fan" => {
+                let fields: Vec<&str> = rest.split_whitespace().collect();
+                if fields.len() < 2 {
+                    continue;
+                }
+                let Some(rpm) = fields[fields.len() - 1].parse::<u32>().ok() else {
+                    continue;
+                };
+                // A stopped fan is a real reading; a board that exposes an
+                // absent header reports zero forever, so those are dropped.
+                if rpm == 0 {
+                    continue;
+                }
+                stats.fans.push(Fan {
+                    label: fields[..fields.len() - 1].join(" "),
+                    rpm,
+                });
+            }
+            "gpu" => {
+                // "gpu NVIDIA GeForce RTX 3050, 12, 900, 4096, 46" — comma
+                // separated, because the name itself contains spaces.
+                let fields: Vec<&str> = rest.split(',').map(str::trim).collect();
+                if fields.len() < 4 {
+                    continue;
+                }
+                let number = |index: usize| fields.get(index).and_then(|v| v.parse::<f64>().ok());
+                stats.gpus.push(Gpu {
+                    name: fields[0].to_string(),
+                    utilization_percent: number(1).unwrap_or(0.0),
+                    // nvidia-smi reports mebibytes with `nounits`.
+                    memory_used_bytes: number(2).unwrap_or(0.0) as u64 * 1024 * 1024,
+                    memory_total_bytes: number(3).unwrap_or(0.0) as u64 * 1024 * 1024,
+                    temperature_celsius: number(4),
+                });
+            }
+            "proc" => {
+                // "proc <pid> <pcpu> <rss> <comm>", and comm may contain spaces.
+                let fields: Vec<&str> = rest.split_whitespace().collect();
+                if fields.len() < 4 {
+                    continue;
+                }
+                let (Some(pid), Some(cpu), Some(rss)) = (
+                    fields[0].parse::<u32>().ok(),
+                    fields[1].parse::<f64>().ok(),
+                    fields[2].parse::<u64>().ok(),
+                ) else {
+                    continue;
+                };
+                stats.processes.push(RemoteProcess {
+                    pid,
+                    name: fields[3..].join(" "),
+                    cpu_percent: cpu,
+                    // ps reports the resident set in kibibytes.
+                    memory_bytes: rss.saturating_mul(1024),
+                });
+            }
             _ => {}
         }
     }
+
+    // `dedup_by` only removes *adjacent* repeats, so the list is grouped by
+    // label before the hottest-first sort below reorders it.
+    stats
+        .temperatures
+        .sort_by(|left, right| left.label.cmp(&right.label));
+    // A sensor exposed through both `thermal_zone` and `hwmon` is reported
+    // twice, identically. Showing it twice would imply two components running
+    // that hot, so an exact repeat is dropped — while two genuinely distinct
+    // sensors that share a chip name are kept, since their readings differ.
+    stats.temperatures.dedup_by(|left, right| {
+        left.label == right.label && (left.celsius - right.celsius).abs() < f64::EPSILON
+    });
+
+    // The hottest sensor first, so a summary can take the head of the list.
+    stats.temperatures.sort_by(|left, right| {
+        right
+            .celsius
+            .partial_cmp(&left.celsius)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     if let (Some(first), Some(second)) = (first_cpu, second_cpu) {
         stats.cpu_percent = CpuSample::usage_between(first, second);
@@ -287,7 +469,10 @@ disk /boot/efi                    268435456    228634624
     #[test]
     fn a_counter_reset_between_samples_does_not_report_nonsense() {
         // A reboot resets the counters, so the second sample is smaller.
-        let first = CpuSample { idle: 900, total: 1000 };
+        let first = CpuSample {
+            idle: 900,
+            total: 1000,
+        };
         let second = CpuSample { idle: 5, total: 10 };
         assert_eq!(CpuSample::usage_between(first, second), 0.0);
     }
@@ -324,7 +509,11 @@ disk /boot/efi                    268435456    228634624
         let root = stats.root_disk().expect("root should be found");
         assert_eq!(root.mount_point, "/");
         // 512778035200 total, 322225905664 free -> ~37% used
-        assert!((root.used_percent() - 37.16).abs() < 0.1, "got {}", root.used_percent());
+        assert!(
+            (root.used_percent() - 37.16).abs() < 0.1,
+            "got {}",
+            root.used_percent()
+        );
     }
 
     #[test]
@@ -340,7 +529,12 @@ disk /boot/efi                    268435456    228634624
 
     #[test]
     fn garbage_and_partial_output_do_not_panic() {
-        for input in ["", "nonsense", "disk /only-two-fields 100", "mem NotANumber: x kB"] {
+        for input in [
+            "",
+            "nonsense",
+            "disk /only-two-fields 100",
+            "mem NotANumber: x kB",
+        ] {
             let stats = parse(input);
             assert_eq!(stats.cpu_percent, 0.0);
         }
@@ -362,5 +556,128 @@ disk /boot/efi                    268435456    228634624
         assert!(PROBE_SCRIPT.contains("cpu1"));
         assert!(PROBE_SCRIPT.contains("cpu2"));
         assert!(PROBE_SCRIPT.contains("sleep"));
+    }
+
+    /// The extra sections, in the shapes procfs, sysfs, nvidia-smi and ps
+    /// actually produce.
+    const EXTRAS: &str = "\
+temp acpitz 59000
+temp k10temp 47125
+temp nvme 0
+temp coretemp 999000
+fan fan1 2400
+fan fan2 0
+gpu NVIDIA GeForce RTX 3050 Laptop GPU, 12, 900, 4096, 46
+proc 428936 8.8 496640 chrome
+proc 10440 5.9 83558 gnome shell
+proc bad line here
+";
+
+    #[test]
+    fn temperatures_are_converted_from_millidegrees_and_sorted_hottest_first() {
+        let stats = parse(EXTRAS);
+        let labels: Vec<&str> = stats
+            .temperatures
+            .iter()
+            .map(|reading| reading.label.as_str())
+            .collect();
+        assert_eq!(
+            labels,
+            ["acpitz", "k10temp"],
+            "got {:#?}",
+            stats.temperatures
+        );
+        assert_eq!(stats.temperatures[0].celsius, 59.0);
+        assert_eq!(stats.peak_temperature().unwrap().label, "acpitz");
+    }
+
+    #[test]
+    fn a_sensor_reading_zero_or_nonsense_is_dropped_rather_than_shown() {
+        // An unplugged sensor reports 0, and a broken one reports 999 °C;
+        // either would fill the panel with noise.
+        let stats = parse(EXTRAS);
+        assert!(stats.temperatures.iter().all(|r| r.label != "nvme"));
+        assert!(stats.temperatures.iter().all(|r| r.label != "coretemp"));
+    }
+
+    #[test]
+    fn a_fan_header_with_nothing_plugged_into_it_is_not_a_fan() {
+        let stats = parse(EXTRAS);
+        assert_eq!(stats.fans.len(), 1);
+        assert_eq!(stats.fans[0].label, "fan1");
+        assert_eq!(stats.fans[0].rpm, 2400);
+    }
+
+    #[test]
+    fn a_gpu_name_containing_commas_worth_of_spaces_still_parses() {
+        let stats = parse(EXTRAS);
+        assert_eq!(stats.gpus.len(), 1);
+        let gpu = &stats.gpus[0];
+        assert_eq!(gpu.name, "NVIDIA GeForce RTX 3050 Laptop GPU");
+        assert_eq!(gpu.utilization_percent, 12.0);
+        // nvidia-smi reports mebibytes with --nounits.
+        assert_eq!(gpu.memory_used_bytes, 900 * 1024 * 1024);
+        assert_eq!(gpu.memory_total_bytes, 4096 * 1024 * 1024);
+        assert_eq!(gpu.temperature_celsius, Some(46.0));
+    }
+
+    #[test]
+    fn a_machine_with_no_nvidia_gpu_reports_none_rather_than_a_wrong_number() {
+        assert!(parse(SAMPLE).gpus.is_empty());
+    }
+
+    #[test]
+    fn processes_carry_their_pid_cpu_and_resident_memory() {
+        let stats = parse(EXTRAS);
+        assert_eq!(stats.processes.len(), 2, "the malformed line is skipped");
+        assert_eq!(stats.processes[0].pid, 428936);
+        assert_eq!(stats.processes[0].name, "chrome");
+        assert_eq!(stats.processes[0].cpu_percent, 8.8);
+        // ps reports the resident set in kibibytes.
+        assert_eq!(stats.processes[0].memory_bytes, 496_640 * 1024);
+        assert_eq!(
+            stats.processes[1].name, "gnome shell",
+            "a spaced comm survives"
+        );
+    }
+
+    #[test]
+    fn a_machine_missing_every_extra_still_parses_what_it_did_report() {
+        // A container, a BSD-ish host, a box with no sensors: the point of the
+        // parser being tolerant is that none of these produce nothing at all.
+        let stats = parse(SAMPLE);
+        assert!(!stats.host_name.is_empty());
+        assert!(stats.temperatures.is_empty());
+        assert!(stats.fans.is_empty());
+        assert!(stats.processes.is_empty());
+    }
+
+    #[test]
+    fn the_probe_script_asks_for_every_section_the_parser_reads() {
+        for marker in ["thermal_zone", "fan", "nvidia-smi", "ps -eo"] {
+            assert!(PROBE_SCRIPT.contains(marker), "the script lost {marker}");
+        }
+    }
+
+    #[test]
+    fn a_sensor_reported_by_both_thermal_zone_and_hwmon_appears_once() {
+        // Two rows for one component would imply two things running that hot.
+        let stats = parse("temp acpitz 59000\ntemp acpitz 59000\n");
+        assert_eq!(stats.temperatures.len(), 1);
+    }
+
+    #[test]
+    fn two_distinct_sensors_sharing_a_chip_name_both_survive() {
+        // Two DIMM slots on one spd5118 chip are two real readings.
+        let stats = parse("temp spd5118 46500\ntemp spd5118 44250\n");
+        assert_eq!(stats.temperatures.len(), 2);
+        assert_eq!(stats.temperatures[0].celsius, 46.5, "hottest first");
+    }
+
+    #[test]
+    fn the_probe_script_asks_hwmon_for_its_channel_labels() {
+        // Without them every channel of a multi-channel chip reports under the
+        // chip's own name, and the dedup above cannot tell them apart.
+        assert!(PROBE_SCRIPT.contains("_label"));
     }
 }

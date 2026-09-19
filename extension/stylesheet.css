@@ -730,8 +730,13 @@
   text-align: center;
 }
 
-/* The app and notch read the same `appearance` setting. Dark variants retain
- * Edith's white typography while changing the island material and accent. */
+/* The app and notch read the same `appearance` setting, so every theme in
+ * `apps/desktop/src/lib/preferences.ts` needs its rules here and its id in
+ * `themes.js`. Dark variants retain Edith's white typography and change only
+ * the island material and the accent; light variants need the full foreground
+ * inversion further down. St has neither variables nor `:is()`, so the shared
+ * selector lists are written out. */
+
 .veronica-notch-shell-menu.veronica-theme-midnight {
   -arrow-background-color: rgba(7, 16, 31, 0.99);
 }
@@ -751,6 +756,38 @@
 }
 .veronica-notch-shell-menu.veronica-theme-forest .popup-menu-content {
   background-color: rgba(9, 25, 20, 0.99);
+}
+
+.veronica-notch-shell-menu.veronica-theme-nord {
+  -arrow-background-color: rgba(34, 39, 47, 0.99);
+}
+.veronica-notch-shell-menu.veronica-theme-nord .popup-menu-content {
+  background-color: rgba(34, 39, 47, 0.99);
+}
+
+.veronica-notch-shell-menu.veronica-theme-ocean {
+  -arrow-background-color: rgba(5, 22, 28, 0.99);
+}
+.veronica-notch-shell-menu.veronica-theme-ocean .popup-menu-content {
+  background-color: rgba(5, 22, 28, 0.99);
+}
+
+.veronica-notch-shell-menu.veronica-theme-ember {
+  -arrow-background-color: rgba(23, 17, 12, 0.99);
+}
+.veronica-notch-shell-menu.veronica-theme-ember .popup-menu-content {
+  background-color: rgba(23, 17, 12, 0.99);
+}
+
+/* Carbon is the one island that is genuinely opaque black: on an OLED panel a
+ * 0.99 alpha would light every pixel the popup covers. */
+.veronica-notch-shell-menu.veronica-theme-carbon {
+  -arrow-background-color: rgb(0, 0, 0);
+  -arrow-border-color: rgba(255, 255, 255, 0.18);
+}
+.veronica-notch-shell-menu.veronica-theme-carbon .popup-menu-content {
+  background-color: rgb(0, 0, 0);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .veronica-theme-midnight .veronica-card,
@@ -774,51 +811,110 @@
   background-color: rgba(105, 190, 145, 0.075);
 }
 
+.veronica-theme-nord .veronica-card,
+.veronica-theme-nord .veronica-action-tile,
+.veronica-theme-nord .veronica-file-row,
+.veronica-theme-nord .veronica-clipboard-row {
+  background-color: rgba(136, 192, 208, 0.085);
+}
+
+.veronica-theme-ocean .veronica-card,
+.veronica-theme-ocean .veronica-action-tile,
+.veronica-theme-ocean .veronica-file-row,
+.veronica-theme-ocean .veronica-clipboard-row {
+  background-color: rgba(69, 194, 214, 0.08);
+}
+
+.veronica-theme-ember .veronica-card,
+.veronica-theme-ember .veronica-action-tile,
+.veronica-theme-ember .veronica-file-row,
+.veronica-theme-ember .veronica-clipboard-row {
+  background-color: rgba(232, 151, 74, 0.075);
+}
+
+.veronica-theme-carbon .veronica-card,
+.veronica-theme-carbon .veronica-action-tile,
+.veronica-theme-carbon .veronica-file-row,
+.veronica-theme-carbon .veronica-clipboard-row {
+  background-color: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 .veronica-theme-midnight .veronica-action-tile.active { background-color: #6f9ee8; }
 .veronica-theme-aubergine .veronica-action-tile.active { background-color: #cf79ac; }
 .veronica-theme-forest .veronica-action-tile.active { background-color: #74a98a; }
+.veronica-theme-nord .veronica-action-tile.active { background-color: #7fb2c4; }
+.veronica-theme-ocean .veronica-action-tile.active { background-color: #3fb2c5; }
+.veronica-theme-ember .veronica-action-tile.active { background-color: #d98a42; }
+.veronica-theme-carbon .veronica-action-tile.active { background-color: #ff8a5c; }
 
-/* Ivory needs a complete foreground inversion because GNOME's Shell theme is
- * normally dark even when the user deliberately chooses this light island. */
-.veronica-notch-shell-menu.veronica-theme-light {
-  -arrow-background-color: rgba(248, 245, 239, 0.995);
-  -arrow-border-color: rgba(39, 31, 24, 0.18);
-  color: #211c18;
-}
-.veronica-notch-shell-menu.veronica-theme-light .popup-menu-content {
-  background-color: rgba(248, 245, 239, 0.995);
-  border-color: rgba(39, 31, 24, 0.18);
-  color: #211c18;
-}
+/* Every light appearance needs a complete foreground inversion, because GNOME's
+ * Shell theme stays dark even when the user deliberately chooses a light
+ * island. These are the rules the four of them share; the per-theme blocks that
+ * follow restate only each island's own surface and accent. */
 
 .veronica-theme-light .veronica-card,
 .veronica-theme-light .veronica-action-tile,
 .veronica-theme-light .veronica-file-row,
 .veronica-theme-light .veronica-clipboard-row,
-.veronica-theme-light .veronica-camera-preview-frame {
-  background-color: rgba(41, 31, 23, 0.055);
-  border-color: rgba(41, 31, 23, 0.10);
+.veronica-theme-light .veronica-camera-preview-frame,
+.veronica-theme-sandstone .veronica-card,
+.veronica-theme-sandstone .veronica-action-tile,
+.veronica-theme-sandstone .veronica-file-row,
+.veronica-theme-sandstone .veronica-clipboard-row,
+.veronica-theme-sandstone .veronica-camera-preview-frame,
+.veronica-theme-mist .veronica-card,
+.veronica-theme-mist .veronica-action-tile,
+.veronica-theme-mist .veronica-file-row,
+.veronica-theme-mist .veronica-clipboard-row,
+.veronica-theme-mist .veronica-camera-preview-frame,
+.veronica-theme-paper .veronica-card,
+.veronica-theme-paper .veronica-action-tile,
+.veronica-theme-paper .veronica-file-row,
+.veronica-theme-paper .veronica-clipboard-row,
+.veronica-theme-paper .veronica-camera-preview-frame {
+  background-color: rgba(28, 28, 30, 0.055);
+  border-color: rgba(28, 28, 30, 0.11);
 }
 
 .veronica-theme-light .veronica-shelf-tab,
 .veronica-theme-light .veronica-shelf-settings,
 .veronica-theme-light .veronica-provider-switch,
-.veronica-theme-light .veronica-small-button {
-  background-color: rgba(41, 31, 23, 0.07);
-  color: rgba(33, 28, 24, 0.68);
+.veronica-theme-light .veronica-small-button,
+.veronica-theme-sandstone .veronica-shelf-tab,
+.veronica-theme-sandstone .veronica-shelf-settings,
+.veronica-theme-sandstone .veronica-provider-switch,
+.veronica-theme-sandstone .veronica-small-button,
+.veronica-theme-mist .veronica-shelf-tab,
+.veronica-theme-mist .veronica-shelf-settings,
+.veronica-theme-mist .veronica-provider-switch,
+.veronica-theme-mist .veronica-small-button,
+.veronica-theme-paper .veronica-shelf-tab,
+.veronica-theme-paper .veronica-shelf-settings,
+.veronica-theme-paper .veronica-provider-switch,
+.veronica-theme-paper .veronica-small-button {
+  background-color: rgba(28, 28, 30, 0.07);
+  color: rgba(28, 28, 30, 0.68);
 }
 
 .veronica-theme-light .veronica-shelf-tab:hover,
 .veronica-theme-light .veronica-shelf-settings:hover,
 .veronica-theme-light .veronica-provider-switch:hover,
-.veronica-theme-light .veronica-small-button:hover {
-  background-color: rgba(41, 31, 23, 0.13);
-  color: #211c18;
-}
-
-.veronica-theme-light .veronica-shelf-tab.active {
-  background-color: #29231e;
-  color: #fffaf5;
+.veronica-theme-light .veronica-small-button:hover,
+.veronica-theme-sandstone .veronica-shelf-tab:hover,
+.veronica-theme-sandstone .veronica-shelf-settings:hover,
+.veronica-theme-sandstone .veronica-provider-switch:hover,
+.veronica-theme-sandstone .veronica-small-button:hover,
+.veronica-theme-mist .veronica-shelf-tab:hover,
+.veronica-theme-mist .veronica-shelf-settings:hover,
+.veronica-theme-mist .veronica-provider-switch:hover,
+.veronica-theme-mist .veronica-small-button:hover,
+.veronica-theme-paper .veronica-shelf-tab:hover,
+.veronica-theme-paper .veronica-shelf-settings:hover,
+.veronica-theme-paper .veronica-provider-switch:hover,
+.veronica-theme-paper .veronica-small-button:hover {
+  background-color: rgba(28, 28, 30, 0.13);
+  color: #1c1c1e;
 }
 
 .veronica-theme-light .veronica-now-art,
@@ -826,8 +922,26 @@
 .veronica-theme-light .veronica-camera-icon,
 .veronica-theme-light .veronica-status-panel-icon,
 .veronica-theme-light .veronica-file-icon,
-.veronica-theme-light .veronica-action-icon {
-  color: rgba(33, 28, 24, 0.62);
+.veronica-theme-light .veronica-action-icon,
+.veronica-theme-sandstone .veronica-now-art,
+.veronica-theme-sandstone .veronica-empty-music-icon,
+.veronica-theme-sandstone .veronica-camera-icon,
+.veronica-theme-sandstone .veronica-status-panel-icon,
+.veronica-theme-sandstone .veronica-file-icon,
+.veronica-theme-sandstone .veronica-action-icon,
+.veronica-theme-mist .veronica-now-art,
+.veronica-theme-mist .veronica-empty-music-icon,
+.veronica-theme-mist .veronica-camera-icon,
+.veronica-theme-mist .veronica-status-panel-icon,
+.veronica-theme-mist .veronica-file-icon,
+.veronica-theme-mist .veronica-action-icon,
+.veronica-theme-paper .veronica-now-art,
+.veronica-theme-paper .veronica-empty-music-icon,
+.veronica-theme-paper .veronica-camera-icon,
+.veronica-theme-paper .veronica-status-panel-icon,
+.veronica-theme-paper .veronica-file-icon,
+.veronica-theme-paper .veronica-action-icon {
+  color: rgba(28, 28, 30, 0.62);
 }
 
 .veronica-theme-light .veronica-now-artist,
@@ -837,20 +951,137 @@
 .veronica-theme-light .veronica-empty-music-label,
 .veronica-theme-light .veronica-camera-detail,
 .veronica-theme-light .veronica-status-panel-detail,
-.veronica-theme-light .veronica-empty {
-  color: rgba(33, 28, 24, 0.56);
+.veronica-theme-light .veronica-empty,
+.veronica-theme-sandstone .veronica-now-artist,
+.veronica-theme-sandstone .veronica-ring-caption,
+.veronica-theme-sandstone .veronica-ring-resets,
+.veronica-theme-sandstone .veronica-usage-spend,
+.veronica-theme-sandstone .veronica-empty-music-label,
+.veronica-theme-sandstone .veronica-camera-detail,
+.veronica-theme-sandstone .veronica-status-panel-detail,
+.veronica-theme-sandstone .veronica-empty,
+.veronica-theme-mist .veronica-now-artist,
+.veronica-theme-mist .veronica-ring-caption,
+.veronica-theme-mist .veronica-ring-resets,
+.veronica-theme-mist .veronica-usage-spend,
+.veronica-theme-mist .veronica-empty-music-label,
+.veronica-theme-mist .veronica-camera-detail,
+.veronica-theme-mist .veronica-status-panel-detail,
+.veronica-theme-mist .veronica-empty,
+.veronica-theme-paper .veronica-now-artist,
+.veronica-theme-paper .veronica-ring-caption,
+.veronica-theme-paper .veronica-ring-resets,
+.veronica-theme-paper .veronica-usage-spend,
+.veronica-theme-paper .veronica-empty-music-label,
+.veronica-theme-paper .veronica-camera-detail,
+.veronica-theme-paper .veronica-status-panel-detail,
+.veronica-theme-paper .veronica-empty {
+  color: rgba(28, 28, 30, 0.56);
 }
 
 .veronica-theme-light .veronica-file-open,
 .veronica-theme-light .veronica-clipboard-copy,
 .veronica-theme-light .veronica-status-panel-title,
-.veronica-theme-light .veronica-action-label {
-  color: rgba(33, 28, 24, 0.90);
+.veronica-theme-light .veronica-action-label,
+.veronica-theme-sandstone .veronica-file-open,
+.veronica-theme-sandstone .veronica-clipboard-copy,
+.veronica-theme-sandstone .veronica-status-panel-title,
+.veronica-theme-sandstone .veronica-action-label,
+.veronica-theme-mist .veronica-file-open,
+.veronica-theme-mist .veronica-clipboard-copy,
+.veronica-theme-mist .veronica-status-panel-title,
+.veronica-theme-mist .veronica-action-label,
+.veronica-theme-paper .veronica-file-open,
+.veronica-theme-paper .veronica-clipboard-copy,
+.veronica-theme-paper .veronica-status-panel-title,
+.veronica-theme-paper .veronica-action-label {
+  color: rgba(28, 28, 30, 0.90);
 }
 
+.veronica-notch-shell-menu.veronica-theme-light {
+  -arrow-background-color: rgba(248, 245, 239, 0.995);
+  -arrow-border-color: rgba(39, 31, 24, 0.18);
+  color: #1c1c1e;
+}
+.veronica-notch-shell-menu.veronica-theme-light .popup-menu-content {
+  background-color: rgba(248, 245, 239, 0.995);
+  border-color: rgba(39, 31, 24, 0.18);
+  color: #1c1c1e;
+}
+.veronica-theme-light .veronica-shelf-tab.active { background-color: #29231e; color: #fffaf5; }
 .veronica-theme-light .veronica-action-tile.active { background-color: #c98f4f; }
+
+.veronica-notch-shell-menu.veronica-theme-sandstone {
+  -arrow-background-color: rgba(247, 242, 234, 0.995);
+  -arrow-border-color: rgba(60, 44, 30, 0.20);
+  color: #1c1c1e;
+}
+.veronica-notch-shell-menu.veronica-theme-sandstone .popup-menu-content {
+  background-color: rgba(247, 242, 234, 0.995);
+  border-color: rgba(60, 44, 30, 0.20);
+  color: #1c1c1e;
+}
+.veronica-theme-sandstone .veronica-shelf-tab.active { background-color: #4a3625; color: #fff8ee; }
+.veronica-theme-sandstone .veronica-action-tile.active { background-color: #cf8a52; }
+
+.veronica-notch-shell-menu.veronica-theme-mist {
+  -arrow-background-color: rgba(247, 249, 251, 0.995);
+  -arrow-border-color: rgba(24, 34, 48, 0.18);
+  color: #1c1c1e;
+}
+.veronica-notch-shell-menu.veronica-theme-mist .popup-menu-content {
+  background-color: rgba(247, 249, 251, 0.995);
+  border-color: rgba(24, 34, 48, 0.18);
+  color: #1c1c1e;
+}
+.veronica-theme-mist .veronica-shelf-tab.active { background-color: #24303f; color: #f5f9ff; }
+.veronica-theme-mist .veronica-action-tile.active { background-color: #6fa4e4; }
+
+/* Paper is the high-contrast light theme, so its island keeps a real border and
+ * pushes the secondary text far darker than the shared inversion does. */
+.veronica-notch-shell-menu.veronica-theme-paper {
+  -arrow-background-color: rgb(255, 255, 255);
+  -arrow-border-color: rgba(0, 0, 0, 0.45);
+  color: #000000;
+}
+.veronica-notch-shell-menu.veronica-theme-paper .popup-menu-content {
+  background-color: rgb(255, 255, 255);
+  border-color: rgba(0, 0, 0, 0.45);
+  color: #000000;
+}
+.veronica-theme-paper .veronica-card,
+.veronica-theme-paper .veronica-action-tile,
+.veronica-theme-paper .veronica-file-row,
+.veronica-theme-paper .veronica-clipboard-row,
+.veronica-theme-paper .veronica-camera-preview-frame {
+  background-color: rgba(0, 0, 0, 0.045);
+  border-color: rgba(0, 0, 0, 0.30);
+}
+.veronica-theme-paper .veronica-now-artist,
+.veronica-theme-paper .veronica-ring-caption,
+.veronica-theme-paper .veronica-ring-resets,
+.veronica-theme-paper .veronica-usage-spend,
+.veronica-theme-paper .veronica-empty-music-label,
+.veronica-theme-paper .veronica-camera-detail,
+.veronica-theme-paper .veronica-status-panel-detail,
+.veronica-theme-paper .veronica-empty {
+  color: rgba(0, 0, 0, 0.74);
+}
+.veronica-theme-paper .veronica-shelf-tab.active { background-color: #000000; color: #ffffff; }
+.veronica-theme-paper .veronica-action-tile.active { background-color: #b8481c; }
+
 .veronica-theme-light .veronica-action-tile.active .veronica-action-icon,
-.veronica-theme-light .veronica-action-tile.active .veronica-action-label { color: #111; }
+.veronica-theme-light .veronica-action-tile.active .veronica-action-label,
+.veronica-theme-sandstone .veronica-action-tile.active .veronica-action-icon,
+.veronica-theme-sandstone .veronica-action-tile.active .veronica-action-label,
+.veronica-theme-mist .veronica-action-tile.active .veronica-action-icon,
+.veronica-theme-mist .veronica-action-tile.active .veronica-action-label {
+  color: #111;
+}
+.veronica-theme-paper .veronica-action-tile.active .veronica-action-icon,
+.veronica-theme-paper .veronica-action-tile.active .veronica-action-label {
+  color: #ffffff;
+}
 
 /* Focus Dim's overlay. One per monitor, inside the window group, so the panel
    and the overview are never covered. The colour is flat black: tinting it would
@@ -858,4 +1089,26 @@
    dim. Opacity is animated from JavaScript, so none is set here. */
 .veronica-focus-dim {
   background-color: #000000;
+}
+
+/* ------------------------------------------------ Keystroke Highlight */
+/* One row of keycaps above every window. Non-reactive, so it never takes a
+ * click; sized by its content, so an empty row occupies nothing. */
+.veronica-keystroke-row {
+    spacing: 8px;
+}
+
+.veronica-keystroke-cap {
+    spacing: 6px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background-color: rgba(20, 20, 24, 0.86);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.veronica-keystroke-key {
+    color: #f4f4f6;
+    font-size: 20px;
+    font-weight: 600;
 }

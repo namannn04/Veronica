@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import { timeAgo } from "../lib/format";
 import type { DesktopNotification } from "../lib/types";
 
@@ -39,7 +38,7 @@ export function NotificationList({ limit }: { limit?: number }) {
 
   // Pushed from the monitor, so the list is live without polling the bus.
   useEffect(() => {
-    const received = listen<DesktopNotification>("notifications-received", (event) => {
+    const received = listenEvent<DesktopNotification>("notifications-received", (event) => {
       setRows((current) => [event.payload, ...current.filter((row) => row.id !== event.payload.id)]);
     });
     return () => {

@@ -30,16 +30,18 @@ platform layer against Linux services.
 
 | Path | Responsibility |
 | --- | --- |
-| `crates/veronica-core` | XDG paths, capability model, extension catalogue, settings, presenter and Focus Dim models, clipboard and swatch history. No GUI or toolkit dependency. |
-| `crates/veronica-usage` | Collector driver, `usage.json` schema 8 decoding, dashboard rollups, rate-limit maths, alert decisions. |
-| `crates/veronica-system` | procfs metrics, logind inhibitors, PipeWire audio, D-Bus notifications, portal probing, screen colour sampling, clipboard writing, screen-share detection. |
+| `crates/veronica-core` | XDG paths, capability model, extension catalogue, settings, presenter, Focus Dim and Keystroke Highlight models, the emoji catalogue and its ranking, timed awake sessions, clipboard and swatch history. No GUI or toolkit dependency. |
+| `crates/veronica-usage` | Collector driver, `usage.json` schema 8 decoding, dashboard rollups, rate-limit maths, alert decisions, share cards. |
+| `crates/veronica-system` | procfs metrics, logind inhibitors, PipeWire audio and the per-application mixer, BlueZ, apt/snap/flatpak maintenance, D-Bus notifications, portal probing, screen colour sampling, clipboard writing and pasting in place, screen-share detection. |
 | `crates/veronica-media` | MPRIS control and local playback. |
 | `crates/veronica-calendar` | Agenda from GNOME's calendar server, join links from Evolution Data Server. |
 | `crates/veronica-machines` | The fleet: host model, the probe, and running it locally or over SSH. |
+| `crates/veronica-audit` | Site Audit: sitemap discovery, page metadata, and Edith's eleven checks. |
+| `crates/veronica-database` | The database client: connection definitions, the capability map, six adapters, the confirmation guard, the SQLite metadata store, and the read-only MCP server. |
 | `crates/veronica-cli` | The `vr` binary. |
 | `apps/desktop` | Tauri application: Rust commands plus the React interface. |
 | `resources/refresh-usage` | The bundled usage collector. |
-| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture and Focus Dim's overlay — everything only the compositor can do. |
+| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture, Focus Dim's overlay, Keystroke Highlight and pasting in place — everything only the compositor can do. |
 | `packaging/` | Debian package, AppImage, desktop entry and AppStream metadata. |
 
 ## The usage collector is shared, not reimplemented
@@ -65,7 +67,7 @@ collection at the last stage with a confusing error.
 
 ## Capabilities decide what is offered
 
-`veronica-core::Capabilities` resolves each of Edith's 24 capabilities to one of
+`veronica-core::Capabilities` resolves each of Edith's capabilities to one of
 `available`, `permissionRequired`, `integrationRequired` or `unsupported` for
 the running session, and the extension catalogue derives availability from
 that. Nothing is hard-coded per platform in the UI; a feature appears as
@@ -80,15 +82,59 @@ withholds capabilities that X11 grants:
   job and cannot be done from outside it.
 - **Input suppression** (keyboard lock) — needs an exclusive evdev grab, which
   needs membership of the `input` group.
+- **Keystroke observation** (Keystroke Highlight) — a compositor hands key
+  presses only to the focused window, so showing them on screen means reading
+  them from inside the compositor. Veronica's extension does, listen-only: it
+  never consumes an event, and records nothing while the shell holds a modal
+  grab, which is where passwords are typed.
+- **Paste in place**, and the emoji picker's insert-in-place — synthesising
+  input into a window Veronica does not own is the same problem in reverse. The
+  extension sends one Ctrl+V through a virtual keyboard on the seat, which needs
+  no per-session portal approval.
 
-Everything else has a working Linux route: PipeWire for audio and mic mute,
-logind for prevent-sleep and lid-awake, MPRIS for media, Evolution Data Server
-for calendar, and the desktop portal for colour picking, camera, global
-shortcuts and screen-share detection. `vr diagnose` prints the resolved state
+Everything else has a working Linux route: PipeWire for audio, the
+per-application mixer and mic mute, BlueZ for Bluetooth, logind for
+prevent-sleep and lid-awake, MPRIS for media, Evolution Data Server for
+calendar, and the desktop portal for colour picking, camera, global shortcuts
+and screen-share detection. `vr diagnose` prints the resolved state
 with the backend each one talks to.
 
 Running headless — `vr` over SSH — marks the display-dependent capabilities
 `unsupported` rather than letting them fail later.
+
+## The database guard
+
+Edith puts an XPC broker between the app and a database, because a sandboxed
+macOS app cannot hold a socket itself. Veronica has no sandbox to cross, so the
+boundary is `veronica-database::session::Session` instead — and the safety it
+enforces is the same, because the safety was never the process boundary.
+
+A change is described as a *plan*: what it does, to what, how far it reaches,
+whether it can be undone. `preview` validates the plan against the connection's
+policy, measures the impact against the server, derives the warnings it earns,
+and returns a token:
+
+```
+base64url(payload) . base64url(HMAC-SHA256(payload))
+```
+
+The payload holds two keyed digests — one over what would *run* (the plan plus
+the connection's policy), one over what was *shown* (the redacted request, the
+warnings, the required confirmation). `apply` verifies the signature, checks the
+clock, recomputes both digests from the plan it is handed, and requires them to
+match. Editing anything between the two steps invalidates the token, and nothing
+is sent.
+
+Three further properties: issuing a preview registers a receipt that authorising
+consumes, so a token works exactly once even with the app and the CLI both
+running — the `DELETE ... RETURNING` in the store is what makes that atomic. A
+preview expires. And the signing key lives in the keyring, so a token cannot be
+forged without it.
+
+Values never reach a statement. Identifiers are quoted by the product's own
+rules, values are bound as parameters, and a preview shows a parameter's *type*
+rather than its value — because a preview is printed, logged and stored, and the
+value being written may be the password being rotated.
 
 ## Paths
 
@@ -108,7 +154,14 @@ risk blend, the zone hysteresis and the budget states. Run `cargo test
 The shell extension's pure logic is tested too, with `cd extension && npm test`.
 Anything testable is kept in a module that imports nothing from `gi://`, so it
 runs under plain node: `procStats.js` holds the procfs arithmetic behind the top
-bar readout, `focusDimMath.js` holds Focus Dim's clamps.
+bar readout, `focusDimMath.js` holds Focus Dim's clamps, and
+`keystrokeLabels.js` holds Keystroke Highlight's label resolution and queue.
+
+Where a rule is enforced on both sides — Focus Dim's clamps, Keystroke
+Highlight's duration and queue — the Rust and JavaScript tests are written to
+mirror each other. The two copies guard different moments (the core stops a bad
+value being *stored*; the extension stops a hand-edited file being *applied*)
+and must not drift.
 
 Two things are worth verifying against the running desktop rather than in a test,
 because they depend on the compositor:
@@ -330,6 +383,16 @@ Bluetooth, volume and battery:
   `St.DrawingArea` and Cairo draw the percentage rings (`extension/ring.js`).
   Files and Camera remain visible with explicit backend status
   until their Linux implementations exist, avoiding the old dead-toggle state.
+
+- `extension/themes.js` is the single list of appearances the notch knows.
+  Both the panel, which resolves the `appearance` setting into a style class,
+  and the clock, which removes the previous class before adding the next one,
+  read it. Two hand-kept copies of that list is the shape this replaced: adding
+  a theme to one and not the other left the old class stuck on the popup. The
+  same list exists in `apps/desktop/src/lib/preferences.ts`, in the family
+  selector lists in `apps/desktop/src/styles.css` and in
+  `veronica_core::appearance`, and `crates/veronica-core/tests/themes.rs`
+  compares all four.
 
 Three things about it are deliberate:
 

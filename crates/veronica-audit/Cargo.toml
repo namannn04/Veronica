@@ -1,0 +1,17 @@
+[package]
+name = "veronica-audit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "charset", "http2", "gzip"] }
+regex = "1"
+url = "2"
+futures-util = { workspace = true }

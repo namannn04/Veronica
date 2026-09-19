@@ -94,14 +94,24 @@ pub async fn collect(now: DateTime<Utc>, margin: f64) -> GaugeReport {
     match crate::claude::limits_for_user(now).await {
         Ok(Some(limits)) => {
             if let Some(window) = limits.session {
-                report
-                    .gauges
-                    .push(gauge("Claude", "Session", window, SESSION_WINDOW_SECS, margin, now));
+                report.gauges.push(gauge(
+                    "Claude",
+                    "Session",
+                    window,
+                    SESSION_WINDOW_SECS,
+                    margin,
+                    now,
+                ));
             }
             if let Some(window) = limits.week {
-                report
-                    .gauges
-                    .push(gauge("Claude", "Week", window, WEEKLY_WINDOW_SECS, margin, now));
+                report.gauges.push(gauge(
+                    "Claude",
+                    "Week",
+                    window,
+                    WEEKLY_WINDOW_SECS,
+                    margin,
+                    now,
+                ));
             }
             for scoped in limits.scoped {
                 report.gauges.push(gauge(
@@ -123,14 +133,24 @@ pub async fn collect(now: DateTime<Utc>, margin: f64) -> GaugeReport {
     match crate::codex::fetch_limits().await {
         Ok(limits) => {
             if let Some(window) = limits.session {
-                report
-                    .gauges
-                    .push(gauge("Codex", "Session", window, SESSION_WINDOW_SECS, margin, now));
+                report.gauges.push(gauge(
+                    "Codex",
+                    "Session",
+                    window,
+                    SESSION_WINDOW_SECS,
+                    margin,
+                    now,
+                ));
             }
             if let Some(window) = limits.week {
-                report
-                    .gauges
-                    .push(gauge("Codex", "Week", window, WEEKLY_WINDOW_SECS, margin, now));
+                report.gauges.push(gauge(
+                    "Codex",
+                    "Week",
+                    window,
+                    WEEKLY_WINDOW_SECS,
+                    margin,
+                    now,
+                ));
             }
         }
         Err(error) => report.notes.push(format!("Codex: {error:#}")),
@@ -161,13 +181,23 @@ mod tests {
             percent: 87.0,
             resets_at: Some(at(7988)),
         };
-        let g = gauge("Claude", "Session", window, SESSION_WINDOW_SECS, 10.0, at(0));
+        let g = gauge(
+            "Claude",
+            "Session",
+            window,
+            SESSION_WINDOW_SECS,
+            10.0,
+            at(0),
+        );
         assert_eq!(g.percent, 87.0);
         assert_eq!(g.resets_in_secs, Some(7988));
         assert_eq!(g.level, UsageLevel::Red);
         assert_eq!(g.zone, PacingZone::Hot);
         assert!(g.risk > 0.9, "risk was {}", g.risk);
-        assert!(g.pace_delta.unwrap() > 0.0, "should be ahead of a linear burn");
+        assert!(
+            g.pace_delta.unwrap() > 0.0,
+            "should be ahead of a linear burn"
+        );
     }
 
     #[test]
@@ -185,8 +215,18 @@ mod tests {
 
     #[test]
     fn a_window_with_no_reset_time_still_produces_a_gauge() {
-        let window = LimitWindow { percent: 70.0, resets_at: None };
-        let g = gauge("Claude", "Session", window, SESSION_WINDOW_SECS, 10.0, at(0));
+        let window = LimitWindow {
+            percent: 70.0,
+            resets_at: None,
+        };
+        let g = gauge(
+            "Claude",
+            "Session",
+            window,
+            SESSION_WINDOW_SECS,
+            10.0,
+            at(0),
+        );
         assert_eq!(g.resets_in_secs, None);
         assert_eq!(g.pace_delta, None);
         // Falls back to absolute use, which at 70% is partway up the ramp.
@@ -199,7 +239,14 @@ mod tests {
             percent: 50.0,
             resets_at: Some(at(-600)),
         };
-        let g = gauge("Claude", "Session", window, SESSION_WINDOW_SECS, 10.0, at(0));
+        let g = gauge(
+            "Claude",
+            "Session",
+            window,
+            SESSION_WINDOW_SECS,
+            10.0,
+            at(0),
+        );
         assert_eq!(g.resets_in_secs, Some(0));
     }
 
@@ -211,7 +258,10 @@ mod tests {
                 gauge(
                     "Claude",
                     "Week",
-                    LimitWindow { percent: 80.0, resets_at: Some(at(6 * 86_400)) },
+                    LimitWindow {
+                        percent: 80.0,
+                        resets_at: Some(at(6 * 86_400)),
+                    },
                     WEEKLY_WINDOW_SECS,
                     10.0,
                     at(0),
@@ -219,7 +269,10 @@ mod tests {
                 gauge(
                     "Claude",
                     "Session",
-                    LimitWindow { percent: 60.0, resets_at: Some(at(300)) },
+                    LimitWindow {
+                        percent: 60.0,
+                        resets_at: Some(at(300)),
+                    },
                     SESSION_WINDOW_SECS,
                     10.0,
                     at(0),

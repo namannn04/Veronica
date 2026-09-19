@@ -32,9 +32,10 @@ export function HerdrPage() {
   const selectedAgent = board?.agents.find((agent) => agent.id === selected) ?? null;
 
   const toggleKind = (kind: string) => setKinds((current) => current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind]);
+  // The line comes from the backend, which builds it from the same helper the
+  // terminal launcher and `vr herdr attach` use, so the three cannot drift.
   const copyAttach = async (agent: HerdrAgent) => {
-    const command = `herdr --session ${shellWord(agent.session)} agent attach ${shellWord(agent.paneId)}`;
-    try { await navigator.clipboard.writeText(command); setCopied(agent.id); window.setTimeout(() => setCopied((id) => id === agent.id ? null : id), 1_200); }
+    try { await navigator.clipboard.writeText(agent.attachCommand); setCopied(agent.id); window.setTimeout(() => setCopied((id) => id === agent.id ? null : id), 1_200); }
     catch (reason) { setError(`Cannot copy the attach command: ${reason}`); }
   };
 
@@ -42,6 +43,7 @@ export function HerdrPage() {
     <div className="page-head edith-head"><div><div className="herdr-title"><span>H</span><h1>Herdr</h1></div><div className="page-sub">Live coding-agent sessions across persistent terminal workspaces</div></div><div className="head-actions"><button className="button" onClick={() => void load()}>Refresh</button>{board?.sessions[0] && <button className="button primary" onClick={() => void ipc.herdrOpen(board.sessions[0].name)}>Open Herdr</button>}</div></div>
 
     {error && <div className="banner error">{error}</div>}
+    {!error && board?.installed && board.error && <div className="banner warn">{board.error}</div>}
     {!board && !error && <HerdrSkeleton />}
     {board && !board.installed && <div className="empty herdr-empty"><div className="empty-glyph">H</div><h3>Herdr is not installed</h3><p>Install Herdr to coordinate live coding agents and persistent terminal sessions from Veronica.</p></div>}
 
@@ -53,7 +55,7 @@ export function HerdrPage() {
 
         <main className="herdr-board">{STATUSES.map((status) => { const rows = agents.filter((agent) => agent.status === status); return <section className={`herdr-column ${status}`} key={status}><header><div><i /><strong>{STATUS_LABEL[status]}</strong></div><span>{rows.length}</span></header><div>{rows.map((agent) => <button className={selected === agent.id ? "selected" : ""} key={agent.id} onClick={() => setSelected(agent.id)}><div className="agent-card-head"><KindMark kind={agent.kind} /><span>{agent.kind}</span>{agent.focused && <b>Focused</b>}</div><strong>{agent.title}</strong><p>{agent.workspace || "Workspace"}</p><footer><span>{agent.session}</span><span>Open →</span></footer></button>)}{rows.length === 0 && <div className="column-empty">No {STATUS_LABEL[status].toLowerCase()} agents</div>}</div></section>; })}</main>
 
-        {selectedAgent && <aside className="herdr-detail"><button className="detail-close" onClick={() => setSelected(null)} aria-label="Close details">×</button><div className="detail-kind"><KindMark kind={selectedAgent.kind} /><span>{selectedAgent.kind}</span></div><h2>{selectedAgent.title}</h2><div className="agent-view-toggle"><button aria-pressed>Agent</button><button disabled>Diff</button></div><Detail label="Status" value={STATUS_LABEL[selectedAgent.status]} /><Detail label="Session" value={selectedAgent.session} /><Detail label="Workspace" value={selectedAgent.workspace || "—"} /><Detail label="Directory" value={selectedAgent.cwd || "Not reported"} mono /><Detail label="Pane" value={selectedAgent.paneId} mono /><div className="attach-block"><span>ATTACH</span><code>{`herdr --session ${selectedAgent.session} agent attach ${selectedAgent.paneId}`}</code><div><button className="button" onClick={() => void copyAttach(selectedAgent)}>{copied === selectedAgent.id ? "Copied" : "Copy command"}</button><button className="button primary" onClick={() => void ipc.herdrOpen(selectedAgent.session, selectedAgent.paneId).catch((reason) => setError(String(reason)))}>Open terminal</button></div></div></aside>}
+        {selectedAgent && <aside className="herdr-detail"><button className="detail-close" onClick={() => setSelected(null)} aria-label="Close details">×</button><div className="detail-kind"><KindMark kind={selectedAgent.kind} /><span>{selectedAgent.kind}</span></div><h2>{selectedAgent.title}</h2><div className="agent-view-toggle"><button aria-pressed>Agent</button><button disabled>Diff</button></div><Detail label="Status" value={STATUS_LABEL[selectedAgent.status]} /><Detail label="Session" value={selectedAgent.session} /><Detail label="Workspace" value={selectedAgent.workspace || "—"} /><Detail label="Directory" value={selectedAgent.cwd || "Not reported"} mono /><Detail label="Pane" value={selectedAgent.paneId} mono /><div className="attach-block"><span>ATTACH</span><code>{selectedAgent.attachCommand}</code><div><button className="button" onClick={() => void copyAttach(selectedAgent)}>{copied === selectedAgent.id ? "Copied" : "Copy command"}</button><button className="button primary" onClick={() => void ipc.herdrOpen(selectedAgent.session, selectedAgent.paneId).catch((reason) => setError(String(reason)))}>Open terminal</button></div></div></aside>}
       </div>
 
       {board.sessions.length === 0 && <div className="empty herdr-empty"><div className="empty-glyph">H</div><h3>No Herdr sessions yet</h3><p>Launch Herdr once and the board will begin following its agents automatically.</p></div>}
@@ -66,4 +68,3 @@ function KindMark({ kind }: { kind: string }) { return <span className="kind-mar
 function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) { return <div className="herdr-meta"><span>{label}</span><strong className={mono ? "mono" : ""} title={value}>{value}</strong></div>; }
 function RailSection({ title, count, children }: { title: string; count: number; children: ReactNode }) { return <section className="rail-section"><header><strong>{title}</strong><span>{count}</span></header><div>{children}</div></section>; }
 function HerdrSkeleton() { return <div className="herdr-skeleton"><aside><i /><i /><i /></aside><main>{STATUSES.map((status) => <section key={status}><i /><i /><i /></section>)}</main></div>; }
-function shellWord(value: string) { return `'${value.replaceAll("'", `'\\''`)}'`; }

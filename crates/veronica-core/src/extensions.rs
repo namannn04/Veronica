@@ -107,6 +107,23 @@ use ExtensionGroup as G;
 
 pub const ENTRIES: &[ExtensionEntry] = &[
     ExtensionEntry {
+        id: "attention",
+        title: "Attention",
+        subtitle: "Understand where your time goes and protect focused work!",
+        icon: "hourglass",
+        group: G::Utilities,
+        featured: true,
+        defaults_key: "tabAttentionEnabled",
+        // Edith requires running applications, which macOS hands any app. On
+        // Wayland only the compositor knows which window has focus, so the
+        // shell extension is what makes the timeline real; without it the focus
+        // timer and the history still work, which is why it is optional rather
+        // than required.
+        required_capabilities: &[RunningApplications],
+        optional_capabilities: &[ShellIntegration],
+        required_tools: &[],
+    },
+    ExtensionEntry {
         id: "usage",
         title: "Agent Usage",
         subtitle: "Claude and Codex limits, usage stats, and alerts.",
@@ -131,6 +148,30 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_tools: &["herdr"],
     },
     ExtensionEntry {
+        id: "quinjet",
+        title: "Quinjet",
+        subtitle: "Review pull requests and live workspace changes in a native terminal.",
+        icon: "git-branch",
+        group: G::Agent,
+        featured: true,
+        defaults_key: "tabQuinjetEnabled",
+        required_capabilities: &[LocalTerminal],
+        optional_capabilities: &[MachineManagement],
+        required_tools: &["quinjet"],
+    },
+    ExtensionEntry {
+        id: "seoAudit",
+        title: "Site Audit",
+        subtitle: "Crawl sitemaps, inspect page metadata, and keep every run local.",
+        icon: "file-search",
+        group: G::Utilities,
+        featured: false,
+        defaults_key: "tabSEOAuditEnabled",
+        required_capabilities: &[SiteAuditing],
+        optional_capabilities: &[],
+        required_tools: &[],
+    },
+    ExtensionEntry {
         id: "system",
         title: "System",
         subtitle: "Running apps, prevent sleep, and the keyboard-cleaning lock.",
@@ -140,6 +181,18 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         defaults_key: "tabSystemEnabled",
         required_capabilities: &[RunningApplications],
         optional_capabilities: &[PreventSleep, InputSuppression],
+        required_tools: &[],
+    },
+    ExtensionEntry {
+        id: "appMaintenance",
+        title: "App Maintenance",
+        subtitle: "Packages, updates across apt, snap and flatpak, and review-first removal.",
+        icon: "package",
+        group: G::System,
+        featured: false,
+        defaults_key: "tabAppMaintenanceEnabled",
+        required_capabilities: &[PackageManagement],
+        optional_capabilities: &[Notifications],
         required_tools: &[],
     },
     ExtensionEntry {
@@ -153,6 +206,18 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_capabilities: &[MachineManagement],
         optional_capabilities: &[Notifications],
         required_tools: &["ssh"],
+    },
+    ExtensionEntry {
+        id: "database",
+        title: "Database",
+        subtitle: "Explore databases and run guarded production mutations.",
+        icon: "database",
+        group: G::System,
+        featured: false,
+        defaults_key: "tabDatabaseEnabled",
+        required_capabilities: &[DatabaseBroker],
+        optional_capabilities: &[MachineManagement],
+        required_tools: &[],
     },
     ExtensionEntry {
         id: "companion",
@@ -255,6 +320,18 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_tools: &[],
     },
     ExtensionEntry {
+        id: "keystrokeHighlight",
+        title: "Keystroke Highlight",
+        subtitle: "Show each key press on screen for polished demos.",
+        icon: "keyboard",
+        group: G::Utilities,
+        featured: false,
+        defaults_key: "keystrokeHighlightEnabled",
+        required_capabilities: &[KeystrokeObservation],
+        optional_capabilities: &[GlobalShortcuts],
+        required_tools: &[],
+    },
+    ExtensionEntry {
         id: "focusDim",
         title: "Focus Dim",
         subtitle: "Dims everything behind the window you are working in.",
@@ -276,6 +353,20 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         defaults_key: "presenterEnabled",
         required_capabilities: &[ScreenShareDetection],
         optional_capabilities: &[],
+        required_tools: &[],
+    },
+    ExtensionEntry {
+        id: "emoji",
+        title: "Emoji Picker",
+        subtitle: "Every emoji on a hotkey, straight into the app you are typing in.",
+        icon: "smile",
+        group: G::Utilities,
+        featured: false,
+        defaults_key: "emojiEnabled",
+        // The picker itself only needs a clipboard, which always works, so
+        // requiring insertion would report a working feature as unavailable.
+        required_capabilities: &[],
+        optional_capabilities: &[EmojiInsertion, GlobalShortcuts],
         required_tools: &[],
     },
     ExtensionEntry {
@@ -331,9 +422,48 @@ mod tests {
         })
     }
 
+    /// Edith's catalogue, id for id. Listing them rather than counting them
+    /// means a port that lands shows up here as a line, and the entries Veronica
+    /// has not ported stay visible as the gap they are.
     #[test]
-    fn catalogue_matches_ediths_fifteen_extensions() {
-        assert_eq!(ENTRIES.len(), 15);
+    fn the_catalogue_carries_ediths_ids() {
+        let ported = [
+            "attention",
+            "usage",
+            "herdr",
+            "quinjet",
+            "seoAudit",
+            "system",
+            "appMaintenance",
+            "machines",
+            "database",
+            "companion",
+            "systemStats",
+            "micMute",
+            "lidAwake",
+            "music",
+            "calendar",
+            "notchShelf",
+            "clipboard",
+            "keystrokeHighlight",
+            "focusDim",
+            "presenter",
+            "emoji",
+            "colorPicker",
+        ];
+        let ids: Vec<&str> = ENTRIES.iter().map(|entry| entry.id).collect();
+        assert_eq!(ids, ported, "the catalogue drifted from Edith's order");
+    }
+
+    /// Every entry in Edith's catalogue now has an Ubuntu counterpart. This
+    /// test is what would catch one being dropped rather than ported.
+    #[test]
+    fn nothing_edith_lists_is_missing_here() {
+        assert_eq!(
+            ENTRIES.len(),
+            22,
+            "Edith's catalogue has 22 entries and so does this one"
+        );
     }
 
     #[test]

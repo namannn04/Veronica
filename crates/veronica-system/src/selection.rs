@@ -15,6 +15,12 @@
 //!
 //! Every route is reported by name on failure, so "cannot copy" always says
 //! which of them were tried and what to install.
+//!
+//! Pasting *in place* — putting the text into the window you were typing in,
+//! rather than only on the clipboard — has the same shape: synthesising input
+//! into a window Veronica does not own is the compositor's job. Edith posts a
+//! ⌘V through a `CGEvent`; here the shell extension sends one Ctrl+V through a
+//! virtual keyboard on the seat, which needs no per-session portal approval.
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -69,6 +75,30 @@ pub async fn write(text: &str) -> Result<Writer> {
     )
 }
 
+/// Paste what is on the clipboard into the focused window.
+///
+/// The caller puts the text on the clipboard first; this is only the keystroke.
+/// Splitting it that way means a refused paste still leaves the text somewhere
+/// the user can reach, which is the difference between a degraded feature and a
+/// lost one.
+pub async fn paste_in_place() -> Result<()> {
+    let connection = Connection::session().await.context("no session bus")?;
+    connection
+        .call_method(
+            Some(SHELL_ACTION_BUS),
+            SHELL_ACTION_PATH,
+            Some(SHELL_ACTION_INTERFACE),
+            "PasteInPlace",
+            &(),
+        )
+        .await
+        .context(
+            "pasting in place needs Veronica's GNOME Shell extension, which is what \
+             synthesises the key press inside the compositor",
+        )?;
+    Ok(())
+}
+
 /// The external tools, in the order they are tried.
 const COMMAND_WRITERS: &[(Writer, &str, &[&str])] = &[
     (Writer::WlCopy, "wl-copy", &["--type", "text/plain"]),
@@ -77,9 +107,7 @@ const COMMAND_WRITERS: &[(Writer, &str, &[&str])] = &[
 ];
 
 async fn write_with_shell(text: &str) -> Result<()> {
-    let connection = Connection::session()
-        .await
-        .context("no session bus")?;
+    let connection = Connection::session().await.context("no session bus")?;
     connection
         .call_method(
             Some(SHELL_ACTION_BUS),

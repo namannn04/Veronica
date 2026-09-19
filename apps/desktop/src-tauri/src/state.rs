@@ -33,6 +33,10 @@ pub struct AppState {
     pub notifications: Mutex<Vec<veronica_system::Notification>>,
     /// Native PipeWire recorder held between the Start and Stop IPC calls.
     pub companion_recording: Mutex<Option<CompanionRecording>>,
+    /// The emoji catalogue, parsed once. It is two thousand entries with a
+    /// precomputed search index, and the picker opens on a hotkey, so parsing
+    /// it per call would be felt.
+    pub emoji: veronica_core::EmojiCatalog,
 }
 
 pub struct CompanionRecording {
@@ -55,6 +59,7 @@ impl AppState {
         };
 
         Ok(Self {
+            emoji: veronica_core::EmojiCatalog::bundled(),
             directories,
             session: Mutex::new(session),
             settings: Mutex::new(settings),
@@ -73,6 +78,16 @@ impl AppState {
         let mut list = self.notifications.lock().expect("notifications lock");
         list.insert(0, notification);
         list.truncate(veronica_system::notifications::HISTORY_LIMIT);
+    }
+
+    /// The configured skin tone, so the picker and `vr emoji` copy the same
+    /// character.
+    pub fn emoji_tone(&self) -> veronica_core::SkinTone {
+        veronica_core::SkinTone::parse(
+            self.settings_snapshot()
+                .string("emojiSkinTone")
+                .unwrap_or("standard"),
+        )
     }
 
     pub fn settings_snapshot(&self) -> Settings {

@@ -94,7 +94,7 @@ pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> R
             "{} refused the request: {}",
             machine.name,
             if detail.is_empty() {
-                format!("exit status {}", output.status)
+                output.status.to_string()
             } else {
                 detail
             }
@@ -201,16 +201,20 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_silent_command_failure_reports_its_status_once() {
+        let error = run_script(&Machine::local(), "exit 7", Duration::from_secs(2))
+            .await
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("exit status: 7"), "got {error}");
+        assert!(!error.contains("exit status exit status"), "got {error}");
+    }
+
+    #[tokio::test]
     async fn an_unreachable_host_reports_an_error_rather_than_hanging() {
-        let machine = Machine {
-            id: "nowhere".into(),
-            name: "Nowhere".into(),
-            reach: Reach::Ssh {
-                // Reserved for documentation, so it cannot resolve to a real host.
-                target: "veronica-test.invalid".into(),
-                port: None,
-            },
-        };
+        // `.invalid` is reserved, so it cannot resolve to a real host.
+        let machine = Machine::ssh("nowhere", "Nowhere", "veronica-test.invalid");
         let result = probe_machine(&machine, Duration::from_secs(6)).await;
         assert!(result.is_err(), "an invalid host must fail");
     }
@@ -219,14 +223,7 @@ mod tests {
     async fn a_fleet_probe_reports_each_machine_independently() {
         let machines = vec![
             Machine::local(),
-            Machine {
-                id: "nowhere".into(),
-                name: "Nowhere".into(),
-                reach: Reach::Ssh {
-                    target: "veronica-test.invalid".into(),
-                    port: None,
-                },
-            },
+            Machine::ssh("nowhere", "Nowhere", "veronica-test.invalid"),
         ];
         let reports = probe_fleet(&machines, Duration::from_secs(6)).await;
         assert_eq!(reports.len(), 2);

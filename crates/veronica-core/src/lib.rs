@@ -4,29 +4,39 @@
 //! the `vr` CLI and the tests can share one definition of paths, capabilities,
 //! the extension catalogue and settings.
 
+pub mod appearance;
 pub mod attention;
+pub mod awake;
 pub mod backup;
 pub mod capabilities;
+pub mod cleaner;
 pub mod clipboard;
 pub mod companion;
+pub mod emoji;
 pub mod extensions;
 pub mod focus_dim;
+pub mod keystroke;
 pub mod paths;
 pub mod presenter;
 pub mod session;
 pub mod settings;
 pub mod swatches;
 
+pub use appearance::Scheme;
 pub use attention::{
     AttentionCategory, AttentionEvent, AttentionFocusSession, AttentionOverview, AttentionPrivacy,
     AttentionRepository, AttentionSettings, AttentionStatus,
 };
+pub use awake::{Awake, AwakeState};
 pub use backup::{BackupArchive, BackupManifest, ImportReport};
 pub use capabilities::{Capabilities, Capability, CapabilityState};
+pub use cleaner::{Category as CleanerCategory, Scan as CleanerScan};
 pub use clipboard::{ClipEntry, ClipboardHistory};
 pub use companion::{CompanionItem, CompanionKind, CompanionRepository};
+pub use emoji::{Catalog as EmojiCatalog, Emoji, SkinTone, UsageLedger as EmojiUsageLedger};
 pub use extensions::{ExtensionAvailability, ExtensionEntry, ExtensionGroup, ENTRIES};
 pub use focus_dim::{DisplayMode, FocusDimSettings};
+pub use keystroke::KeystrokeHighlightSettings;
 pub use paths::{AppDirectories, APP_ID};
 pub use presenter::{BlurCategory, PresenterState};
 pub use session::{DesktopSession, SessionKind};

@@ -114,6 +114,11 @@ impl AppDirectories {
         self.data.join("swatches.json")
     }
 
+    /// Which emoji you reach for, so the picker can rank recents.
+    pub fn emoji_usage_file(&self) -> PathBuf {
+        self.data.join("emoji-usage.json")
+    }
+
     /// Local application, browser and focus-session attention ledger.
     pub fn attention_dir(&self) -> PathBuf {
         self.data.join("attention")
@@ -122,6 +127,19 @@ impl AppDirectories {
     /// Local Companion notes, index and voice recordings.
     pub fn companion_dir(&self) -> PathBuf {
         self.data.join("companion")
+    }
+
+    /// Saved database connections, saved queries, the operation history and
+    /// the outstanding confirmation receipts. Never a credential: those are in
+    /// the keyring, referenced from here by identifier.
+    pub fn database_store(&self) -> PathBuf {
+        self.state.join("database.sqlite")
+    }
+
+    /// Where a database secret falls back to when there is no keyring — over
+    /// SSH, say. Written 0600, and the diagnostics say it is the worse store.
+    pub fn database_secrets_fallback(&self) -> PathBuf {
+        self.state.join("database-secrets.json")
     }
 
     /// What the alert notifier remembers between polls, so a restart does not

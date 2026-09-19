@@ -56,7 +56,10 @@ fn parse_format(raw: &str) -> Result<CopyFormat, String> {
     // for an explicit flag: a typo should be reported, not silently ignored.
     if parsed == CopyFormat::Hex && !raw.eq_ignore_ascii_case("hex") {
         let known: Vec<&str> = CopyFormat::ALL.iter().map(|f| f.key()).collect();
-        return Err(format!("unknown format '{raw}'; try one of {}", known.join(", ")));
+        return Err(format!(
+            "unknown format '{raw}'; try one of {}",
+            known.join(", ")
+        ));
     }
     Ok(parsed)
 }
@@ -72,8 +75,10 @@ pub async fn run(
     let configured = CopyFormat::parse(settings.string("colorPickerCopyFormat").unwrap_or("hex"));
     let profile = ColorProfile::parse(settings.string("colorPickerProfile").unwrap_or("srgb"));
     let limit = SwatchHistory::clamp_limit(
-        settings.get("colorPickerHistorySize").and_then(|v| v.as_u64()).unwrap_or(DEFAULT_HISTORY_SIZE as u64)
-            as usize,
+        settings
+            .get("colorPickerHistorySize")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(DEFAULT_HISTORY_SIZE as u64) as usize,
     );
 
     match command {

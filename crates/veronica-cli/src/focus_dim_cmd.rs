@@ -54,9 +54,10 @@ pub async fn run(
             // 100` is "as dark as it goes", not an error.
             Some(("focusDimIntensity", json!(clamp_intensity(percent / 100.0))))
         }
-        FocusDimCommand::Fade { seconds } => {
-            Some(("focusDimAnimationDuration", json!(clamp_animation_secs(*seconds))))
-        }
+        FocusDimCommand::Fade { seconds } => Some((
+            "focusDimAnimationDuration",
+            json!(clamp_animation_secs(*seconds)),
+        )),
         FocusDimCommand::Mode { mode } => {
             let parsed = DisplayMode::parse(mode);
             // `parse` falls back for an unknown value, which is right for a

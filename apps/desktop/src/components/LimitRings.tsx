@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
 import { LimitRing } from "./charts";
 import { ProviderSelector } from "./ProviderSelector";
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import { countdown } from "../lib/format";
 import {
   limitProviderOf,
@@ -57,7 +56,7 @@ export function LimitRings() {
   }, [load]);
 
   useEffect(() => {
-    const changed = listen("settings-updated", () => {
+    const changed = listenEvent("settings-updated", () => {
       void ipc.settingsAll().then((settings) => setProvider(limitProviderOf(settings.limitsProvider)));
     });
     return () => { void changed.then((unlisten) => unlisten()); };

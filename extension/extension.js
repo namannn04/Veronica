@@ -15,6 +15,7 @@ import { ClipboardWatcher } from './clipboard.js';
 import { FocusDim } from './focusDim.js';
 import { ActionBridge } from './actionBridge.js';
 import { AttentionTracker } from './attention.js';
+import { KeystrokeHighlight } from './keystrokeHighlight.js';
 import { findCli } from './lib.js';
 import { PanelReplacement } from './panelReplacement.js';
 import { SettingsWatcher } from './settings.js';
@@ -35,6 +36,12 @@ export default class VeronicaExtension extends Extension {
 
         this._attention = new AttentionTracker(this._settings);
         this._attention.enable();
+
+        // Reading key presses is the compositor's job on Wayland for the same
+        // reason dimming is: no client may observe input meant for another
+        // window. It stays listen-only and never consumes an event.
+        this._keystrokes = new KeystrokeHighlight(this._settings);
+        this._keystrokes.enable();
 
         this._clipboard = new ClipboardWatcher();
         if (this._clipboard.enable())
@@ -57,6 +64,8 @@ export default class VeronicaExtension extends Extension {
     disable() {
         this._attention?.disable();
         this._attention = null;
+        this._keystrokes?.disable();
+        this._keystrokes = null;
         this._actionBridge?.disable();
         this._actionBridge = null;
 

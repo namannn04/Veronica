@@ -92,10 +92,8 @@ pub async fn detect() -> ScreenShareState {
 }
 
 pub async fn detect_on(connection: &Connection) -> ScreenShareState {
-    let screencast =
-        count_sessions(connection, SCREEN_CAST_BUS, SCREEN_CAST_SESSIONS_PATH).await;
-    let remote =
-        count_sessions(connection, REMOTE_DESKTOP_BUS, REMOTE_DESKTOP_SESSIONS_PATH).await;
+    let screencast = count_sessions(connection, SCREEN_CAST_BUS, SCREEN_CAST_SESSIONS_PATH).await;
+    let remote = count_sessions(connection, REMOTE_DESKTOP_BUS, REMOTE_DESKTOP_SESSIONS_PATH).await;
 
     match (screencast, remote) {
         // Neither service answered: this is not a Mutter desktop, so detection
@@ -105,9 +103,7 @@ pub async fn detect_on(connection: &Connection) -> ScreenShareState {
         )),
         // One answering is enough to report on; the other simply contributes
         // nothing, which is what a desktop without remote desktop looks like.
-        (casts, remotes) => {
-            ScreenShareState::from_counts(casts.unwrap_or(0), remotes.unwrap_or(0))
-        }
+        (casts, remotes) => ScreenShareState::from_counts(casts.unwrap_or(0), remotes.unwrap_or(0)),
     }
 }
 
@@ -228,7 +224,11 @@ mod tests {
     fn a_malformed_or_empty_document_counts_nothing() {
         assert_eq!(count_child_nodes(""), 0);
         assert_eq!(count_child_nodes("<node name=\"unterminated"), 0);
-        assert_eq!(count_child_nodes("<node name=\"\"/>"), 0, "an empty name is not a node");
+        assert_eq!(
+            count_child_nodes("<node name=\"\"/>"),
+            0,
+            "an empty name is not a node"
+        );
     }
 
     #[test]
@@ -273,7 +273,10 @@ mod tests {
         let state = ScreenShareState::cannot_tell("not GNOME".into());
         assert!(!state.sharing);
         assert_eq!(state.reason, None);
-        assert!(state.unavailable.is_some(), "the interface must be able to say so");
+        assert!(
+            state.unavailable.is_some(),
+            "the interface must be able to say so"
+        );
     }
 
     /// Runs against whatever compositor is actually present.

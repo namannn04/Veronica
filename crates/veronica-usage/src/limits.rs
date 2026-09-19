@@ -414,15 +414,24 @@ mod tests {
 
     #[test]
     fn a_fully_consumed_window_is_maximum_risk_regardless_of_time_left() {
-        assert_eq!(smart_risk(100.0, Some(at(3600)), SESSION_WINDOW_SECS, 10.0, at(0)), 1.0);
-        assert_eq!(smart_risk(140.0, None, SESSION_WINDOW_SECS, 10.0, at(0)), 1.0);
+        assert_eq!(
+            smart_risk(100.0, Some(at(3600)), SESSION_WINDOW_SECS, 10.0, at(0)),
+            1.0
+        );
+        assert_eq!(
+            smart_risk(140.0, None, SESSION_WINDOW_SECS, 10.0, at(0)),
+            1.0
+        );
     }
 
     #[test]
     fn without_a_reset_time_risk_falls_back_to_absolute_usage_only() {
         // 50% is the bottom of the absolute ramp, so risk is zero there and
         // rises to one at 100%.
-        assert_eq!(smart_risk(50.0, None, SESSION_WINDOW_SECS, 10.0, at(0)), 0.0);
+        assert_eq!(
+            smart_risk(50.0, None, SESSION_WINDOW_SECS, 10.0, at(0)),
+            0.0
+        );
         assert!((smart_risk(75.0, None, SESSION_WINDOW_SECS, 10.0, at(0)) - 0.5).abs() < 1e-12);
     }
 
@@ -450,15 +459,27 @@ mod tests {
     fn zone_hysteresis_holds_a_zone_until_the_falling_threshold() {
         // 0.52 is above FALLING_WARNING (0.50) but below RISING_WARNING (0.55),
         // so a warning stays a warning while a chill would not become one.
-        assert_eq!(zone_for_risk(0.52, Some(PacingZone::Warning)), PacingZone::Warning);
-        assert_eq!(zone_for_risk(0.52, Some(PacingZone::Chill)), PacingZone::OnTrack);
+        assert_eq!(
+            zone_for_risk(0.52, Some(PacingZone::Warning)),
+            PacingZone::Warning
+        );
+        assert_eq!(
+            zone_for_risk(0.52, Some(PacingZone::Chill)),
+            PacingZone::OnTrack
+        );
         assert_eq!(zone_for_risk(0.52, None), PacingZone::OnTrack);
     }
 
     #[test]
     fn zone_falls_all_the_way_from_hot_when_risk_collapses() {
-        assert_eq!(zone_for_risk(0.10, Some(PacingZone::Hot)), PacingZone::Chill);
-        assert_eq!(zone_for_risk(0.60, Some(PacingZone::Hot)), PacingZone::Warning);
+        assert_eq!(
+            zone_for_risk(0.10, Some(PacingZone::Hot)),
+            PacingZone::Chill
+        );
+        assert_eq!(
+            zone_for_risk(0.60, Some(PacingZone::Hot)),
+            PacingZone::Warning
+        );
         assert_eq!(zone_for_risk(0.80, Some(PacingZone::Hot)), PacingZone::Hot);
     }
 
@@ -501,9 +522,8 @@ mod tests {
         let start = at(0);
         let deadline = at(1000);
         let now = at(500);
-        let state = |actual: f64| {
-            budget_status(actual, 80.0, start, deadline, now, 5.0, None).state
-        };
+        let state =
+            |actual: f64| budget_status(actual, 80.0, start, deadline, now, 5.0, None).state;
         assert_eq!(state(40.0), BudgetState::OnPace);
         assert_eq!(state(48.0), BudgetState::Over);
         assert_eq!(state(30.0), BudgetState::Under);

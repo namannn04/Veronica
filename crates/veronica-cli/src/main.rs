@@ -7,15 +7,25 @@
 
 mod alerts_cmd;
 mod attention_cmd;
+mod audit_cmd;
 mod backup_cmd;
 mod calendar_cmd;
+mod cleaner_cmd;
 mod clipboard_cmd;
 mod color_cmd;
+mod companion_cmd;
+mod database_cmd;
+mod emoji_cmd;
 mod focus_dim_cmd;
 mod format;
+mod herdr_cmd;
+mod keystroke_cmd;
 mod machines_cmd;
+mod maintenance_cmd;
 mod media_cmd;
+mod power_cmd;
 mod presenter_cmd;
+mod quinjet_cmd;
 mod system_cmd;
 mod usage_cmd;
 
@@ -68,6 +78,23 @@ enum Command {
     /// The clipboard history.
     #[command(subcommand, alias = "clip")]
     Clipboard(clipboard_cmd::ClipboardCommand),
+    /// The disk cleaner: measure developer caches and build output, and move
+    /// what you choose to the Trash.
+    #[command(subcommand)]
+    Cleaner(cleaner_cmd::CleanerCommand),
+    /// App Maintenance: what is installed, what can be updated, and removing
+    /// it with the consequences shown first.
+    #[command(subcommand, alias = "pkg")]
+    Maintenance(maintenance_cmd::MaintenanceCommand),
+    /// Site Audit: crawl a site's sitemap and check each page's metadata.
+    #[command(subcommand, alias = "seo")]
+    Audit(audit_cmd::AuditCommand),
+    /// Explore databases and run guarded changes.
+    #[command(subcommand, alias = "db")]
+    Database(database_cmd::DatabaseCommand),
+    /// Quinjet: discover and open review workspaces.
+    #[command(subcommand)]
+    Quinjet(quinjet_cmd::QuinjetCommand),
     /// Sample a colour from the screen and keep a swatch history.
     #[command(subcommand)]
     Color(color_cmd::ColorCommand),
@@ -83,12 +110,27 @@ enum Command {
     /// CPU, memory, storage and battery information.
     #[command(subcommand)]
     System(system_cmd::SystemCommand),
+    /// Keep Awake and Lid Awake, open-ended or for a while.
+    #[command(subcommand)]
+    Power(power_cmd::PowerCommand),
     /// Presenter mode: blur sensitive figures on a shared screen.
     #[command(subcommand)]
     Presenter(presenter_cmd::PresenterCommand),
     /// Focus Dim: darken everything behind the window you are working in.
     #[command(subcommand, name = "focus-dim")]
     FocusDim(focus_dim_cmd::FocusDimCommand),
+    /// Keystroke Highlight: show each key press on screen for demos.
+    #[command(subcommand, name = "keystroke-highlight", alias = "keys")]
+    Keystroke(keystroke_cmd::KeystrokeCommand),
+    /// Search the emoji catalogue and copy what you pick.
+    #[command(subcommand)]
+    Emoji(emoji_cmd::EmojiCommand),
+    /// The live Herdr agent board.
+    #[command(subcommand)]
+    Herdr(herdr_cmd::HerdrCommand),
+    /// Your private notes and voice-memo metadata.
+    #[command(subcommand)]
+    Companion(companion_cmd::CompanionCommand),
     /// List the extension catalogue and whether each one can run here.
     #[command(name = "extensions", alias = "ext")]
     Extensions {
@@ -159,14 +201,27 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Media(command) => media_cmd::run(command, output).await,
-        Command::System(command) => system_cmd::run(command, output),
+        Command::System(command) => system_cmd::run(command, output).await,
+        Command::Power(command) => power_cmd::run(&directories, command, output).await,
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
-        Command::FocusDim(command) => {
-            focus_dim_cmd::run(&directories, command, output).await
+        Command::FocusDim(command) => focus_dim_cmd::run(&directories, command, output).await,
+        Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
+        Command::Herdr(command) => herdr_cmd::run(command, output).await,
+        Command::Companion(command) => companion_cmd::run(&directories, command, output),
+        Command::Emoji(command) => {
+            // The picker honours the configured skin tone, so the CLI and the
+            // app agree on what a pick produces.
+            let settings = Settings::load(&directories.settings_file())?;
+            emoji_cmd::run(&directories, &settings, command, output).await
         }
         Command::Calendar(command) => calendar_cmd::run(command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output).await,
+        Command::Cleaner(command) => cleaner_cmd::run(command, output),
+        Command::Maintenance(command) => maintenance_cmd::run(command, output).await,
+        Command::Audit(command) => audit_cmd::run(command, output).await,
+        Command::Database(command) => database_cmd::run(&directories, command, output).await,
+        Command::Quinjet(command) => quinjet_cmd::run(&directories, command, output).await,
         Command::Color(command) => {
             // The picker honours the configured format and profile, so the CLI
             // and the app agree on what a pick produces.
@@ -176,11 +231,7 @@ async fn run(cli: &Cli) -> Result<()> {
     }
 }
 
-fn diagnose(
-    directories: &AppDirectories,
-    session: DesktopSession,
-    output: Output,
-) -> Result<()> {
+fn diagnose(directories: &AppDirectories, session: DesktopSession, output: Output) -> Result<()> {
     let settings = Settings::load(&directories.settings_file())?;
     let report = Diagnostics::collect(directories, session, &settings);
 
@@ -211,7 +262,11 @@ fn diagnose(
                 ]
             })
             .collect();
-        let _ = writeln!(out, "{}", format::table(&["capability", "state", "backend"], &rows));
+        let _ = writeln!(
+            out,
+            "{}",
+            format::table(&["capability", "state", "backend"], &rows)
+        );
 
         let _ = writeln!(out, "\nExtensions");
         let rows: Vec<Vec<String>> = report
@@ -226,7 +281,11 @@ fn diagnose(
                 ]
             })
             .collect();
-        let _ = write!(out, "{}", format::table(&["id", "title", "enabled", "availability"], &rows));
+        let _ = write!(
+            out,
+            "{}",
+            format::table(&["id", "title", "enabled", "availability"], &rows)
+        );
         out
     })
 }
@@ -341,6 +400,9 @@ fn extensions(
                 ]
             })
             .collect();
-        format::table(&["id", "title", "group", "enabled", "availability"], &table_rows)
+        format::table(
+            &["id", "title", "group", "enabled", "availability"],
+            &table_rows,
+        )
     })
 }

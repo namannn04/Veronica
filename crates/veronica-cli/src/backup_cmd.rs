@@ -26,11 +26,7 @@ pub enum BackupCommand {
     },
 }
 
-pub fn run(
-    directories: &AppDirectories,
-    command: &BackupCommand,
-    output: Output,
-) -> Result<()> {
+pub fn run(directories: &AppDirectories, command: &BackupCommand, output: Output) -> Result<()> {
     match command {
         BackupCommand::Export { path } => {
             let now = chrono::Utc::now();
@@ -50,11 +46,13 @@ pub fn run(
                     "bytes": bytes,
                     "createdAt": now.to_rfc3339(),
                 }),
-                || format!(
-                    "exported {} files to {}",
-                    archive.manifest.files.len(),
-                    destination.display()
-                ),
+                || {
+                    format!(
+                        "exported {} files to {}",
+                        archive.manifest.files.len(),
+                        destination.display()
+                    )
+                },
             )
         }
         BackupCommand::Inspect { path } => {

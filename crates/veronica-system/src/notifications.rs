@@ -208,9 +208,7 @@ mod tests {
     fn hints(pairs: &[(&str, Value<'static>)]) -> HashMap<String, OwnedValue> {
         pairs
             .iter()
-            .map(|(key, value)| {
-                (key.to_string(), OwnedValue::try_from(value).unwrap())
-            })
+            .map(|(key, value)| (key.to_string(), OwnedValue::try_from(value).unwrap()))
             .collect()
     }
 
@@ -248,7 +246,11 @@ mod tests {
 
     #[test]
     fn maps_the_urgency_hint() {
-        for (raw, expected) in [(0u8, Urgency::Low), (1, Urgency::Normal), (2, Urgency::Critical)] {
+        for (raw, expected) in [
+            (0u8, Urgency::Low),
+            (1, Urgency::Normal),
+            (2, Urgency::Critical),
+        ] {
             let n = from_body(body("s", "b", hints(&[("urgency", Value::U8(raw))])), 1, 0);
             assert_eq!(n.urgency, expected);
         }

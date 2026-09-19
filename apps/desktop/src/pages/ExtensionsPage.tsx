@@ -87,7 +87,18 @@ export function ExtensionsPage({
       </div>
 
       <section className="card">
-        {shown.length === 0 && <p className="card-note">Nothing matches that search.</p>}
+        {/* An empty list has three quite different causes, and blaming the
+            search box for all of them is wrong twice: the catalogue arrives
+            with diagnostics, which may not have answered yet or at all. */}
+        {shown.length === 0 && (
+          <p className="card-note">
+            {diagnostics === null
+              ? "Reading the extension catalogue…"
+              : query.trim() || group !== "all"
+                ? "Nothing here matches. Clear the search, or choose All."
+                : "The extension catalogue is empty, which should not happen. Run `vr diagnose` to see what Veronica found."}
+          </p>
+        )}
         {shown.map((entry) => {
           const unavailable = entry.availability === "unavailable";
           return (

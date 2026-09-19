@@ -85,7 +85,10 @@ pub async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
                             ]
                         })
                         .collect();
-                    for line in format::table(&["when", "event", "join"], &rows).lines().skip(1) {
+                    for line in format::table(&["when", "event", "join"], &rows)
+                        .lines()
+                        .skip(1)
+                    {
                         let _ = writeln!(out, "  {line}");
                     }
                 }

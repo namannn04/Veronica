@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
 
 import { SpendCalendar } from "../components/charts";
 import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import { limitProviderOf, storedLimitProvider, type LimitProvider } from "../lib/preferences";
 import type { AgendaView, GaugeReport, NowPlaying, SystemSnapshot, UsageView } from "../lib/types";
 
@@ -84,8 +83,8 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
 
   useEffect(() => { void refresh(); }, []);
   useEffect(() => {
-    const changed = listen("settings-updated", () => void ipc.settingsAll().then(setSettings).catch(() => {}));
-    const usage = listen("usage-updated", () => void refresh());
+    const changed = listenEvent("settings-updated", () => void ipc.settingsAll().then(setSettings).catch(() => {}));
+    const usage = listenEvent("usage-updated", () => void refresh());
     return () => { void changed.then((unlisten) => unlisten()); void usage.then((unlisten) => unlisten()); };
   }, []);
 

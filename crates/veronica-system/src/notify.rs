@@ -95,10 +95,7 @@ pub async fn post(connection: &Connection, notification: &Notification) -> Resul
     let mut hints: HashMap<&str, Value<'_>> = HashMap::new();
     hints.insert("urgency", Value::U8(notification.urgency.as_u8()));
     // Lets the desktop group Veronica's banners and show the right icon.
-    hints.insert(
-        "desktop-entry",
-        Value::Str(veronica_core::APP_ID.into()),
-    );
+    hints.insert("desktop-entry", Value::Str(veronica_core::APP_ID.into()));
 
     let id: u32 = connection
         .call_method(

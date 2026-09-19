@@ -1,8 +1,7 @@
-import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { countdown, timeAgo } from "../lib/format";
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import type { AttentionOverview, CompanionItem } from "../lib/types";
 
 type Section = "all" | "notes" | "voice" | "activity";
@@ -37,7 +36,7 @@ export function CompanionPage() {
     void ipc.companionRecordingStatus().then((status) => {
       setRecording(status.recording); setElapsed(status.elapsedSeconds);
     }).catch(() => {});
-    const updated = listen("companion-updated", () => void refresh(queryRef.current));
+    const updated = listenEvent("companion-updated", () => void refresh(queryRef.current));
     return () => { void updated.then((unlisten) => unlisten()); };
   }, []);
 

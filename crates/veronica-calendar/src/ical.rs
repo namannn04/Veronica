@@ -150,19 +150,28 @@ mod tests {
     #[test]
     fn unfolds_tab_continuations_too() {
         let folded = "SUMMARY:Part one\r\n\tand part two";
-        assert_eq!(property(folded, "SUMMARY").as_deref(), Some("Part oneand part two"));
+        assert_eq!(
+            property(folded, "SUMMARY").as_deref(),
+            Some("Part oneand part two")
+        );
     }
 
     #[test]
     fn ignores_parameters_on_the_property_name() {
         let line = "DTSTART;TZID=Europe/London:20260820T090000";
-        assert_eq!(property(line, "DTSTART").as_deref(), Some("20260820T090000"));
+        assert_eq!(
+            property(line, "DTSTART").as_deref(),
+            Some("20260820T090000")
+        );
     }
 
     #[test]
     fn a_colon_inside_a_quoted_parameter_is_not_the_separator() {
         let line = "ATTENDEE;CN=\"Smith, J: Lead\";ROLE=REQ:mailto:j@example.com";
-        assert_eq!(property(line, "ATTENDEE").as_deref(), Some("mailto:j@example.com"));
+        assert_eq!(
+            property(line, "ATTENDEE").as_deref(),
+            Some("mailto:j@example.com")
+        );
     }
 
     #[test]

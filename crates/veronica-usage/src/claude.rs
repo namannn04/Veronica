@@ -92,9 +92,7 @@ pub fn scoped_label(key: &str) -> String {
         .map(|part| {
             let mut chars = part.chars();
             match chars.next() {
-                Some(first) => {
-                    first.to_uppercase().collect::<String>() + chars.as_str()
-                }
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
                 None => String::new(),
             }
         })
@@ -136,7 +134,9 @@ pub fn parse_limits(body: &Value) -> ClaudeLimits {
             if entry.get("kind").and_then(Value::as_str) != Some("weekly_scoped") {
                 continue;
             }
-            let Some(parsed) = window(entry) else { continue };
+            let Some(parsed) = window(entry) else {
+                continue;
+            };
             let label = entry
                 .get("scope")
                 .and_then(|scope| scope.get("model"))
@@ -267,9 +267,9 @@ pub async fn limits_for_user(now: DateTime<Utc>) -> Result<Option<ClaudeLimits>>
                 Credentials::persist(&path, &credentials.applied(&response, now))?;
                 tracing::debug!("refreshed the Claude access token");
             }
-            None => bail!(
-                "the saved Claude credentials have expired; sign in with Claude Code again"
-            ),
+            None => {
+                bail!("the saved Claude credentials have expired; sign in with Claude Code again")
+            }
         }
     }
 

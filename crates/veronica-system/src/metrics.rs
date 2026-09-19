@@ -133,7 +133,9 @@ pub fn running_processes() -> Vec<RunningProcess> {
         .iter()
         .filter(|(pid, process)| {
             Some(**pid) != current_pid
-                && current_user.as_ref().is_none_or(|uid| process.user_id() == Some(uid))
+                && current_user
+                    .as_ref()
+                    .is_none_or(|uid| process.user_id() == Some(uid))
                 && !process.name().is_empty()
         })
         .map(|(pid, process)| RunningProcess {
@@ -157,16 +159,27 @@ pub fn running_processes() -> Vec<RunningProcess> {
 pub fn terminate_process(pid: u32) -> anyhow::Result<()> {
     anyhow::ensure!(pid > 1, "refusing to terminate a system process");
     let target = sysinfo::Pid::from_u32(pid);
-    anyhow::ensure!(Some(target) != sysinfo::get_current_pid().ok(), "Veronica cannot quit itself here");
+    anyhow::ensure!(
+        Some(target) != sysinfo::get_current_pid().ok(),
+        "Veronica cannot quit itself here"
+    );
 
     let system = System::new_all();
-    let process = system.process(target).ok_or_else(|| anyhow::anyhow!("process {pid} is no longer running"))?;
+    let process = system
+        .process(target)
+        .ok_or_else(|| anyhow::anyhow!("process {pid} is no longer running"))?;
     let current_user = sysinfo::get_current_pid()
         .ok()
         .and_then(|own| system.process(own))
         .and_then(|own| own.user_id());
-    anyhow::ensure!(current_user.is_some() && process.user_id() == current_user, "process {pid} belongs to another user");
-    anyhow::ensure!(process.kill_with(Signal::Term).unwrap_or(false), "process {pid} refused the quit request");
+    anyhow::ensure!(
+        current_user.is_some() && process.user_id() == current_user,
+        "process {pid} belongs to another user"
+    );
+    anyhow::ensure!(
+        process.kill_with(Signal::Term).unwrap_or(false),
+        "process {pid} refused the quit request"
+    );
     Ok(())
 }
 
@@ -219,7 +232,10 @@ impl MetricsSampler {
             per_core: cpus.iter().map(sysinfo::Cpu::cpu_usage).collect(),
             physical_cores,
             logical_cores: cpus.len(),
-            brand: cpus.first().map(|c| c.brand().to_string()).unwrap_or_default(),
+            brand: cpus
+                .first()
+                .map(|c| c.brand().to_string())
+                .unwrap_or_default(),
             frequency_mhz: cpus.first().map(sysinfo::Cpu::frequency).unwrap_or(0),
         };
 
@@ -275,7 +291,9 @@ pub fn is_pseudo_mount(mount_point: &str) -> bool {
         "/run/credentials",
         "/dev/loop",
     ];
-    PREFIXES.iter().any(|prefix| mount_point.starts_with(prefix))
+    PREFIXES
+        .iter()
+        .any(|prefix| mount_point.starts_with(prefix))
 }
 
 /// Thermal zones from sysfs. Labels come from `type`, which names the sensor
@@ -438,7 +456,10 @@ mod tests {
     fn running_processes_are_user_owned_and_never_include_veronica_itself() {
         let own = sysinfo::get_current_pid().unwrap().as_u32();
         let rows = running_processes();
-        assert!(!rows.is_empty(), "the test process should see its user session");
+        assert!(
+            !rows.is_empty(),
+            "the test process should see its user session"
+        );
         assert!(rows.iter().all(|row| row.pid != own));
         assert!(rows.iter().all(|row| !row.name.is_empty()));
     }
