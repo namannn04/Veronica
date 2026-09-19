@@ -34,6 +34,7 @@ export class ClipboardWatcher {
         this._lastText = null;
         this._lastWriteAt = 0;
         this._pending = false;
+        this._generation = 0;
     }
 
     enable() {
@@ -58,6 +59,8 @@ export class ClipboardWatcher {
         this._selection = null;
         this._ownerChangedId = 0;
         this._lastText = null;
+        this._pending = false;
+        this._generation += 1;
     }
 
     _onClipboardChanged() {
@@ -68,8 +71,11 @@ export class ClipboardWatcher {
         if (this._pending)
             return;
         this._pending = true;
+        const generation = this._generation;
 
         St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_clipboard, text) => {
+            if (generation !== this._generation)
+                return;
             this._pending = false;
             if (!text || !text.trim())
                 return;

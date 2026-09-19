@@ -15,6 +15,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
+import { booleanSetting } from './featureSwitch.js';
 import { launchApp, runJson } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
@@ -30,11 +31,21 @@ const TABS = [
 ];
 
 export class NotchPanel {
-    constructor(clipboardWatcher, cancellable, closeMenu = null, onThemeChanged = null) {
+    constructor(
+        clipboardWatcher,
+        cancellable,
+        closeMenu = null,
+        onThemeChanged = null,
+        settings = null,
+        keyboardCleaner = null
+    ) {
         this._clipboardWatcher = clipboardWatcher;
         this._cancellable = cancellable;
         this._closeMenu = closeMenu;
         this._onThemeChanged = onThemeChanged;
+        this._settings = settings;
+        this._keyboardCleaner = keyboardCleaner;
+        this._featureUnsubscribe = null;
         this._activeTab = 'home';
         this._tabButtons = new Map();
         this._panels = new Map();
@@ -61,6 +72,9 @@ export class NotchPanel {
         this._addPanel('camera', this._cameraPanel());
         this._selectTab('home');
         this._watchSettings();
+        this._featureUnsubscribe = this._settings?.subscribe(
+            values => this._applyFeatureSettings(values)
+        ) ?? null;
     }
 
     get isLive() {
@@ -68,8 +82,10 @@ export class NotchPanel {
     }
 
     showTab(id) {
-        if (this._panels.has(id))
-            this._selectTab(id);
+        if (!this._panels.has(id) || (id === 'clipboard' && !this._clipboardEnabled))
+            return false;
+        this._selectTab(id);
+        return true;
     }
 
     _header() {
@@ -176,7 +192,10 @@ export class NotchPanel {
 
         const actions = new St.BoxLayout({ style_class: 'veronica-actions-row' });
         actions.add_child(this._actionTile(
-            'input-keyboard-symbolic', 'Clean keys', () => this._startCleanKeys()
+            'input-keyboard-symbolic', 'Clean keys', () => {
+                this._closeMenu?.();
+                this._keyboardCleaner?.start();
+            }
         ));
         this._keepAwake = this._toggleTile(
             'weather-clear-night-symbolic', 'Keep awake', 'preventSleep',
@@ -193,9 +212,10 @@ export class NotchPanel {
             active => this._applyPresenter(active)
         );
         actions.add_child(this._presenter);
-        actions.add_child(this._actionTile(
+        this._pickColorTile = this._actionTile(
             'color-select-symbolic', 'Pick color', () => this._pickColor()
-        ));
+        );
+        actions.add_child(this._pickColorTile);
         panel.add_child(actions);
         return panel;
     }
@@ -551,69 +571,27 @@ export class NotchPanel {
         this._stopCameraPreview();
     }
 
-    startCleanKeys() {
-        this._startCleanKeys();
-    }
-
     pickColor() {
+        if (!this._colorPickerEnabled)
+            return false;
         this._pickColor();
+        return true;
     }
 
-    _startCleanKeys() {
-        this._closeMenu?.();
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            if (!this.actor || this._cleanOverlay)
-                return GLib.SOURCE_REMOVE;
+    _applyFeatureSettings(values) {
+        this._clipboardEnabled = booleanSetting(values, 'clipboardEnabled', true);
+        const clipboardButton = this._tabButtons.get('clipboard');
+        const clipboardPanel = this._panels.get('clipboard');
+        if (clipboardButton)
+            clipboardButton.visible = this._clipboardEnabled;
+        if (!this._clipboardEnabled && this._activeTab === 'clipboard')
+            this._selectTab('home');
+        else if (clipboardPanel && this._activeTab !== 'clipboard')
+            clipboardPanel.visible = false;
 
-            const overlay = new St.Widget({
-                style_class: 'veronica-clean-overlay',
-                reactive: true,
-                can_focus: true,
-                layout_manager: new Clutter.BinLayout(),
-            });
-            overlay.set_position(0, 0);
-            overlay.set_size(global.stage.width, global.stage.height);
-            overlay.connect('key-press-event', () => Clutter.EVENT_STOP);
-            overlay.connect('key-release-event', () => Clutter.EVENT_STOP);
-
-            const card = new St.BoxLayout({
-                orientation: Clutter.Orientation.VERTICAL,
-                style_class: 'veronica-clean-card',
-                x_align: Clutter.ActorAlign.CENTER,
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            card.add_child(new St.Icon({ icon_name: 'input-keyboard-symbolic' }));
-            card.add_child(new St.Label({ text: 'Keyboard cleaning mode' }));
-            card.add_child(new St.Label({
-                text: 'Keys are blocked. Use the pointer to finish.',
-                style_class: 'veronica-clean-detail',
-            }));
-            const done = new St.Button({
-                style_class: 'veronica-clean-done',
-                label: 'Done',
-                can_focus: true,
-            });
-            done.connect('clicked', () => this._stopCleanKeys());
-            card.add_child(done);
-            overlay.add_child(card);
-
-            this._cleanOverlay = overlay;
-            Main.layoutManager.addTopChrome(overlay);
-            this._cleanGrab = Main.pushModal(overlay);
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-
-    _stopCleanKeys() {
-        if (this._cleanGrab) {
-            Main.popModal(this._cleanGrab);
-            this._cleanGrab = null;
-        }
-        if (this._cleanOverlay) {
-            Main.layoutManager.removeChrome(this._cleanOverlay);
-            this._cleanOverlay.destroy();
-            this._cleanOverlay = null;
-        }
+        this._colorPickerEnabled = booleanSetting(values, 'colorPickerEnabled', false);
+        if (this._pickColorTile)
+            this._pickColorTile.visible = this._colorPickerEnabled;
     }
 
     _applyPresenter(active) {
@@ -770,7 +748,8 @@ export class NotchPanel {
         }
         this._settingsMonitor?.cancel();
         this._settingsMonitor = null;
-        this._stopCleanKeys();
+        this._featureUnsubscribe?.();
+        this._featureUnsubscribe = null;
         this._power?.destroy();
         this._power = null;
         this._cameraPreview?.destroy();
@@ -786,6 +765,8 @@ export class NotchPanel {
         this._cameraDetail = null;
         this._cameraButton = null;
         this._onThemeChanged = null;
+        this._settings = null;
+        this._keyboardCleaner = null;
         this.actor?.destroy();
         this.actor = null;
     }

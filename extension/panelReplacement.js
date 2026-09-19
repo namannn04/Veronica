@@ -22,31 +22,40 @@ export class PanelReplacement {
         return this._active;
     }
 
-    cleanKeys() {
-        this._notch?.cleanKeys();
-    }
-
     pickColor() {
-        this._notch?.pickColor();
+        if (!this._notch)
+            return false;
+        return this._notch.pickColor();
     }
 
     showClipboard() {
-        this._notch?.showClipboard();
+        if (!this._notch)
+            return false;
+        return this._notch.showClipboard();
     }
 
     /** Hide only the stock date menu and show Veronica's own. Safe to call twice. */
-    enable(clipboardWatcher, cancellable, settings) {
+    enable(clipboardWatcher, cancellable, settings, keyboardCleaner) {
         if (this._active)
             return;
 
         this._hideStock(REPLACED_CLOCK);
 
         try {
-            this._notch = new NotchButton(clipboardWatcher, cancellable, settings);
+            this._notch = new NotchButton(
+                clipboardWatcher, cancellable, settings, keyboardCleaner
+            );
             Main.panel.addToStatusArea(NOTCH_ROLE, this._notch, 0, 'center');
         } catch (error) {
             console.debug(`veronica: cannot build the notch clock: ${error}`);
             this._notch = null;
+            for (const [name, wasVisible] of this._hidden) {
+                const actor = Main.panel.statusArea[name];
+                if (actor)
+                    actor.visible = wasVisible;
+            }
+            this._hidden.clear();
+            return;
         }
 
         this._active = true;

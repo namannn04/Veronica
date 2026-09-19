@@ -24,10 +24,12 @@ const CLOCK_TICK_SECONDS = 15;
 
 export const NotchButton = GObject.registerClass(
 class NotchButton extends PanelMenu.Button {
-    _init(clipboardWatcher, cancellable, settings) {
+    _init(clipboardWatcher, cancellable, settings, keyboardCleaner) {
         super._init(0.5, 'Veronica', false);
         this._clipboardWatcher = clipboardWatcher;
         this._cancellable = cancellable;
+        this._settings = settings;
+        this._keyboardCleaner = keyboardCleaner;
         this._clockTimeoutId = 0;
 
         this._clockLabel = new St.Label({
@@ -77,7 +79,9 @@ class NotchButton extends PanelMenu.Button {
             this._clipboardWatcher,
             this._cancellable,
             () => this.menu.close(),
-            theme => this._applyTheme(theme)
+            theme => this._applyTheme(theme),
+            this._settings,
+            this._keyboardCleaner
         );
         const item = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
         item.add_style_class_name('veronica-notch-root-item');
@@ -175,17 +179,15 @@ class NotchButton extends PanelMenu.Button {
         await this._notchPanel?.refresh();
     }
 
-    cleanKeys() {
-        this._notchPanel?.startCleanKeys();
-    }
-
     pickColor() {
-        this._notchPanel?.pickColor();
+        return this._notchPanel?.pickColor() ?? false;
     }
 
     showClipboard() {
-        this._notchPanel?.showTab('clipboard');
+        if (!this._notchPanel?.showTab('clipboard'))
+            return false;
         this.menu.open();
+        return true;
     }
 
     destroy() {
@@ -197,6 +199,8 @@ class NotchButton extends PanelMenu.Button {
         this._stats = null;
         this._notchPanel?.destroy();
         this._notchPanel = null;
+        this._settings = null;
+        this._keyboardCleaner = null;
         super.destroy();
     }
 });
