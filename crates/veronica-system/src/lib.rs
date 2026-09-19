@@ -17,6 +17,7 @@ pub mod power;
 pub mod quinjet;
 pub mod screencast;
 pub mod selection;
+pub mod tools;
 
 pub use bluetooth::BluetoothState;
 pub use metrics::{MetricsSampler, SystemSnapshot};

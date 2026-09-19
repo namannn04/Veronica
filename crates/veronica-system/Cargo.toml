@@ -15,3 +15,6 @@ sysinfo = { workspace = true }
 zbus = { workspace = true }
 chrono = { workspace = true }
 futures-util = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

@@ -406,6 +406,7 @@ vr backup export             back up settings and persistent app data
 vr backup inspect <file>     verify and describe an archive without restoring
 vr backup import <file> --confirm  validate and restore an archive atomically
 vr extensions                what can run on this session, and why not
+vr tools                     the command line programs the extensions need
 vr config set <key> <value>  every setting the UI exposes
 ```
 

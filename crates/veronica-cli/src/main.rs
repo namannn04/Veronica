@@ -27,6 +27,7 @@ mod power_cmd;
 mod presenter_cmd;
 mod quinjet_cmd;
 mod system_cmd;
+mod tools_cmd;
 mod usage_cmd;
 
 use anyhow::{Context, Result};
@@ -131,6 +132,12 @@ enum Command {
     /// Your private notes and voice-memo metadata.
     #[command(subcommand)]
     Companion(companion_cmd::CompanionCommand),
+    /// The command line programs Veronica's extensions need, and whether
+    /// this computer has them.
+    Tools {
+        #[command(subcommand)]
+        command: Option<tools_cmd::ToolCommand>,
+    },
     /// List the extension catalogue and whether each one can run here.
     #[command(name = "extensions", alias = "ext")]
     Extensions {
@@ -194,6 +201,14 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Extensions { query } => {
             let session = veronica_system::detect_session().await;
             extensions(&directories, session, query, output)
+        }
+        Command::Tools { command } => {
+            // `vr tools` on its own is `vr tools ls`, as Edith's is.
+            tools_cmd::run(
+                command.as_ref().unwrap_or(&tools_cmd::ToolCommand::Ls),
+                output,
+            )
+            .await
         }
         Command::Config(command) => config(&directories, command, output),
         Command::Usage(command) => usage_cmd::run(&directories, command, output).await,
