@@ -13,6 +13,7 @@
 //! others write to stdout, so reading only one of them would leave half the
 //! catalogue looking broken.
 
+use std::collections::BTreeMap;
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -72,15 +73,108 @@ pub async fn readiness(tool: &ToolSpec) -> Readiness {
     }
 }
 
+/// One tool, probed, with everything a screen or a terminal needs to say
+/// about it. The CLI and the app share the shape so their answers cannot drift.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Report {
+    pub id: &'static str,
+    pub display_name: &'static str,
+    pub why: &'static str,
+    pub instruction: &'static str,
+    /// The extensions that named this tool, so a missing one points somewhere.
+    pub wanted_by: Vec<&'static str>,
+    #[serde(flatten)]
+    pub readiness: Readiness,
+}
+
+impl Report {
+    /// What to do about a tool that is not ready.
+    ///
+    /// A tool that is present but will not run needs the diagnosis, not the
+    /// install line: telling someone to install what they already have is how
+    /// a broken symlink turns into an afternoon.
+    pub fn note(&self) -> String {
+        match &self.readiness {
+            Readiness::Error { detail } => detail.clone(),
+            _ => format!("{} {}", self.why, self.instruction),
+        }
+    }
+}
+
 /// Every tool in the catalogue, probed together.
 ///
 /// Concurrently, because five sequential five-second timeouts is half a minute
 /// of a list that should feel instant, and the probes do not contend.
-pub async fn catalogue() -> Vec<(&'static ToolSpec, Readiness)> {
-    let probes = veronica_core::tools::CATALOG
-        .iter()
-        .map(|tool| async move { (tool, readiness(tool).await) });
+pub async fn catalogue() -> Vec<Report> {
+    let probes = veronica_core::tools::CATALOG.iter().map(|tool| async move {
+        Report {
+            id: tool.id,
+            display_name: tool.display_name,
+            why: tool.why,
+            instruction: tool.instruction,
+            wanted_by: veronica_core::tools::wanted_by(tool.id),
+            readiness: readiness(tool).await,
+        }
+    });
     futures_util::future::join_all(probes).await
+}
+
+/// The catalogue, plus what each extension is short of.
+///
+/// The rule about which tools satisfy an extension stays here rather than
+/// being shipped to the interface with the raw lists: one place decides, so
+/// the page, the CLI and any later readiness command cannot answer
+/// differently.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Survey {
+    pub tools: Vec<Report>,
+    /// Extension id to the tools it needs and does not have, by id. An
+    /// extension that is satisfied is absent rather than present and empty.
+    pub unmet: BTreeMap<&'static str, Vec<&'static str>>,
+}
+
+pub async fn survey() -> Survey {
+    let tools = catalogue().await;
+    let unmet = veronica_core::extensions::ENTRIES
+        .iter()
+        .filter_map(|entry| {
+            let missing: Vec<&'static str> = unmet(entry, &tools)
+                .into_iter()
+                .map(|tool| tool.id)
+                .collect();
+            (!missing.is_empty()).then_some((entry.id, missing))
+        })
+        .collect();
+    Survey { tools, unmet }
+}
+
+/// The tools `entry` needs but does not have, empty when it is satisfied.
+///
+/// Under `Any` one installed tool is enough, so nothing is named while the
+/// other is missing; with none of them installed every candidate is named,
+/// because any one of them would fix it.
+pub fn unmet(
+    entry: &veronica_core::extensions::ExtensionEntry,
+    reports: &[Report],
+) -> Vec<&'static ToolSpec> {
+    let required = veronica_core::tools::required_by(entry);
+    let installed = |tool: &ToolSpec| {
+        reports
+            .iter()
+            .any(|report| report.id == tool.id && report.readiness.is_installed())
+    };
+    match veronica_core::tools::rule(entry.id) {
+        veronica_core::tools::ToolRule::Any if required.iter().any(|tool| installed(tool)) => {
+            Vec::new()
+        }
+        veronica_core::tools::ToolRule::Any => required,
+        veronica_core::tools::ToolRule::All => required
+            .into_iter()
+            .filter(|tool| !installed(tool))
+            .collect(),
+    }
 }
 
 /// The first non-empty line the tool prints for its version arguments.
@@ -182,6 +276,87 @@ mod tests {
             instruction: "There is nothing to install.",
         };
         assert_eq!(readiness(&absent).await, Readiness::Uninstalled);
+    }
+
+    fn report(id: &'static str, installed: bool) -> Report {
+        let tool = veronica_core::tools::spec(id).unwrap();
+        Report {
+            id: tool.id,
+            display_name: tool.display_name,
+            why: tool.why,
+            instruction: tool.instruction,
+            wanted_by: veronica_core::tools::wanted_by(tool.id),
+            readiness: if installed {
+                Readiness::Installed {
+                    path: format!("/usr/bin/{id}"),
+                    version: "1.0".to_string(),
+                }
+            } else {
+                Readiness::Uninstalled
+            },
+        }
+    }
+
+    fn entry(id: &str) -> &'static veronica_core::extensions::ExtensionEntry {
+        veronica_core::extensions::ENTRIES
+            .iter()
+            .find(|entry| entry.id == id)
+            .unwrap()
+    }
+
+    fn ids(tools: Vec<&'static ToolSpec>) -> Vec<&'static str> {
+        tools.into_iter().map(|tool| tool.id).collect()
+    }
+
+    /// Agent Usage is Edith's one exception: Claude and Codex report the same
+    /// kind of numbers, so either alone is a working page.
+    #[test]
+    fn agent_usage_is_satisfied_by_either_provider() {
+        let reports = vec![report("claude", true), report("codex", false)];
+        assert!(unmet(entry("usage"), &reports).is_empty());
+    }
+
+    #[test]
+    fn agent_usage_with_no_provider_names_both() {
+        let reports = vec![report("claude", false), report("codex", false)];
+        assert_eq!(
+            ids(unmet(entry("usage"), &reports)),
+            vec!["claude", "codex"]
+        );
+    }
+
+    /// Everything else needs what it declares. This is the case the Extensions
+    /// page got wrong: Herdr reported Ready with no herdr on the machine.
+    #[test]
+    fn herdr_without_herdr_is_unmet() {
+        let reports = vec![report("herdr", false)];
+        assert_eq!(ids(unmet(entry("herdr"), &reports)), vec!["herdr"]);
+    }
+
+    #[test]
+    fn an_extension_that_needs_no_tool_is_never_unmet() {
+        assert!(unmet(entry("emoji"), &[]).is_empty());
+    }
+
+    /// Whatever this machine has installed, the map has to be readable by id
+    /// on both sides: a key nothing matches, or an empty list, would show the
+    /// page a warning it cannot word.
+    #[tokio::test]
+    async fn a_survey_only_names_real_extensions_and_real_shortfalls() {
+        let survey = survey().await;
+        assert_eq!(survey.tools.len(), veronica_core::tools::CATALOG.len());
+        for (extension, missing) in &survey.unmet {
+            assert!(
+                veronica_core::extensions::ENTRIES
+                    .iter()
+                    .any(|entry| entry.id == *extension),
+                "'{extension}' is not an extension"
+            );
+            assert!(!missing.is_empty(), "'{extension}' is short of nothing");
+            for id in missing {
+                assert!(veronica_core::tools::spec(id).is_some());
+            }
+        }
     }
 
     /// The directory is returned alongside the path because dropping it

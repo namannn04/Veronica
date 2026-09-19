@@ -27,6 +27,30 @@ export interface ExtensionReport extends Record<string, unknown> {
   missing?: string[];
 }
 
+export type ToolReadiness =
+  | { state: "installed"; path: string; version: string }
+  | { state: "uninstalled" }
+  | { state: "error"; detail: string };
+
+export type ToolReport = {
+  id: string;
+  displayName: string;
+  why: string;
+  instruction: string;
+  /** The extensions that named this tool. */
+  wantedBy: string[];
+} & ToolReadiness;
+
+export interface ToolSurvey {
+  tools: ToolReport[];
+  /**
+   * Extension id to the tool ids it needs and does not have. Rust decides,
+   * because Agent Usage is satisfied by either provider and nothing else is.
+   * A satisfied extension is absent rather than present and empty.
+   */
+  unmet: Record<string, string[] | undefined>;
+}
+
 export interface DesktopSession {
   kind: "wayland" | "x11" | "headless";
   desktop: string;

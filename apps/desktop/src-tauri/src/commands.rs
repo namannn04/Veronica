@@ -1242,6 +1242,16 @@ pub fn system_quit_process(pid: u32) -> CommandResult<()> {
     veronica_system::metrics::terminate_process(pid).map_err(fail)
 }
 
+/// Every catalogued tool, probed.
+///
+/// Separate from `diagnostics` on purpose: that is read on every launch and on
+/// every settings change, and running five processes each time to answer a
+/// question only the Extensions page asks would make the whole app wait.
+#[tauri::command]
+pub async fn tools_readiness() -> CommandResult<veronica_system::tools::Survey> {
+    Ok(veronica_system::tools::survey().await)
+}
+
 /// The live Herdr board.
 ///
 /// Every `herdr` call inside carries its own timeout, so the page's poll

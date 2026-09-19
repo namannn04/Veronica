@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ipc } from "../lib/ipc";
-import type { Diagnostics, ExtensionReport, ExtensionGroup } from "../lib/types";
+import type {
+  Diagnostics,
+  ExtensionReport,
+  ExtensionGroup,
+  ToolReport,
+  ToolSurvey,
+} from "../lib/types";
 
 const GROUPS: { id: ExtensionGroup | "all"; label: string }[] = [
   { id: "all", label: "All" },
@@ -27,6 +33,20 @@ export function ExtensionsPage({
   const [group, setGroup] = useState<ExtensionGroup | "all">("all");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [survey, setSurvey] = useState<ToolSurvey | null>(null);
+
+  // Probing runs five processes, so it is its own request rather than part of
+  // diagnostics, and its absence leaves the rest of the page usable: a page
+  // that says nothing about tools is the state Veronica shipped with.
+  useEffect(() => {
+    void ipc.toolsReadiness().then(setSurvey).catch(() => setSurvey(null));
+  }, []);
+
+  const toolsById = useMemo(() => {
+    const index = new Map<string, ToolReport>();
+    for (const tool of survey?.tools ?? []) index.set(tool.id, tool);
+    return index;
+  }, [survey]);
 
   const shown = useMemo(() => {
     const entries = diagnostics?.extensions ?? [];
@@ -101,12 +121,15 @@ export function ExtensionsPage({
         )}
         {shown.map((entry) => {
           const unavailable = entry.availability === "unavailable";
+          const unmet = (survey?.unmet[entry.id] ?? [])
+            .map((id) => toolsById.get(id))
+            .filter((tool): tool is ToolReport => tool !== undefined);
           return (
             <div className="ext-row" key={entry.id}>
               <div className="ext-body">
                 <div className="ext-title">
                   {entry.title}
-                  <AvailabilityPill entry={entry} />
+                  <AvailabilityPill entry={entry} unmetTools={unmet.length > 0} />
                 </div>
                 <div className="ext-sub">{entry.subtitle}</div>
                 {entry.missing && entry.missing.length > 0 && (
@@ -114,6 +137,15 @@ export function ExtensionsPage({
                     Needs {entry.missing.map(capabilityLabel).join(", ")}.
                     {" "}
                     {reasonFor(diagnostics, entry.missing[0])}
+                  </div>
+                )}
+                {unmet.length > 0 && (
+                  <div className="ext-sub" style={{ marginTop: 3 }}>
+                    {/* "or" because Agent Usage takes either provider, and the
+                        Rust rule has already decided which case this is: a
+                        list of one reads the same either way. */}
+                    Needs {unmet.map((tool) => tool.displayName).join(" or ")}.{" "}
+                    {toolNote(unmet[0])}
                   </div>
                 )}
               </div>
@@ -135,14 +167,37 @@ export function ExtensionsPage({
   );
 }
 
-function AvailabilityPill({ entry }: { entry: ExtensionReport }) {
-  if (entry.availability === "available") {
-    return <span className="pill good">Ready</span>;
+/**
+ * A missing tool is not the same as a missing capability.
+ *
+ * The session either supports something or it does not, and nothing the user
+ * types changes it; a tool they can install in one command. So an extension
+ * short of a tool reads as "Needs setup" rather than Unavailable, and its
+ * switch stays usable: turning Herdr on before installing Herdr is a perfectly
+ * reasonable order to do things in.
+ */
+function AvailabilityPill({
+  entry,
+  unmetTools,
+}: {
+  entry: ExtensionReport;
+  unmetTools: boolean;
+}) {
+  if (entry.availability === "unavailable") {
+    return <span className="pill critical">Unavailable</span>;
+  }
+  if (unmetTools) {
+    return <span className="pill warn">Needs setup</span>;
   }
   if (entry.availability === "degraded") {
     return <span className="pill warn">Partial</span>;
   }
-  return <span className="pill critical">Unavailable</span>;
+  return <span className="pill good">Ready</span>;
+}
+
+/** What to do about one unmet tool: the diagnosis, or the install line. */
+function toolNote(tool: ToolReport): string {
+  return tool.state === "error" ? tool.detail : `${tool.why} ${tool.instruction}`;
 }
 
 /** The reason text the capability resolver attached, when there is one. */

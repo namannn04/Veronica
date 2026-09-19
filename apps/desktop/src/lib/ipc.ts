@@ -86,6 +86,7 @@ import type {
   SystemSnapshot,
   RunningProcess,
   HerdrBoard,
+  ToolSurvey,
   UsageView,
   VolumeState,
   AudioStream,
@@ -238,6 +239,7 @@ export const ipc = {
   cleanerScan: (categories: string[]) => invoke<CleanerScan>("cleaner_scan", { categories }),
   /** Moves exactly these items to the Trash — the ones the user was shown. */
   cleanerClean: (items: CleanerItem[]) => invoke<CleanReport>("cleaner_clean", { items }),
+  toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
   herdrBoard: () => invoke<HerdrBoard>("herdr_board"),
   herdrOpen: (session: string, paneId: string | null = null) =>
     invoke<void>("herdr_open", { session, paneId }),

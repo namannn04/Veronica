@@ -173,6 +173,7 @@ fn run() -> Result<()> {
             commands::cleaner_categories,
             commands::cleaner_scan,
             commands::cleaner_clean,
+            commands::tools_readiness,
             commands::herdr_board,
             commands::herdr_open,
             commands::quinjet_projects,

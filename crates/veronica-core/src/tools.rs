@@ -129,6 +129,49 @@ pub fn spec(id: &str) -> Option<&'static ToolSpec> {
     CATALOG.iter().find(|tool| tool.id == id)
 }
 
+/// The extensions that declare `id`, by title, in catalogue order.
+///
+/// This is the other direction of `ExtensionEntry::required_tools`, and it is
+/// what turns "codex is missing" into "Agent Usage is missing something".
+pub fn wanted_by(id: &str) -> Vec<&'static str> {
+    crate::extensions::ENTRIES
+        .iter()
+        .filter(|entry| entry.required_tools.contains(&id))
+        .map(|entry| entry.title)
+        .collect()
+}
+
+/// Whether an extension needs every tool it declares, or any one of them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolRule {
+    All,
+    Any,
+}
+
+/// Edith's policy table makes exactly one exception, and so does this.
+///
+/// Claude and Codex are two providers of the same numbers, so Agent Usage has
+/// something to show with either one. Every other extension's tools each do a
+/// job nothing else does, and missing one means the feature is missing.
+pub fn rule(extension_id: &str) -> ToolRule {
+    match extension_id {
+        "usage" => ToolRule::Any,
+        _ => ToolRule::All,
+    }
+}
+
+/// The tools one extension needs, in the order it declares them.
+///
+/// An id with no spec is skipped rather than faked, and
+/// `every_declared_tool_is_in_the_catalogue` is what stops that being silent.
+pub fn required_by(entry: &crate::extensions::ExtensionEntry) -> Vec<&'static ToolSpec> {
+    entry
+        .required_tools
+        .iter()
+        .filter_map(|id| spec(id))
+        .collect()
+}
+
 /// The directories a tool is looked for in, best first.
 ///
 /// PATH comes first, so a user who has deliberately put one version ahead of

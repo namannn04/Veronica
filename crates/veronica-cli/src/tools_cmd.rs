@@ -12,10 +12,6 @@
 //! not thought about extensions at all.
 
 use anyhow::Result;
-use serde::Serialize;
-use veronica_core::extensions::ENTRIES;
-use veronica_core::tools::ToolSpec;
-use veronica_system::tools::Readiness;
 
 use crate::format::{self, Output};
 
@@ -26,57 +22,10 @@ pub enum ToolCommand {
     Ls,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ToolReport {
-    id: &'static str,
-    display_name: &'static str,
-    why: &'static str,
-    /// The extensions that named this tool, so a missing one points somewhere.
-    wanted_by: Vec<&'static str>,
-    instruction: &'static str,
-    #[serde(flatten)]
-    readiness: Readiness,
-}
-
-impl ToolReport {
-    /// What to do about a tool that is not ready.
-    ///
-    /// A tool that is present but will not run needs the diagnosis, not the
-    /// install line: telling someone to install what they already have is how
-    /// a broken symlink turns into an afternoon.
-    fn note(&self) -> String {
-        match &self.readiness {
-            Readiness::Error { detail } => detail.clone(),
-            _ => format!("{} {}", self.why, self.instruction),
-        }
-    }
-}
-
-/// The extensions that declare `tool`, by title, in catalogue order.
-fn wanted_by(tool: &ToolSpec) -> Vec<&'static str> {
-    ENTRIES
-        .iter()
-        .filter(|entry| entry.required_tools.contains(&tool.id))
-        .map(|entry| entry.title)
-        .collect()
-}
-
 pub async fn run(command: &ToolCommand, output: Output) -> Result<()> {
     match command {
         ToolCommand::Ls => {
-            let reports: Vec<ToolReport> = veronica_system::tools::catalogue()
-                .await
-                .into_iter()
-                .map(|(tool, readiness)| ToolReport {
-                    id: tool.id,
-                    display_name: tool.display_name,
-                    why: tool.why,
-                    wanted_by: wanted_by(tool),
-                    instruction: tool.instruction,
-                    readiness,
-                })
-                .collect();
+            let reports = veronica_system::tools::catalogue().await;
 
             output.emit(&reports, || {
                 let rows: Vec<Vec<String>> = reports
@@ -107,7 +56,7 @@ pub async fn run(command: &ToolCommand, output: Output) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use veronica_core::tools::wanted_by;
 
     /// Every tool exists because something asked for it. One that nothing
     /// declares is a row the user can do nothing useful with.
@@ -115,7 +64,7 @@ mod tests {
     fn every_tool_in_the_catalogue_is_wanted_by_an_extension() {
         for tool in veronica_core::tools::CATALOG {
             assert!(
-                !wanted_by(tool).is_empty(),
+                !wanted_by(tool.id).is_empty(),
                 "no extension declares '{}'",
                 tool.id
             );
@@ -123,39 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn a_tool_two_extensions_want_names_both() {
-        let ssh = veronica_core::tools::spec("ssh").unwrap();
-        assert!(wanted_by(ssh).contains(&"Machines"));
-    }
-
-    fn report(readiness: Readiness) -> ToolReport {
-        let tool = veronica_core::tools::spec("codex").unwrap();
-        ToolReport {
-            id: tool.id,
-            display_name: tool.display_name,
-            why: tool.why,
-            wanted_by: wanted_by(tool),
-            instruction: tool.instruction,
-            readiness,
-        }
-    }
-
-    #[test]
-    fn a_missing_tool_is_told_how_to_be_installed() {
-        assert!(report(Readiness::Uninstalled)
-            .note()
-            .contains("npm install -g @openai/codex"));
-    }
-
-    /// The install line is wrong for a tool that is already on disk, so the
-    /// diagnosis replaces it rather than following it.
-    #[test]
-    fn a_broken_tool_is_diagnosed_rather_than_reinstalled() {
-        let note = report(Readiness::Error {
-            detail: "/usr/bin/codex is there, but it exited 127.".to_string(),
-        })
-        .note();
-        assert_eq!(note, "/usr/bin/codex is there, but it exited 127.");
-        assert!(!note.contains("npm install"));
+    fn a_tool_names_the_extension_that_wanted_it() {
+        assert!(wanted_by("ssh").contains(&"Machines"));
     }
 }
