@@ -90,21 +90,11 @@ struct SessionDocument {
 /// Resolve Herdr from the GUI-safe locations as well as PATH. Desktop entries
 /// often do not inherit the user's login PATH, while Herdr commonly lives in
 /// `~/.local/bin` or, when built from source, `~/.cargo/bin`.
+///
+/// The search itself belongs to the tool catalogue, so the board and whatever
+/// reports Herdr's readiness can never disagree about where it looked.
 pub fn executable() -> Option<PathBuf> {
-    let named = std::env::var_os("PATH")
-        .into_iter()
-        .flat_map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>())
-        .map(|directory| directory.join("herdr"));
-    let fixed = [
-        PathBuf::from("/usr/bin/herdr"),
-        PathBuf::from("/usr/local/bin/herdr"),
-    ];
-    let home = std::env::var_os("HOME").map(PathBuf::from);
-    let local = home
-        .iter()
-        .flat_map(|home| [home.join(".local/bin/herdr"), home.join(".cargo/bin/herdr")])
-        .collect::<Vec<_>>();
-    named.chain(fixed).chain(local).find(|path| path.is_file())
+    veronica_core::tools::spec("herdr")?.locate()
 }
 
 pub async fn board() -> Result<HerdrBoard> {

@@ -21,6 +21,7 @@ pub mod presenter;
 pub mod session;
 pub mod settings;
 pub mod swatches;
+pub mod tools;
 
 pub use appearance::Scheme;
 pub use attention::{
@@ -42,6 +43,7 @@ pub use presenter::{BlurCategory, PresenterState};
 pub use session::{DesktopSession, SessionKind};
 pub use settings::Settings;
 pub use swatches::{ColorProfile, CopyFormat, Swatch, SwatchHistory};
+pub use tools::{Install as ToolInstall, ToolSpec, CATALOG as TOOL_CATALOG};
 
 /// Version of the running build, from Cargo.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

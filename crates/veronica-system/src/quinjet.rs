@@ -98,18 +98,10 @@ impl Project {
 
 /// Resolve Quinjet from the GUI-safe locations as well as PATH, for the same
 /// reason Herdr is: a desktop entry does not inherit the login PATH, and these
-/// tools commonly live in `~/.local/bin`.
+/// tools commonly live in `~/.local/bin`. The catalogue owns the search, so one
+/// answer covers the page, the CLI and the readiness report alike.
 pub fn executable() -> Option<PathBuf> {
-    let named = std::env::var_os("PATH")
-        .into_iter()
-        .flat_map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>())
-        .map(|directory| directory.join("quinjet"));
-    let fixed = [
-        PathBuf::from("/usr/bin/quinjet"),
-        PathBuf::from("/usr/local/bin/quinjet"),
-    ];
-    let local = std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/bin/quinjet"));
-    named.chain(fixed).chain(local).find(|path| path.is_file())
+    veronica_core::tools::spec("quinjet")?.locate()
 }
 
 pub fn installed() -> bool {
