@@ -243,6 +243,7 @@ fn run() -> Result<()> {
             commands::cleaner_scan,
             commands::cleaner_clean,
             commands::tools_readiness,
+            commands::tools_install,
             commands::herdr_board,
             commands::herdr_open,
             commands::quinjet_projects,

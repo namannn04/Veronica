@@ -1254,6 +1254,49 @@ pub async fn tools_readiness() -> CommandResult<veronica_system::tools::Survey> 
     Ok(veronica_system::tools::survey().await)
 }
 
+fn requested_tool(id: &str) -> CommandResult<&'static veronica_core::tools::ToolSpec> {
+    veronica_core::tools::spec(id).ok_or_else(|| {
+        let choices = veronica_core::tools::CATALOG
+            .iter()
+            .map(|tool| tool.id)
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("no tool called '{id}'; choose one of {choices}")
+    })
+}
+
+/// Install one catalogued tool after an explicit click in the Extensions page.
+///
+/// Apt routes opt into `pkexec`: the system authentication dialog is the
+/// confirmation. npm and manual routes preserve `Outcome::NotRun`, allowing
+/// the page to explain the next step without pretending the request failed.
+#[tauri::command]
+pub async fn tools_install(tool: String) -> CommandResult<veronica_system::tools::Outcome> {
+    let spec = requested_tool(&tool)?;
+    veronica_system::tools::install(spec, true)
+        .await
+        .map_err(fail)
+}
+
+#[cfg(test)]
+mod tool_command_tests {
+    use super::*;
+
+    #[test]
+    fn an_unknown_install_target_names_the_catalogue_choices() {
+        let error = requested_tool("not-a-tool").unwrap_err();
+        assert!(error.contains("no tool called 'not-a-tool'"));
+        for tool in veronica_core::tools::CATALOG {
+            assert!(error.contains(tool.id), "{error:?} omits {}", tool.id);
+        }
+    }
+
+    #[test]
+    fn a_catalogued_install_target_resolves_to_the_shared_spec() {
+        assert_eq!(requested_tool("ssh").unwrap().id, "ssh");
+    }
+}
+
 /// The live Herdr board.
 ///
 /// Every `herdr` call inside carries its own timeout, so the page's poll
@@ -2554,5 +2597,19 @@ mod wire_shape_tests {
                 "an extension without a settings key cannot be toggled: {entry}"
             );
         }
+    }
+
+    #[test]
+    fn a_not_run_tool_install_is_a_result_the_interface_can_explain() {
+        let outcome = veronica_system::tools::Outcome::NotRun {
+            command: Some("npm install -g example".to_string()),
+            instruction: "Install it manually.",
+            reason: "The prefix is not writable.".to_string(),
+        };
+        let json = serde_json::to_value(outcome).unwrap();
+        assert_eq!(json["outcome"], "notRun");
+        assert_eq!(json["command"], "npm install -g example");
+        assert_eq!(json["instruction"], "Install it manually.");
+        assert_eq!(json["reason"], "The prefix is not writable.");
     }
 }

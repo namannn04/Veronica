@@ -51,6 +51,16 @@ export interface ToolSurvey {
   unmet: Record<string, string[] | undefined>;
 }
 
+export type ToolInstallOutcome =
+  | { outcome: "alreadyInstalled"; path: string; version: string }
+  | { outcome: "installed"; path: string; version: string }
+  | {
+      outcome: "notRun";
+      command: string | null;
+      instruction: string;
+      reason: string;
+    };
+
 export interface DesktopSession {
   kind: "wayland" | "x11" | "headless";
   desktop: string;

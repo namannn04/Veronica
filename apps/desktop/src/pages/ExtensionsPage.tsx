@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { ipc } from "../lib/ipc";
+import { installNotice, type InstallNotice } from "../lib/toolInstall";
 import type {
   Diagnostics,
   ExtensionReport,
@@ -33,6 +34,10 @@ export function ExtensionsPage({
   const [group, setGroup] = useState<ExtensionGroup | "all">("all");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [installing, setInstalling] = useState<string | null>(null);
+  const [installNotices, setInstallNotices] = useState<
+    Record<string, InstallNotice | { tone: "critical"; text: string }>
+  >({});
   const [survey, setSurvey] = useState<ToolSurvey | null>(null);
 
   // Probing runs five processes, so it is its own request rather than part of
@@ -70,6 +75,32 @@ export function ExtensionsPage({
       onChanged();
     } finally {
       setBusy(null);
+    }
+  };
+
+  const install = async (tool: ToolReport) => {
+    setInstalling(tool.id);
+    setInstallNotices((current) => {
+      const next = { ...current };
+      delete next[tool.id];
+      return next;
+    });
+    try {
+      const outcome = await ipc.toolsInstall(tool.id);
+      setInstallNotices((current) => ({
+        ...current,
+        [tool.id]: installNotice(tool.displayName, outcome),
+      }));
+      // Probe again even for NotRun: an authentication dialog or manual
+      // installer may have completed while this request was in flight.
+      await ipc.toolsReadiness().then(setSurvey).catch(() => {});
+    } catch (reason) {
+      setInstallNotices((current) => ({
+        ...current,
+        [tool.id]: { tone: "critical", text: String(reason) },
+      }));
+    } finally {
+      setInstalling(null);
     }
   };
 
@@ -124,6 +155,9 @@ export function ExtensionsPage({
           const unmet = (survey?.unmet[entry.id] ?? [])
             .map((id) => toolsById.get(id))
             .filter((tool): tool is ToolReport => tool !== undefined);
+          const notices = [...toolsById.values()]
+            .filter((tool) => tool.wantedBy.includes(entry.id) && installNotices[tool.id])
+            .map((tool) => ({ tool, notice: installNotices[tool.id] }));
           return (
             <div className="ext-row" key={entry.id}>
               <div className="ext-body">
@@ -140,14 +174,38 @@ export function ExtensionsPage({
                   </div>
                 )}
                 {unmet.length > 0 && (
-                  <div className="ext-sub" style={{ marginTop: 3 }}>
-                    {/* "or" because Agent Usage takes either provider, and the
-                        Rust rule has already decided which case this is: a
-                        list of one reads the same either way. */}
-                    Needs {unmet.map((tool) => tool.displayName).join(" or ")}.{" "}
-                    {toolNote(unmet[0])}
+                  <div className="extension-tools">
+                    <div className="ext-sub">
+                      {/* "or" because Agent Usage takes either provider, and
+                          Rust already decided which case this is. */}
+                      Needs {unmet.map((tool) => tool.displayName).join(" or ")}.
+                    </div>
+                    {unmet.map((tool) => (
+                      <div className="extension-tool-line" key={tool.id}>
+                        <span className="ext-sub">{toolNote(tool)}</span>
+                        <button
+                          className="button"
+                          disabled={installing !== null}
+                          aria-busy={installing === tool.id}
+                          onClick={() => void install(tool)}
+                        >
+                          {installing === tool.id && <span className="install-spinner" aria-hidden="true" />}
+                          {installing === tool.id ? "Installing…" : `Install ${tool.displayName}`}
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
+                {notices.map(({ tool, notice }) => (
+                  <div
+                    className={`extension-install-notice ${notice.tone}`}
+                    role="status"
+                    aria-live="polite"
+                    key={tool.id}
+                  >
+                    {notice.text}
+                  </div>
+                ))}
               </div>
               <button
                 className="switch"

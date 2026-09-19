@@ -87,6 +87,7 @@ import type {
   RunningProcess,
   HerdrBoard,
   ToolSurvey,
+  ToolInstallOutcome,
   UsageView,
   VolumeState,
   AudioStream,
@@ -240,6 +241,9 @@ export const ipc = {
   /** Moves exactly these items to the Trash — the ones the user was shown. */
   cleanerClean: (items: CleanerItem[]) => invoke<CleanReport>("cleaner_clean", { items }),
   toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
+  /** The click is consent; apt asks for authentication in the system dialog. */
+  toolsInstall: (tool: string) =>
+    invoke<ToolInstallOutcome>("tools_install", { tool }),
   herdrBoard: () => invoke<HerdrBoard>("herdr_board"),
   herdrOpen: (session: string, paneId: string | null = null) =>
     invoke<void>("herdr_open", { session, paneId }),

@@ -1817,6 +1817,54 @@ th.sortable:hover {
   margin-top: 1px;
 }
 
+.extension-tools {
+  display: grid;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.extension-tool-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.extension-tool-line .ext-sub {
+  flex: 1;
+}
+
+.extension-tool-line .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.extension-install-notice {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.extension-install-notice.good { color: var(--status-good); }
+.extension-install-notice.warn { color: var(--status-warning); }
+.extension-install-notice.critical { color: var(--status-critical); }
+
+.install-spinner {
+  width: 11px;
+  height: 11px;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: install-spin 700ms linear infinite;
+}
+
+@keyframes install-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .install-spinner { animation: none; }
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
