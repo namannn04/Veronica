@@ -16,6 +16,7 @@ mod color_cmd;
 mod companion_cmd;
 mod database_cmd;
 mod emoji_cmd;
+mod extensions_cmd;
 mod focus_dim_cmd;
 mod format;
 mod herdr_cmd;
@@ -138,11 +139,13 @@ enum Command {
         #[command(subcommand)]
         command: Option<tools_cmd::ToolCommand>,
     },
-    /// List the extension catalogue and whether each one can run here.
+    /// List, inspect, enable or disable Veronica's extensions.
     #[command(name = "extensions", alias = "ext")]
     Extensions {
+        #[command(subcommand)]
+        command: Option<extensions_cmd::ExtensionCommand>,
         /// Filter by title or subtitle.
-        #[arg(long, default_value = "")]
+        #[arg(long, default_value = "", global = true)]
         query: String,
     },
 }
@@ -198,9 +201,18 @@ async fn run(cli: &Cli) -> Result<()> {
             let session = veronica_system::detect_session().await;
             diagnose(&directories, session, output)
         }
-        Command::Extensions { query } => {
+        Command::Extensions { command, query } => {
             let session = veronica_system::detect_session().await;
-            extensions(&directories, session, query, output)
+            extensions_cmd::run(
+                &directories,
+                session,
+                command
+                    .as_ref()
+                    .unwrap_or(&extensions_cmd::ExtensionCommand::Ls),
+                query,
+                output,
+            )
+            .await
         }
         Command::Tools { command } => {
             // `vr tools` on its own is `vr tools ls`, as Edith's is.
@@ -305,7 +317,7 @@ fn diagnose(directories: &AppDirectories, session: DesktopSession, output: Outpu
     })
 }
 
-fn state_label(state: &veronica_core::CapabilityState) -> &'static str {
+pub(crate) fn state_label(state: &veronica_core::CapabilityState) -> &'static str {
     use veronica_core::CapabilityState as S;
     match state {
         S::Available => "available",
@@ -315,7 +327,7 @@ fn state_label(state: &veronica_core::CapabilityState) -> &'static str {
     }
 }
 
-fn availability_label(availability: &veronica_core::ExtensionAvailability) -> String {
+pub(crate) fn availability_label(availability: &veronica_core::ExtensionAvailability) -> String {
     use veronica_core::ExtensionAvailability as A;
     match availability {
         A::Available => "available".to_string(),
@@ -367,57 +379,4 @@ fn config(directories: &AppDirectories, command: &ConfigCommand, output: Output)
             })
         }
     }
-}
-
-fn extensions(
-    directories: &AppDirectories,
-    session: DesktopSession,
-    query: &str,
-    output: Output,
-) -> Result<()> {
-    let settings = Settings::load(&directories.settings_file())?;
-    let capabilities = veronica_core::Capabilities::resolve(&session);
-
-    #[derive(serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Row {
-        id: &'static str,
-        title: &'static str,
-        subtitle: &'static str,
-        group: veronica_core::ExtensionGroup,
-        enabled: bool,
-        #[serde(flatten)]
-        availability: veronica_core::ExtensionAvailability,
-    }
-
-    let rows: Vec<Row> = veronica_core::extensions::filter(query, None)
-        .into_iter()
-        .map(|entry| Row {
-            id: entry.id,
-            title: entry.title,
-            subtitle: entry.subtitle,
-            group: entry.group,
-            enabled: settings.extension_enabled(entry),
-            availability: entry.availability(&capabilities),
-        })
-        .collect();
-
-    output.emit(&rows, || {
-        let table_rows: Vec<Vec<String>> = rows
-            .iter()
-            .map(|row| {
-                vec![
-                    row.id.to_string(),
-                    row.title.to_string(),
-                    row.group.title().to_string(),
-                    if row.enabled { "on" } else { "off" }.to_string(),
-                    availability_label(&row.availability),
-                ]
-            })
-            .collect();
-        format::table(
-            &["id", "title", "group", "enabled", "availability"],
-            &table_rows,
-        )
-    })
 }
