@@ -5,6 +5,19 @@ set -euo pipefail
 repository="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repository"
 
+# Desktop-launched terminals do not always inherit rustup's shell profile.
+# Tauri invokes `cargo` by name, so make the standard rustup install visible
+# before doing any release work and fail in words when Rust is truly absent.
+if ! command -v cargo >/dev/null 2>&1; then
+  rustup_bin="${CARGO_HOME:-$HOME/.cargo}/bin"
+  if [ -x "$rustup_bin/cargo" ]; then
+    export PATH="$rustup_bin:$PATH"
+  else
+    echo "cargo is required; install Rust with rustup before building a release" >&2
+    exit 1
+  fi
+fi
+
 if [ -n "$(git status --porcelain)" ]; then
   echo "release builds require a clean checkout" >&2
   exit 1
@@ -34,4 +47,3 @@ checksums="target/release/bundle/SHA256SUMS"
 sha256sum "$deb" "$appimage" > "$checksums"
 echo "built Veronica $version"
 echo "checksums: $checksums"
-
