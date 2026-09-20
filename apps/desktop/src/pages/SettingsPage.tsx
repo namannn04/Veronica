@@ -11,7 +11,7 @@ import {
   storedLimitProvider,
   type LimitProvider,
 } from "../lib/preferences";
-import type { Diagnostics, LaunchAtLoginStatus, PowerStatus, UpdateInfo } from "../lib/types";
+import type { Diagnostics, LaunchAtLoginStatus, PowerStatus, ShellExtensionStatus, UpdateInfo } from "../lib/types";
 import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
 import { PresenterPane } from "./PresenterPane";
@@ -33,14 +33,21 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
   const [notice, setNotice] = useState("");
   const [power, setPower] = useState<PowerStatus | null>(null);
   const [launchAtLogin, setLaunchAtLogin] = useState<LaunchAtLoginStatus | null>(null);
+  const [shellExtension, setShellExtension] = useState<ShellExtensionStatus | null>(null);
 
   useEffect(() => {
     const refresh = () => void ipc.settingsAll().then(setValues).catch(() => setNotice("Settings connect when Veronica runs as the desktop app."));
     refresh();
     void ipc.powerStatus().then(setPower).catch(() => {});
     void ipc.launchAtLoginStatus().then(setLaunchAtLogin).catch(() => {});
+    const refreshShell = () => void ipc.shellExtensionStatus().then(setShellExtension).catch(() => {});
+    refreshShell();
     const changed = listenEvent("settings-updated", refresh);
-    return () => { void changed.then((unlisten) => unlisten()); };
+    const session = listenEvent("session-resolved", refreshShell);
+    return () => {
+      void changed.then((unlisten) => unlisten());
+      void session.then((unlisten) => unlisten());
+    };
   }, []);
 
   const set = async (key: string, value: unknown) => {
@@ -53,6 +60,16 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     try {
       setLaunchAtLogin(await ipc.launchAtLoginSet(enabled));
       setNotice(enabled ? "Veronica will start after login" : "Launch at login disabled");
+    } catch (reason) {
+      setNotice(String(reason));
+    }
+  };
+
+  const enableShellExtension = async () => {
+    try {
+      const status = await ipc.shellExtensionEnable();
+      setShellExtension(status);
+      setNotice(status.state === "active" ? "GNOME extension enabled" : status.detail);
     } catch (reason) {
       setNotice(String(reason));
     }
@@ -72,7 +89,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
         <Toggle label="Launch at login" detail={launchAtLogin?.enabled ? "Starts quietly in the background; open it from the tray or a shortcut." : "Veronica will not run until you open it yourself."} checked={Boolean(launchAtLogin?.enabled)} onChange={(enabled) => void setStartup(enabled)} />
       </SettingsGroup>
       <SettingsGroup title="Ubuntu top bar" subtitle="Keep GNOME's Wi-Fi, Bluetooth, sound and battery controls in their original Quick Settings menu.">
-        <StatusRow label="Compact Edith notch" detail="Enabled while the Veronica GNOME extension is active." />
+        <ShellExtensionRow status={shellExtension} onEnable={() => void enableShellExtension()} />
         <Toggle label="CPU and memory indicator" detail="Show compact live system usage beside the clock." checked={Boolean(values.menuBarSystemStats)} onChange={(value) => void set("menuBarSystemStats", value)} />
       </SettingsGroup>
       <SettingsGroup title="Power" subtitle="Linux-native systemd/logind inhibitors. A timed session — `vr power lid-awake on --for 30m` — counts down here and ends itself.">
@@ -120,7 +137,11 @@ function sessionEnds(remainingSecs: number | null | undefined) {
 
 function SettingsGroup({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) { return <section className="settings-group"><div><h2>{title}</h2><p>{subtitle}</p></div><div className="settings-box">{children}</div></section>; }
 function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (value: boolean) => void }) { return <div className="setting-row"><div><strong>{label}</strong><small>{detail}</small></div><button className="switch" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}><span className="knob" /></button></div>; }
-function StatusRow({ label, detail }: { label: string; detail: string }) { return <div className="setting-row"><div><strong>{label}</strong><small>{detail}</small></div><span className="pill good">Active</span></div>; }
+function ShellExtensionRow({ status, onEnable }: { status: ShellExtensionStatus | null; onEnable: () => void }) {
+  const label = status?.state === "active" ? "Active" : status?.state === "disabled" ? "Disabled" : status?.state === "restartRequired" ? "Log out once" : status?.state === "notInstalled" ? "Not installed" : status?.state === "unsupported" ? "Needs GNOME" : status?.state === "error" ? "Error" : "Checking…";
+  const tone = status?.state === "active" ? "good" : status?.state === "error" ? "critical" : "warn";
+  return <div className="setting-row"><div><strong>Compact Edith notch</strong><small>{status?.detail ?? "Checking the GNOME extension…"}</small></div>{status?.canEnable ? <button className="button" onClick={onEnable}>Enable</button> : <span className={`pill ${tone}`}>{label}</span>}</div>;
+}
 function Choice({ label, detail, value, options, onChange }: { label: string; detail: string; value: number; options: { value: number; label: string }[]; onChange: (value: number) => void }) {
   return <div className="setting-row"><div><strong>{label}</strong><small>{detail}</small></div><div className="segmented">{options.map((option) => <button key={option.value} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>{option.label}</button>)}</div></div>;
 }

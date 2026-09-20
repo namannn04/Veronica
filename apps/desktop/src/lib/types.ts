@@ -92,6 +92,12 @@ export interface LaunchAtLoginStatus {
   entryPath: string;
 }
 
+export interface ShellExtensionStatus {
+  state: "active" | "disabled" | "restartRequired" | "notInstalled" | "error" | "unsupported";
+  detail: string;
+  canEnable: boolean;
+}
+
 export interface Totals {
   cost: number;
   tokens: number;

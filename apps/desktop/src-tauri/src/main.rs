@@ -210,6 +210,8 @@ fn run(background: bool) -> Result<()> {
             commands::settings_set,
             commands::launch_at_login_status,
             commands::launch_at_login_set,
+            commands::shell_extension_status,
+            commands::shell_extension_enable,
             commands::backup_export,
             commands::backup_inspect,
             commands::backup_import,

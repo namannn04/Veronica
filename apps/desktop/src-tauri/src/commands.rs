@@ -305,6 +305,127 @@ pub fn launch_at_login_set(
     launch_at_login_status_for(&state)
 }
 
+const SHELL_EXTENSION_UUID: &str = "veronica@namannn04.github.io";
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ShellExtensionStatus {
+    /// active, disabled, restartRequired, notInstalled, error or unsupported.
+    pub state: String,
+    pub detail: String,
+    pub can_enable: bool,
+}
+
+fn shell_extension_installed(state: &AppState) -> bool {
+    let relative = std::path::Path::new("gnome-shell")
+        .join("extensions")
+        .join(SHELL_EXTENSION_UUID)
+        .join("metadata.json");
+    let user = state
+        .directories
+        .data
+        .parent()
+        .map(|root| root.join(&relative));
+    user.is_some_and(|path| path.is_file())
+        || std::path::Path::new("/usr/share").join(&relative).is_file()
+        || std::path::Path::new("/usr/local/share")
+            .join(relative)
+            .is_file()
+}
+
+fn parsed_shell_extension_status(info: &str) -> ShellExtensionStatus {
+    let field = |name: &str| {
+        info.lines()
+            .map(str::trim)
+            .find_map(|line| line.strip_prefix(name).map(str::trim))
+            .unwrap_or("")
+    };
+    let state = field("State:").to_ascii_uppercase();
+    let enabled = field("Enabled:").eq_ignore_ascii_case("yes");
+    if state == "ACTIVE" {
+        ShellExtensionStatus {
+            state: "active".into(),
+            detail: "The Veronica notch and compositor features are running.".into(),
+            can_enable: false,
+        }
+    } else if state == "ERROR" {
+        ShellExtensionStatus {
+            state: "error".into(),
+            detail: "GNOME loaded the extension, but it reported an error. Open Permissions for diagnostics.".into(),
+            can_enable: false,
+        }
+    } else if enabled {
+        ShellExtensionStatus {
+            state: "restartRequired".into(),
+            detail: "The extension is enabled but not active. Log out and back in once.".into(),
+            can_enable: false,
+        }
+    } else {
+        ShellExtensionStatus {
+            state: "disabled".into(),
+            detail: "The extension is installed but disabled.".into(),
+            can_enable: true,
+        }
+    }
+}
+
+fn shell_extension_status_for(state: &AppState) -> ShellExtensionStatus {
+    if !state.session.lock().expect("session lock").is_gnome {
+        return ShellExtensionStatus {
+            state: "unsupported".into(),
+            detail: "The notch needs a GNOME desktop session.".into(),
+            can_enable: false,
+        };
+    }
+
+    let installed = shell_extension_installed(state);
+    let output = std::process::Command::new("gnome-extensions")
+        .args(["info", SHELL_EXTENSION_UUID])
+        .output();
+    match output {
+        Ok(output) if output.status.success() => {
+            parsed_shell_extension_status(&String::from_utf8_lossy(&output.stdout))
+        }
+        Ok(_) if installed => ShellExtensionStatus {
+            state: "restartRequired".into(),
+            detail: "The extension was installed after this GNOME session started. Log out and back in once.".into(),
+            can_enable: false,
+        },
+        Ok(_) => ShellExtensionStatus {
+            state: "notInstalled".into(),
+            detail: "The shell extension is not installed. Install Veronica's Debian package for top-bar integration.".into(),
+            can_enable: false,
+        },
+        Err(error) => ShellExtensionStatus {
+            state: "error".into(),
+            detail: format!("Cannot run gnome-extensions: {error}"),
+            can_enable: false,
+        },
+    }
+}
+
+#[tauri::command]
+pub fn shell_extension_status(state: State<'_, AppState>) -> CommandResult<ShellExtensionStatus> {
+    Ok(shell_extension_status_for(&state))
+}
+
+#[tauri::command]
+pub fn shell_extension_enable(state: State<'_, AppState>) -> CommandResult<ShellExtensionStatus> {
+    let output = std::process::Command::new("gnome-extensions")
+        .args(["enable", SHELL_EXTENSION_UUID])
+        .output()
+        .map_err(|error| format!("cannot run gnome-extensions: {error}"))?;
+    if !output.status.success() {
+        let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if detail.is_empty() {
+            "GNOME refused to enable the Veronica extension".into()
+        } else {
+            detail
+        });
+    }
+    Ok(shell_extension_status_for(&state))
+}
+
 /// Run a compositor-owned quick action through the GNOME Shell extension.
 /// Both the app and notch therefore use one implementation for modal input
 /// suppression and color picking instead of pretending a WebView can do it.
@@ -2450,7 +2571,28 @@ pub fn open_external(target: String) -> CommandResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::newer_version;
+    use super::{newer_version, parsed_shell_extension_status};
+
+    #[test]
+    fn shell_extension_info_becomes_an_actionable_ui_state() {
+        let active = parsed_shell_extension_status(
+            "Enabled: Yes\nState: ACTIVE\nPath: /usr/share/gnome-shell/extensions/example",
+        );
+        assert_eq!(active.state, "active");
+        assert!(!active.can_enable);
+
+        let disabled = parsed_shell_extension_status("State: INACTIVE\nEnabled: No");
+        assert_eq!(disabled.state, "disabled");
+        assert!(disabled.can_enable);
+
+        let waiting = parsed_shell_extension_status("Enabled: Yes\nState: INACTIVE");
+        assert_eq!(waiting.state, "restartRequired");
+        assert!(!waiting.can_enable);
+
+        let failed = parsed_shell_extension_status("Enabled: Yes\nState: ERROR");
+        assert_eq!(failed.state, "error");
+        assert!(!failed.can_enable);
+    }
 
     #[test]
     fn update_versions_compare_numerically_and_ignore_release_prefixes() {

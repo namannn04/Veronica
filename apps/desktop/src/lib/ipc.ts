@@ -112,6 +112,7 @@ import type {
   EmojiCopyResult,
   LocalTrack,
   LaunchAtLoginStatus,
+  ShellExtensionStatus,
   PowerStatus,
   UpdateInfo,
 } from "./types";
@@ -136,6 +137,8 @@ export const ipc = {
   launchAtLoginStatus: () => invoke<LaunchAtLoginStatus>("launch_at_login_status"),
   launchAtLoginSet: (enabled: boolean) =>
     invoke<LaunchAtLoginStatus>("launch_at_login_set", { enabled }),
+  shellExtensionStatus: () => invoke<ShellExtensionStatus>("shell_extension_status"),
+  shellExtensionEnable: () => invoke<ShellExtensionStatus>("shell_extension_enable"),
   backupExport: (path: string | null = null) =>
     invoke<BackupSummary>("backup_export", { path }),
   backupInspect: (path: string) => invoke<BackupSummary>("backup_inspect", { path }),

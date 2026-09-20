@@ -23,7 +23,9 @@ Edith-style shelf. It does not inject agent data into GNOME's large calendar
 dropdown and does not add a spend indicator to the right side. Ubuntu Quick
 Settings remains the single owner of Wi-Fi, Bluetooth, volume and battery.
 
-The Debian package installs the extension system-wide. Because GNOME Shell only
+The Debian package installs the extension system-wide. Veronica's Settings →
+General page reports whether it is active and can enable it when GNOME already
+knows about the installation. Because GNOME Shell only
 scans for extensions at startup, and Wayland has no way to restart the shell in
 place, a **fresh login is required once** after installing:
 
