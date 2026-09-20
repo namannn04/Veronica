@@ -56,7 +56,11 @@ cd apps/desktop
 bunx tauri build --bundles deb
 ```
 
-The package lands in `target/release/bundle/deb/`.
+The package lands in `target/release/bundle/deb/`. Tauri's release hook builds
+the `vr` CLI first, before compiling the interface, because the Debian bundle
+ships that exact release binary. Do not build or copy `vr` separately: keeping
+it inside the one release command prevents an old CLI from being packaged with
+a new desktop app.
 
 ### Use `tauri build`, not `cargo build --release`
 

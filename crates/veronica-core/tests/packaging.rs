@@ -57,6 +57,24 @@ fn every_extension_file_is_listed_in_the_debian_package() {
     );
 }
 
+#[test]
+fn every_desktop_release_rebuilds_the_cli_it_packages() {
+    let config = repo_root().join("apps/desktop/src-tauri/tauri.conf.json");
+    let document: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(&config)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", config.display())),
+    )
+    .expect("valid Tauri configuration");
+    let command = document["build"]["beforeBuildCommand"]
+        .as_str()
+        .expect("beforeBuildCommand");
+
+    assert!(
+        command.contains("cargo build --release -p veronica-cli"),
+        "the Debian bundle copies target/release/vr, so its build must be part of every Tauri release"
+    );
+}
+
 /// The same failure by the other route: `install.sh` is what a source checkout
 /// uses, and an explicit file list there goes stale silently too.
 #[test]

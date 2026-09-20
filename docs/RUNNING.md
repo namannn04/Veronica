@@ -124,12 +124,12 @@ the interface.
 To build a release package instead:
 
 ```bash
-cargo build --release -p veronica-cli    # the vr binary the package ships
 cd apps/desktop && bunx tauri build --bundles deb
 ```
 
-Both steps are needed: the bundler copies `target/release/vr` into the package,
-so a clean checkout must build the CLI first.
+The Tauri release hook rebuilds `vr` before bundling it, so one command produces
+a desktop app and CLI from the same checkout. The packaging test pins that hook
+to prevent a stale binary from silently returning.
 
 To update an existing installation with the package you just built:
 
