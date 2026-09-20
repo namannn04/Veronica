@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.10" date="2026-09-20">
+      <description>
+        <p>Completes extension lifecycle controls, makes every extension switch functional, supports GNOME Shell 46 through 50, adds launch-at-login and guided shell setup, and hardens release packaging, dependencies and privacy copy.</p>
+      </description>
+    </release>
     <release version="0.1.9" date="2026-08-30">
       <description>
         <p>Adds the local-first Companion with searchable notes, native PipeWire voice memos and private Attention activity. Completes Machines file, terminal and container tools, five global shortcuts, local music and Attention tracking.</p>

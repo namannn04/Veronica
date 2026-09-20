@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            build-essential curl file libayatana-appindicator3-dev \
+            libgtk-3-dev libjavascriptcoregtk-4.1-dev libssl-dev \
+            libsoup-3.0-dev libwebkit2gtk-4.1-dev libxdo-dev \
+            librsvg2-dev patchelf pkg-config
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install interface dependencies exactly
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint every Rust target
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test the Rust workspace
+        run: cargo test --workspace
+
+      - name: Test GNOME extension logic
+        working-directory: extension
+        run: npm test
+
+      - name: Test interface behavior
+        working-directory: apps/desktop
+        run: bun test
+
+      - name: Type-check and build the interface
+        working-directory: apps/desktop
+        run: bun run build
+
+      - name: Build the Debian package
+        working-directory: apps/desktop
+        run: bunx tauri build --bundles deb --ci
+
+      - name: Smoke-test the packaged CLI
+        run: |
+          audit_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$audit_dir"' EXIT
+          package="target/release/bundle/deb/Veronica_0.1.10_amd64.deb"
+          dpkg-deb -x "$package" "$audit_dir"
+          "$audit_dir/usr/bin/vr" extensions --help | grep -q enable
+          dpkg-deb -f "$package" Depends | grep -q curl
+
+      - name: Keep the installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Veronica-0.1.10-amd64-deb
+          path: target/release/bundle/deb/Veronica_0.1.10_amd64.deb
+          if-no-files-found: error
+

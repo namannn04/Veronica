@@ -4,5 +4,5 @@
   "description": "Replaces the center clock dropdown with Veronica's compact Edith-style shelf while leaving Ubuntu Quick Settings untouched.",
   "shell-version": ["46", "47", "48", "49", "50"],
   "url": "https://github.com/namannn04/Veronica",
-  "version": 9
+  "version": 10
 }

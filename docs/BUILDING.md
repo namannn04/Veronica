@@ -56,12 +56,14 @@ bunx tauri dev
 
 ## Release build
 
+From a clean checkout, build the Debian package and AppImage, smoke-test the
+packaged CLI and write SHA-256 checksums in one command:
+
 ```bash
-cd apps/desktop
-bunx tauri build --bundles deb
+./scripts/release.sh
 ```
 
-The package lands in `target/release/bundle/deb/`. Tauri's release hook builds
+Artifacts land under `target/release/bundle/`. Tauri's release hook builds
 the `vr` CLI first, before compiling the interface, because the Debian bundle
 ships that exact release binary. Do not build or copy `vr` separately: keeping
 it inside the one release command prevents an old CLI from being packaged with

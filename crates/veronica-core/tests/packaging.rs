@@ -107,6 +107,51 @@ fn the_debian_package_declares_the_update_check_runtime() {
     );
 }
 
+#[test]
+fn every_release_surface_uses_the_workspace_version() {
+    let root = repo_root();
+    let expected = env!("CARGO_PKG_VERSION");
+    let json_version = |relative: &str| {
+        let path = root.join(relative);
+        let value: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display())),
+        )
+        .unwrap_or_else(|e| panic!("invalid {}: {e}", path.display()));
+        value["version"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{} has no string version", path.display()))
+            .to_string()
+    };
+
+    assert_eq!(json_version("apps/desktop/package.json"), expected);
+    assert_eq!(
+        json_version("apps/desktop/src-tauri/tauri.conf.json"),
+        expected
+    );
+
+    let metadata: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("extension/metadata.json")).unwrap(),
+    )
+    .unwrap();
+    let patch: u64 = expected.rsplit('.').next().unwrap().parse().unwrap();
+    assert_eq!(metadata["version"].as_u64(), Some(patch));
+
+    let appstream = std::fs::read_to_string(
+        root.join("packaging/linux/io.github.namannn04.Veronica.metainfo.xml"),
+    )
+    .unwrap();
+    assert!(appstream.contains(&format!("<release version=\"{expected}\"")));
+
+    for relative in ["README.md", "docs/RUNNING.md"] {
+        let document = std::fs::read_to_string(root.join(relative)).unwrap();
+        assert!(
+            document.contains(&format!("Veronica_{expected}_amd64")),
+            "{relative} must show the current artifact name"
+        );
+    }
+}
+
 /// The same failure by the other route: `install.sh` is what a source checkout
 /// uses, and an explicit file list there goes stale silently too.
 #[test]
