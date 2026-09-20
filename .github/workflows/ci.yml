@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Linux build dependencies
         run: |
@@ -77,9 +77,8 @@ jobs:
           dpkg-deb -f "$package" Depends | grep -q curl
 
       - name: Keep the installable package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: Veronica-0.1.10-amd64-deb
           path: target/release/bundle/deb/Veronica_0.1.10_amd64.deb
           if-no-files-found: error
-
