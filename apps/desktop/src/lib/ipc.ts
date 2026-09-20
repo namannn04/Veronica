@@ -111,6 +111,7 @@ import type {
   EmojiRow,
   EmojiCopyResult,
   LocalTrack,
+  LaunchAtLoginStatus,
   PowerStatus,
   UpdateInfo,
 } from "./types";
@@ -132,6 +133,9 @@ export const ipc = {
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
   settingsSet: (key: string, value: unknown) =>
     invoke<void>("settings_set", { key, value }),
+  launchAtLoginStatus: () => invoke<LaunchAtLoginStatus>("launch_at_login_status"),
+  launchAtLoginSet: (enabled: boolean) =>
+    invoke<LaunchAtLoginStatus>("launch_at_login_set", { enabled }),
   backupExport: (path: string | null = null) =>
     invoke<BackupSummary>("backup_export", { path }),
   backupInspect: (path: string) => invoke<BackupSummary>("backup_inspect", { path }),

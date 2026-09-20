@@ -20,10 +20,17 @@ fn main() {
     init_logging();
     force_x11_backend();
 
-    if let Err(error) = run() {
+    let background = is_background_launch(std::env::args_os());
+
+    if let Err(error) = run(background) {
         eprintln!("veronica: {error:#}");
         std::process::exit(1);
     }
+}
+
+fn is_background_launch(args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> bool {
+    args.into_iter()
+        .any(|argument| argument.as_ref() == std::ffi::OsStr::new("--background"))
 }
 
 fn init_logging() {
@@ -178,7 +185,7 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
     }
 }
 
-fn run() -> Result<()> {
+fn run(background: bool) -> Result<()> {
     let directories = AppDirectories::current()?;
     directories.prepare()?;
 
@@ -201,6 +208,8 @@ fn run() -> Result<()> {
             commands::usage_limits,
             commands::settings_all,
             commands::settings_set,
+            commands::launch_at_login_status,
+            commands::launch_at_login_set,
             commands::backup_export,
             commands::backup_inspect,
             commands::backup_import,
@@ -312,8 +321,10 @@ fn run() -> Result<()> {
             // still get their chance.
             sync_global_shortcuts(&handle, &handle.state::<AppState>().settings_snapshot());
 
-            if let Some(window) = app.get_webview_window("main") {
-                window.show()?;
+            if !background {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.show()?;
+                }
             }
 
             // The shell extension writes through `vr config set`, outside
@@ -451,6 +462,13 @@ fn run() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_explicit_background_flag_hides_the_startup_window() {
+        assert!(is_background_launch(["veronica", "--background"]));
+        assert!(!is_background_launch(["veronica"]));
+        assert!(!is_background_launch(["veronica", "--not-background"]));
+    }
 
     fn wanted(settings: &veronica_core::Settings) -> Vec<&'static str> {
         SHORTCUTS

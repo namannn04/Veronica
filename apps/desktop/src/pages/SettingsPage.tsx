@@ -11,7 +11,7 @@ import {
   storedLimitProvider,
   type LimitProvider,
 } from "../lib/preferences";
-import type { Diagnostics, PowerStatus, UpdateInfo } from "../lib/types";
+import type { Diagnostics, LaunchAtLoginStatus, PowerStatus, UpdateInfo } from "../lib/types";
 import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
 import { PresenterPane } from "./PresenterPane";
@@ -32,11 +32,13 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [notice, setNotice] = useState("");
   const [power, setPower] = useState<PowerStatus | null>(null);
+  const [launchAtLogin, setLaunchAtLogin] = useState<LaunchAtLoginStatus | null>(null);
 
   useEffect(() => {
     const refresh = () => void ipc.settingsAll().then(setValues).catch(() => setNotice("Settings connect when Veronica runs as the desktop app."));
     refresh();
     void ipc.powerStatus().then(setPower).catch(() => {});
+    void ipc.launchAtLoginStatus().then(setLaunchAtLogin).catch(() => {});
     const changed = listenEvent("settings-updated", refresh);
     return () => { void changed.then((unlisten) => unlisten()); };
   }, []);
@@ -45,6 +47,15 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     setValues((current) => ({ ...current, [key]: value }));
     if (key === "appearance") applyAppearance(value);
     try { await ipc.settingsSet(key, value); setNotice("Saved"); } catch { setNotice("Preview only — open the installed desktop app to save."); }
+  };
+
+  const setStartup = async (enabled: boolean) => {
+    try {
+      setLaunchAtLogin(await ipc.launchAtLoginSet(enabled));
+      setNotice(enabled ? "Veronica will start after login" : "Launch at login disabled");
+    } catch (reason) {
+      setNotice(String(reason));
+    }
   };
 
   return <>
@@ -56,6 +67,9 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       </SettingsGroup>
       <SettingsGroup title="Rate limits" subtitle="Choose which provider the app and notch show by default.">
         <div className="setting-row"><div><strong>Visible provider</strong><small>Switch it here, on the Usage page, or directly inside the notch.</small></div><ProviderSelector value={limitProviderOf(values.limitsProvider)} onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))} /></div>
+      </SettingsGroup>
+      <SettingsGroup title="Startup" subtitle="Keep alerts, global shortcuts and tray actions available after a reboot.">
+        <Toggle label="Launch at login" detail={launchAtLogin?.enabled ? "Starts quietly in the background; open it from the tray or a shortcut." : "Veronica will not run until you open it yourself."} checked={Boolean(launchAtLogin?.enabled)} onChange={(enabled) => void setStartup(enabled)} />
       </SettingsGroup>
       <SettingsGroup title="Ubuntu top bar" subtitle="Keep GNOME's Wi-Fi, Bluetooth, sound and battery controls in their original Quick Settings menu.">
         <StatusRow label="Compact Edith notch" detail="Enabled while the Veronica GNOME extension is active." />

@@ -101,6 +101,15 @@ impl AppDirectories {
         self.configuration.join("settings.json")
     }
 
+    /// Freedesktop per-user login entry, beside Veronica's config directory.
+    pub fn autostart_file(&self) -> PathBuf {
+        self.configuration
+            .parent()
+            .expect("the application config directory has an XDG parent")
+            .join("autostart")
+            .join(crate::autostart::filename())
+    }
+
     pub fn limits_history_file(&self) -> PathBuf {
         self.state.join("limits-history.json")
     }
@@ -220,6 +229,10 @@ mod tests {
         let dirs = AppDirectories::with_env(&home(), env);
         assert_eq!(dirs.runtime, PathBuf::from("/run/user/1000/veronica"));
         assert_eq!(dirs.configuration, PathBuf::from("/custom/config/veronica"));
+        assert_eq!(
+            dirs.autostart_file(),
+            PathBuf::from("/custom/config/autostart/io.github.namannn04.Veronica.desktop")
+        );
     }
 
     #[test]

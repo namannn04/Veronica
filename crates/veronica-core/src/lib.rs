@@ -6,6 +6,7 @@
 
 pub mod appearance;
 pub mod attention;
+pub mod autostart;
 pub mod awake;
 pub mod backup;
 pub mod capabilities;

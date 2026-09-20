@@ -87,6 +87,11 @@ export interface Diagnostics {
   extensions: ExtensionReport[];
 }
 
+export interface LaunchAtLoginStatus {
+  enabled: boolean;
+  entryPath: string;
+}
+
 export interface Totals {
   cost: number;
   tokens: number;

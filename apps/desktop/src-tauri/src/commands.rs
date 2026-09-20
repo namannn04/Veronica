@@ -264,6 +264,47 @@ pub fn settings_all(state: State<'_, AppState>) -> CommandResult<serde_json::Val
     serde_json::to_value(settings.as_map()).map_err(|e| e.to_string())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LaunchAtLoginStatus {
+    pub enabled: bool,
+    pub entry_path: String,
+}
+
+fn autostart_executable() -> CommandResult<std::path::PathBuf> {
+    let current = std::env::current_exe()
+        .map_err(|error| format!("cannot locate the running Veronica executable: {error}"))?;
+    Ok(veronica_core::autostart::preferred_executable(
+        std::env::var_os("APPIMAGE").as_deref(),
+        &current,
+    ))
+}
+
+fn launch_at_login_status_for(state: &AppState) -> CommandResult<LaunchAtLoginStatus> {
+    let executable = autostart_executable()?;
+    let path = state.directories.autostart_file();
+    Ok(LaunchAtLoginStatus {
+        enabled: veronica_core::autostart::is_enabled(&path, &executable),
+        entry_path: path.display().to_string(),
+    })
+}
+
+#[tauri::command]
+pub fn launch_at_login_status(state: State<'_, AppState>) -> CommandResult<LaunchAtLoginStatus> {
+    launch_at_login_status_for(&state)
+}
+
+#[tauri::command]
+pub fn launch_at_login_set(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> CommandResult<LaunchAtLoginStatus> {
+    let executable = autostart_executable()?;
+    let path = state.directories.autostart_file();
+    veronica_core::autostart::set_enabled(&path, &executable, enabled).map_err(fail)?;
+    launch_at_login_status_for(&state)
+}
+
 /// Run a compositor-owned quick action through the GNOME Shell extension.
 /// Both the app and notch therefore use one implementation for modal input
 /// suppression and color picking instead of pretending a WebView can do it.
