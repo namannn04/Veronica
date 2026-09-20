@@ -336,9 +336,12 @@ there because it happens in response to a click in a focused window.
 
 ## Rate limits and credentials
 
-Rate-limit figures cannot be derived locally: only the provider knows them. So
-this is the one place Veronica makes a network request, and it goes straight from
-the machine to the provider using the token the agent's own CLI already holds.
+Rate-limit figures cannot be derived locally: only the provider knows them. The
+request goes straight from the machine to the provider using the token the
+agent's own CLI already holds; Veronica never proxies it. Other networked
+features are explicit in their purpose — update checks, site audits, remote
+machines and databases, and requested tool installs — while local usage history
+and telemetry never leave the machine.
 
 Claude's come from its usage endpoint over HTTPS. Codex's come from
 `codex app-server` over a JSON-RPC conversation on stdio, so there is no network

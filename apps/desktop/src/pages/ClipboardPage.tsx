@@ -60,6 +60,7 @@ export function ClipboardPage() {
   };
 
   const clear = async () => {
+    if (!window.confirm(`Delete all ${rows.length} clipboard entries?\n\nThis cannot be undone.`)) return;
     try {
       await ipc.clipboardClear();
       await load();
@@ -77,7 +78,7 @@ export function ClipboardPage() {
             Everything you have copied, kept on this computer
           </div>
         </div>
-        <button className="button" onClick={clear} disabled={rows.length === 0}>
+        <button className="button danger" onClick={clear} disabled={rows.length === 0}>
           Clear all
         </button>
       </div>

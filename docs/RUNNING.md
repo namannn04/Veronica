@@ -44,6 +44,10 @@ From a source checkout, install it for your user instead:
 Left-click the tray icon to open the window; right-click for a menu with
 Refresh usage and Quit.
 
+The AppImage does not install the system-wide GNOME extension or `vr`. It can
+run the desktop-only pages, but shell-owned features such as the notch,
+clipboard capture, Focus Dim and keystroke display require the Debian package.
+
 ### If the old or duplicated top bar still appears
 
 GNOME gives a user-installed extension under `~/.local/share` priority over the

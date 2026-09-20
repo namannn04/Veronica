@@ -75,6 +75,38 @@ fn every_desktop_release_rebuilds_the_cli_it_packages() {
     );
 }
 
+#[test]
+fn the_debian_package_declares_the_update_check_runtime() {
+    let config = repo_root().join("apps/desktop/src-tauri/tauri.conf.json");
+    let document: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(&config)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", config.display())),
+    )
+    .expect("valid Tauri configuration");
+    let debian = &document["bundle"]["linux"]["deb"];
+    let dependencies: Vec<&str> = debian["depends"]
+        .as_array()
+        .expect("Debian dependency array")
+        .iter()
+        .map(|value| value.as_str().expect("string dependency"))
+        .collect();
+    let recommendations: Vec<&str> = debian["recommends"]
+        .as_array()
+        .expect("Debian recommendations array")
+        .iter()
+        .map(|value| value.as_str().expect("string recommendation"))
+        .collect();
+
+    assert!(
+        dependencies.contains(&"curl"),
+        "the update checker executes curl, so a clean Debian install must pull it in"
+    );
+    assert!(
+        !recommendations.contains(&"yt-dlp"),
+        "Veronica has no download queue, so installing yt-dlp is an unrelated side effect"
+    );
+}
+
 /// The same failure by the other route: `install.sh` is what a source checkout
 /// uses, and an explicit file list there goes stale silently too.
 #[test]

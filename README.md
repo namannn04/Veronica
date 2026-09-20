@@ -27,7 +27,7 @@ sudo apt install ./Veronica_0.1.9_amd64.deb
 
 That installs the app, the `vr` command line tool, the desktop entry, the
 AppStream metadata and the tray icon, and pulls in `jq`, which the usage
-collector needs.
+collector needs, plus `curl` for the on-demand update check.
 
 An AppImage is also published for other distributions:
 
@@ -45,7 +45,11 @@ the image without it:
 ./squashfs-root/AppRun
 ```
 
-The AppImage does not install the `vr` command; use the Debian package for that.
+The AppImage is the desktop app only. It does not install the `vr` command or
+the GNOME Shell extension, so the compact top-bar notch, clipboard capture,
+Focus Dim, keystroke display and paste-in-place are unavailable. It also relies
+on host tools such as `jq` and Bun or Node for usage collection. Use the Debian
+package for Veronica's complete Ubuntu integration.
 
 ## Features
 
@@ -454,10 +458,14 @@ colour picking, camera, global shortcuts and screen-share detection.
 
 ## Privacy
 
-Usage data never leaves this computer. Rate-limit checks are the one network
-request Veronica makes: they go straight from this machine to your provider,
-using the OAuth token your agent CLI already holds, and nothing is proxied
-through anywhere else. There is no account and no telemetry.
+Usage history never leaves this computer. Provider rate-limit checks go straight
+from this machine to the provider, using the OAuth token your agent CLI already
+holds, and nothing is proxied through Veronica. There is no Veronica account and
+no telemetry. Network access otherwise happens only for features that inherently
+need it or that you explicitly run: checking GitHub for an update, auditing a
+website, connecting to a remote machine or database, and downloading a tool you
+asked Veronica to install. Background provider checks run only when their alert
+switches are enabled.
 Veronica reads your local agent history from `~/.claude`, `~/.codex`,
 `~/.cursor` and `~/.commandcode`, and writes its own state under the XDG
 directories, which `vr diagnose` prints.
