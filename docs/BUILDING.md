@@ -1,5 +1,10 @@
 # Building Veronica
 
+The packaged shell extension supports GNOME Shell 46 through 50, covering
+Ubuntu 24.04 through 26.04. Its camera path feature-detects the `St.ImageContent`
+signature that changed in GNOME 48, so the same package works on both sides of
+that API boundary.
+
 ## Toolchain
 
 ```bash

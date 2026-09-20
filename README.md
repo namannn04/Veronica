@@ -12,7 +12,7 @@ extension catalogue, the rate-limit maths, the usage schema — and reimplements
 the platform layer against Linux services. The usage collector is shared
 verbatim, so the numbers are identical on both platforms.
 
-Requires Ubuntu 24.04 or later on x86_64.
+Requires Ubuntu 24.04 or later on x86_64, with GNOME Shell 46 through 50.
 
 See [docs/RUNNING.md](docs/RUNNING.md) for how to run it, use the notch, and
 troubleshoot.

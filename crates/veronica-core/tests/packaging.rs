@@ -103,12 +103,22 @@ fn the_source_installer_copies_every_extension_file() {
 }
 
 #[test]
-fn the_extension_declares_the_running_shell_version() {
-    let metadata = std::fs::read_to_string(repo_root().join("extension/metadata.json"))
-        .expect("extension metadata");
-    // GNOME refuses to load an extension that does not name the running series.
-    assert!(
-        metadata.contains("\"50\""),
-        "metadata.json must list shell-version 50"
-    );
+fn the_extension_supports_every_ubuntu_release_we_claim() {
+    let path = repo_root().join("extension/metadata.json");
+    let metadata: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display())),
+    )
+    .expect("valid extension metadata");
+    let actual: Vec<&str> = metadata["shell-version"]
+        .as_array()
+        .expect("shell-version array")
+        .iter()
+        .map(|version| version.as_str().expect("string shell version"))
+        .collect();
+
+    // Ubuntu 24.04, 24.10, 25.04, 25.10 and 26.04 ship these consecutive
+    // Shell series. GNOME refuses to load the extension when its series is
+    // absent, even if the JavaScript itself is compatible.
+    assert_eq!(actual, ["46", "47", "48", "49", "50"]);
 }
