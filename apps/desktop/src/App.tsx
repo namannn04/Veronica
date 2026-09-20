@@ -22,12 +22,12 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { CommandPalette } from "./components/CommandPalette";
 import { SearchIcon } from "./components/icons";
 import { ipc, listenEvent } from "./lib/ipc";
-import { isRoute, routeIsVisible, visibleNavGroups, type Route } from "./lib/navigation";
+import { isRoute, routeFromSearch, routeIsVisible, visibleNavGroups, type Route } from "./lib/navigation";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 
 export function App() {
-  const [route, setRoute] = useState<Route>("home");
+  const [route, setRoute] = useState<Route>(() => routeFromSearch(window.location.search));
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
 

@@ -119,6 +119,12 @@ export function isRoute(value: unknown): value is Route {
   return typeof value === "string" && ROUTES.has(value);
 }
 
+/** Initial destination supplied by the native on-demand window builder. */
+export function routeFromSearch(search: string): Route {
+  const candidate = new URLSearchParams(search).get("route");
+  return isRoute(candidate) ? candidate : "home";
+}
+
 /** Rail groups after applying the extension catalogue's shared switches. */
 export function visibleNavGroups(enabledExtensions?: ReadonlySet<string>): NavGroup[] {
   if (enabledExtensions === undefined) return NAV_GROUPS;

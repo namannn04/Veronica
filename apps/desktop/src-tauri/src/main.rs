@@ -5,12 +5,13 @@
 mod alerts;
 mod art;
 mod commands;
+mod main_window;
 mod presenter;
 mod state;
 mod tray;
 
 use anyhow::Result;
-use tauri::{Emitter, Manager, WindowEvent};
+use tauri::{Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use veronica_core::AppDirectories;
 
@@ -139,12 +140,9 @@ pub(crate) fn sync_global_shortcuts(app: &tauri::AppHandle, settings: &veronica_
 }
 
 fn show_route(app: &tauri::AppHandle, route: &str) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+    if let Err(error) = main_window::show(app, Some(route)) {
+        tracing::warn!(target: "veronica", "cannot open {route}: {error:#}");
     }
-    let _ = app.emit("navigate", route);
 }
 
 fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
@@ -324,9 +322,7 @@ fn run(background: bool) -> Result<()> {
             sync_global_shortcuts(&handle, &handle.state::<AppState>().settings_snapshot());
 
             if !background {
-                if let Some(window) = app.get_webview_window("main") {
-                    window.show()?;
-                }
+                main_window::show(&handle, Some("home"))?;
             }
 
             // The shell extension writes through `vr config set`, outside
@@ -448,15 +444,28 @@ fn run(background: bool) -> Result<()> {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                // Veronica lives in the tray, so closing the main window hides
-                // it instead of quitting and losing the collector schedule.
+                // Veronica lives in the tray, so release the expensive webview
+                // without quitting or losing the collector schedule.
                 if window.label() == "main" {
                     api.prevent_close();
-                    let _ = window.hide();
+                    if let Err(error) = window.destroy() {
+                        tracing::warn!(target: "veronica", "cannot release the main window: {error}");
+                    }
                 }
             }
         })
-        .run(tauri::generate_context!())?;
+        .build(tauri::generate_context!())?
+        .run(|_, event| {
+            // Destroying the last window normally exits a Tauri application.
+            // Keep the native tray process alive, but still honour the tray's
+            // explicit `app.exit(0)` (which carries an exit code).
+            if let RunEvent::ExitRequested {
+                code: None, api, ..
+            } = event
+            {
+                api.prevent_exit();
+            }
+        });
 
     Ok(())
 }

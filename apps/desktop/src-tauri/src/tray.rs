@@ -7,7 +7,7 @@
 use anyhow::{Context, Result};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 pub fn install(app: &AppHandle) -> Result<()> {
     let open = MenuItem::with_id(app, "open", "Open Veronica", true, None::<&str>)?;
@@ -54,9 +54,7 @@ pub fn install(app: &AppHandle) -> Result<()> {
 }
 
 fn show_main(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
+    if let Err(error) = crate::main_window::show(app, Some("home")) {
+        tracing::warn!("cannot open Veronica from the tray: {error:#}");
     }
 }

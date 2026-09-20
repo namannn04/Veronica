@@ -76,6 +76,31 @@ fn every_desktop_release_rebuilds_the_cli_it_packages() {
 }
 
 #[test]
+fn the_main_webview_is_created_only_when_opened() {
+    let config = repo_root().join("apps/desktop/src-tauri/tauri.conf.json");
+    let document: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(&config)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", config.display())),
+    )
+    .expect("valid Tauri configuration");
+    let main = document["app"]["windows"]
+        .as_array()
+        .expect("window array")
+        .iter()
+        .find(|window| window["label"] == "main")
+        .expect("main window");
+
+    assert_eq!(
+        main["create"], false,
+        "autostart must not allocate a WebKit renderer until Veronica is opened"
+    );
+    assert!(
+        document["app"].get("trayIcon").is_none(),
+        "the tray is built in Rust; a configured tray would allocate a duplicate indicator"
+    );
+}
+
+#[test]
 fn the_debian_package_declares_the_update_check_runtime() {
     let config = repo_root().join("apps/desktop/src-tauri/tauri.conf.json");
     let document: serde_json::Value = serde_json::from_str(

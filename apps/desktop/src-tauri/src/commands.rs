@@ -2544,12 +2544,7 @@ pub fn clipboard_clear(state: State<'_, AppState>) -> CommandResult<()> {
 
 #[tauri::command]
 pub fn show_main_window(app: AppHandle) -> CommandResult<()> {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
-    }
-    Ok(())
+    crate::main_window::show(&app, None).map_err(fail)
 }
 
 /// Open a path or URL with the desktop's default handler.

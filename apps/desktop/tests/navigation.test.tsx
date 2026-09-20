@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   NAV_ITEMS,
+  routeFromSearch,
   routeIsVisible,
   searchNav,
   visibleNavGroups,
@@ -9,6 +10,12 @@ import {
 } from "../src/lib/navigation";
 
 describe("extension-aware navigation", () => {
+  test("an on-demand window opens its requested route safely", () => {
+    expect(routeFromSearch("?route=emoji")).toBe("emoji");
+    expect(routeFromSearch("?route=not-a-page")).toBe("home");
+    expect(routeFromSearch("")).toBe("home");
+  });
+
   test("every feature page points at its catalogue extension", () => {
     const expected: Record<Exclude<Route, "home" | "extensions" | "settings" | "about">, string> = {
       usage: "usage",
