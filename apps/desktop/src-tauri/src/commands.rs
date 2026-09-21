@@ -1619,6 +1619,7 @@ pub fn emoji_recents(state: State<'_, AppState>, limit: usize) -> CommandResult<
 #[tauri::command]
 pub async fn emoji_copy(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     character: String,
     insert: bool,
 ) -> CommandResult<EmojiCopyResult> {
@@ -1645,6 +1646,16 @@ pub async fn emoji_copy(
         .map(|writer| writer.title().to_string())
         .map_err(fail)?;
 
+    // The compact picker temporarily owns focus. Hide it before synthesising
+    // Ctrl+V so GNOME restores the app the user was typing in, then give the
+    // compositor one frame to settle before sending the keystroke.
+    if should_restore_emoji_target(window.label(), insert) {
+        window
+            .hide()
+            .map_err(|error| format!("cannot dismiss the emoji picker: {error}"))?;
+        tokio::time::sleep(std::time::Duration::from_millis(180)).await;
+    }
+
     let inserted = if insert {
         match veronica_system::selection::paste_in_place().await {
             Ok(()) => true,
@@ -1664,6 +1675,10 @@ pub async fn emoji_copy(
         copied_via,
         inserted,
     })
+}
+
+fn should_restore_emoji_target(window_label: &str, insert: bool) -> bool {
+    insert && window_label == crate::emoji_picker::LABEL
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -2624,6 +2639,19 @@ mod wire_shape_tests {
     //! pinned here rather than assumed.
 
     use super::*;
+
+    #[test]
+    fn compact_emoji_picker_releases_focus_before_inserting() {
+        assert!(should_restore_emoji_target(
+            crate::emoji_picker::LABEL,
+            true
+        ));
+        assert!(!should_restore_emoji_target("main", true));
+        assert!(!should_restore_emoji_target(
+            crate::emoji_picker::LABEL,
+            false
+        ));
+    }
 
     /// Every key in a JSON object, recursively, as `parent.child` paths.
     fn keys(value: &serde_json::Value, prefix: &str, out: &mut Vec<String>) {

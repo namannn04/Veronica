@@ -8,8 +8,15 @@ import {
   visibleNavGroups,
   type Route,
 } from "../src/lib/navigation";
+import { isEmojiPickerSurface } from "../src/lib/surfaces";
 
 describe("extension-aware navigation", () => {
+  test("the shortcut surface is distinct from the full application", () => {
+    expect(isEmojiPickerSurface("?surface=emoji-picker")).toBe(true);
+    expect(isEmojiPickerSurface("?route=emoji")).toBe(false);
+    expect(isEmojiPickerSurface("")).toBe(false);
+  });
+
   test("an on-demand window opens its requested route safely", () => {
     expect(routeFromSearch("?route=emoji")).toBe("emoji");
     expect(routeFromSearch("?route=not-a-page")).toBe("home");

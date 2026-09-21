@@ -5,6 +5,7 @@
 mod alerts;
 mod art;
 mod commands;
+mod emoji_picker;
 mod main_window;
 mod presenter;
 mod state;
@@ -173,7 +174,9 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
             }
         });
     } else if matches(shortcut, Code::KeyE) && extension_enabled(&settings, "emoji") {
-        show_route(app, "emoji");
+        if let Err(error) = emoji_picker::show(app) {
+            tracing::warn!(target: "veronica", "cannot open the emoji picker: {error:#}");
+        }
     } else if matches(shortcut, Code::KeyK) {
         tauri::async_runtime::spawn(async {
             if let Err(error) = commands::call_shell_method("CleanKeys").await {
