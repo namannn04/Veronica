@@ -3,8 +3,8 @@
 ## The short version
 
 ```bash
-# 1. Install the built package
-sudo apt install ./target/release/bundle/deb/Veronica_0.1.10_amd64.deb
+# 1. Install the latest verified GitHub release
+curl -fsSL https://raw.githubusercontent.com/namannn04/Veronica/main/install.sh | bash
 
 # 2. Launch it
 veronica              # or find "Veronica" in Activities

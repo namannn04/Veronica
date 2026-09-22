@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v6
+
+      - name: Verify the tag matches the application version
+        run: |
+          version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            build-essential curl file libayatana-appindicator3-dev \
+            libfuse2t64 libgtk-3-dev libjavascriptcoregtk-4.1-dev libssl-dev \
+            libsoup-3.0-dev libwebkit2gtk-4.1-dev libxdo-dev \
+            librsvg2-dev patchelf pkg-config
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install interface dependencies exactly
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+
+      - name: Build and smoke-test release artifacts
+        run: ./scripts/release.sh
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
+          gh release create "v${version}" \
+            "target/release/bundle/deb/Veronica_${version}_amd64.deb" \
+            "target/release/bundle/appimage/Veronica_${version}_amd64.AppImage" \
+            "target/release/bundle/SHA256SUMS" \
+            --title "Veronica ${version}" \
+            --generate-notes \
+            --verify-tag
+

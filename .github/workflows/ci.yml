@@ -71,7 +71,8 @@ jobs:
         run: |
           audit_dir="$(mktemp -d)"
           trap 'rm -rf -- "$audit_dir"' EXIT
-          package="target/release/bundle/deb/Veronica_0.1.10_amd64.deb"
+          version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
+          package="target/release/bundle/deb/Veronica_${version}_amd64.deb"
           dpkg-deb -x "$package" "$audit_dir"
           "$audit_dir/usr/bin/vr" extensions --help | grep -q enable
           dpkg-deb -f "$package" Depends | grep -q curl
@@ -79,6 +80,6 @@ jobs:
       - name: Keep the installable package
         uses: actions/upload-artifact@v6
         with:
-          name: Veronica-0.1.10-amd64-deb
-          path: target/release/bundle/deb/Veronica_0.1.10_amd64.deb
+          name: Veronica-amd64-deb
+          path: target/release/bundle/deb/Veronica_*_amd64.deb
           if-no-files-found: error

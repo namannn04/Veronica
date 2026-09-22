@@ -177,6 +177,35 @@ fn every_release_surface_uses_the_workspace_version() {
     }
 }
 
+#[test]
+fn public_installer_verifies_the_release_before_installing_it() {
+    let script = std::fs::read_to_string(repo_root().join("install.sh")).expect("install.sh");
+
+    assert!(script.contains("SHA256SUMS"));
+    assert!(script.contains("sha256sum --check --status"));
+    assert!(script.contains("apt install --reinstall --yes"));
+    assert!(
+        script.find("sha256sum --check --status").unwrap()
+            < script.find("apt install --reinstall --yes").unwrap(),
+        "the package must be verified before apt is allowed to install it"
+    );
+}
+
+#[test]
+fn tagged_releases_publish_every_documented_download() {
+    let workflow = std::fs::read_to_string(repo_root().join(".github/workflows/release.yml"))
+        .expect("release workflow");
+
+    for required in ["amd64.deb", "amd64.AppImage", "SHA256SUMS"] {
+        assert!(
+            workflow.contains(required),
+            "release workflow does not publish {required}"
+        );
+    }
+    assert!(workflow.contains("GITHUB_REF_NAME"));
+    assert!(workflow.contains("--verify-tag"));
+}
+
 /// The same failure by the other route: `install.sh` is what a source checkout
 /// uses, and an explicit file list there goes stale silently too.
 #[test]

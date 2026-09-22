@@ -19,9 +19,17 @@ troubleshoot.
 
 ## Install
 
-The Debian package is the recommended route on Ubuntu:
+The Debian package is the recommended route on Ubuntu. This command downloads
+the latest GitHub release, verifies its published SHA-256 checksum, and installs
+it through `apt` (which may ask for your sudo password):
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/namannn04/Veronica/main/install.sh | bash
 ```
+
+To install a package you downloaded yourself instead:
+
+```bash
 sudo apt install ./Veronica_0.1.10_amd64.deb
 ```
 

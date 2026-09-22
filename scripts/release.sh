@@ -44,6 +44,11 @@ dpkg-deb -x "$deb" "$audit_dir"
 dpkg-deb -f "$deb" Depends | grep -q curl
 
 checksums="target/release/bundle/SHA256SUMS"
-sha256sum "$deb" "$appimage" > "$checksums"
+(
+  cd "$(dirname "$deb")"
+  sha256sum "$(basename "$deb")"
+  cd "../appimage"
+  sha256sum "$(basename "$appimage")"
+) > "$checksums"
 echo "built Veronica $version"
 echo "checksums: $checksums"
