@@ -8,6 +8,7 @@ node_modules/
 
 # Build output
 /apps/desktop/src-tauri/gen/
+/target/pages/
 
 # Editors and OS
 .DS_Store

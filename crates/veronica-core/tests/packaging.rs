@@ -192,6 +192,22 @@ fn public_installer_verifies_the_release_before_installing_it() {
 }
 
 #[test]
+fn github_pages_publishes_the_canonical_installer() {
+    let root = repo_root();
+    let workflow =
+        std::fs::read_to_string(root.join(".github/workflows/pages.yml")).expect("Pages workflow");
+    let builder =
+        std::fs::read_to_string(root.join("scripts/build-pages.sh")).expect("Pages builder");
+    let page = std::fs::read_to_string(root.join("site/index.html")).expect("landing page");
+
+    assert!(workflow.contains("actions/deploy-pages@v4"));
+    assert!(workflow.contains("scripts/build-pages.sh"));
+    assert!(builder.contains("cp \"$repo_root/install.sh\" \"$destination/install\""));
+    assert!(builder.contains("cmp --silent"));
+    assert!(page.contains("https://namannn04.github.io/Veronica/install | bash"));
+}
+
+#[test]
 fn tagged_releases_publish_every_documented_download() {
     let workflow = std::fs::read_to_string(repo_root().join(".github/workflows/release.yml"))
         .expect("release workflow");

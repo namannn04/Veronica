@@ -24,8 +24,11 @@ the latest GitHub release, verifies its published SHA-256 checksum, and installs
 it through `apt` (which may ask for your sudo password):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/namannn04/Veronica/main/install.sh | bash
+curl -fsSL https://namannn04.github.io/Veronica/install | bash
 ```
+
+See screenshots, shortcuts and download choices on the
+[Veronica website](https://namannn04.github.io/Veronica/).
 
 To install a package you downloaded yourself instead:
 

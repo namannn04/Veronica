@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101115" />
+    <meta name="description" content="Veronica is a fast, local-first control center for Ubuntu—agent usage, system health, clipboard, emoji, machines and more." />
+    <link rel="canonical" href="https://namannn04.github.io/Veronica/" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23cf6f4f'/%3E%3Cpath d='M16 17l16 32 16-32' fill='none' stroke='%23fffaf6' stroke-width='8' stroke-linecap='square' stroke-linejoin='bevel'/%3E%3Ccircle cx='32' cy='48' r='5' fill='%236f9278'/%3E%3C/svg%3E" />
+    <title>Veronica — Your Ubuntu command center</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Veronica home"><span class="brand-mark" aria-hidden="true">V<span></span></span><strong>Veronica</strong></a>
+      <nav aria-label="Primary navigation">
+        <a href="#features">Features</a><a href="#shortcuts">Shortcuts</a><a href="#install">Install</a>
+      </nav>
+      <a class="github-link" href="https://github.com/namannn04/Veronica" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <div class="eyebrow"><span></span> Built for Ubuntu 24.04+</div>
+          <h1>Your whole computer.<br /><em>One calm place.</em></h1>
+          <p>Agent limits, system health, meetings, media, clipboard, remote machines and the little tools you reach for every day—without sending your data away.</p>
+          <div class="hero-actions">
+            <a class="button button-primary download-deb" href="https://github.com/namannn04/Veronica/releases/latest">Download for Ubuntu <span aria-hidden="true">↓</span></a>
+            <a class="button button-quiet" href="#install">Install from terminal</a>
+          </div>
+          <p class="release-line"><span class="pulse" aria-hidden="true"></span><span data-version>v0.1.10</span> · Free and open source · GPL-3.0</p>
+        </div>
+
+        <div class="product-stage" aria-label="Preview of the Veronica dashboard">
+          <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          <div class="app-window">
+            <div class="window-bar"><div><i></i><i></i><i></i></div><span>Veronica</span><small>⌘</small></div>
+            <div class="app-shell">
+              <aside>
+                <div class="app-brand"><span class="mini-mark">V</span><b>Veronica</b></div>
+                <div class="app-search">⌕ <span>Go to…</span><kbd>Ctrl K</kbd></div>
+                <small>OVERVIEW</small>
+                <div class="rail-item active"><span>⌂</span> Home</div>
+                <div class="rail-item"><span>◷</span> Agent Usage</div>
+                <div class="rail-item"><span>◎</span> System</div>
+                <small>TOOLS</small>
+                <div class="rail-item"><span>▱</span> Clipboard</div>
+                <div class="rail-item"><span>☺</span> Emoji</div>
+                <div class="rail-item"><span>◇</span> Machines</div>
+              </aside>
+              <div class="dashboard">
+                <div class="dash-head"><div><small>MONDAY, SEPTEMBER 23</small><h2>Good evening<span>.</span></h2></div><div class="clock">20:39<small>Asia/Kolkata</small></div></div>
+                <div class="quick-row"><div><span>⌨</span><b>Clean keys</b><small>Ready</small></div><div><span>☾</span><b>Keep awake</b><small>Off</small></div><div><span>◉</span><b>Presenter</b><small>Private</small></div></div>
+                <div class="dash-grid">
+                  <div class="panel usage"><div class="panel-title"><b>Agent usage</b><small>LIVE</small></div><div class="rings"><div class="ring orange"><span>42<small>%</small></span></div><div class="ring blue"><span>18<small>%</small></span></div></div><div class="ring-labels"><span>Codex session</span><span>Weekly limit</span></div></div>
+                  <div class="panel system"><div class="panel-title"><b>This computer</b><small>NOW</small></div><div class="metric"><span>CPU</span><b>12%</b><i style="--value:12%"></i></div><div class="metric"><span>Memory</span><b>31%</b><i style="--value:31%"></i></div><div class="metric"><span>Disk</span><b>48%</b><i style="--value:48%"></i></div></div>
+                  <div class="panel activity"><div class="panel-title"><b>Activity</b><small>LAST 7 DAYS</small></div><div class="bars" aria-hidden="true"><i style="--h:31%"></i><i style="--h:58%"></i><i style="--h:39%"></i><i style="--h:82%"></i><i style="--h:64%"></i><i style="--h:92%"></i><i style="--h:48%"></i></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="floating-card privacy"><span>●</span><div><b>Local-first</b><small>Your history stays yours</small></div></div>
+          <div class="floating-card shortcut"><kbd>Ctrl</kbd><b>+</b><kbd>Alt</kbd><b>+</b><kbd>V</kbd></div>
+        </div>
+      </section>
+
+      <section class="statement" aria-label="Product summary"><p>Not another dashboard to babysit.</p><h2>Veronica turns scattered utilities into one native, private control center.</h2></section>
+
+      <section class="features section" id="features">
+        <div class="section-heading"><div><span>01 / WHAT IT DOES</span><h2>Everything close.<br />Nothing noisy.</h2></div><p>Open the full control center when you need context. Use compact global tools when you only need one quick action.</p></div>
+        <div class="feature-grid">
+          <article class="feature-card feature-wide agent-card"><div class="feature-copy"><span class="feature-index">01</span><h3>Know your agent runway</h3><p>See Codex and Claude rate limits, spend, tokens and pace in one local dashboard—down to the project and chat.</p><a href="https://github.com/namannn04/Veronica#features">Explore agent usage <span>→</span></a></div><div class="limit-visual"><div class="large-ring"><span>68<small>%</small></span></div><div><small>WEEKLY LIMIT</small><strong>On pace</strong><p>2d 14h until reset</p><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></article>
+          <article class="feature-card"><span class="feature-index">02</span><div class="feature-icon">⌘</div><h3>Control the machine</h3><p>CPU, memory, disks, temperatures, microphone and power—live, without a background cloud service.</p></article>
+          <article class="feature-card"><span class="feature-index">03</span><div class="feature-icon">⌁</div><h3>Reach every machine</h3><p>Inspect SSH hosts, files and containers with your existing config and keys. No remote agent required.</p></article>
+          <article class="feature-card feature-wide tools-card"><div class="feature-copy"><span class="feature-index">04</span><h3>The small tools are actually small</h3><p>Clipboard search, emoji, colour picking, keyboard cleaning and presenter mode appear when called, then get out of your way.</p></div><div class="emoji-pop"><div class="emoji-search">⌕ Search emoji</div><div>😀&nbsp; 😅&nbsp; 😂&nbsp; 🥹&nbsp; 😎</div><small>Click to paste into the app you were using</small></div></article>
+        </div>
+      </section>
+
+      <section class="privacy-section section">
+        <div class="privacy-seal" aria-hidden="true"><span>V</span><i></i></div>
+        <div><span class="section-label">02 / PRIVATE BY DEFAULT</span><h2>Your computer is not a data source.</h2><p>Veronica reads local system services and files to help you. Your clipboard, activity, credentials and usage history are not uploaded to Veronica servers—because there are no Veronica servers.</p><ul><li><span>✓</span> No account or licence key</li><li><span>✓</span> No analytics or tracking</li><li><span>✓</span> Open source under GPL-3.0</li></ul></div>
+      </section>
+
+      <section class="shortcuts section" id="shortcuts">
+        <div class="section-heading compact"><div><span>03 / MOVE FASTER</span><h2>One chord away.</h2></div><p>Global shortcuts work from wherever you are in GNOME.</p></div>
+        <div class="shortcut-grid">
+          <div><span>Open Veronica</span><kbd>Ctrl</kbd><b>+</b><kbd>Alt</kbd><b>+</b><kbd>V</kbd></div>
+          <div><span>Clipboard</span><kbd>Ctrl</kbd><b>+</b><kbd>Alt</kbd><b>+</b><kbd>B</kbd></div>
+          <div><span>Emoji picker</span><kbd>Ctrl</kbd><b>+</b><kbd>Alt</kbd><b>+</b><kbd>E</kbd></div>
+          <div><span>Pick a colour</span><kbd>Ctrl</kbd><b>+</b><kbd>Alt</kbd><b>+</b><kbd>P</kbd></div>
+        </div>
+      </section>
+
+      <section class="install section" id="install">
+        <div class="install-copy"><span class="section-label">04 / INSTALL</span><h2>Give Veronica a hand.</h2><p>Ubuntu 24.04 or later · x86_64 · GNOME Shell 46–50</p><div class="install-actions"><a class="button button-light download-deb" href="https://github.com/namannn04/Veronica/releases/latest">Download .deb <span>↓</span></a><a class="text-link download-appimage" href="https://github.com/namannn04/Veronica/releases/latest">Get AppImage →</a></div></div>
+        <div class="terminal"><div class="terminal-head"><span><i></i><i></i><i></i></span><button type="button" data-copy aria-label="Copy install command">Copy</button></div><code><span>$</span> <span data-command>curl -fsSL https://namannn04.github.io/Veronica/install | bash</span></code><p>Downloads the latest release, verifies its SHA-256 checksum, then installs with apt.</p></div>
+      </section>
+    </main>
+
+    <footer><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">V<span></span></span><strong>Veronica</strong></a><p>Built for Ubuntu by <a href="https://github.com/namannn04">Naman Dadhich</a>.</p><div><a href="https://github.com/namannn04/Veronica">Source</a><a href="https://github.com/namannn04/Veronica/issues">Issues</a><a href="https://github.com/namannn04/Veronica/releases">Releases</a></div></footer>
+    <div class="toast" role="status" aria-live="polite">Install command copied</div>
+  </body>
+</html>
