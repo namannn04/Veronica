@@ -200,7 +200,7 @@ fn github_pages_publishes_the_canonical_installer() {
         std::fs::read_to_string(root.join("scripts/build-pages.sh")).expect("Pages builder");
     let page = std::fs::read_to_string(root.join("site/index.html")).expect("landing page");
 
-    assert!(workflow.contains("actions/deploy-pages@v4"));
+    assert!(workflow.contains("actions/deploy-pages@v5"));
     assert!(workflow.contains("scripts/build-pages.sh"));
     assert!(builder.contains("cp \"$repo_root/install.sh\" \"$destination/install\""));
     assert!(builder.contains("cmp --silent"));
