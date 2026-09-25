@@ -33,7 +33,7 @@ See screenshots, shortcuts and download choices on the
 To install a package you downloaded yourself instead:
 
 ```bash
-sudo apt install ./Veronica_0.1.10_amd64.deb
+sudo apt install ./Veronica_0.1.11_amd64.deb
 ```
 
 That installs the app, the `vr` command line tool, the desktop entry, the
@@ -43,8 +43,8 @@ collector needs, plus `curl` for the on-demand update check.
 An AppImage is also published for other distributions:
 
 ```
-chmod +x Veronica_0.1.10_amd64.AppImage
-./Veronica_0.1.10_amd64.AppImage
+chmod +x Veronica_0.1.11_amd64.AppImage
+./Veronica_0.1.11_amd64.AppImage
 ```
 
 Ubuntu 24.04 and later no longer ship the FUSE 2 runtime an AppImage needs to
@@ -52,7 +52,7 @@ mount itself. Either install it once with `sudo apt install libfuse2t64`, or run
 the image without it:
 
 ```
-./Veronica_0.1.10_amd64.AppImage --appimage-extract
+./Veronica_0.1.11_amd64.AppImage --appimage-extract
 ./squashfs-root/AppRun
 ```
 

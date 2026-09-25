@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.11" date="2026-09-25">
+      <description>
+        <p>Reduces idle memory by creating the desktop webview only when opened, adds a compact paste-in-place emoji picker, publishes verified one-command installs and GitHub Pages downloads, and introduces Veronica's new control-center identity.</p>
+      </description>
+    </release>
     <release version="0.1.10" date="2026-09-20">
       <description>
         <p>Completes extension lifecycle controls, makes every extension switch functional, supports GNOME Shell 46 through 50, adds launch-at-login and guided shell setup, and hardens release packaging, dependencies and privacy copy.</p>
