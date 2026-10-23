@@ -27,6 +27,10 @@ it through `apt` (which may ask for your sudo password):
 curl -fsSL https://namannn04.github.io/Veronica/install | bash
 ```
 
+It also turns on the GNOME Shell extension and opens Veronica. GNOME only
+loads new extensions at login, so log out and back in once to see the notch.
+Running the same command again later updates to the newest release.
+
 See screenshots, shortcuts and download choices on the
 [Veronica website](https://namannn04.github.io/Veronica/).
 

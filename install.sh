@@ -62,4 +62,43 @@ else
   sudo apt install --reinstall --yes "${work_dir}/${asset}"
 fi
 
-echo "Veronica ${version} is installed. Open Veronica from Activities."
+uuid="veronica@namannn04.github.io"
+
+# GNOME only scans for extensions when the Shell starts, so a freshly installed
+# one cannot be enabled until the next login. Listing it in enabled-extensions
+# now makes that login start it, with nothing left to click.
+enable_notch() {
+  [ "$(id -u)" -ne 0 ] || return 1
+  command -v gsettings >/dev/null 2>&1 || return 1
+  gnome-extensions enable "$uuid" >/dev/null 2>&1 && return 0
+  local current
+  current="$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null)" || return 1
+  case "$current" in
+    *"'${uuid}'"*) return 0 ;;
+    "@as []" | "[]") current="['${uuid}']" ;;
+    *) current="${current%]}, '${uuid}']" ;;
+  esac
+  gsettings set org.gnome.shell enabled-extensions "$current" 2>/dev/null
+}
+
+notch_active() {
+  gnome-extensions info "$uuid" 2>/dev/null | grep -q "State: ACTIVE"
+}
+
+echo
+echo "Veronica ${version} is installed."
+if notch_active; then
+  echo "The notch is already running; log out and back in to load this version."
+elif enable_notch; then
+  echo "The top-bar notch is enabled. Log out and back in once to see it."
+else
+  echo "To get the top-bar notch: log out and back in, then open Veronica → Settings → Enable."
+fi
+
+if [ "$(id -u)" -ne 0 ] && [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ] \
+  && ! pgrep -x veronica >/dev/null 2>&1; then
+  setsid veronica >/dev/null 2>&1 </dev/null &
+  echo "Opening Veronica…"
+else
+  echo "Open Veronica from Activities, or run: veronica"
+fi

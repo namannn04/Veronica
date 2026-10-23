@@ -3,15 +3,16 @@
 ## The short version
 
 ```bash
-# 1. Install the latest verified GitHub release
-curl -fsSL https://raw.githubusercontent.com/namannn04/Veronica/main/install.sh | bash
+# 1. Install (or update to) the latest verified GitHub release
+curl -fsSL https://namannn04.github.io/Veronica/install | bash
 
-# 2. Launch it
-veronica              # or find "Veronica" in Activities
+# 2. Log out and back in once, so GNOME loads the notch
 
 # 3. Collect your agent usage the first time
 vr usage refresh --progress
 ```
+
+The installer enables the GNOME Shell extension and opens Veronica for you.
 
 The app puts an icon in the top bar. Left-click opens the window; right-click
 gives a menu with Refresh usage, Toggle notch, and Quit.
@@ -23,16 +24,16 @@ Edith-style shelf. It does not inject agent data into GNOME's large calendar
 dropdown and does not add a spend indicator to the right side. Ubuntu Quick
 Settings remains the single owner of Wi-Fi, Bluetooth, volume and battery.
 
-The Debian package installs the extension system-wide. Veronica's Settings →
-General page reports whether it is active and can enable it when GNOME already
-knows about the installation. Because GNOME Shell only
+The Debian package installs the extension system-wide. Because GNOME Shell only
 scans for extensions at startup, and Wayland has no way to restart the shell in
-place, a **fresh login is required once** after installing:
+place, a **fresh login is required once** after installing. The install script
+already adds the extension to GNOME's `enabled-extensions`, so that login starts
+it. If you installed the package another way, Veronica's Settings → General
+page can do the same with one click, or:
 
 ```bash
-# after installing the package, log out and back in, then:
-gnome-extensions enable veronica@namannn04.github.io
-gnome-extensions info veronica@namannn04.github.io   # expect State: ACTIVE
+gnome-extensions enable veronica@namannn04.github.io   # after logging back in
+gnome-extensions info veronica@namannn04.github.io     # expect State: ACTIVE
 ```
 
 From a source checkout, install it for your user instead:

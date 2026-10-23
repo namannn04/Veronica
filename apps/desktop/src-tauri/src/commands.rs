@@ -338,6 +338,7 @@ pub fn install_bundled_shell_extension(
         .join("gnome-shell")
         .join("extensions")
         .join(SHELL_EXTENSION_UUID);
+    let first_install = !target.join("metadata.json").exists();
     std::fs::create_dir_all(&target)
         .with_context(|| format!("cannot create {}", target.display()))?;
 
@@ -360,7 +361,62 @@ pub fn install_bundled_shell_extension(
     let shim = target.join("vr");
     write_if_changed(&shim, FLATPAK_CLI_SHIM.as_bytes())?;
     std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755))?;
+    if first_install {
+        enable_at_next_login().map_err(anyhow::Error::msg)?;
+    }
     Ok(())
+}
+
+/// GNOME's `enabled-extensions` list, as `gsettings` prints it.
+fn enabled_shell_extensions() -> Option<String> {
+    let output = veronica_core::host::command("gsettings")
+        .args(["get", "org.gnome.shell", "enabled-extensions"])
+        .output()
+        .ok()?;
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// `current` with Veronica added, or None when it is already listed.
+fn with_veronica_enabled(current: &str) -> Option<String> {
+    let quoted = format!("'{SHELL_EXTENSION_UUID}'");
+    if current.contains(&quoted) {
+        return None;
+    }
+    let inner = current
+        .trim_start_matches("@as")
+        .trim()
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .trim();
+    Some(if inner.is_empty() {
+        format!("[{quoted}]")
+    } else {
+        format!("[{inner}, {quoted}]")
+    })
+}
+
+/// Ask GNOME to start the extension at the next login.
+///
+/// `gnome-extensions enable` refuses an extension the running Shell has not
+/// scanned, which is every extension installed after login. The Shell reads
+/// `enabled-extensions` when it starts, so listing it there is enough.
+fn enable_at_next_login() -> Result<(), String> {
+    let current = enabled_shell_extensions().ok_or("cannot read GNOME's enabled extensions")?;
+    let Some(value) = with_veronica_enabled(&current) else {
+        return Ok(());
+    };
+    let output = veronica_core::host::command("gsettings")
+        .args(["set", "org.gnome.shell", "enabled-extensions", &value])
+        .output()
+        .map_err(|error| format!("cannot run gsettings: {error}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -442,11 +498,19 @@ fn shell_extension_status_for(state: &AppState) -> ShellExtensionStatus {
         Ok(output) if output.status.success() => {
             parsed_shell_extension_status(&String::from_utf8_lossy(&output.stdout))
         }
-        Ok(_) if installed => ShellExtensionStatus {
-            state: "restartRequired".into(),
-            detail: "The extension was installed after this GNOME session started. Log out and back in once.".into(),
-            can_enable: false,
-        },
+        Ok(_) if installed => {
+            let listed = enabled_shell_extensions()
+                .is_some_and(|current| with_veronica_enabled(&current).is_none());
+            ShellExtensionStatus {
+                state: "restartRequired".into(),
+                detail: if listed {
+                    "The extension was installed after this GNOME session started. Log out and back in once.".into()
+                } else {
+                    "Installed after this GNOME session started. Enable it now and it starts at your next login.".into()
+                },
+                can_enable: !listed,
+            }
+        }
         Ok(_) => ShellExtensionStatus {
             state: "notInstalled".into(),
             detail: "The shell extension is not installed. Install Veronica's Debian package for top-bar integration.".into(),
@@ -471,7 +535,9 @@ pub fn shell_extension_enable(state: State<'_, AppState>) -> CommandResult<Shell
         .args(["enable", SHELL_EXTENSION_UUID])
         .output()
         .map_err(|error| format!("cannot run gnome-extensions: {error}"))?;
-    if !output.status.success() {
+    if !output.status.success() && shell_extension_installed(&state) {
+        enable_at_next_login()?;
+    } else if !output.status.success() {
         let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
         return Err(if detail.is_empty() {
             "GNOME refused to enable the Veronica extension".into()
@@ -2637,7 +2703,7 @@ pub fn open_external(target: String) -> CommandResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{newer_version, parsed_shell_extension_status};
+    use super::{newer_version, parsed_shell_extension_status, with_veronica_enabled};
 
     #[test]
     fn shell_extension_info_becomes_an_actionable_ui_state() {
@@ -2658,6 +2724,22 @@ mod tests {
         let failed = parsed_shell_extension_status("Enabled: Yes\nState: ERROR");
         assert_eq!(failed.state, "error");
         assert!(!failed.can_enable);
+    }
+
+    #[test]
+    fn the_extension_joins_gnomes_enabled_list_once() {
+        assert_eq!(
+            with_veronica_enabled("@as []").as_deref(),
+            Some("['veronica@namannn04.github.io']")
+        );
+        assert_eq!(
+            with_veronica_enabled("['ding@rastersoft.com']").as_deref(),
+            Some("['ding@rastersoft.com', 'veronica@namannn04.github.io']")
+        );
+        assert_eq!(
+            with_veronica_enabled("['veronica@namannn04.github.io', 'ding@rastersoft.com']"),
+            None
+        );
     }
 
     #[test]
