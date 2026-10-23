@@ -53,7 +53,7 @@ jobs:
 
       - name: Install Flatpak tooling
         run: |
-          sudo apt-get install --no-install-recommends -y flatpak
+          sudo apt-get install --no-install-recommends -y dbus-daemon flatpak
           # Ubuntu 24.04 denies unprivileged user namespaces by default, and
           # flatpak-builder needs them for its bubblewrap sandbox.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -65,7 +65,9 @@ jobs:
       - name: Build the Flatpak bundle
         run: |
           version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
-          ./scripts/build-flatpak.sh "target/release/bundle/deb/Veronica_${version}_amd64.deb"
+          # The Flathub builder installs the SDK and exports through the
+          # session bus, which a CI runner does not start on its own.
+          dbus-run-session -- ./scripts/build-flatpak.sh "target/release/bundle/deb/Veronica_${version}_amd64.deb"
           (cd target/flatpak && sha256sum "Veronica_${version}_x86_64.flatpak") >> target/release/bundle/SHA256SUMS
 
       - name: Publish the GitHub release
