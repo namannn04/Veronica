@@ -58,7 +58,7 @@ pub fn parse_volume(output: &str) -> Result<VolumeState> {
 }
 
 async fn wpctl(args: &[&str]) -> Result<String> {
-    let output = Command::new("wpctl")
+    let output = Command::from(veronica_core::host::command("wpctl"))
         .args(args)
         .output()
         .await
@@ -287,7 +287,7 @@ pub fn parse_streams(dump: &str) -> Result<Vec<AudioStream>> {
 
 /// Every application stream currently on the graph.
 pub async fn streams() -> Result<Vec<AudioStream>> {
-    let output = Command::new("pw-dump")
+    let output = Command::from(veronica_core::host::command("pw-dump"))
         .output()
         .await
         .context("pw-dump is not installed; PipeWire tools are required for the audio mixer")?;

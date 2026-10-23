@@ -15,7 +15,7 @@
 //! Edith's tab management, and nothing here pretends to.
 
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -182,7 +182,7 @@ fn run(args: &[String]) -> Result<Vec<u8>> {
         "Quinjet is not installed, or is not on PATH or in ~/.local/bin. \
          Nothing else in Veronica needs it.",
     )?;
-    let output = Command::new(&executable)
+    let output = veronica_core::host::command(&executable)
         .args(args)
         .output()
         .with_context(|| format!("cannot run {}", executable.display()))?;
@@ -249,7 +249,7 @@ pub fn open_terminal(worktree: &str, options: &LaunchOptions) -> Result<()> {
         ),
     ];
     for (terminal, arguments) in terminals {
-        if Command::new(terminal)
+        if veronica_core::host::command(terminal)
             .args(arguments)
             .stdin(Stdio::null())
             .stdout(Stdio::null())

@@ -253,7 +253,7 @@ pub async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
             }
 
             let argv = packages::removal_command(package, true)?;
-            let status = tokio::process::Command::new(&argv[0])
+            let status = tokio::process::Command::from(veronica_core::host::command(&argv[0]))
                 .args(&argv[1..])
                 .env("DEBIAN_FRONTEND", "noninteractive")
                 .status()

@@ -116,12 +116,9 @@ fn codex_binary_from(
         candidates.push(home.join(".local/bin/codex"));
         candidates.push(home.join(".npm-global/bin/codex"));
     }
-    candidates.into_iter().find(|path| {
-        use std::os::unix::fs::PermissionsExt;
-        path.metadata()
-            .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
-            .unwrap_or(false)
-    })
+    candidates
+        .into_iter()
+        .find(|path| veronica_core::host::is_executable(path))
 }
 
 /// Ask `codex app-server` for the account's rate limits.
@@ -131,7 +128,7 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
     }
 
     let binary = codex_binary().context("the codex command is not installed")?;
-    let mut child = Command::new(&binary)
+    let mut child = Command::from(veronica_core::host::command(&binary))
         .arg("app-server")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

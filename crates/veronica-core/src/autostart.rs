@@ -23,8 +23,18 @@ pub fn preferred_executable(appimage: Option<&OsStr>, current_exe: &Path) -> Pat
 pub fn desktop_entry(executable: &Path) -> String {
     format!(
         "[Desktop Entry]\nType=Application\nName=Veronica\nComment=Start Veronica's alerts, shortcuts and tray\nExec={} --background\nIcon=veronica\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
-        quote_exec(executable)
+        launch_command(executable)
     )
+}
+
+/// The Exec command that starts this build. Inside a Flatpak the executable's
+/// path only exists in the sandbox, so the session starts it through flatpak.
+fn launch_command(executable: &Path) -> String {
+    if crate::host::is_sandboxed() {
+        format!("flatpak run --command=veronica {APP_ID}")
+    } else {
+        quote_exec(executable)
+    }
 }
 
 /// True only when the installed entry matches this executable.

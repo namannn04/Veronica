@@ -5,7 +5,7 @@
 //! short POSIX script is sent on stdin; no private credentials enter Veronica.
 
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
@@ -397,7 +397,7 @@ pub fn open_terminal(machine: &Machine) -> Result<()> {
         ),
     ];
     for (terminal, args) in terminals {
-        if Command::new(terminal)
+        if veronica_core::host::command(terminal)
             .args(args)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -468,7 +468,7 @@ pub async fn download_file(
             std::fs::copy(remote_path, &destination)?;
         }
         Reach::Ssh { target, port } => {
-            let mut command = tokio::process::Command::new("sftp");
+            let mut command = tokio::process::Command::from(veronica_core::host::command("sftp"));
             command.args([
                 "-q",
                 "-b",

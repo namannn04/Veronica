@@ -23,7 +23,7 @@
 //! virtual keyboard on the seat, which needs no per-session portal approval.
 
 use std::io::Write;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 use anyhow::{bail, Context, Result};
 use zbus::Connection;
@@ -124,7 +124,7 @@ async fn write_with_shell(text: &str) -> Result<()> {
 /// Run one of the command-line tools, handing the text over on stdin so no
 /// shell quoting is involved and the content can be anything at all.
 fn write_with_command(program: &str, args: &[&str], text: &str) -> Result<()> {
-    let mut child = Command::new(program)
+    let mut child = veronica_core::host::command(program)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -160,15 +160,13 @@ pub fn available_command_writers() -> Vec<Writer> {
 }
 
 fn which(program: &str) -> Option<std::path::PathBuf> {
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .map(|dir| dir.join(program))
-        .find(|candidate| candidate.is_file())
+    veronica_core::host::which(program)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     #[test]
     fn every_command_writer_is_named_and_distinct() {

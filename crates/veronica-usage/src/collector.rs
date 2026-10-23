@@ -186,16 +186,19 @@ where
     std::fs::create_dir_all(output_dir)
         .with_context(|| format!("cannot create {}", output_dir.display()))?;
 
-    let mut child = Command::new("bash")
-        .arg(script)
-        .arg(output_dir)
-        // The script honours this to keep its own tool cache (jq, bun) inside
-        // Veronica's directories instead of the user's home.
-        .env("EDITH_CACHE_DIR", cache_dir)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("cannot run {}", script.display()))?;
+    // The script honours EDITH_CACHE_DIR to keep its own tool cache (jq, bun)
+    // inside Veronica's directories instead of the user's home. It runs on the
+    // host so it finds the same git, perl and agents it would without a sandbox.
+    let mut child = Command::from(veronica_core::host::command_with_env(
+        "bash",
+        &[("EDITH_CACHE_DIR", cache_dir.as_os_str())],
+    ))
+    .arg(script)
+    .arg(output_dir)
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .with_context(|| format!("cannot run {}", script.display()))?;
 
     let stdout = child.stdout.take().context("collector stdout missing")?;
     let stderr = child.stderr.take().context("collector stderr missing")?;

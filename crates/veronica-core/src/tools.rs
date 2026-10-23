@@ -179,9 +179,7 @@ pub fn required_by(entry: &crate::extensions::ExtensionEntry) -> Vec<&'static To
 /// to that a desktop launch would otherwise miss: Ubuntu's snap bin, the two
 /// system prefixes, and the per-user prefixes npm, cargo, bun and pip use.
 pub fn search_path() -> Vec<PathBuf> {
-    let named = std::env::var_os("PATH")
-        .map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>())
-        .unwrap_or_default();
+    let named = crate::host::path_directories();
 
     let fixed = ["/usr/local/bin", "/usr/bin", "/bin", "/snap/bin"]
         .into_iter()
@@ -221,10 +219,7 @@ pub fn locate_in(directories: &[PathBuf], executable: &str) -> Option<PathBuf> {
 /// A regular file the current user may run. A directory named `ssh` is not a
 /// tool, and neither is a file without the execute bit.
 fn is_executable(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-    path.metadata()
-        .map(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
-        .unwrap_or(false)
+    crate::host::is_executable(path)
 }
 
 #[cfg(test)]

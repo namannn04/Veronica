@@ -56,12 +56,12 @@ pub fn ssh_args(target: &str, port: Option<u16>, script: &str, timeout: Duration
 pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> Result<String> {
     let mut command = match &machine.reach {
         Reach::Local => {
-            let mut command = Command::new("sh");
+            let mut command = Command::from(veronica_core::host::command("sh"));
             command.arg("-s");
             command
         }
         Reach::Ssh { target, port } => {
-            let mut command = Command::new("ssh");
+            let mut command = Command::from(veronica_core::host::command("ssh"));
             command.args(ssh_args(target, *port, script, timeout));
             command
         }

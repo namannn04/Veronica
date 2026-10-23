@@ -1,0 +1,60 @@
+# Flatpak build of Veronica.
+#
+# Veronica is a control center for the computer it runs on, so it is not a
+# confined app: it reads coding-agent history in the home directory and runs
+# PipeWire, GNOME Shell, apt, ssh and the user's terminals on the host through
+# `flatpak-spawn --host` (see crates/veronica-core/src/host.rs).
+#
+# The application itself is repackaged from the Debian package the release
+# workflow builds on Ubuntu 24.04; scripts/build-flatpak.sh puts it where the
+# `veronica` module below expects it.
+id: io.github.namannn04.Veronica
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: veronica
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  # Agent history, music, backups and the shell extension's install directory.
+  - --filesystem=home
+  # Host executables are looked up under /run/host before running them there.
+  - --filesystem=host-os:ro
+  # The IPC socket `vr` uses to reach the running app.
+  - --filesystem=xdg-run/veronica:create
+  # GNOME Shell, MPRIS players, notifications and flatpak-spawn --host.
+  - --socket=session-bus
+  - --socket=system-bus
+
+modules:
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+
+  - name: veronica
+    buildsystem: simple
+    sources:
+      - type: file
+        path: ../../target/flatpak/veronica.deb
+      - type: file
+        path: veronica-launcher.sh
+    build-commands:
+      - ar -x veronica.deb
+      - tar -xf data.tar.*
+      - install -Dm755 usr/bin/veronica /app/libexec/veronica/veronica
+      - install -Dm755 usr/bin/vr /app/libexec/veronica/vr
+      - install -Dm755 veronica-launcher.sh /app/bin/veronica
+      - ln -s veronica /app/bin/vr
+      - install -Dm644 usr/share/applications/Veronica.desktop /app/share/applications/${FLATPAK_ID}.desktop
+      - desktop-file-edit --set-icon=${FLATPAK_ID} /app/share/applications/${FLATPAK_ID}.desktop
+      - |
+        for icon in usr/share/icons/hicolor/*/apps/veronica.png; do
+          size="$(basename "$(dirname "$(dirname "$icon")")")"
+          install -Dm644 "$icon" "/app/share/icons/hicolor/${size}/apps/${FLATPAK_ID}.png"
+        done
+      - install -Dm644 usr/share/metainfo/${FLATPAK_ID}.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
+      - mkdir -p /app/share/veronica
+      - cp -r usr/share/gnome-shell/extensions/veronica@namannn04.github.io /app/share/veronica/gnome-shell-extension

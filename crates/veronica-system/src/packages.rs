@@ -121,12 +121,14 @@ impl RemovalPlan {
 }
 
 async fn run(program: &str, args: &[&str]) -> Result<String> {
-    let output = Command::new(program)
-        .args(args)
-        .env("LC_ALL", "C")
-        .output()
-        .await
-        .with_context(|| format!("{program} is not installed"))?;
+    let output = Command::from(veronica_core::host::command_with_env(
+        program,
+        &[("LC_ALL", std::ffi::OsStr::new("C"))],
+    ))
+    .args(args)
+    .output()
+    .await
+    .with_context(|| format!("{program} is not installed"))?;
     if !output.status.success() {
         bail!(
             "{program} {} failed: {}",
@@ -143,11 +145,7 @@ pub async fn available(source: Source) -> bool {
 }
 
 fn which(program: &str) -> Option<std::path::PathBuf> {
-    std::env::var_os("PATH")?
-        .to_str()?
-        .split(':')
-        .map(|dir| std::path::Path::new(dir).join(program))
-        .find(|path| path.is_file())
+    veronica_core::host::which(program)
 }
 
 /// Parse `apt list --upgradable`.
@@ -603,12 +601,14 @@ pub async fn apply_update(source: Source, names: &[String]) -> Result<UpdateResu
         bail!("{} is not installed on this computer", source.title());
     }
     let argv = privileged_command(source, &update_command(source, names)?);
-    let output = Command::new(&argv[0])
-        .args(&argv[1..])
-        .env("DEBIAN_FRONTEND", "noninteractive")
-        .output()
-        .await
-        .with_context(|| format!("cannot run {}", argv.join(" ")))?;
+    let output = Command::from(veronica_core::host::command_with_env(
+        &argv[0],
+        &[("DEBIAN_FRONTEND", std::ffi::OsStr::new("noninteractive"))],
+    ))
+    .args(&argv[1..])
+    .output()
+    .await
+    .with_context(|| format!("cannot run {}", argv.join(" ")))?;
 
     let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
     if !output.status.success() {

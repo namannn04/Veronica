@@ -189,6 +189,9 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
 fn run(background: bool) -> Result<()> {
     let directories = AppDirectories::current()?;
     directories.prepare()?;
+    if let Err(error) = commands::install_bundled_shell_extension(&directories) {
+        tracing::warn!("cannot install the bundled shell extension: {error:#}");
+    }
 
     tauri::Builder::default()
         .plugin(

@@ -3,8 +3,6 @@
 //! Which compositor the user logged into decides what several features can do,
 //! so this is resolved once at launch and threaded through the capability map.
 
-use std::path::Path;
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -108,19 +106,10 @@ impl DesktopSession {
     }
 }
 
-/// Minimal `which`, so the core crate stays dependency-free.
+/// Minimal `which` over the host's search path, so the core crate stays
+/// dependency-free.
 pub fn which(binary: &str) -> Option<std::path::PathBuf> {
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .map(|dir| dir.join(binary))
-        .find(|candidate| is_executable(candidate))
-}
-
-fn is_executable(path: &Path) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::metadata(path)
-        .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
-        .unwrap_or(false)
+    crate::host::which(binary)
 }
 
 #[cfg(test)]

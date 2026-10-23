@@ -5,6 +5,9 @@ on:
     tags: ["v*"]
 
 permissions:
+  # actions: write lets the run start the Pages workflow, which republishes the
+  # Flatpak repository from the bundle this release attaches.
+  actions: write
   contents: write
 
 concurrency:
@@ -18,6 +21,8 @@ jobs:
     steps:
       - name: Check out the tagged source
         uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Verify the tag matches the application version
         run: |
@@ -46,6 +51,19 @@ jobs:
       - name: Build and smoke-test release artifacts
         run: ./scripts/release.sh
 
+      - name: Install Flatpak tooling
+        run: |
+          sudo apt-get install --no-install-recommends -y flatpak flatpak-builder
+          # Ubuntu 24.04 denies unprivileged user namespaces by default, and
+          # flatpak-builder needs them for its bubblewrap sandbox.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Build the Flatpak bundle
+        run: |
+          version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
+          ./scripts/build-flatpak.sh "target/release/bundle/deb/Veronica_${version}_amd64.deb"
+          (cd target/flatpak && sha256sum "Veronica_${version}_x86_64.flatpak") >> target/release/bundle/SHA256SUMS
+
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,8 +72,14 @@ jobs:
           gh release create "v${version}" \
             "target/release/bundle/deb/Veronica_${version}_amd64.deb" \
             "target/release/bundle/appimage/Veronica_${version}_amd64.AppImage" \
+            "target/flatpak/Veronica_${version}_x86_64.flatpak" \
             "target/release/bundle/SHA256SUMS" \
             --title "Veronica ${version}" \
             --generate-notes \
             --verify-tag
+
+      - name: Republish the Flatpak repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
 

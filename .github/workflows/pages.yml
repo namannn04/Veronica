@@ -32,6 +32,30 @@ jobs:
       - name: Build the site and installer endpoint
         run: ./scripts/build-pages.sh target/pages
 
+      - name: Fetch the latest Flatpak bundle
+        id: bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p target/flatpak-release
+          if gh release download --repo "$GITHUB_REPOSITORY" --pattern '*.flatpak' --dir target/flatpak-release; then
+            echo "path=$(ls target/flatpak-release/*.flatpak | head -1)" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::The latest release has no Flatpak bundle; publishing the site without a Flatpak repository."
+          fi
+
+      - name: Publish the signed Flatpak repository
+        if: steps.bundle.outputs.path != ''
+        env:
+          FLATPAK_GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y flatpak ostree
+          export GNUPGHOME="$(mktemp -d)"
+          printf '%s' "$FLATPAK_GPG_PRIVATE_KEY" | gpg --batch --import
+          key_id="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')"
+          ./scripts/build-flatpak-repo.sh "${{ steps.bundle.outputs.path }}" target/pages "$key_id"
+
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:

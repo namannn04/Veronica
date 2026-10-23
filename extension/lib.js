@@ -32,6 +32,12 @@ const CLI_FALLBACKS = [
     '/usr/bin/vr',
     '/usr/local/bin/vr',
     `${GLib.get_home_dir()}/.local/bin/vr`,
+    // The Flatpak writes a launcher for its sandboxed `vr` next to the copy of
+    // this extension it installs; the Debian package has no such file.
+    GLib.build_filenamev([
+        GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]),
+        'vr',
+    ]),
 ];
 
 /**
@@ -101,7 +107,10 @@ export async function runJson(args, cancellable = null) {
 
 /** Launch the desktop application, preferring its desktop entry. */
 export function launchApp() {
-    const app = Gio.DesktopAppInfo.new('Veronica.desktop');
+    // The Debian package installs Veronica.desktop; the Flatpak exports its
+    // entry under the application id.
+    const app = Gio.DesktopAppInfo.new('Veronica.desktop') ??
+        Gio.DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
     if (app) {
         app.launch([], null);
         return;

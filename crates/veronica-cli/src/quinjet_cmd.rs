@@ -84,7 +84,7 @@ async fn discover(machine: &Machine, args: &[String]) -> Result<Vec<u8>> {
             "Quinjet is not installed, or is not on PATH or in ~/.local/bin. \
              Nothing else in Veronica needs it.",
         )?;
-        let output = tokio::process::Command::new(&executable)
+        let output = tokio::process::Command::from(veronica_core::host::command(&executable))
             .args(args)
             .output()
             .await

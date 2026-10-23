@@ -307,6 +307,62 @@ pub fn launch_at_login_set(
 
 const SHELL_EXTENSION_UUID: &str = "veronica@namannn04.github.io";
 
+/// Where the Flatpak keeps its copy of the GNOME Shell extension.
+const BUNDLED_SHELL_EXTENSION: &str = "/app/share/veronica/gnome-shell-extension";
+
+/// Lets the extension reach the Flatpak's `vr`: the Shell runs on the host,
+/// where the sandbox's binaries are not on any path.
+const FLATPAK_CLI_SHIM: &str =
+    "#!/bin/sh\nexec flatpak run --command=vr io.github.namannn04.Veronica \"$@\"\n";
+
+/// Copy the extension the Flatpak carries into the user's extension directory.
+///
+/// The Debian package installs the extension into /usr/share. A Flatpak cannot,
+/// and GNOME Shell runs outside the sandbox, so the files have to land where the
+/// Shell looks for per-user extensions. A file is only rewritten when it
+/// differs, so an unchanged extension is left alone for the running Shell.
+pub fn install_bundled_shell_extension(
+    directories: &veronica_core::AppDirectories,
+) -> anyhow::Result<()> {
+    use anyhow::Context;
+    use std::os::unix::fs::PermissionsExt;
+
+    let source = std::path::Path::new(BUNDLED_SHELL_EXTENSION);
+    if !veronica_core::host::is_sandboxed() || !source.is_dir() {
+        return Ok(());
+    }
+    let target = directories
+        .data
+        .parent()
+        .context("the data directory has no parent")?
+        .join("gnome-shell")
+        .join("extensions")
+        .join(SHELL_EXTENSION_UUID);
+    std::fs::create_dir_all(&target)
+        .with_context(|| format!("cannot create {}", target.display()))?;
+
+    let write_if_changed = |path: &std::path::Path, contents: &[u8]| -> anyhow::Result<()> {
+        if std::fs::read(path).ok().as_deref() != Some(contents) {
+            std::fs::write(path, contents)
+                .with_context(|| format!("cannot write {}", path.display()))?;
+        }
+        Ok(())
+    };
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        if entry.file_type()?.is_file() {
+            write_if_changed(
+                &target.join(entry.file_name()),
+                &std::fs::read(entry.path())?,
+            )?;
+        }
+    }
+    let shim = target.join("vr");
+    write_if_changed(&shim, FLATPAK_CLI_SHIM.as_bytes())?;
+    std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755))?;
+    Ok(())
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellExtensionStatus {
@@ -379,7 +435,7 @@ fn shell_extension_status_for(state: &AppState) -> ShellExtensionStatus {
     }
 
     let installed = shell_extension_installed(state);
-    let output = std::process::Command::new("gnome-extensions")
+    let output = veronica_core::host::command("gnome-extensions")
         .args(["info", SHELL_EXTENSION_UUID])
         .output();
     match output {
@@ -411,7 +467,7 @@ pub fn shell_extension_status(state: State<'_, AppState>) -> CommandResult<Shell
 
 #[tauri::command]
 pub fn shell_extension_enable(state: State<'_, AppState>) -> CommandResult<ShellExtensionStatus> {
-    let output = std::process::Command::new("gnome-extensions")
+    let output = veronica_core::host::command("gnome-extensions")
         .args(["enable", SHELL_EXTENSION_UUID])
         .output()
         .map_err(|error| format!("cannot run gnome-extensions: {error}"))?;
@@ -683,7 +739,7 @@ pub fn companion_record_start(state: State<'_, AppState>) -> CommandResult<()> {
         chrono::Utc::now().timestamp_millis(),
         std::process::id()
     ));
-    let mut child = std::process::Command::new("pw-record")
+    let mut child = veronica_core::host::command("pw-record")
         .args([
             "--media-category",
             "Capture",
@@ -1825,7 +1881,7 @@ pub async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<Agend
 /// data anywhere. `gtk-launch` respects the installed desktop entry.
 #[tauri::command]
 pub fn calendar_open() -> CommandResult<()> {
-    std::process::Command::new("gtk-launch")
+    veronica_core::host::command("gtk-launch")
         .arg("org.gnome.Calendar")
         .spawn()
         .map(|_| ())
@@ -2572,7 +2628,7 @@ pub fn open_external(target: String) -> CommandResult<()> {
     if !allowed {
         return Err(format!("refusing to open {target:?}"));
     }
-    std::process::Command::new("xdg-open")
+    veronica_core::host::command("xdg-open")
         .arg(&target)
         .spawn()
         .map_err(|e| format!("cannot open {target}: {e}"))?;

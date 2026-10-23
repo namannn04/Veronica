@@ -16,6 +16,7 @@ pub mod companion;
 pub mod emoji;
 pub mod extensions;
 pub mod focus_dim;
+pub mod host;
 pub mod keystroke;
 pub mod paths;
 pub mod presenter;

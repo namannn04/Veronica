@@ -305,7 +305,7 @@ async fn npm_prefix_problem() -> Option<String> {
 
     let output = tokio::time::timeout(
         PROBE_TIMEOUT,
-        tokio::process::Command::new(&npm)
+        tokio::process::Command::from(veronica_core::host::command(&npm))
             .args(["prefix", "-g"])
             .stdin(Stdio::null())
             .kill_on_drop(true)
@@ -349,7 +349,7 @@ async fn npm_prefix_problem() -> Option<String> {
 async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
     use tokio::io::{AsyncBufReadExt, BufReader};
 
-    let mut child = tokio::process::Command::new(&argv[0])
+    let mut child = tokio::process::Command::from(veronica_core::host::command(&argv[0]))
         .args(&argv[1..])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -405,7 +405,7 @@ async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
 
 /// The first non-empty line the tool prints for its version arguments.
 async fn version(path: &std::path::Path, args: &[&str]) -> Result<String, String> {
-    let child = tokio::process::Command::new(path)
+    let child = tokio::process::Command::from(veronica_core::host::command(path))
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

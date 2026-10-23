@@ -187,7 +187,7 @@ fn has_snapshot(value: &Value) -> bool {
 
 /// Run one `herdr` call, giving up rather than waiting forever.
 async fn run(executable: &Path, args: &[&str]) -> Result<Vec<u8>> {
-    let child = tokio::process::Command::new(executable)
+    let child = tokio::process::Command::from(veronica_core::host::command(executable))
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -553,7 +553,7 @@ pub fn open_terminal(session: &str, pane_id: Option<&str>) -> Result<()> {
         ),
     ];
     for (terminal, arguments) in terminals {
-        if std::process::Command::new(terminal)
+        if veronica_core::host::command(terminal)
             .args(arguments)
             .stdin(Stdio::null())
             .stdout(Stdio::null())

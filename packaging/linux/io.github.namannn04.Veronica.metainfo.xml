@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.12" date="2026-10-23">
+      <description>
+        <p>Ships Veronica as a Flatpak. Inside the sandbox Veronica reaches PipeWire, GNOME Shell, ssh, apt and your coding agents through the host, installs its shell extension for you, and starts at login through flatpak.</p>
+      </description>
+    </release>
     <release version="0.1.11" date="2026-09-25">
       <description>
         <p>Reduces idle memory by creating the desktop webview only when opened, adds a compact paste-in-place emoji picker, publishes verified one-command installs and GitHub Pages downloads, and introduces Veronica's new control-center identity.</p>
