@@ -53,7 +53,7 @@ jobs:
 
       - name: Install Flatpak tooling
         run: |
-          sudo apt-get install --no-install-recommends -y flatpak flatpak-builder
+          sudo apt-get install --no-install-recommends -y elfutils flatpak flatpak-builder
           # Ubuntu 24.04 denies unprivileged user namespaces by default, and
           # flatpak-builder needs them for its bubblewrap sandbox.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
