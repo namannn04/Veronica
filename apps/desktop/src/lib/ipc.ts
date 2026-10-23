@@ -212,6 +212,8 @@ export const ipc = {
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
   powerStatus: () => invoke<PowerStatus>("power_status"),
   updateCheck: () => invoke<UpdateInfo>("update_check"),
+  updateInstall: (version: string) => invoke<string>("update_install", { version }),
+  appRestart: () => invoke<void>("app_restart"),
   systemProcesses: () => invoke<RunningProcess[]>("system_processes"),
   systemQuitProcess: (pid: number) => invoke<void>("system_quit_process", { pid }),
   /** Fetches the pages being audited and nothing else; no result leaves this computer. */

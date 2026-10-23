@@ -174,11 +174,35 @@ function ShortcutRow({ title, detail, keys }: { title: string; detail: string; k
 function UpdatePane({ current }: { current: string }) {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [busy, setBusy] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [installed, setInstalled] = useState(false);
   const [error, setError] = useState("");
   const check = async () => {
     setBusy(true); setError("");
     try { setUpdate(await ipc.updateCheck()); } catch (reason) { setError(String(reason)); }
     finally { setBusy(false); }
   };
-  return <section className="settings-group"><div><h2>Software updates</h2><p>Checks Veronica's official GitHub releases. Nothing downloads or installs without your click.</p></div><div className="settings-box"><div className="setting-row"><div><strong>Installed version</strong><small>{update ? update.updateAvailable ? `Version ${update.latestVersion} is available.` : "You are up to date." : "Run a check when you want; no background tracking."}</small></div><span className={`pill ${update?.updateAvailable ? "warning" : "good"}`}>v{current}</span></div>{error && <div className="banner error">{error}</div>}<div className="setting-row"><div><strong>{update?.updateAvailable ? `Download Veronica ${update.latestVersion}` : "Check GitHub releases"}</strong><small>{update?.publishedAt ? `Published ${new Date(update.publishedAt).toLocaleDateString()}` : "Uses a 12-second timeout and reports network errors."}</small></div>{update?.updateAvailable ? <button className="button primary" onClick={() => void ipc.openExternal(update.packageUrl ?? update.releaseUrl)}>Download update</button> : <button className="button" disabled={busy} onClick={() => void check()}>{busy ? "Checking…" : "Check now"}</button>}</div>{update?.updateAvailable && <div className="setting-row"><div><strong>Or update from a terminal</strong><small>Installs the latest release in one step. Your settings and history remain in your home directory.</small></div><code>curl -fsSL https://namannn04.github.io/Veronica/install | bash</code></div>}</div></section>;
+  useEffect(() => { void check(); }, []);
+  const install = async () => {
+    if (!update) return;
+    setInstalling(true); setError("");
+    try { await ipc.updateInstall(update.latestVersion); setInstalled(true); } catch (reason) { setError(String(reason)); }
+    finally { setInstalling(false); }
+  };
+  const status = installed ? `Version ${update?.latestVersion} is installed. Restart Veronica to use it.` : update ? update.updateAvailable ? `Version ${update.latestVersion} is available.` : "You are up to date." : busy ? "Checking GitHub releases…" : "Check whenever you like; nothing runs in the background.";
+  const action = installed
+    ? <button className="button primary" onClick={() => void ipc.appRestart()}>Restart Veronica</button>
+    : update?.updateAvailable && update.canInstall
+      ? <button className="button primary" disabled={installing} onClick={() => void install()}>{installing ? "Installing…" : `Update to ${update.latestVersion}`}</button>
+      : update?.updateAvailable
+        ? <button className="button primary" onClick={() => void ipc.openExternal(update.packageUrl ?? update.releaseUrl)}>Download update</button>
+        : <button className="button" disabled={busy} onClick={() => void check()}>{busy ? "Checking…" : "Check for updates"}</button>;
+  const how = update?.installKind === "flatpak" ? "Updates through Flatpak." : update?.installKind === "appimage" ? "An AppImage is replaced by downloading the new file." : "Downloads the release, verifies its checksum, then Ubuntu asks for your password before installing.";
+  return <section className="settings-group"><div><h2>Software updates</h2><p>Checks Veronica's official GitHub releases. Nothing installs without your click.</p></div><div className="settings-box">
+    <div className="setting-row"><div><strong>Installed version</strong><small>{status}</small></div><span className={`pill ${update?.updateAvailable && !installed ? "warning" : "good"}`}>v{current}</span></div>
+    {error && <div className="banner error">{error}</div>}
+    <div className="setting-row"><div><strong>{installed ? "Finish updating" : update?.updateAvailable ? `Veronica ${update.latestVersion}` : "Latest release"}</strong><small>{update?.updateAvailable && !installed ? `${update.publishedAt ? `Published ${new Date(update.publishedAt).toLocaleDateString()}. ` : ""}${how}` : installed ? "Your settings and history stay in your home directory." : update ? `Latest is ${update.latestVersion}.` : "Uses a 12-second timeout and reports network errors."}</small></div>{action}</div>
+    {update?.updateAvailable && !installed && update.notes && <div className="setting-row"><div><strong>What's new</strong><small style={{ whiteSpace: "pre-wrap" }}>{update.notes}</small></div></div>}
+    {update?.updateAvailable && update.installKind !== "flatpak" && !installed && <div className="setting-row"><div><strong>Or update from a terminal</strong><small>Installs the latest release in one step.</small></div><code>curl -fsSL https://namannn04.github.io/Veronica/install | bash</code></div>}
+  </div></section>;
 }

@@ -239,6 +239,8 @@ fn run(background: bool) -> Result<()> {
             commands::system_snapshot,
             commands::power_status,
             commands::update_check,
+            commands::update_install,
+            commands::app_restart,
             commands::system_processes,
             commands::system_quit_process,
             commands::audit_site,

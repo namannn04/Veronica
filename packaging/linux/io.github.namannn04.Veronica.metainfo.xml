@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.13" date="2026-10-23">
+      <description>
+        <p>The one-line installer now turns on the GNOME Shell extension and opens Veronica, so a single login after installing shows the notch. Settings can enable a just-installed extension for the next login, and the Updates tab now checks for a new release and installs it from inside the app, then restarts Veronica.</p>
+      </description>
+    </release>
     <release version="0.1.12" date="2026-10-23">
       <description>
         <p>Ships Veronica as a Flatpak. Inside the sandbox Veronica reaches PipeWire, GNOME Shell, ssh, apt and your coding agents through the host, installs its shell extension for you, and starts at login through flatpak.</p>

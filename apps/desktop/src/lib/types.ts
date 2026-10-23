@@ -581,7 +581,7 @@ export interface PowerStatus {
   lidAwakeRemainingSecs: number | null;
   preventSleepRemainingSecs: number | null;
 }
-export interface UpdateInfo { currentVersion: string; latestVersion: string; updateAvailable: boolean; releaseUrl: string; packageUrl: string | null; publishedAt: string | null; notes: string; }
+export interface UpdateInfo { currentVersion: string; latestVersion: string; updateAvailable: boolean; releaseUrl: string; packageUrl: string | null; publishedAt: string | null; notes: string; installKind: "deb" | "flatpak" | "appimage"; canInstall: boolean; }
 
 export type UsageLevel = "green" | "orange" | "red";
 export type PacingZone = "chill" | "onTrack" | "warning" | "hot";

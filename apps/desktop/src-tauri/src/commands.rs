@@ -1123,6 +1123,21 @@ pub struct UpdateInfo {
     pub package_url: Option<String>,
     pub published_at: Option<String>,
     pub notes: String,
+    /// deb, flatpak or appimage: how this copy was installed, and so whether
+    /// `update_install` can replace it.
+    pub install_kind: String,
+    pub can_install: bool,
+}
+
+/// How the running copy of Veronica was installed.
+fn install_kind() -> &'static str {
+    if veronica_core::host::is_sandboxed() {
+        "flatpak"
+    } else if std::env::var_os("APPIMAGE").is_some() {
+        "appimage"
+    } else {
+        "deb"
+    }
 }
 
 #[derive(Deserialize)]
@@ -1194,6 +1209,8 @@ pub async fn update_check() -> CommandResult<UpdateInfo> {
                 package_url,
                 published_at: release.published_at,
                 notes: release.body.unwrap_or_default(),
+                install_kind: install_kind().into(),
+                can_install: install_kind() != "appimage",
             });
         }
 
@@ -1217,8 +1234,128 @@ pub async fn update_check() -> CommandResult<UpdateInfo> {
             package_url: None,
             published_at: None,
             notes: "No packaged GitHub Release has been published yet.".to_string(),
+            install_kind: install_kind().into(),
+            can_install: false,
         })
     }).await.map_err(|error| format!("update check failed: {error}"))?
+}
+
+/// Install the given release over the running copy.
+///
+/// The Debian package is downloaded with its published SHA256SUMS, checked,
+/// and handed to apt through `pkexec`, so Ubuntu's own password dialog asks
+/// before anything changes. The Flatpak asks Flatpak to update itself. The
+/// new version runs from the next start; `app_restart` provides that.
+#[tauri::command]
+pub async fn update_install(version: String) -> CommandResult<String> {
+    let valid = version.split('.').count() == 3
+        && version
+            .split('.')
+            .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()));
+    if !valid {
+        return Err(format!("invalid release version: {version}"));
+    }
+    tauri::async_runtime::spawn_blocking(move || match install_kind() {
+        "flatpak" => {
+            let output = veronica_core::host::command("flatpak")
+                .args(["update", "--noninteractive", "-y", veronica_core::APP_ID])
+                .output()
+                .map_err(|error| format!("cannot run flatpak: {error}"))?;
+            if output.status.success() {
+                Ok(format!("Veronica {version} is installed."))
+            } else {
+                Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+            }
+        }
+        "deb" => install_deb_release(&version),
+        _ => Err(
+            "An AppImage cannot update itself; download the new one from the release page.".into(),
+        ),
+    })
+    .await
+    .map_err(|error| format!("update failed: {error}"))?
+}
+
+fn install_deb_release(version: &str) -> CommandResult<String> {
+    let asset = format!("Veronica_{version}_amd64.deb");
+    let root = format!("https://github.com/namannn04/Veronica/releases/download/v{version}");
+    let work =
+        std::env::temp_dir().join(format!("veronica-update-{version}-{}", std::process::id()));
+    std::fs::create_dir_all(&work).map_err(|error| error.to_string())?;
+    let result = (|| {
+        let download = |name: &str| -> CommandResult<std::path::PathBuf> {
+            let path = work.join(name);
+            let output = std::process::Command::new("curl")
+                .args([
+                    "--fail",
+                    "--silent",
+                    "--show-error",
+                    "--location",
+                    "--max-time",
+                    "300",
+                    "--output",
+                ])
+                .arg(&path)
+                .arg(format!("{root}/{name}"))
+                .output()
+                .map_err(|error| format!("cannot run curl: {error}"))?;
+            if output.status.success() {
+                Ok(path)
+            } else {
+                Err(format!(
+                    "cannot download {name}: {}",
+                    String::from_utf8_lossy(&output.stderr).trim()
+                ))
+            }
+        };
+        let package = download(&asset)?;
+        let sums =
+            std::fs::read_to_string(download("SHA256SUMS")?).map_err(|error| error.to_string())?;
+        let expected = sums
+            .lines()
+            .find_map(|line| {
+                let mut fields = line.split_whitespace();
+                let hash = fields.next()?;
+                (fields.next()? == asset).then(|| hash.to_string())
+            })
+            .ok_or_else(|| format!("the release checksums do not list {asset}"))?;
+        let actual = std::process::Command::new("sha256sum")
+            .arg(&package)
+            .output()
+            .map_err(|error| format!("cannot run sha256sum: {error}"))?;
+        let actual = String::from_utf8_lossy(&actual.stdout);
+        if actual.split_whitespace().next() != Some(expected.as_str()) {
+            return Err(
+                "the download does not match its published checksum; nothing was installed".into(),
+            );
+        }
+
+        let output = std::process::Command::new("pkexec")
+            .args(["apt-get", "install", "--reinstall", "-y"])
+            .arg(&package)
+            .env("DEBIAN_FRONTEND", "noninteractive")
+            .output()
+            .map_err(|error| format!("cannot run pkexec: {error}"))?;
+        match output.status.code() {
+            Some(0) => Ok(format!("Veronica {version} is installed.")),
+            Some(126) | Some(127) => {
+                Err("Authentication was cancelled; nothing was installed.".into())
+            }
+            _ => {
+                let text = String::from_utf8_lossy(&output.stderr);
+                let tail: Vec<&str> = text.lines().rev().take(5).collect();
+                Err(tail.into_iter().rev().collect::<Vec<_>>().join("\n"))
+            }
+        }
+    })();
+    let _ = std::fs::remove_dir_all(&work);
+    result
+}
+
+/// Start the newly installed version in place of this one.
+#[tauri::command]
+pub fn app_restart(app: AppHandle) {
+    app.restart();
 }
 
 #[tauri::command]
