@@ -230,11 +230,22 @@ where
     let stderr_lines = stderr_task.await.unwrap_or_default();
 
     if !status.success() && !completed {
-        let detail = stderr_lines
-            .iter()
-            .rev()
-            .find(|line| !line.trim().is_empty())
-            .map(String::as_str)
+        // The script reports expected failures as `error` records on stdout and
+        // only crashes on stderr, so the last error record is the better reason.
+        let reported = events.iter().rev().find_map(|event| match event {
+            CollectorEvent::Error { message } if !message.trim().is_empty() => {
+                Some(message.as_str())
+            }
+            _ => None,
+        });
+        let detail = reported
+            .or_else(|| {
+                stderr_lines
+                    .iter()
+                    .rev()
+                    .find(|line| !line.trim().is_empty())
+                    .map(String::as_str)
+            })
             .unwrap_or("no diagnostics on stderr");
         bail!("collector failed ({status}): {detail}");
     }
@@ -386,5 +397,23 @@ mod tests {
         };
         assert_eq!(outcome.summaries(), vec![("spend", "$179.78")]);
         assert_eq!(outcome.errors(), vec!["cursor auth missing"]);
+    }
+
+    #[tokio::test]
+    async fn a_failed_run_reports_the_collectors_own_error_record() {
+        let dir = std::env::temp_dir().join(format!("veronica-collector-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("collector");
+        std::fs::write(
+            &script,
+            "printf 'note\\tdiscovering sources\\n'\nprintf 'error\\tno agent history\\n'\nexit 3\n",
+        )
+        .unwrap();
+        let err = refresh(&script, &dir.join("out"), &dir.join("cache"), |_| {})
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("no agent history"), "got: {err}");
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

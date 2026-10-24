@@ -699,16 +699,20 @@ OFF=$((10#${Z:1:2} * 3600 + 10#${Z:3:2} * 60))
 
 _note "discovering sources"
 
+# ccusage refuses a config dir without projects/, which is every machine that has
+# never run Claude Code; that just means there is no Claude usage to collect.
 CLI_CFG="$HOME/.claude"
-if ! CLAUDE_CONFIG_DIR="$CLI_CFG" ccu claude daily --json >"$TMP/cli.daily.json" 2>/dev/null; then
-  _error "cli daily collection failed; previous data preserved"
-  exit 1
+if [ -d "$CLI_CFG/projects" ]; then
+  if ! CLAUDE_CONFIG_DIR="$CLI_CFG" ccu claude daily --json >"$TMP/cli.daily.json" 2>/dev/null; then
+    _error "cli daily collection failed; previous data preserved"
+    exit 1
+  fi
+  if ! CLAUDE_CONFIG_DIR="$CLI_CFG" ccu claude session --json >"$TMP/cli.session.json" 2>/dev/null; then
+    _error "cli session collection failed; previous data preserved"
+    exit 1
+  fi
+  include_source cli "$TMP/cli.daily.json" "$TMP/cli.session.json"
 fi
-if ! CLAUDE_CONFIG_DIR="$CLI_CFG" ccu claude session --json >"$TMP/cli.session.json" 2>/dev/null; then
-  _error "cli session collection failed; previous data preserved"
-  exit 1
-fi
-include_source cli "$TMP/cli.daily.json" "$TMP/cli.session.json"
 
 COWORK_CFG="$(find "$HOME/Library/Application Support/Claude/local-agent-mode-sessions" -maxdepth 2 -name .claude -type d 2>/dev/null | paste -sd, - || true)"
 if [ -n "$COWORK_CFG" ]; then
@@ -1031,7 +1035,7 @@ HAS_MACHINES=0
 compgen -G "$MACHINES_DIR/*.json" >/dev/null 2>&1 && HAS_MACHINES=1
 
 if [ ! -s "$TMP/manifest.jsonl" ] && [ "$HAS_MACHINES" = "0" ]; then
-  _error "no usage found from any source"
+  _error "no agent history on this computer yet: use Claude Code, Codex, Cursor or another supported agent, then collect again"
   exit 3
 fi
 [ -s "$TMP/sessions.jsonl" ] || : >"$TMP/sessions.jsonl"
