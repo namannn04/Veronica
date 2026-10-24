@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.14" date="2026-10-24">
+      <description>
+        <p>Agent Usage now collects on computers that have never run Claude Code, reading Codex, Cursor and the other supported agents instead of stopping with "no diagnostics on stderr". When a collection fails, the app shows the collector's own reason.</p>
+      </description>
+    </release>
     <release version="0.1.13" date="2026-10-23">
       <description>
         <p>The one-line installer now turns on the GNOME Shell extension and opens Veronica, so a single login after installing shows the notch. Settings can enable a just-installed extension for the next login, and the Updates tab now checks for a new release and installs it from inside the app, then restarts Veronica.</p>
