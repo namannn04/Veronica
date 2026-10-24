@@ -636,6 +636,21 @@ else
   ccu() { npx -y "ccusage@$CCUSAGE_VERSION" "$@"; }
 fi
 
+# ccusage's bundled (--offline) price table lags new models, e.g. Codex gpt-6.x
+# costs $0 there. Read offline first (fast, and enough to know whether there is
+# any usage), then re-read with current prices only when there is something to
+# price. Without a network ccusage falls back to the bundled table itself, and
+# a failed priced read keeps the offline result.
+ccu_priced() {
+  local offline
+  offline="$(ccu "$@" --offline)" || return 1
+  if jq -e '((.daily // .sessions // []) | length) > 0' >/dev/null 2>&1 <<<"$offline"; then
+    ccu "$@" 2>/dev/null || printf '%s\n' "$offline"
+  else
+    printf '%s\n' "$offline"
+  fi
+}
+
 : >"$TMP/manifest.jsonl"
 
 add_source() {
@@ -732,11 +747,11 @@ mkdir -p "$CODEX_CFG"
 for dir in sessions archived_sessions; do
   [ -d "$HOME/.codex/$dir" ] && ln -s "$HOME/.codex/$dir" "$CODEX_CFG/$dir"
 done
-if ! CODEX_HOME="$CODEX_CFG" ccu codex daily --json --offline >"$TMP/codex.daily.json" 2>/dev/null; then
+if ! CODEX_HOME="$CODEX_CFG" ccu_priced codex daily --json >"$TMP/codex.daily.json" 2>/dev/null; then
   _error "codex daily collection failed; previous data preserved"
   exit 1
 fi
-if ! CODEX_HOME="$CODEX_CFG" ccu codex session --json --offline >"$TMP/codex.session.json" 2>/dev/null; then
+if ! CODEX_HOME="$CODEX_CFG" ccu_priced codex session --json >"$TMP/codex.session.json" 2>/dev/null; then
   _error "codex session collection failed; previous data preserved"
   exit 1
 fi
@@ -753,11 +768,11 @@ while IFS= read -r codex_date; do
 done < <(jq -r '.daily[].date' "$TMP/codex.daily.json")
 
 for agent in opencode amp droid codebuff hermes pi goose kilo copilot gemini kimi qwen openclaw; do
-  if ! ccu "$agent" daily --json --offline >"$TMP/$agent.daily.json" 2>/dev/null; then
+  if ! ccu_priced "$agent" daily --json >"$TMP/$agent.daily.json" 2>/dev/null; then
     _error "$agent daily collection failed; previous data preserved"
     exit 1
   fi
-  if ! ccu "$agent" session --json --offline >"$TMP/$agent.session.json" 2>/dev/null; then
+  if ! ccu_priced "$agent" session --json >"$TMP/$agent.session.json" 2>/dev/null; then
     _error "$agent session collection failed; previous data preserved"
     exit 1
   fi
