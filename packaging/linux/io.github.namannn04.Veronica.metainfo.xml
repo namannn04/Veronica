@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.15" date="2026-10-24">
+      <description>
+        <p>Agent Usage prices Codex and the other supported agents with current model rates, so newer models such as Codex gpt-6.1-sol no longer show as free.</p>
+      </description>
+    </release>
     <release version="0.1.14" date="2026-10-24">
       <description>
         <p>Agent Usage now collects on computers that have never run Claude Code, reading Codex, Cursor and the other supported agents instead of stopping with "no diagnostics on stderr". When a collection fails, the app shows the collector's own reason.</p>

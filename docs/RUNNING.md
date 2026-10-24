@@ -141,7 +141,7 @@ to prevent a stale binary from silently returning.
 To update an existing installation with the package you just built:
 
 ```bash
-sudo apt install --reinstall ./target/release/bundle/deb/Veronica_0.1.14_amd64.deb
+sudo apt install --reinstall ./target/release/bundle/deb/Veronica_0.1.15_amd64.deb
 ```
 
 ## Backup and restore
