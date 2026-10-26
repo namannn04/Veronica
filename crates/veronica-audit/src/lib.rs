@@ -183,14 +183,58 @@ pub async fn audit_page(client: &reqwest::Client, url: &Url) -> PageResult {
     }
 }
 
+/// What someone typed, as a URL to audit.
+///
+/// Without a scheme, `localhost:3000` parsed as the scheme `localhost` and was
+/// refused, and every bare address got `https://`, which a local development
+/// server does not speak. A bare address now gets `http://` when it names a
+/// development host and `https://` otherwise.
+pub fn site_url(site: &str) -> Result<Url> {
+    let site = site.trim();
+    let candidate = if site.contains("://") {
+        site.to_string()
+    } else {
+        let authority = site.split(['/', '?', '#']).next().unwrap_or_default();
+        let host = match authority.strip_prefix('[') {
+            // `[::1]:8080`: the brackets hold the host.
+            Some(rest) => rest.split(']').next().unwrap_or_default(),
+            None => authority
+                .rsplit_once(':')
+                .map_or(authority, |(host, _)| host),
+        };
+        let scheme = if is_development_host(host) {
+            "http"
+        } else {
+            "https"
+        };
+        format!("{scheme}://{site}")
+    };
+    Url::parse(&candidate).with_context(|| format!("not a URL: {site:?}"))
+}
+
+/// A machine that is not a public website: this computer, the local network,
+/// or a name reserved for development.
+pub fn is_development_host(host: &str) -> bool {
+    let host = host
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .to_ascii_lowercase();
+    if host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local") {
+        return true;
+    }
+    match host.parse::<std::net::IpAddr>() {
+        Ok(std::net::IpAddr::V4(ip)) => ip.is_loopback() || ip.is_private() || ip.is_unspecified(),
+        Ok(std::net::IpAddr::V6(ip)) => ip.is_loopback() || ip.is_unspecified(),
+        Err(_) => false,
+    }
+}
+
 /// Crawl and audit a site.
 ///
 /// `limit` caps how many pages are fetched, which is what makes it reasonable
 /// to point this at somebody's whole site.
 pub async fn audit(site: &str, limit: usize, concurrency: usize) -> Result<Report> {
-    let input = Url::parse(site)
-        .or_else(|_| Url::parse(&format!("https://{site}")))
-        .with_context(|| format!("not a URL: {site:?}"))?;
+    let input = site_url(site)?;
     if !matches!(input.scheme(), "http" | "https") {
         anyhow::bail!(
             "only http and https can be audited, not {:?}",
@@ -221,6 +265,47 @@ pub async fn audit(site: &str, limit: usize, concurrency: usize) -> Result<Repor
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_bare_address_gets_the_scheme_its_host_speaks() {
+        let cases = [
+            ("localhost:3000", "http://localhost:3000/"),
+            ("127.0.0.1:8000/docs", "http://127.0.0.1:8000/docs"),
+            ("192.168.1.20", "http://192.168.1.20/"),
+            ("[::1]:8080", "http://[::1]:8080/"),
+            ("printer.local", "http://printer.local/"),
+            ("example.com:8080", "https://example.com:8080/"),
+            ("example.com", "https://example.com/"),
+            ("http://example.com", "http://example.com/"),
+            ("  https://localhost:3000  ", "https://localhost:3000/"),
+        ];
+        for (typed, expected) in cases {
+            assert_eq!(site_url(typed).unwrap().as_str(), expected, "{typed:?}");
+        }
+    }
+
+    #[test]
+    fn development_hosts_are_told_apart_from_public_ones() {
+        for host in [
+            "localhost",
+            "app.localhost",
+            "10.0.0.5",
+            "172.16.0.1",
+            "::1",
+            "[::1]",
+            "0.0.0.0",
+        ] {
+            assert!(is_development_host(host), "{host}");
+        }
+        for host in [
+            "example.com",
+            "8.8.8.8",
+            "172.32.0.1",
+            "localhost.example.com",
+        ] {
+            assert!(!is_development_host(host), "{host}");
+        }
+    }
 
     fn page(url: &str, issues: Vec<Issue>) -> PageResult {
         PageResult {
