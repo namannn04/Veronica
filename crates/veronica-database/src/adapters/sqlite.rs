@@ -123,7 +123,10 @@ fn read_value(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<Value> 
 const MAX_INLINE_BLOB: usize = 4 * 1024;
 
 /// Run a statement and shape the result into a page.
-fn page(connection: &Sqlite, sql: &str, request: &PageRequest) -> Result<Page> {
+///
+/// `client_paged` is for a statement that could not be wrapped in `LIMIT`: the
+/// offset is skipped here and reading stops one row past the page instead.
+fn page(connection: &Sqlite, sql: &str, request: &PageRequest, client_paged: bool) -> Result<Page> {
     let started = std::time::Instant::now();
     let mut statement = connection
         .prepare(sql)
@@ -138,9 +141,21 @@ fn page(connection: &Sqlite, sql: &str, request: &PageRequest) -> Result<Page> {
         .collect();
     let width = columns.len();
 
+    let (mut skip, keep) = if client_paged {
+        (request.offset, request.page_size.get() as usize + 1)
+    } else {
+        (0, usize::MAX)
+    };
     let mut rows = Vec::new();
     let mut cursor = statement.query([])?;
     while let Some(row) = cursor.next()? {
+        if skip > 0 {
+            skip -= 1;
+            continue;
+        }
+        if rows.len() >= keep {
+            break;
+        }
         let mut values = Vec::with_capacity(width);
         for index in 0..width {
             values.push(read_value(row, index)?);
@@ -246,7 +261,7 @@ impl Adapter for SqliteAdapter {
     async fn read(&mut self, object: &ObjectIdentifier, request: &PageRequest) -> Result<Page> {
         let sql = bounded(&format!("SELECT * FROM {}", quote(object.name())), request);
         let request = request.clone();
-        self.blocking(move |connection| page(&connection, &sql, &request))
+        self.blocking(move |connection| page(&connection, &sql, &request, false))
             .await
     }
 
@@ -257,10 +272,22 @@ impl Adapter for SqliteAdapter {
                  `vr database mutations`, which previews it first."
             );
         }
-        let sql = bounded(statement.trim().trim_end_matches(';'), request);
+        let body = statement.trim().trim_end_matches(';');
+        let client_paged = !super::is_wrappable_query(body);
+        let sql = if client_paged {
+            body.to_string()
+        } else {
+            bounded(body, request)
+        };
         let request = request.clone();
-        self.blocking(move |connection| page(&connection, &sql, &request))
-            .await
+        self.blocking(move |connection| {
+            // Now that `PRAGMA` runs as written, some pragmas would write
+            // (`PRAGMA user_version = 5`). `query_only` makes this connection
+            // refuse every change; it is discarded after this one statement.
+            connection.pragma_update(None, "query_only", true)?;
+            page(&connection, &sql, &request, client_paged)
+        })
+        .await
     }
 
     async fn count(&mut self, object: &ObjectIdentifier) -> Result<Option<u64>> {
@@ -489,6 +516,68 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(second.rows.len(), 1);
+        assert!(!second.has_more);
+    }
+
+    #[tokio::test]
+    async fn pragma_and_explain_run_rather_than_failing_inside_a_subquery() {
+        let (_directory, mut adapter) = seeded().await;
+        let info = adapter
+            .query("PRAGMA table_info(orders);", &PageRequest::default())
+            .await
+            .unwrap();
+        assert_eq!(info.rows.len(), 4, "one row per column");
+        assert!(info.columns.iter().any(|column| column.name == "name"));
+        assert!(!info.has_more);
+
+        let plan = adapter
+            .query("EXPLAIN SELECT * FROM orders", &PageRequest::default())
+            .await
+            .unwrap();
+        assert!(!plan.rows.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_pragma_that_writes_changes_nothing() {
+        let (directory, mut adapter) = seeded().await;
+        let refused = adapter
+            .query("PRAGMA user_version = 5", &PageRequest::default())
+            .await;
+        assert!(refused.is_err(), "a writing pragma must be refused");
+        let connection = Sqlite::open(directory.path().join("app.db")).unwrap();
+        let version: i64 = connection
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, 0);
+    }
+
+    #[tokio::test]
+    async fn an_unwrapped_statement_is_still_paged() {
+        let (_directory, mut adapter) = seeded().await;
+        let request = PageRequest {
+            page_size: PageSize::new(3).unwrap(),
+            ..PageRequest::default()
+        };
+        let first = adapter
+            .query("PRAGMA table_info(orders)", &request)
+            .await
+            .unwrap();
+        assert_eq!(first.rows.len(), 3);
+        assert!(first.has_more);
+        assert_eq!(first.next_offset, Some(3));
+
+        let second = adapter
+            .query(
+                "PRAGMA table_info(orders)",
+                &PageRequest {
+                    offset: 3,
+                    ..request
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(second.rows.len(), 1);
+        assert_eq!(second.rows[0][1], Value::String("blob".into()));
         assert!(!second.has_more);
     }
 

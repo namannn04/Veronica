@@ -333,8 +333,13 @@ impl Adapter for PostgresAdapter {
             );
         }
         let started = std::time::Instant::now();
-        let sql = bounded(statement.trim().trim_end_matches(';'), request);
-        let rows = self.client.query(&sql, &[]).await?;
+        let body = statement.trim().trim_end_matches(';');
+        let rows = if super::is_wrappable_query(body) {
+            self.client.query(&bounded(body, request), &[]).await?
+        } else {
+            // `EXPLAIN`/`SHOW` cannot sit inside a subquery, so page by hand.
+            super::client_window(self.client.query(body, &[]).await?, request)
+        };
         Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
     }
 
