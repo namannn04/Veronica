@@ -54,9 +54,17 @@ class NotchButton extends PanelMenu.Button {
             }
         );
 
-        this._buildMenu();
-        this.menu.actor.add_style_class_name('veronica-notch-shell-menu');
-        this._installNotchAnimation();
+        try {
+            this._buildMenu();
+            this.menu.actor.add_style_class_name('veronica-notch-shell-menu');
+            this._installNotchAnimation();
+        } catch (error) {
+            // The caller never receives a button whose constructor threw, so
+            // it cannot destroy it; without this the clock timer and the CPU
+            // readout's subscription outlived it, again on every retry.
+            this.destroy();
+            throw error;
+        }
 
         this.menu.connect('open-state-changed', (_menu, isOpen) => {
             if (isOpen)

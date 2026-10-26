@@ -48,6 +48,8 @@ export class PanelReplacement {
             Main.panel.addToStatusArea(NOTCH_ROLE, this._notch, 0, 'center');
         } catch (error) {
             console.debug(`veronica: cannot build the notch clock: ${error}`);
+            // Built but not placed: it still owns timers and subscriptions.
+            this._notch?.destroy();
             this._notch = null;
             for (const [name, wasVisible] of this._hidden) {
                 const actor = Main.panel.statusArea[name];
