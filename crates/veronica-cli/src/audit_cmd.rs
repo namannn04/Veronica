@@ -210,10 +210,9 @@ pub async fn run(command: &AuditCommand, output: Output) -> Result<()> {
                 .timeout(veronica_audit::PAGE_TIMEOUT)
                 .build()?;
             let fetcher = veronica_audit::sitemap::HttpFetcher { client };
-            let pages: Vec<String> = veronica_audit::sitemap::pages(&fetcher, &parsed)
+            let pages: Vec<String> = veronica_audit::sitemap::pages(&fetcher, &parsed, *limit)
                 .await?
                 .into_iter()
-                .take(*limit)
                 .map(|url| url.to_string())
                 .collect();
             output.emit(&json!({ "site": parsed.as_str(), "pages": pages }), || {

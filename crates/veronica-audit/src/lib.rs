@@ -246,8 +246,7 @@ pub async fn audit(site: &str, limit: usize, concurrency: usize) -> Result<Repor
     let fetcher = sitemap::HttpFetcher {
         client: client.clone(),
     };
-    let discovered = sitemap::pages(&fetcher, &input).await?;
-    let targets: Vec<Url> = discovered.into_iter().take(limit.max(1)).collect();
+    let targets = sitemap::pages(&fetcher, &input, limit.max(1)).await?;
     let started_at = chrono::Utc::now().to_rfc3339();
 
     // Bounded concurrency: fast enough to be usable, gentle enough not to read
