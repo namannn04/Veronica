@@ -27,6 +27,17 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "backup", label: "Backup" }, { id: "updates", label: "Updates" },
 ];
 
+/** Mirrors `usage_schedule` in the app: 0 is off, the default is 15 minutes. */
+const USAGE_REFRESH_CHOICES: [number, string][] = [
+  [5, "Every 5 minutes"], [15, "Every 15 minutes"], [30, "Every 30 minutes"],
+  [60, "Every hour"], [0, "Only when I press Refresh"],
+];
+
+function usageRefreshMinutes(value: unknown): number {
+  const minutes = typeof value === "number" ? value : 15;
+  return USAGE_REFRESH_CHOICES.some(([choice]) => choice === minutes) ? minutes : 15;
+}
+
 export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null }) {
   const [tab, setTab] = useState<Tab>("general");
   const [values, setValues] = useState<Record<string, unknown>>({});
@@ -99,6 +110,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       </SettingsGroup>
       <SettingsGroup title="Rate limits" subtitle="Choose which provider the app and notch show by default.">
         <div className="setting-row"><div><strong>Visible provider</strong><small>Switch it here, on the Usage page, or directly inside the notch.</small></div><ProviderSelector value={limitProviderOf(values.limitsProvider)} onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))} /></div>
+        <div className="setting-row"><div><strong>Collect usage</strong><small>How often the running app reads your agents' history, so Home, Agent Usage and the notch stay current.</small></div><select aria-label="Collect usage" value={String(usageRefreshMinutes(values.usageRefreshMinutes))} onChange={(event) => void set("usageRefreshMinutes", Number(event.target.value))}>{USAGE_REFRESH_CHOICES.map(([minutes, label]) => <option key={minutes} value={minutes}>{label}</option>)}</select></div>
       </SettingsGroup>
       <SettingsGroup title="Startup" subtitle="Keep alerts, global shortcuts and tray actions available after a reboot.">
         <Toggle label="Launch at login" detail={launchAtLogin?.enabled ? "Starts quietly in the background; open it from the tray or a shortcut." : "Veronica will not run until you open it yourself."} checked={Boolean(launchAtLogin?.enabled)} onChange={(enabled) => void setStartup(enabled)} />
