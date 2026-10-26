@@ -102,12 +102,7 @@ impl CompanionRepository {
     }
 
     fn save(&self, document: &CompanionDocument) -> Result<()> {
-        fs::create_dir_all(&self.root)?;
-        let destination = self.index_file();
-        let temporary = destination.with_extension("json.tmp");
-        fs::write(&temporary, serde_json::to_vec_pretty(document)?)?;
-        fs::rename(&temporary, &destination)
-            .with_context(|| format!("cannot replace {}", destination.display()))
+        crate::fsutil::write_atomic(&self.index_file(), &serde_json::to_vec_pretty(document)?)
     }
 
     pub fn list(&self, query: &str) -> Result<Vec<CompanionItem>> {

@@ -432,15 +432,7 @@ impl UsageLedger {
 
     /// Written atomically, so a crash mid-write cannot truncate the file.
     pub fn save(&self, path: &Path) -> Result<()> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let body = serde_json::to_vec_pretty(self)?;
-        let temp = path.with_extension("json.tmp");
-        std::fs::write(&temp, &body)?;
-        std::fs::rename(&temp, path)
-            .with_context(|| format!("cannot replace {}", path.display()))?;
-        Ok(())
+        crate::fsutil::write_atomic(path, &serde_json::to_vec_pretty(self)?)
     }
 
     pub fn forget(&mut self, character: &str) {

@@ -92,15 +92,7 @@ impl ClipboardHistory {
     /// Write atomically, so an interrupted save cannot leave a truncated file
     /// that fails to parse next launch.
     pub fn save(&self, path: &Path) -> Result<()> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let body = serde_json::to_vec(self)?;
-        let temp = path.with_extension("json.tmp");
-        std::fs::write(&temp, &body)?;
-        std::fs::rename(&temp, path)
-            .with_context(|| format!("cannot replace {}", path.display()))?;
-        Ok(())
+        crate::fsutil::write_atomic(path, &serde_json::to_vec(self)?)
     }
 
     /// Whether text is worth recording.
