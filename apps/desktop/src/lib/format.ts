@@ -28,15 +28,21 @@ const UNITS: [number, string][] = [
 
 /** Token counts, three significant figures, matching the CLI's output. */
 export function tokens(value: number): string {
-  for (const [scale, suffix] of UNITS) {
+  // Precision is decided after rounding: deciding first printed 999,999 as
+  // "1000K" and 9,999 as "10.00K".
+  const decimals = (scaled: number) => (scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2);
+  const round = (scaled: number, places: number) => Math.round(scaled * 10 ** places) / 10 ** places;
+  for (let index = 0; index < UNITS.length; index++) {
+    const [scale, suffix] = UNITS[index];
     if (value >= scale) {
       const scaled = value / scale;
-      if (scaled >= 100) return `${scaled.toFixed(0)}${suffix}`;
-      if (scaled >= 10) return `${scaled.toFixed(1)}${suffix}`;
-      return `${scaled.toFixed(2)}${suffix}`;
+      const rounded = round(scaled, decimals(scaled));
+      if (rounded >= 1000 && index > 0) return `1.00${UNITS[index - 1][1]}`;
+      return `${rounded.toFixed(decimals(rounded))}${suffix}`;
     }
   }
-  return String(Math.round(value));
+  const whole = Math.round(value);
+  return whole >= 1000 ? `1.00${UNITS[UNITS.length - 1][1]}` : String(whole);
 }
 
 export function bytes(value: number): string {

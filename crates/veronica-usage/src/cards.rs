@@ -98,16 +98,29 @@ pub fn tokens(value: u64) -> String {
         (1_000_000, "M"),
         (1_000, "K"),
     ];
-    for (scale, suffix) in UNITS {
+    // Three significant figures, decided after rounding: choosing the
+    // precision first printed 999,999 as "1000K" and 9,999 as "10.00K".
+    let decimals = |scaled: f64| -> usize {
+        if scaled >= 100.0 {
+            0
+        } else if scaled >= 10.0 {
+            1
+        } else {
+            2
+        }
+    };
+    let round = |scaled: f64, places: usize| {
+        let factor = 10f64.powi(places as i32);
+        (scaled * factor).round() / factor
+    };
+    for (index, (scale, suffix)) in UNITS.into_iter().enumerate() {
         if value >= scale {
             let scaled = value as f64 / scale as f64;
-            return if scaled >= 100.0 {
-                format!("{scaled:.0}{suffix}")
-            } else if scaled >= 10.0 {
-                format!("{scaled:.1}{suffix}")
-            } else {
-                format!("{scaled:.2}{suffix}")
-            };
+            let rounded = round(scaled, decimals(scaled));
+            if rounded >= 1000.0 && index > 0 {
+                return format!("1.00{}", UNITS[index - 1].1);
+            }
+            return format!("{rounded:.*}{suffix}", decimals(rounded));
         }
     }
     value.to_string()
