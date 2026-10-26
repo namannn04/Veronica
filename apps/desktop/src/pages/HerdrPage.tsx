@@ -21,7 +21,15 @@ export function HerdrPage() {
 
   useEffect(() => {
     let live = true;
-    const refresh = () => { if (live) void load(); };
+    // A Herdr call can take up to twelve seconds against a stuck server, so a
+    // tick is skipped while the last one is still waiting. Otherwise calls
+    // piled up six deep and an older board could land after a newer one.
+    let inFlight = false;
+    const refresh = () => {
+      if (!live || inFlight) return;
+      inFlight = true;
+      void load().finally(() => { inFlight = false; });
+    };
     refresh();
     const timer = window.setInterval(refresh, 2_000);
     return () => { live = false; window.clearInterval(timer); };
