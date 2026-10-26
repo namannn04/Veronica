@@ -78,6 +78,7 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/attention.js": "../../../extension/attention.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/featureSwitch.js": "../../../extension/featureSwitch.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/inhibitors.js": "../../../extension/inhibitors.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/awakeState.js": "../../../extension/awakeState.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/keyboardCleaner.js": "../../../extension/keyboardCleaner.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/sections.js": "../../../extension/sections.js",
