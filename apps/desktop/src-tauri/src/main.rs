@@ -151,7 +151,10 @@ fn show_route(app: &tauri::AppHandle, route: &str) {
 fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
     let settings = app.state::<AppState>().settings_snapshot();
     if matches(shortcut, Code::KeyV) {
-        show_route(app, "home");
+        // Bring Veronica forward on the page it was left on, as the tray does.
+        if let Err(error) = main_window::show(app, None) {
+            tracing::warn!(target: "veronica", "cannot open Veronica: {error:#}");
+        }
     } else if matches(shortcut, Code::KeyB) && extension_enabled(&settings, "clipboard") {
         let handle = app.clone();
         tauri::async_runtime::spawn(async move {
