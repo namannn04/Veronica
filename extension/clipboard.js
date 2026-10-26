@@ -110,7 +110,7 @@ export class ClipboardWatcher {
             return;
         try {
             const proc = Gio.Subprocess.new(
-                [cli, 'clipboard', 'record'],
+                [cli, 'clipboard', 'record', '--exact'],
                 Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDERR_PIPE
             );
             // Text goes on stdin so no shell quoting is involved and the content
