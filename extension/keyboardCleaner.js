@@ -6,6 +6,8 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import { vbox } from './lib.js';
+
 export class KeyboardCleaner {
     constructor() {
         this._overlay = null;
@@ -32,8 +34,7 @@ export class KeyboardCleaner {
             overlay.connect('key-press-event', () => Clutter.EVENT_STOP);
             overlay.connect('key-release-event', () => Clutter.EVENT_STOP);
 
-            const card = new St.BoxLayout({
-                orientation: Clutter.Orientation.VERTICAL,
+            const card = vbox({
                 style_class: 'veronica-clean-card',
                 x_align: Clutter.ActorAlign.CENTER,
                 y_align: Clutter.ActorAlign.CENTER,

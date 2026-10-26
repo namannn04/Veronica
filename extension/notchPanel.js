@@ -16,7 +16,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
-import { launchApp, runJson } from './lib.js';
+import { launchApp, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { UsageCard } from './usageCard.js';
@@ -51,8 +51,7 @@ export class NotchPanel {
         this._panels = new Map();
         this._power = new PowerInhibitors(key => this._powerInhibitorFailed(key));
 
-        this.actor = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        this.actor = vbox({
             style_class: 'veronica-shelf',
             x_expand: true,
         });
@@ -153,8 +152,7 @@ export class NotchPanel {
     }
 
     _homePanel() {
-        const panel = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        const panel = vbox({
             style_class: 'veronica-shelf-panel veronica-shelf-home',
             x_expand: true,
         });
@@ -167,8 +165,7 @@ export class NotchPanel {
         });
         this._nowPlaying = new NowPlayingCard();
         musicWrap.add_child(this._nowPlaying.actor);
-        this._emptyMusic = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        this._emptyMusic = vbox({
             style_class: 'veronica-card veronica-empty-music',
         });
         this._emptyMusic.add_child(new St.Widget({ y_expand: true }));
@@ -221,8 +218,7 @@ export class NotchPanel {
     }
 
     _notificationsPanel() {
-        const panel = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        const panel = vbox({
             style_class: 'veronica-shelf-panel veronica-notifications-panel',
             x_expand: true,
         });
@@ -233,8 +229,7 @@ export class NotchPanel {
     }
 
     _filesPanel() {
-        const panel = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        const panel = vbox({
             style_class: 'veronica-shelf-panel veronica-files-panel',
             x_expand: true,
         });
@@ -257,8 +252,7 @@ export class NotchPanel {
             x_expand: true,
             y_expand: true,
         });
-        this._fileRows = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        this._fileRows = vbox({
             style_class: 'veronica-file-rows',
             x_expand: true,
         });
@@ -268,8 +262,7 @@ export class NotchPanel {
     }
 
     _cameraPanel() {
-        const panel = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        const panel = vbox({
             style_class: 'veronica-shelf-panel veronica-camera-panel',
             x_expand: true,
         });
@@ -287,8 +280,7 @@ export class NotchPanel {
         });
         frame.add_child(this._cameraSurface);
 
-        this._cameraPlaceholder = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        this._cameraPlaceholder = vbox({
             style_class: 'veronica-camera-placeholder',
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
@@ -334,8 +326,7 @@ export class NotchPanel {
     }
 
     _clipboardPanel() {
-        const panel = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        const panel = vbox({
             style_class: 'veronica-shelf-panel veronica-clipboard-panel',
             x_expand: true,
         });
@@ -345,8 +336,7 @@ export class NotchPanel {
             x_expand: true,
             y_expand: true,
         });
-        this._clipboardRows = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        this._clipboardRows = vbox({
             style_class: 'veronica-clipboard-rows',
             x_expand: true,
         });
@@ -356,8 +346,7 @@ export class NotchPanel {
     }
 
     _statusPanel(iconName, title, detail) {
-        const panel = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        const panel = vbox({
             style_class: 'veronica-shelf-panel veronica-status-panel',
             x_expand: true,
         });

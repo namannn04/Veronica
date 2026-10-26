@@ -7,7 +7,6 @@
  */
 
 import St from 'gi://St';
-import Clutter from 'gi://Clutter';
 
 import { entryText, recentEntries } from './clipboard.js';
 import {
@@ -20,18 +19,17 @@ import {
     runJson,
     textRow,
     tokens,
+    vbox,
 } from './lib.js';
 
 /** A titled group of rows that rebuilds itself from a `vr` document. */
 export class Section {
     constructor(title) {
-        this.actor = new St.BoxLayout({
+        this.actor = vbox({
             style_class: 'veronica-section',
-            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
         });
-        this._rows = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        this._rows = vbox({
             x_expand: true,
         });
         if (title)
