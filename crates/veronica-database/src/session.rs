@@ -333,7 +333,7 @@ mod tests {
         seed(&path);
 
         let connection = sqlite_connection(path.to_str().unwrap());
-        let secrets = SecretStore::new(directory.path().join("secrets.json"));
+        let secrets = SecretStore::file_only(directory.path().join("secrets.json"));
         let mut store = MetadataStore::in_memory().unwrap();
         let mut session = Session::open(&connection, &secrets).await.unwrap();
         let plan = delete_plan(&connection);
@@ -391,7 +391,7 @@ mod tests {
         seed(&path);
 
         let connection = sqlite_connection(path.to_str().unwrap());
-        let secrets = SecretStore::new(directory.path().join("secrets.json"));
+        let secrets = SecretStore::file_only(directory.path().join("secrets.json"));
         let mut store = MetadataStore::in_memory().unwrap();
         let mut session = Session::open(&connection, &secrets).await.unwrap();
 
@@ -427,7 +427,7 @@ mod tests {
         seed(&path);
 
         let connection = sqlite_connection(path.to_str().unwrap());
-        let secrets = SecretStore::new(directory.path().join("secrets.json"));
+        let secrets = SecretStore::file_only(directory.path().join("secrets.json"));
         let mut store = MetadataStore::in_memory().unwrap();
         let mut session = Session::open(&connection, &secrets).await.unwrap();
 
@@ -476,7 +476,7 @@ mod tests {
         seed(&path);
 
         let connection = sqlite_connection(path.to_str().unwrap());
-        let secrets = SecretStore::new(directory.path().join("secrets.json"));
+        let secrets = SecretStore::file_only(directory.path().join("secrets.json"));
         let mut store = MetadataStore::in_memory().unwrap();
         let mut session = Session::open(&connection, &secrets).await.unwrap();
 
@@ -507,7 +507,7 @@ mod tests {
         seed(&path);
 
         let connection = sqlite_connection(path.to_str().unwrap());
-        let secrets = SecretStore::new(directory.path().join("secrets.json"));
+        let secrets = SecretStore::file_only(directory.path().join("secrets.json"));
         let mut store = MetadataStore::in_memory().unwrap();
         let mut session = Session::open(&connection, &secrets).await.unwrap();
 
@@ -546,7 +546,7 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let mut connection = sqlite_connection("/tmp/unused.db");
         connection.product_hint = Product::Elasticsearch;
-        let secrets = SecretStore::new(directory.path().join("secrets.json"));
+        let secrets = SecretStore::file_only(directory.path().join("secrets.json"));
         let error = Session::open(&connection, &secrets)
             .await
             .unwrap_err()
@@ -561,7 +561,7 @@ mod tests {
         let path = directory.path().join("app.db");
         seed(&path);
         let connection = sqlite_connection(path.to_str().unwrap());
-        let secrets = SecretStore::new(directory.path().join("secrets.json"));
+        let secrets = SecretStore::file_only(directory.path().join("secrets.json"));
         let mut session = Session::open(&connection, &secrets).await.unwrap();
 
         let report = session.capabilities().await.unwrap();
