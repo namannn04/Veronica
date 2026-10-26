@@ -190,6 +190,20 @@ class NotchButton extends PanelMenu.Button {
         return true;
     }
 
+    /** What the shell's message-tray shortcut (Super+V) does to the clock. */
+    toggleNotifications() {
+        if (this.menu.isOpen) {
+            this.menu.close();
+            return;
+        }
+        this._notchPanel?.showTab('notifications');
+        this.menu.open();
+    }
+
+    closeMenu() {
+        this.menu.close();
+    }
+
     destroy() {
         if (this._clockTimeoutId) {
             GLib.Source.remove(this._clockTimeoutId);
