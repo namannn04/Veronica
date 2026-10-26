@@ -73,6 +73,21 @@ export function LimitRings() {
   };
 
   const gauges = (report?.gauges ?? []).filter((gauge) => gauge.provider === provider);
+  // `resetsInSecs` is as of the read; the countdown subtracts the time since.
+  // Re-reading it unchanged every second froze "resets in" between reads and
+  // left "now" showing for minutes after a window had reset.
+  const elapsedSecs = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : 0;
+  // Only a window that was counting down when read; one the provider already
+  // reported at zero would otherwise be re-read on every read.
+  // Never sooner than half a minute after the last read, so a provider whose
+  // reset keeps landing a second away is not asked every second.
+  const reset = elapsedSecs >= 30 && gauges.some((gauge) => gauge.resetsInSecs !== null && gauge.resetsInSecs > 0 && gauge.resetsInSecs - elapsedSecs <= 0);
+
+  // A window that has just reset is read again rather than shown at 100%
+  // until the next slow refresh. Once per read: `lastUpdated` moves on.
+  useEffect(() => {
+    if (reset && !loading) void load();
+  }, [reset, lastUpdated, loading, load]);
 
   return (
     <section className="card" style={{ marginBottom: 12 }}>
@@ -95,7 +110,7 @@ export function LimitRings() {
               key={`${gauge.provider}-${gauge.window}`}
               percent={gauge.percent}
               title={`${gauge.provider} · ${gauge.window}`}
-              subtitle={subtitle(gauge)}
+              subtitle={subtitle(gauge, elapsedSecs)}
             />
           ))}
         </div>
@@ -133,10 +148,10 @@ function providerNote(note: string): string {
  * linear one. The pace is what turns a bare percentage into something
  * actionable — 80% with a week left is fine, 60% with an hour is not.
  */
-function subtitle(gauge: Gauge): string {
+function subtitle(gauge: Gauge, elapsedSecs: number): string {
   const parts: string[] = [];
   if (gauge.resetsInSecs !== null) {
-    parts.push(`resets in ${countdown(gauge.resetsInSecs)}`);
+    parts.push(`resets in ${countdown(Math.max(0, gauge.resetsInSecs - elapsedSecs))}`);
   }
   if (gauge.paceDelta !== null) {
     const delta = Math.round(gauge.paceDelta);
