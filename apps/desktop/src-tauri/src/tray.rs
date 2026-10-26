@@ -54,7 +54,9 @@ pub fn install(app: &AppHandle) -> Result<()> {
 }
 
 fn show_main(app: &AppHandle) {
-    if let Err(error) = crate::main_window::show(app, Some("home")) {
+    // No route: an open window stays on its page, and a new one starts on Home
+    // as it always does. Naming Home here sent an open window back to it.
+    if let Err(error) = crate::main_window::show(app, None) {
         tracing::warn!("cannot open Veronica from the tray: {error:#}");
     }
 }
