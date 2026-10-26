@@ -51,10 +51,11 @@ fn severity(raw: &str) -> Result<Severity> {
     }
 }
 
+/// The same reading of an address as `vr audit site` and the app use, so
+/// `localhost:3000` is a local server here too rather than the scheme
+/// "localhost".
 fn parse_site(raw: &str) -> Result<url::Url> {
-    url::Url::parse(raw)
-        .or_else(|_| url::Url::parse(&format!("https://{raw}")))
-        .map_err(|_| anyhow::anyhow!("not a URL: {raw:?}"))
+    veronica_audit::site_url(raw)
 }
 
 pub async fn run(command: &AuditCommand, output: Output) -> Result<()> {
