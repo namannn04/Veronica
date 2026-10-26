@@ -166,6 +166,21 @@ export function band(value) {
 
 // -- widgets ----------------------------------------------------------------
 
+/**
+ * A vertical `St.BoxLayout`, on every supported shell.
+ *
+ * GNOME 48 added `orientation` to `St.BoxLayout` and deprecated `vertical`;
+ * GNOME 46 and 47 have only `vertical`, and GJS throws on a property the class
+ * does not have. Passing `orientation` there aborts the whole notch build.
+ */
+const BOX_HAS_ORIENTATION = 'orientation' in St.BoxLayout.prototype;
+
+export function vbox(params = {}) {
+    return new St.BoxLayout(BOX_HAS_ORIENTATION
+        ? { ...params, orientation: Clutter.Orientation.VERTICAL }
+        : { ...params, vertical: true });
+}
+
 export function heading(text) {
     return new St.Label({ text, style_class: 'veronica-heading' });
 }

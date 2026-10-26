@@ -7,7 +7,7 @@
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 
-import { runJson } from './lib.js';
+import { runJson, vbox } from './lib.js';
 
 export class NowPlayingCard {
     constructor() {
@@ -26,8 +26,7 @@ export class NowPlayingCard {
         });
         this.actor.add_child(this._art);
 
-        const text = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
+        const text = vbox({
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'veronica-now-text',

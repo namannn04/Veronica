@@ -7,7 +7,7 @@ import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 
 import { fetchUsageData } from './sections.js';
-import { band, countdown, money, runJson } from './lib.js';
+import { band, countdown, money, runJson, vbox } from './lib.js';
 import { RingGauge } from './ring.js';
 
 /** Ring gauges shown, in order. Matches the two windows Edith's own notch
@@ -21,9 +21,8 @@ function providerName(value) {
 
 export class UsageCard {
     constructor() {
-        this.actor = new St.BoxLayout({
+        this.actor = vbox({
             style_class: 'veronica-card veronica-usage-card',
-            orientation: Clutter.Orientation.VERTICAL,
             visible: false,
         });
 
@@ -55,8 +54,7 @@ export class UsageCard {
         this.actor.add_child(toolbar);
 
         this._rings = RING_WINDOWS.map(windowName => {
-            const wrap = new St.BoxLayout({
-                orientation: Clutter.Orientation.VERTICAL,
+            const wrap = vbox({
                 style_class: 'veronica-ring-wrap',
             });
             const gauge = new RingGauge(60);
