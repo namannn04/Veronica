@@ -99,6 +99,31 @@ pub fn is_read_only_sql(statement: &str) -> bool {
     }
 }
 
+/// Whether a read can be wrapped as `SELECT * FROM (…) LIMIT n`, so the server
+/// does the paging.
+///
+/// Only a query expression can sit inside a subquery. `PRAGMA`, `EXPLAIN`,
+/// `SHOW` and `DESCRIBE` are reads too, but wrapping them is a syntax error on
+/// every product, so they run as written and are paged by [`client_window`].
+pub fn is_wrappable_query(statement: &str) -> bool {
+    let stripped = strip_sql_comments(statement);
+    let first = stripped
+        .split_whitespace()
+        .next()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
+    matches!(first.as_str(), "SELECT" | "WITH" | "VALUES")
+}
+
+/// The rows of an unwrapped statement that one page covers: skip the offset,
+/// keep one more than the page so `has_more` is still known, not guessed.
+pub fn client_window<T>(rows: impl IntoIterator<Item = T>, request: &PageRequest) -> Vec<T> {
+    rows.into_iter()
+        .skip(usize::try_from(request.offset).unwrap_or(usize::MAX))
+        .take(request.page_size.get() as usize + 1)
+        .collect()
+}
+
 /// Whether a semicolon appears outside a string or a quoted identifier.
 ///
 /// The distinction matters both ways: refusing `WHERE note = 'a;b'` would
@@ -253,6 +278,38 @@ mod tests {
         assert!(!is_read_only_sql("SELECT 1;DROP TABLE orders;"));
         // A single trailing semicolon is fine.
         assert!(is_read_only_sql("SELECT 1;"));
+    }
+
+    #[test]
+    fn only_query_expressions_are_wrapped_as_a_subquery() {
+        for statement in [
+            "SELECT 1",
+            "  with x AS (SELECT 1) SELECT * FROM x",
+            "VALUES (1)",
+            "-- note\nselect 1",
+        ] {
+            assert!(is_wrappable_query(statement), "{statement:?}");
+        }
+        for statement in [
+            "PRAGMA table_info(t)",
+            "EXPLAIN SELECT 1",
+            "SHOW TABLES",
+            "DESCRIBE t",
+            "desc t",
+        ] {
+            assert!(!is_wrappable_query(statement), "{statement:?}");
+        }
+    }
+
+    #[test]
+    fn a_client_window_skips_the_offset_and_keeps_one_extra_row() {
+        let request = PageRequest {
+            page_size: crate::paging::PageSize::new(2).unwrap(),
+            offset: 1,
+            ..PageRequest::default()
+        };
+        assert_eq!(client_window(0..10, &request), [1, 2, 3]);
+        assert_eq!(client_window(0..2, &request), [1]);
     }
 
     #[test]
