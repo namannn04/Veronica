@@ -11,7 +11,7 @@ import {
   storedLimitProvider,
   type LimitProvider,
 } from "../lib/preferences";
-import type { Diagnostics, LaunchAtLoginStatus, PowerStatus, ShellExtensionStatus, UpdateInfo } from "../lib/types";
+import type { Diagnostics, ExtensionReport, LaunchAtLoginStatus, PowerStatus, ShellExtensionStatus, UpdateInfo } from "../lib/types";
 import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
 import { PresenterPane } from "./PresenterPane";
@@ -101,6 +101,16 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     }
   };
 
+
+  // A feature as the shortcuts tab needs it: the catalogue's entry, switched
+  // by the stored value this page keeps live rather than by diagnostics taken
+  // when the page opened.
+  const feature = (id: string): ExtensionReport | undefined => {
+    const entry = diagnostics?.extensions.find((candidate) => candidate.id === id);
+    if (!entry) return undefined;
+    const stored = values[entry.defaultsKey];
+    return typeof stored === "boolean" ? { ...entry, enabled: stored } : entry;
+  };
   return <>
     <div className="page-head"><div><h1>Settings</h1><div className="page-sub">Make Veronica work the way you do</div></div>{notice && <span className="save-note">{notice}</span>}</div>
     <div className="settings-tabs" role="tablist">{TABS.map((item) => <button key={item.id} role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)}>{item.label}</button>)}</div>
@@ -149,7 +159,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       </SettingsGroup>
     </div>}
     {tab === "permissions" && <div className="settings-embedded"><DiagnosticsPage diagnostics={diagnostics} /></div>}
-    {tab === "shortcuts" && <section className="settings-group"><div><h2>Global shortcuts</h2><p>Handled by the desktop shortcut service; Veronica never records arbitrary keys.</p></div><div className="settings-box"><ShortcutRow title="Show Veronica" detail="Open, unminimize and focus the app." keys="Ctrl + Alt + V"/><ShortcutRow title="Clipboard" detail="Open the notch clipboard, or the app as fallback." keys="Ctrl + Alt + B"/><ShortcutRow title="Microphone mute" detail="Toggle the default PipeWire microphone system-wide." keys="Ctrl + Alt + M"/><ShortcutRow title="Pick color" detail="Open GNOME's eyedropper and save the swatch." keys="Ctrl + Alt + P"/><ShortcutRow title="Clean keys" detail="Take a compositor modal grab until you click Done." keys="Ctrl + Alt + K"/><ShortcutRow title="Emoji" detail="Open the picker; clicking one copies it." keys="Ctrl + Alt + E"/><div className="setting-row"><div><strong>Desktop backend</strong><small>{diagnostics?.session.hasGlobalShortcutsPortal ? "GNOME portal detected; X11-compatible backend is also available." : "Veronica uses its XWayland global-hotkey backend in this GNOME session."}</small></div><span className="pill good">Active</span></div></div></section>}
+    {tab === "shortcuts" && <section className="settings-group"><div><h2>Global shortcuts</h2><p>Handled by the desktop shortcut service; Veronica never records arbitrary keys.</p></div><div className="settings-box"><ShortcutRow title="Show Veronica" detail="Open, unminimize and focus the app." keys="Ctrl + Alt + V"/><ShortcutRow feature={feature("clipboard")} title="Clipboard" detail="Open the notch clipboard, or the app as fallback." keys="Ctrl + Alt + B"/><ShortcutRow feature={feature("micMute")} title="Microphone mute" detail="Toggle the default PipeWire microphone system-wide." keys="Ctrl + Alt + M"/><ShortcutRow feature={feature("colorPicker")} title="Pick color" detail="Open GNOME's eyedropper and save the swatch." keys="Ctrl + Alt + P"/><ShortcutRow title="Clean keys" detail="Take a compositor modal grab until you click Done." keys="Ctrl + Alt + K"/><ShortcutRow feature={feature("emoji")} title="Emoji" detail="Open the picker; clicking one copies it." keys="Ctrl + Alt + E"/><div className="setting-row"><div><strong>Desktop backend</strong><small>{diagnostics?.session.hasGlobalShortcutsPortal ? "GNOME portal detected; X11-compatible backend is also available." : "Veronica uses its XWayland global-hotkey backend in this GNOME session."}</small></div><span className="pill good">Active</span></div></div></section>}
     {tab === "terminal" && <Info title="Command line" body="The vr command uses the same Veronica data and settings as this app." code={`vr diagnose\nvr config list\nvr usage dashboard\nvr machines probe\nvr clipboard list`} />}
     {tab === "backup" && <div className="settings-embedded"><BackupPane /></div>}
     {tab === "updates" && <UpdatePane current={diagnostics?.version ?? ""} />}
@@ -196,7 +206,15 @@ function Positions({ value, onChange }: { value: string; onChange: (position: st
 }
 
 function Info({ title, body, code }: { title: string; body: string; code?: string }) { return <section className="settings-info"><div className="info-glyph">V</div><h2>{title}</h2><p>{body}</p>{code && <pre>{code}</pre>}</section>; }
-function ShortcutRow({ title, detail, keys }: { title: string; detail: string; keys: string }) { return <div className="setting-row"><div><strong>{title}</strong><small>{detail}</small></div><kbd>{keys}</kbd></div>; }
+/**
+ * A shortcut tied to a feature is registered only while that feature is on
+ * (main.rs, `shortcut_enabled`), and Mic Mute, Color Picker and Emoji start
+ * off: listing their keys without saying so promised shortcuts that did nothing.
+ */
+function ShortcutRow({ title, detail, keys, feature }: { title: string; detail: string; keys: string; feature?: ExtensionReport }) {
+  const off = feature !== undefined && !feature.enabled;
+  return <div className="setting-row"><div><strong>{title}</strong><small>{off ? `Off — turn on ${feature.title} in Extensions to use this shortcut.` : detail}</small></div>{off ? <span className="pill">Off</span> : <kbd>{keys}</kbd>}</div>;
+}
 
 function UpdatePane({ current }: { current: string }) {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
