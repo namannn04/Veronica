@@ -186,6 +186,20 @@ fn bind(value: &Value) -> mysql_async::Value {
     }
 }
 
+impl MysqlAdapter {
+    /// Run a statement the text check called a read inside a `READ ONLY`
+    /// transaction that is always rolled back, so a `SELECT` calling a
+    /// function with side effects cannot change data either.
+    async fn read_only_rows(&mut self, sql: String) -> Result<Vec<Row>> {
+        self.connection
+            .query_drop("START TRANSACTION READ ONLY")
+            .await?;
+        let rows: std::result::Result<Vec<Row>, _> = self.connection.query(sql).await;
+        self.connection.query_drop("ROLLBACK").await?;
+        Ok(rows?)
+    }
+}
+
 #[async_trait::async_trait]
 impl Adapter for MysqlAdapter {
     async fn identify(&mut self) -> Result<ProductIdentity> {
@@ -310,11 +324,11 @@ impl Adapter for MysqlAdapter {
         let started = std::time::Instant::now();
         let body = statement.trim().trim_end_matches(';');
         let rows: Vec<Row> = if super::is_wrappable_query(body) {
-            self.connection.query(bounded(body, request)).await?
+            self.read_only_rows(bounded(body, request)).await?
         } else {
             // `SHOW`/`DESCRIBE`/`EXPLAIN` cannot sit inside a subquery, so
             // page by hand.
-            super::client_window(self.connection.query::<Row, _>(body).await?, request)
+            super::client_window(self.read_only_rows(body.to_string()).await?, request)
         };
         Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
     }

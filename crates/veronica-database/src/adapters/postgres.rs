@@ -213,6 +213,29 @@ fn bounded(sql: &str, request: &PageRequest) -> String {
     )
 }
 
+impl PostgresAdapter {
+    /// Run a statement the text check called a read inside a read-only
+    /// transaction that is always rolled back.
+    ///
+    /// The check reads only the leading verb, and a `SELECT` can still write:
+    /// `SELECT nextval('orders_id_seq')`, `SELECT setval(...)` or a volatile
+    /// function with side effects. PostgreSQL refuses those inside a
+    /// `READ ONLY` transaction, so the server enforces what the check intends.
+    async fn read_only_rows(&mut self, sql: &str) -> Result<Vec<tokio_postgres::Row>> {
+        let transaction = self
+            .client
+            .build_transaction()
+            .read_only(true)
+            .start()
+            .await?;
+        let rows = transaction.query(sql, &[]).await;
+        // Rolled back even after an error, which leaves the transaction
+        // aborted; nothing it did is ever kept.
+        transaction.rollback().await?;
+        Ok(rows?)
+    }
+}
+
 #[async_trait::async_trait]
 impl Adapter for PostgresAdapter {
     async fn identify(&mut self) -> Result<ProductIdentity> {
@@ -335,10 +358,10 @@ impl Adapter for PostgresAdapter {
         let started = std::time::Instant::now();
         let body = statement.trim().trim_end_matches(';');
         let rows = if super::is_wrappable_query(body) {
-            self.client.query(&bounded(body, request), &[]).await?
+            self.read_only_rows(&bounded(body, request)).await?
         } else {
             // `EXPLAIN`/`SHOW` cannot sit inside a subquery, so page by hand.
-            super::client_window(self.client.query(body, &[]).await?, request)
+            super::client_window(self.read_only_rows(body).await?, request)
         };
         Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
     }
