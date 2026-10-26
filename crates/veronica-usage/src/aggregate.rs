@@ -5,7 +5,7 @@
 //! selection so a deselected collector disappears from every figure at once,
 //! which is what makes the source filter feel consistent across the dashboard.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use serde::Serialize;
 
@@ -397,15 +397,36 @@ pub fn projects(
 
     let mut list: Vec<ProjectRollup> = map.into_values().collect();
     for project in &mut list {
-        // The same chat appears on every day it was active; keep the latest
-        // record for each id so totals are not double counted in the drilldown.
+        // The same chat appears on every day it was active, and each record
+        // holds only that day's share. Merge them into one row per id whose
+        // spend is the sum, so the drilldown agrees with the project total.
+        let mut merged: HashMap<String, ChatEntry> = HashMap::new();
+        for chat in project.chats.drain(..) {
+            match merged.get_mut(&chat.id) {
+                Some(row) => {
+                    row.cost += chat.cost;
+                    row.tokens += chat.tokens;
+                    row.first_ts = match (row.first_ts, chat.first_ts) {
+                        (Some(a), Some(b)) => Some(a.min(b)),
+                        (a, b) => a.or(b),
+                    };
+                    if chat.last_ts > row.last_ts {
+                        // The latest record carries the most current title.
+                        row.last_ts = chat.last_ts;
+                        if !chat.title.is_empty() {
+                            row.title = chat.title;
+                        }
+                    }
+                }
+                None => {
+                    merged.insert(chat.id.clone(), chat);
+                }
+            }
+        }
+        project.chats = merged.into_values().collect();
         project
             .chats
-            .sort_by(|a, b| a.id.cmp(&b.id).then_with(|| b.last_ts.cmp(&a.last_ts)));
-        project.chats.dedup_by(|a, b| a.id == b.id);
-        project
-            .chats
-            .sort_by_key(|chat| std::cmp::Reverse(chat.last_ts));
+            .sort_by(|a, b| b.last_ts.cmp(&a.last_ts).then_with(|| a.id.cmp(&b.id)));
     }
     list.sort_by(|a, b| {
         b.cost
@@ -740,6 +761,32 @@ mod tests {
         // But the chat is the same one, listed once.
         assert_eq!(rollups[0].chats.len(), 1);
         assert_eq!(rollups[0].chats[0].id, "chat1");
+    }
+
+    #[test]
+    fn a_chat_active_on_several_days_shows_the_sum_of_its_days() {
+        let mut doc = document();
+        // Day two's record is that day's share, not a running total.
+        doc.daily[1].projects[0].chats[0] = ChatEntry {
+            id: "chat1".into(),
+            source: "cli".into(),
+            title: "renamed".into(),
+            cost: 7.5,
+            tokens: 40,
+            first_ts: Some(5),
+            last_ts: Some(9),
+            ..Default::default()
+        };
+        doc.daily[0].projects[0].chats[0].tokens = 60;
+        doc.daily[0].projects[0].chats[0].first_ts = Some(1);
+        let rollups = projects(&doc, &DayRange::default(), &SourceSelection::All);
+        let chat = &rollups[0].chats[0];
+        assert_eq!(rollups[0].chats.len(), 1);
+        assert_eq!(chat.cost, 17.5);
+        assert_eq!(chat.tokens, 100);
+        assert_eq!(chat.first_ts, Some(1));
+        assert_eq!(chat.last_ts, Some(9));
+        assert_eq!(chat.title, "renamed");
     }
 
     #[test]
