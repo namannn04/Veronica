@@ -61,7 +61,7 @@ fn directory_script(path: Option<&str>) -> Result<String> {
         r#"p={path}
 cd -- "$p" || exit 24
 printf 'P\0%s\0' "$PWD"
-find . -mindepth 1 -maxdepth 1 -printf 'E\0%y\0%s\0%T@\0%f\0' 2>/dev/null
+find . -mindepth 1 -maxdepth 1 -printf 'E\0%Y\0%s\0%T@\0%f\0' 2>/dev/null
 "#
     ))
 }
@@ -86,10 +86,13 @@ pub fn parse_directory(output: &str) -> Result<MachineDirectory> {
             index += 1;
             continue;
         }
+        // `%Y` is the type after following a link, so `/bin` on Ubuntu, a
+        // link to `usr/bin`, opens as the folder it is rather than being
+        // offered for download. `N` and `L` are a broken or looping link.
         let kind = match fields[index + 1] {
             "d" => "directory",
             "f" => "file",
-            "l" => "link",
+            "l" | "N" | "L" => "link",
             _ => "other",
         };
         let name = fields[index + 4].to_string();
@@ -512,6 +515,32 @@ pub async fn download_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_listing_script_opens_a_folder_reached_through_a_link() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("real")).unwrap();
+        std::os::unix::fs::symlink("real", root.path().join("linked")).unwrap();
+        let script = directory_script(Some(root.path().to_str().unwrap())).unwrap();
+        let output = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(&script)
+            .output()
+            .unwrap();
+        let parsed = parse_directory(&String::from_utf8_lossy(&output.stdout)).unwrap();
+        let linked = parsed.entries.iter().find(|e| e.name == "linked").unwrap();
+        assert_eq!(linked.kind, "directory");
+    }
+
+    #[test]
+    fn a_broken_link_is_a_link_and_a_followed_one_takes_its_targets_kind() {
+        // `find -printf %Y` already reports a link to a folder as `d`.
+        let listing = "P\x00/\x00E\x00d\x007\x001.0\x00bin\x00E\x00N\x007\x001.0\x00gone\x00";
+        let parsed = parse_directory(listing).unwrap();
+        assert_eq!(parsed.entries[0].name, "bin");
+        assert_eq!(parsed.entries[0].kind, "directory");
+        assert_eq!(parsed.entries[1].kind, "link");
+    }
 
     #[test]
     fn directory_parser_preserves_names_and_sorts_folders_first() {
