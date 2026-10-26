@@ -25,6 +25,12 @@ const TONES: { key: string; title: string; sample: string }[] = [
 
 /** Enough to fill the grid several times over without rendering two thousand cells. */
 const PAGE = 240;
+/**
+ * A group being browsed is shown whole. The page size is for search results;
+ * applied to a group it cut People, Objects and Flags off part-way, with no
+ * way to reach the rest. The largest group has about four hundred.
+ */
+const WHOLE_GROUP = 2_000;
 
 export function EmojiPage() {
   const [groups, setGroups] = useState<EmojiGroup[]>([]);
@@ -59,7 +65,7 @@ export function EmojiPage() {
   useEffect(() => {
     let live = true;
     void ipc
-      .emojiSearch(query, activeGroup, PAGE)
+      .emojiSearch(query, activeGroup, activeGroup === null ? PAGE : WHOLE_GROUP)
       .then((rows) => { if (live) { setEmoji(rows); setError(null); } })
       .catch((reason) => { if (live) setError(String(reason)); });
     return () => { live = false; };
