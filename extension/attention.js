@@ -41,11 +41,13 @@ export class AttentionTracker {
         const threshold = Number(this._settings.get('attentionIdleSeconds', 300)) * 1000;
         const idle = !window || idleMs >= threshold;
         const application = idle ? 'Away' : (window.get_wm_class() || window.get_wm_class_instance() || 'Unknown');
-        const args = [cli, 'attention', 'record', '--application', application, '--seconds', String(PULSE_SECONDS)];
+        // `--name=value` keeps a value that starts with '-' a value: a
+        // terminal titled "-bash: ~" was read as flags, and the pulse failed.
+        const args = [cli, 'attention', 'record', `--application=${application}`, `--seconds=${PULSE_SECONDS}`];
         if (idle)
             args.push('--idle');
         else if (this._settings.get('attentionPrivacy', 'applications') === 'detailed')
-            args.push('--title', window.get_title() || '');
+            args.push(`--title=${window.get_title() || ''}`);
         this._running = true;
         try {
             const process = Gio.Subprocess.new(args, Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE);
