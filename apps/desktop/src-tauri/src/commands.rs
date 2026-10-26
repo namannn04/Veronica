@@ -1416,10 +1416,29 @@ pub fn app_restart(app: AppHandle) {
     app.restart();
 }
 
+/// One reading of the machine, taken off the main thread.
+///
+/// A synchronous command runs on the main thread, and sampling can block:
+/// the first call sleeps to prime the CPU counters, and every call `statvfs`es
+/// each mount, which hangs on a dead network share. Either froze the window.
+/// A reading that is still in progress is not queued behind: the caller keeps
+/// the previous one, and a hung mount costs one thread rather than one per
+/// poll.
 #[tauri::command]
-pub fn system_snapshot(state: State<'_, AppState>) -> CommandResult<SystemSnapshot> {
-    let mut sampler = state.sampler.lock().expect("sampler lock");
-    Ok(sampler.sample())
+pub async fn system_snapshot(app: AppHandle) -> CommandResult<SystemSnapshot> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let mut sampler = match state.sampler.try_lock() {
+            Ok(sampler) => sampler,
+            Err(std::sync::TryLockError::WouldBlock) => {
+                return Err("the previous reading is still in progress".to_string())
+            }
+            Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
+        };
+        Ok(sampler.sample())
+    })
+    .await
+    .map_err(|error| format!("cannot read the system: {error}"))?
 }
 
 #[tauri::command]
