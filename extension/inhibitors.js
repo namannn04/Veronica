@@ -1,12 +1,20 @@
-/* Process-owned logind inhibitors for notch power actions.
+/* Process-owned inhibitors for notch power actions.
  *
  * The desktop app holds the same locks through zbus while it is running. The
  * Shell extension also owns a lock so a notch click takes effect immediately
  * and remains functional even when the app window/process has not been opened.
+ *
+ * Each switch is held by up to two processes. `systemd-inhibit` covers logind,
+ * which is what the lid switch obeys. `gnome-session-inhibit` covers GNOME's
+ * own idle handling: gsd-power blanks and suspends on gnome-session's
+ * inhibitors and never reads logind's idle locks, so without it Keep Awake
+ * left the screen to blank and the machine to suspend on schedule.
  */
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+
+const APP_ID = 'io.github.namannn04.Veronica';
 
 const DEFINITIONS = {
     preventSleep: {
@@ -18,6 +26,36 @@ const DEFINITIONS = {
         reason: 'Lid Awake is enabled',
     },
 };
+
+/** The argument vectors that hold a switch, one process each. */
+function commandsFor(definition) {
+    const commands = [];
+    const inhibit = GLib.find_program_in_path('systemd-inhibit');
+    const sleep = GLib.find_program_in_path('sleep');
+    if (inhibit && sleep) {
+        commands.push([
+            inhibit,
+            `--what=${definition.what}`,
+            '--who=Veronica',
+            `--why=${definition.reason}`,
+            '--mode=block',
+            sleep,
+            'infinity',
+        ]);
+    }
+    const session = GLib.find_program_in_path('gnome-session-inhibit');
+    if (session) {
+        commands.push([
+            session,
+            `--app-id=${APP_ID}`,
+            `--reason=${definition.reason}`,
+            '--inhibit=idle',
+            '--inhibit=suspend',
+            '--inhibit-only',
+        ]);
+    }
+    return commands;
+}
 
 export class PowerInhibitors {
     constructor(onFailed) {
@@ -35,24 +73,21 @@ export class PowerInhibitors {
         if (this._running.has(key))
             return true;
 
-        const inhibit = GLib.find_program_in_path('systemd-inhibit');
-        const sleep = GLib.find_program_in_path('sleep');
-        if (!inhibit || !sleep)
+        const commands = commandsFor(DEFINITIONS[key]);
+        if (commands.length === 0)
             return false;
 
-        const definition = DEFINITIONS[key];
+        const record = { processes: [], intentional: false };
         try {
-            const process = Gio.Subprocess.new([
-                inhibit,
-                `--what=${definition.what}`,
-                '--who=Veronica',
-                `--why=${definition.reason}`,
-                '--mode=block',
-                sleep,
-                'infinity',
-            ], Gio.SubprocessFlags.STDERR_PIPE);
-            const record = { process, intentional: false };
-            this._running.set(key, record);
+            for (const argv of commands)
+                record.processes.push(Gio.Subprocess.new(argv, Gio.SubprocessFlags.STDERR_PIPE));
+        } catch (error) {
+            console.debug(`veronica: cannot acquire ${key} inhibitor: ${error}`);
+            this._kill(record);
+            return false;
+        }
+        this._running.set(key, record);
+        for (const process of record.processes) {
             process.wait_check_async(null, (source, result) => {
                 try {
                     source.wait_check_finish(result);
@@ -61,15 +96,15 @@ export class PowerInhibitors {
                 }
                 if (this._running.get(key) !== record)
                     return;
+                // Either half dying means the switch no longer holds: drop
+                // the other half too rather than claim a partial lock.
                 this._running.delete(key);
+                this._kill(record);
                 if (!record.intentional)
                     this._onFailed?.(key);
             });
-            return true;
-        } catch (error) {
-            console.debug(`veronica: cannot acquire ${key} inhibitor: ${error}`);
-            return false;
         }
+        return true;
     }
 
     _stop(key) {
@@ -78,10 +113,16 @@ export class PowerInhibitors {
             return;
         record.intentional = true;
         this._running.delete(key);
-        try {
-            record.process.force_exit();
-        } catch (_error) {
-            // It may have exited between the map lookup and force_exit().
+        this._kill(record);
+    }
+
+    _kill(record) {
+        for (const process of record.processes) {
+            try {
+                process.force_exit();
+            } catch (_error) {
+                // It may already have exited.
+            }
         }
     }
 
