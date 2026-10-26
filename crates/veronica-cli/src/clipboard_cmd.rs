@@ -24,6 +24,11 @@ pub enum ClipboardCommand {
         /// Keep at most this many entries.
         #[arg(long, default_value_t = DEFAULT_LIMIT)]
         limit: usize,
+        /// Keep the text byte for byte. Without it one trailing newline is
+        /// dropped, since `echo text | vr clipboard record` adds one; the
+        /// shell extension passes the copy exactly and uses this.
+        #[arg(long)]
+        exact: bool,
     },
     /// List the history, newest first.
     #[command(alias = "ls")]
@@ -53,14 +58,20 @@ pub async fn run(
     let mut history = ClipboardHistory::load(&path)?;
 
     match command {
-        ClipboardCommand::Record { limit } => {
+        ClipboardCommand::Record { limit, exact } => {
             let mut text = String::new();
             std::io::stdin()
                 .read_to_string(&mut text)
                 .context("cannot read the clipboard text from stdin")?;
 
-            // A trailing newline is an artefact of piping, not part of the copy.
-            let text = text.strip_suffix('\n').unwrap_or(&text);
+            // From a shell a trailing newline is an artefact of piping, not
+            // part of the copy. From the extension it is the copy: a whole line
+            // copied in an editor ends with one, and must paste back with it.
+            let text = if *exact {
+                text.as_str()
+            } else {
+                text.strip_suffix('\n').unwrap_or(&text)
+            };
 
             match history.record(text, Utc::now(), *limit) {
                 Some(id) => {
