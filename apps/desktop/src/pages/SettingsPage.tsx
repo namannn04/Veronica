@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
 import { countdown } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
+import { ipc, isDesktopApp, listenEvent } from "../lib/ipc";
 import {
   appearanceOf,
   applyAppearance,
@@ -53,7 +53,22 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
   const set = async (key: string, value: unknown) => {
     setValues((current) => ({ ...current, [key]: value }));
     if (key === "appearance") applyAppearance(value);
-    try { await ipc.settingsSet(key, value); setNotice("Saved"); } catch { setNotice("Preview only — open the installed desktop app to save."); }
+    try {
+      await ipc.settingsSet(key, value);
+      setNotice("Saved");
+    } catch (reason) {
+      if (!isDesktopApp()) {
+        setNotice("Preview only — open the installed desktop app to save.");
+        return;
+      }
+      setNotice(String(reason));
+      // The switch moved before the save was attempted; put it back to what is actually stored.
+      try {
+        const stored = await ipc.settingsAll();
+        setValues(stored);
+        if (key === "appearance") applyAppearance(stored.appearance);
+      } catch { /* the notice already explains the failure */ }
+    }
   };
 
   const setStartup = async (enabled: boolean) => {
