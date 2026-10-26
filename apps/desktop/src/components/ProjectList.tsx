@@ -20,7 +20,7 @@ export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
   return (
     <div>
       {projects.map((project) => {
-        const key = project.repositoryID ?? project.path;
+        const key = project.repositoryId ?? project.path;
         const expanded = open === key;
         const share = max > 0 ? (project.cost / max) * 100 : 0;
         return (
@@ -40,8 +40,8 @@ export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
                     {project.chats.length} {project.chats.length === 1 ? "chat" : "chats"}
                   </span>
                 </div>
-                <div className="ext-sub truncate" title={project.repositoryID ?? project.path}>
-                  {project.repositoryID ?? project.path}
+                <div className="ext-sub truncate" title={project.repositoryId ?? project.path}>
+                  {project.repositoryId ?? project.path}
                 </div>
                 <div style={{ height: 5, background: "var(--grid)", borderRadius: 3, marginTop: 6 }}>
                   <div
@@ -57,11 +57,11 @@ export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
 
               {expanded && (
                 <div style={{ marginTop: 10, paddingLeft: 14 }}>
-                  {project.repositoryURL && (
+                  {project.repositoryUrl && (
                     <button
                       className="button"
                       style={{ marginBottom: 8 }}
-                      onClick={() => void ipc.openExternal(project.repositoryURL!)}
+                      onClick={() => void ipc.openExternal(project.repositoryUrl!)}
                     >
                       Open repository
                     </button>
