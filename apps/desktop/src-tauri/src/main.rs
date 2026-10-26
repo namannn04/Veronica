@@ -11,6 +11,7 @@ mod presenter;
 mod single_instance;
 mod state;
 mod tray;
+mod usage_schedule;
 
 use anyhow::Result;
 use tauri::{Emitter, Manager, RunEvent, WindowEvent};
@@ -451,6 +452,12 @@ fn run(background: bool) -> Result<()> {
                 if let Err(error) = result {
                     tracing::info!("notification history unavailable: {error:#}");
                 }
+            });
+
+            // Keep the usage figures current without anyone pressing Refresh.
+            let collecting = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                usage_schedule::run(collecting).await;
             });
 
             // Rate-limit alerts. Idles cheaply until the user turns them on,
