@@ -2665,7 +2665,23 @@ pub async fn alerts_view(app: AppHandle) -> CommandResult<AlertsView> {
 
     // Read directly rather than through the gauge collector, because the alerts
     // watch Claude's two windows specifically, as Edith's notifier does.
-    let (session, week, note) = match veronica_usage::claude::limits_for_user(now).await {
+    // Off means no provider request at all, which is the promise the pane and
+    // the docs make. Opening Settings used to read the limits anyway, and
+    // could refresh the credential file while doing it.
+    let limits = if notify.master {
+        veronica_usage::claude::limits_for_user(now).await
+    } else {
+        return Ok(AlertsView {
+            poll_seconds,
+            session: None,
+            week: None,
+            session_reminder_at: None,
+            week_reminder_at: None,
+            note: None,
+            settings: notify,
+        });
+    };
+    let (session, week, note) = match limits {
         Ok(Some(limits)) => (limits.session, limits.week, None),
         Ok(None) => (
             None,
