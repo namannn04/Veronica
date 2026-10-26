@@ -151,8 +151,8 @@ export interface ChatEntry {
 
 export interface ProjectRollup {
   projectName: string;
-  repositoryID: string | null;
-  repositoryURL: string | null;
+  repositoryId: string | null;
+  repositoryUrl: string | null;
   path: string;
   cost: number;
   tokens: number;
