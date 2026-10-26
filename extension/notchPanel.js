@@ -13,6 +13,7 @@ import St from 'gi://St';
 import * as Calendar from 'resource:///org/gnome/shell/ui/calendar.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import { AWAKE_SWITCHES, awakeState, nextDeadline } from './awakeState.js';
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
@@ -46,6 +47,8 @@ export class NotchPanel {
         this._settings = settings;
         this._keyboardCleaner = keyboardCleaner;
         this._featureUnsubscribe = null;
+        this._awakeUnsubscribe = null;
+        this._awakeExpiryId = 0;
         this._activeTab = 'home';
         this._tabButtons = new Map();
         this._panels = new Map();
@@ -74,6 +77,12 @@ export class NotchPanel {
         this._watchSettings();
         this._featureUnsubscribe = this._settings?.subscribe(
             values => this._applyFeatureSettings(values)
+        ) ?? null;
+        // The power tiles follow the settings file, not just the menu opening:
+        // the app, `vr power` and an expiring timed session all change it, and
+        // the inhibitor this panel holds has to be released when they do.
+        this._awakeUnsubscribe = this._settings?.subscribe(
+            values => this._applyAwake(values)
         ) ?? null;
     }
 
@@ -197,13 +206,14 @@ export class NotchPanel {
                 this._keyboardCleaner?.start();
             }
         ));
-        this._keepAwake = this._toggleTile(
-            'weather-clear-night-symbolic', 'Keep awake', 'preventSleep',
-            active => this._power.set('preventSleep', active)
+        const [keepAwake, lidAwake] = AWAKE_SWITCHES;
+        this._keepAwake = this._actionTile(
+            'weather-clear-night-symbolic', 'Keep awake',
+            () => this._toggleAwake(keepAwake, this._keepAwake)
         );
-        this._lidAwake = this._toggleTile(
-            'computer-laptop-symbolic', 'Lid awake', 'lidAwakeEnabled',
-            active => this._power.set('lidAwakeEnabled', active)
+        this._lidAwake = this._actionTile(
+            'computer-laptop-symbolic', 'Lid awake',
+            () => this._toggleAwake(lidAwake, this._lidAwake)
         );
         actions.add_child(this._keepAwake);
         actions.add_child(this._lidAwake);
@@ -438,11 +448,72 @@ export class NotchPanel {
         return button;
     }
 
+    /**
+     * Switch Keep Awake or Lid Awake from its tile.
+     *
+     * Written through `vr power`, which also clears a timed session's deadline;
+     * a bare `config set` left the old deadline behind, so switching back on
+     * later resumed a session that had already ended.
+     */
+    _toggleAwake(awakeSwitch, button) {
+        const next = !button._veronicaActive;
+        this._setToggle(button, next);
+        if (this._power?.set(awakeSwitch.key, next) === false) {
+            this._setToggle(button, !next);
+            Main.notify('Veronica', `${awakeSwitch.title} could not acquire a system inhibitor.`);
+            return;
+        }
+        runJson(['power', awakeSwitch.command, next ? 'on' : 'off'], this._cancellable)
+            .then(result => {
+                if (!result && this.actor)
+                    this._applyAwake(this._settings?.values ?? {});
+            })
+            .catch(() => {});
+    }
+
+    /** Hold exactly the locks the stored switches ask for right now. */
+    _applyAwake(values) {
+        if (!this.actor)
+            return;
+        const now = Date.now();
+        for (const awakeSwitch of AWAKE_SWITCHES) {
+            const button = awakeSwitch.key === 'preventSleep' ? this._keepAwake : this._lidAwake;
+            const state = awakeState(values, awakeSwitch, now);
+            if (button)
+                this._setToggle(button, state.active);
+            this._power?.set(awakeSwitch.key, state.active);
+            // With the app closed nothing else ends a timed session, so the
+            // stored pair is cleared here; the app does the same if it is open.
+            if (state.expired)
+                runJson(['power', awakeSwitch.command, 'off'], this._cancellable).catch(() => {});
+        }
+        this._scheduleAwakeExpiry(nextDeadline(values, now));
+    }
+
+    _scheduleAwakeExpiry(untilMs) {
+        if (this._awakeExpiryId) {
+            GLib.Source.remove(this._awakeExpiryId);
+            this._awakeExpiryId = 0;
+        }
+        if (untilMs === null)
+            return;
+        // A little past the deadline, so the re-check sees it as passed. The
+        // cap keeps the delay inside a guint; a later check reschedules.
+        const delay = Math.min(Math.max(0, untilMs - Date.now()) + 50, 0x7fffffff);
+        this._awakeExpiryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            this._awakeExpiryId = 0;
+            this._applyAwake(this._settings?.values ?? {});
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     _powerInhibitorFailed(key) {
         const button = key === 'preventSleep' ? this._keepAwake : this._lidAwake;
         if (button)
             this._setToggle(button, false);
-        runJson(['config', 'set', key, 'false'], this._cancellable).catch(() => {});
+        const awakeSwitch = AWAKE_SWITCHES.find(candidate => candidate.key === key);
+        if (awakeSwitch)
+            runJson(['power', awakeSwitch.command, 'off'], this._cancellable).catch(() => {});
         Main.notify(
             key === 'preventSleep' ? 'Keep Awake stopped' : 'Lid Awake stopped',
             'systemd-logind did not keep the inhibitor active.'
@@ -670,8 +741,6 @@ export class NotchPanel {
             this._nowPlaying?.refresh(this._cancellable),
             this._refreshClipboard(),
             this._refreshFiles(),
-            this._refreshToggle(this._keepAwake),
-            this._refreshToggle(this._lidAwake),
             this._refreshToggle(this._presenter),
         ]);
         if (!this.actor)
@@ -733,9 +802,6 @@ export class NotchPanel {
         const value = await runJson(['config', 'get', button._veronicaKey], this._cancellable);
         if (this.actor) {
             this._setToggle(button, value === true);
-            if (button._veronicaKey === 'preventSleep' ||
-                button._veronicaKey === 'lidAwakeEnabled')
-                this._power.set(button._veronicaKey, value === true);
             if (button._veronicaKey === 'presenterMode')
                 this._applyPresenter(value === true);
         }
@@ -750,6 +816,12 @@ export class NotchPanel {
         this._settingsMonitor = null;
         this._featureUnsubscribe?.();
         this._featureUnsubscribe = null;
+        this._awakeUnsubscribe?.();
+        this._awakeUnsubscribe = null;
+        if (this._awakeExpiryId) {
+            GLib.Source.remove(this._awakeExpiryId);
+            this._awakeExpiryId = 0;
+        }
         this._power?.destroy();
         this._power = null;
         this._cameraPreview?.destroy();
