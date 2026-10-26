@@ -1453,12 +1453,12 @@ pub async fn database_query(
     statement: String,
     limit: u32,
     offset: u64,
-) -> CommandResult<veronica_database::paging::Page> {
+) -> CommandResult<serde_json::Value> {
     let (definition, secrets) = database_context(&app, &connection)?;
     let mut session = veronica_database::session::Session::open(&definition, &secrets)
         .await
         .map_err(fail)?;
-    session
+    let page = session
         .query(
             &statement,
             &veronica_database::paging::PageRequest {
@@ -1468,7 +1468,8 @@ pub async fn database_query(
             },
         )
         .await
-        .map_err(fail)
+        .map_err(fail)?;
+    page_for_webview(&page)
 }
 
 /// Read a bounded page of one object.
@@ -1479,12 +1480,12 @@ pub async fn database_read(
     path: Vec<String>,
     limit: u32,
     offset: u64,
-) -> CommandResult<veronica_database::paging::Page> {
+) -> CommandResult<serde_json::Value> {
     let (definition, secrets) = database_context(&app, &connection)?;
     let mut session = veronica_database::session::Session::open(&definition, &secrets)
         .await
         .map_err(fail)?;
-    session
+    let page = session
         .read(
             &veronica_database::identify::ObjectIdentifier::for_path(definition.product_hint, path),
             &veronica_database::paging::PageRequest {
@@ -1494,7 +1495,53 @@ pub async fn database_read(
             },
         )
         .await
-        .map_err(fail)
+        .map_err(fail)?;
+    page_for_webview(&page)
+}
+
+/// JavaScript's integers are exact only up to 2^53 - 1.
+const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
+
+/// A page as the webview should receive it.
+///
+/// `Value::SignedInteger` and `UnsignedInteger` serialise as JSON numbers,
+/// which `JSON.parse` rounds past 2^53: a stored `1234567890123456789` was
+/// shown as `1234567890123456800`. Those values are sent as their exact
+/// decimal text instead. The value type itself is left alone, because the
+/// confirmation digests and the MCP server depend on its encoding.
+fn page_for_webview(page: &veronica_database::paging::Page) -> CommandResult<serde_json::Value> {
+    let mut json = serde_json::to_value(page).map_err(|error| error.to_string())?;
+    exact_large_integers(&mut json);
+    Ok(json)
+}
+
+fn exact_large_integers(json: &mut serde_json::Value) {
+    match json {
+        serde_json::Value::Object(map) => {
+            let integer = matches!(
+                map.get("kind").and_then(serde_json::Value::as_str),
+                Some("signedInteger" | "unsignedInteger")
+            );
+            if integer {
+                if let Some(value) = map.get_mut("value") {
+                    let unsafe_number = match value {
+                        serde_json::Value::Number(number) => number
+                            .as_i64()
+                            .map(|n| n.unsigned_abs() > MAX_SAFE_INTEGER)
+                            .or_else(|| number.as_u64().map(|n| n > MAX_SAFE_INTEGER))
+                            .unwrap_or(false),
+                        _ => false,
+                    };
+                    if unsafe_number {
+                        *value = serde_json::Value::String(value.to_string());
+                    }
+                }
+            }
+            map.values_mut().for_each(exact_large_integers);
+        }
+        serde_json::Value::Array(items) => items.iter_mut().for_each(exact_large_integers),
+        _ => {}
+    }
 }
 
 /// What this server can be asked to do.
@@ -2867,6 +2914,24 @@ pub fn open_external(target: String) -> CommandResult<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn integers_past_javascripts_range_reach_the_webview_exactly() {
+        use veronica_database::value::Value;
+        let mut json = serde_json::json!([
+            serde_json::to_value(Value::SignedInteger(1_234_567_890_123_456_789)).unwrap(),
+            serde_json::to_value(Value::SignedInteger(-9_007_199_254_740_993)).unwrap(),
+            serde_json::to_value(Value::UnsignedInteger(u64::MAX)).unwrap(),
+            serde_json::to_value(Value::SignedInteger(42)).unwrap(),
+            serde_json::to_value(Value::Array(vec![Value::UnsignedInteger(1 << 60)])).unwrap(),
+        ]);
+        super::exact_large_integers(&mut json);
+        assert_eq!(json[0]["value"], "1234567890123456789");
+        assert_eq!(json[1]["value"], "-9007199254740993");
+        assert_eq!(json[2]["value"], "18446744073709551615");
+        assert_eq!(json[3]["value"], 42, "safe integers stay numbers");
+        assert_eq!(json[4]["value"][0]["value"], "1152921504606846976");
+    }
+
     use super::{newer_version, parsed_shell_extension_status, with_veronica_enabled};
 
     #[test]
