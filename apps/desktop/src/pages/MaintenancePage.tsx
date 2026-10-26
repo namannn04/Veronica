@@ -76,9 +76,21 @@ export function MaintenancePage() {
     setBusy(`Updating ${source}…`); setError(""); setNotice("");
     try {
       const result = await ipc.packagesUpdate(source, []);
-      setNotice(result.succeeded ? `${source} is up to date.` : `${source} update did not finish.`);
-      if (!result.succeeded) setError(result.output);
-      await loadUpdates();
+      // The list is read again before the outcome is shown. Reading it
+      // through loadUpdates cleared the notice and the error it had just
+      // been given, so the button seemed to do nothing either way.
+      setBusy("Looking for updates…");
+      const remaining = await ipc.packagesUpdates().then((next) => { setUpdates(next); return next; }).catch(() => null);
+      const left = remaining?.filter((entry) => entry.source === source).length ?? 0;
+      if (!result.succeeded) {
+        setNotice(`${source} update did not finish.`);
+        setError(result.output);
+      } else if (left > 0) {
+        // apt's upgrade keeps back packages whose dependencies changed.
+        setNotice(`${source} updated, but ${left} package${left === 1 ? " was" : "s were"} held back and still need${left === 1 ? "s" : ""} updating.`);
+      } else {
+        setNotice(`${source} is up to date.`);
+      }
     } catch (reason) { setError(String(reason)); }
     finally { setBusy(""); }
   };
