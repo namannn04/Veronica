@@ -145,17 +145,22 @@ export function tokens(value) {
         [1e6, 'M'],
         [1e3, 'K'],
     ];
-    for (const [scale, suffix] of units) {
+    // Precision is decided after rounding, as the app's formatter does:
+    // deciding first printed 999,999 as "1000K".
+    const decimals = scaled => scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
+    const round = (scaled, places) => Math.round(scaled * 10 ** places) / 10 ** places;
+    for (let index = 0; index < units.length; index++) {
+        const [scale, suffix] = units[index];
         if (value >= scale) {
             const scaled = value / scale;
-            if (scaled >= 100)
-                return `${scaled.toFixed(0)}${suffix}`;
-            if (scaled >= 10)
-                return `${scaled.toFixed(1)}${suffix}`;
-            return `${scaled.toFixed(2)}${suffix}`;
+            const rounded = round(scaled, decimals(scaled));
+            if (rounded >= 1000 && index > 0)
+                return `1.00${units[index - 1][1]}`;
+            return `${rounded.toFixed(decimals(rounded))}${suffix}`;
         }
     }
-    return `${Math.round(value)}`;
+    const whole = Math.round(value);
+    return whole >= 1000 ? '1.00K' : `${whole}`;
 }
 
 export function percent(value) {

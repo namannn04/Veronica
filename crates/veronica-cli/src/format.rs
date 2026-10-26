@@ -46,26 +46,8 @@ pub fn money(value: f64) -> String {
 
 /// Large token counts, abbreviated the way the dashboard shows them.
 pub fn tokens(value: u64) -> String {
-    const UNITS: [(u64, &str); 4] = [
-        (1_000_000_000_000, "T"),
-        (1_000_000_000, "B"),
-        (1_000_000, "M"),
-        (1_000, "K"),
-    ];
-    for (scale, suffix) in UNITS {
-        if value >= scale {
-            let scaled = value as f64 / scale as f64;
-            // Keep three significant figures so 1.05M and 10.5M both read well.
-            return if scaled >= 100.0 {
-                format!("{scaled:.0}{suffix}")
-            } else if scaled >= 10.0 {
-                format!("{scaled:.1}{suffix}")
-            } else {
-                format!("{scaled:.2}{suffix}")
-            };
-        }
-    }
-    value.to_string()
+    // One definition, so the CLI and the share cards cannot disagree.
+    veronica_usage::cards::tokens(value)
 }
 
 /// A duration as a compact countdown, e.g. "2h 14m" or "5d 3h".
@@ -149,6 +131,15 @@ mod tests {
         assert_eq!(tokens(15_000), "15.0K");
         assert_eq!(tokens(502_000_260), "502M");
         assert_eq!(tokens(2_500_000_000), "2.50B");
+    }
+
+    #[test]
+    fn rounding_up_to_the_next_unit_or_precision_reads_naturally() {
+        assert_eq!(tokens(9_999), "10.0K");
+        assert_eq!(tokens(99_999), "100K");
+        assert_eq!(tokens(999_999), "1.00M");
+        assert_eq!(tokens(999_499), "999K");
+        assert_eq!(tokens(999_999_999), "1.00B");
     }
 
     #[test]
