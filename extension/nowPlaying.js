@@ -5,12 +5,20 @@
  */
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import { runJson, vbox } from './lib.js';
 
+/** How long a player takes to publish the next track after a skip. */
+const SETTLE_MS = 600;
+
 export class NowPlayingCard {
-    constructor() {
+    /** @param {(visible: boolean) => void} [onVisibilityChanged] */
+    constructor(onVisibilityChanged = null) {
+        this._onVisibilityChanged = onVisibilityChanged;
+        this._cancellable = null;
+        this._settleId = 0;
         this.actor = new St.BoxLayout({
             style_class: 'veronica-card veronica-now-playing',
             visible: false,
@@ -45,9 +53,11 @@ export class NowPlayingCard {
             icon_name: 'media-playback-start-symbolic',
             style_class: 'veronica-now-icon',
         });
-        controls.add_child(this._transportButton('media-skip-backward-symbolic', () => this._send('previous')));
+        this._previous = this._transportButton('media-skip-backward-symbolic', () => this._send('previous'));
+        this._next = this._transportButton('media-skip-forward-symbolic', () => this._send('next'));
+        controls.add_child(this._previous);
         controls.add_child(this._transportButton(null, () => this._send('toggle'), this._playPauseIcon));
-        controls.add_child(this._transportButton('media-skip-forward-symbolic', () => this._send('next')));
+        controls.add_child(this._next);
         this.actor.add_child(controls);
     }
 
@@ -58,25 +68,39 @@ export class NowPlayingCard {
         return button;
     }
 
-    _send(action) {
-        runJson(['media', action]).catch(() => {});
-        // Optimistic: reflect the likely new state immediately rather than
-        // waiting for the next poll, which the caller may not trigger for a
-        // while.
-        if (action === 'toggle') {
-            const playing = this._playPauseIcon.icon_name === 'media-playback-start-symbolic';
-            this._playPauseIcon.icon_name = playing
-                ? 'media-playback-pause-symbolic'
-                : 'media-playback-start-symbolic';
-        }
+    /**
+     * Forward a transport click and show what it did.
+     *
+     * `vr media` answers with the player's state after the action, which is
+     * rendered at once. A player publishes the next track's metadata a moment
+     * after a skip, so the card reads it once more when that has settled;
+     * before, the old title stayed until the notch was reopened.
+     */
+    async _send(action) {
+        const playing = await runJson(['media', action], this._cancellable);
+        if (!this.actor)
+            return;
+        this._render(playing);
+        if (this._settleId)
+            GLib.Source.remove(this._settleId);
+        this._settleId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SETTLE_MS, () => {
+            this._settleId = 0;
+            this.refresh(this._cancellable).catch(() => {});
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     async refresh(cancellable) {
+        this._cancellable = cancellable;
         const playing = await runJson(['media', 'status'], cancellable);
         if (!this.actor)
             return; // destroyed while the subprocess ran
+        this._render(playing);
+    }
+
+    _render(playing) {
         if (!playing) {
-            this.actor.visible = false;
+            this._setVisible(false);
             return;
         }
         this._lastTitle = playing.title || 'Untitled';
@@ -86,7 +110,22 @@ export class NowPlayingCard {
         this._playPauseIcon.icon_name = playing.status === 'playing'
             ? 'media-playback-pause-symbolic'
             : 'media-playback-start-symbolic';
-        this.actor.visible = true;
+        // A player that cannot skip (a browser tab often cannot) gets dimmed,
+        // inert buttons rather than ones that silently do nothing.
+        this._setEnabled(this._next, playing.canGoNext !== false);
+        this._setEnabled(this._previous, playing.canGoPrevious !== false);
+        this._setVisible(true);
+    }
+
+    _setEnabled(button, enabled) {
+        button.reactive = enabled;
+        button.can_focus = enabled;
+        button.opacity = enabled ? 255 : 90;
+    }
+
+    _setVisible(visible) {
+        this.actor.visible = visible;
+        this._onVisibilityChanged?.(visible);
     }
 
     setPrivate(privateMode) {
@@ -103,6 +142,11 @@ export class NowPlayingCard {
     }
 
     destroy() {
+        if (this._settleId) {
+            GLib.Source.remove(this._settleId);
+            this._settleId = 0;
+        }
+        this._onVisibilityChanged = null;
         this.actor?.destroy();
         this.actor = null;
     }

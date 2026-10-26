@@ -173,7 +173,14 @@ export class NotchPanel {
             layout_manager: new Clutter.BinLayout(),
             x_expand: true,
         });
-        this._nowPlaying = new NowPlayingCard();
+        // The empty state follows the card directly. Setting it after every
+        // refresh had finished meant waiting on the rate-limit request too,
+        // which takes seconds (or a timeout when offline), and until then the
+        // card and "Nothing playing" overlapped or the slot stood blank.
+        this._nowPlaying = new NowPlayingCard(visible => {
+            if (this._emptyMusic)
+                this._emptyMusic.visible = !visible;
+        });
         musicWrap.add_child(this._nowPlaying.actor);
         this._emptyMusic = vbox({
             style_class: 'veronica-card veronica-empty-music',
@@ -728,9 +735,6 @@ export class NotchPanel {
             this._refreshClipboard(),
             this._refreshFiles(),
         ]);
-        if (!this.actor)
-            return;
-        this._emptyMusic.visible = !this._nowPlaying.actor.visible;
     }
 
     async _refreshPreferences() {
