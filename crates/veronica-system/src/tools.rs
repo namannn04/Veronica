@@ -689,12 +689,28 @@ mod tests {
     /// The directory is returned alongside the path because dropping it
     /// deletes the script, and the write handle is closed before the script is
     /// run: an open writer makes the exec fail with "Text file busy".
+    /// An executable script for a test to run.
+    ///
+    /// The executable is written by a short-lived `install` process rather
+    /// than by this one. Tests run on parallel threads, and a thread that
+    /// forks while this one still holds a write descriptor hands that
+    /// descriptor to its child until the child execs; executing the script in
+    /// that window fails with ETXTBSY ("text file busy"), which made these
+    /// tests fail at random. A file this process never opened for writing
+    /// cannot be busy on its account.
     fn write_script(body: &str) -> (tempfile::TempDir, std::path::PathBuf) {
-        use std::os::unix::fs::PermissionsExt;
         let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("tool.src");
         let path = root.path().join("tool");
-        std::fs::write(&path, body).unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::write(&source, body).unwrap();
+        let installed = std::process::Command::new("install")
+            .arg("-m")
+            .arg("755")
+            .arg(&source)
+            .arg(&path)
+            .status()
+            .unwrap();
+        assert!(installed.success(), "cannot install the test script");
         (root, path)
     }
 }
