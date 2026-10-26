@@ -81,6 +81,7 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/awakeState.js": "../../../extension/awakeState.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/keyboardCleaner.js": "../../../extension/keyboardCleaner.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/presenterGate.js": "../../../extension/presenterGate.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/sections.js": "../../../extension/sections.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/nowPlaying.js": "../../../extension/nowPlaying.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchClock.js": "../../../extension/notchClock.js",

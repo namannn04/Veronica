@@ -20,6 +20,7 @@ import { booleanSetting } from './featureSwitch.js';
 import { launchApp, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
+import { presenterClick, presenterState } from './presenterGate.js';
 import { UsageCard } from './usageCard.js';
 import { isTheme } from './themes.js';
 
@@ -214,9 +215,8 @@ export class NotchPanel {
         );
         actions.add_child(this._keepAwake);
         actions.add_child(this._lidAwake);
-        this._presenter = this._toggleTile(
-            'avatar-default-symbolic', 'Presenter', 'presenterMode',
-            active => this._applyPresenter(active)
+        this._presenter = this._actionTile(
+            'avatar-default-symbolic', 'Presenter', () => this._togglePresenter()
         );
         actions.add_child(this._presenter);
         this._pickColorTile = this._actionTile(
@@ -224,6 +224,12 @@ export class NotchPanel {
         );
         actions.add_child(this._pickColorTile);
         panel.add_child(actions);
+        // Presenter follows the same gate as the app, from the same file, and
+        // applies before the cards fill in, so figures never flash unblurred
+        // during a detected screen share.
+        this._presenterUnsubscribe = this._settings?.subscribe(
+            values => this._applyPresenter(presenterState(values))
+        ) ?? null;
         return panel;
     }
 
@@ -408,32 +414,6 @@ export class NotchPanel {
             child: new St.Icon({ icon_name: iconName }),
         });
         button.connect('clicked', onClicked);
-        return button;
-    }
-
-    _toggleTile(iconName, label, key, onChanged = null) {
-        const button = this._actionTile(iconName, label, () => {
-            const next = !button._veronicaActive;
-            this._setToggle(button, next);
-            if (onChanged?.(next) === false) {
-                this._setToggle(button, !next);
-                Main.notify('Veronica', `${label} could not acquire a system inhibitor.`);
-                return;
-            }
-            runJson(['config', 'set', key, String(next)], this._cancellable)
-                .then(result => {
-                    if (!result) {
-                        this._setToggle(button, !next);
-                        onChanged?.(!next);
-                    }
-                })
-                .catch(() => {
-                    this._setToggle(button, !next);
-                    onChanged?.(!next);
-                });
-        });
-        button._veronicaKey = key;
-        button._veronicaActive = false;
         return button;
     }
 
@@ -654,9 +634,26 @@ export class NotchPanel {
             this._pickColorTile.visible = this._colorPickerEnabled;
     }
 
-    _applyPresenter(active) {
-        this._usage?.setPrivate(active);
-        this._nowPlaying?.setPrivate(active);
+    _applyPresenter(state) {
+        this._presenterState = state;
+        // The tile is a shortcut for a feature switched on in Settings; while
+        // it is off there is nothing for the tile to start.
+        if (this._presenter) {
+            this._presenter.visible = state.enabled;
+            this._setToggle(this._presenter, state.active);
+        }
+        this._usage?.setPrivate(state.usagePrivate);
+        this._nowPlaying?.setPrivate(state.musicPrivate);
+    }
+
+    async _togglePresenter() {
+        const state = this._presenterState;
+        if (!state?.enabled)
+            return;
+        // `vr presenter` keeps the stored flags consistent (it refuses start
+        // and stop while the feature is off); the watcher then re-applies.
+        for (const command of presenterClick(state))
+            await runJson(['presenter', command], this._cancellable);
     }
 
     async _pickColor() {
@@ -730,7 +727,6 @@ export class NotchPanel {
             this._nowPlaying?.refresh(this._cancellable),
             this._refreshClipboard(),
             this._refreshFiles(),
-            this._refreshToggle(this._presenter),
         ]);
         if (!this.actor)
             return;
@@ -785,17 +781,6 @@ export class NotchPanel {
         }
     }
 
-    async _refreshToggle(button) {
-        if (!button)
-            return;
-        const value = await runJson(['config', 'get', button._veronicaKey], this._cancellable);
-        if (this.actor) {
-            this._setToggle(button, value === true);
-            if (button._veronicaKey === 'presenterMode')
-                this._applyPresenter(value === true);
-        }
-    }
-
     destroy() {
         if (this._settingsDebounceId) {
             GLib.Source.remove(this._settingsDebounceId);
@@ -811,6 +796,8 @@ export class NotchPanel {
             GLib.Source.remove(this._awakeExpiryId);
             this._awakeExpiryId = 0;
         }
+        this._presenterUnsubscribe?.();
+        this._presenterUnsubscribe = null;
         this._power?.destroy();
         this._power = null;
         this._cameraPreview?.destroy();
