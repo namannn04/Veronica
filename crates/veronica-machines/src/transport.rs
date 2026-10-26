@@ -70,7 +70,10 @@ pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> R
     command
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
+        .stderr(std::process::Stdio::piped())
+        // A timed-out wait drops the child; without this the `ssh` kept
+        // running, and a host that accepts and then hangs leaked one per poll.
+        .kill_on_drop(true);
 
     let mut child = command
         .spawn()

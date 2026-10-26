@@ -444,6 +444,9 @@ fn available_destination(directory: &Path, name: &str) -> PathBuf {
     directory.join(format!("{stem}-{}", chrono::Utc::now().timestamp_millis()))
 }
 
+/// The longest a single download may take once connected.
+pub const TRANSFER_TIMEOUT: Duration = Duration::from_secs(2 * 60 * 60);
+
 pub async fn download_file(
     machine: &Machine,
     remote_path: &str,
@@ -485,7 +488,8 @@ pub async fn download_file(
                 .arg(target)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
-                .stderr(Stdio::piped());
+                .stderr(Stdio::piped())
+                .kill_on_drop(true);
             let mut child = command.spawn().context("cannot start sftp")?;
             if let Some(mut stdin) = child.stdin.take() {
                 let batch = format!(
@@ -495,9 +499,22 @@ pub async fn download_file(
                 );
                 stdin.write_all(batch.as_bytes()).await?;
             }
-            let output = tokio::time::timeout(timeout, child.wait_with_output())
-                .await
-                .context("file transfer timed out")??;
+            // `timeout` bounds connecting. The transfer itself gets far longer:
+            // with the connect timeout covering the whole copy, any file that
+            // took more than twenty seconds was reported as failed while sftp
+            // went on writing it into Downloads.
+            let output =
+                match tokio::time::timeout(TRANSFER_TIMEOUT, child.wait_with_output()).await {
+                    Ok(output) => output?,
+                    Err(_) => {
+                        // The child is killed on drop; do not leave half a file.
+                        let _ = std::fs::remove_file(&destination);
+                        bail!(
+                            "the transfer did not finish within {} minutes",
+                            TRANSFER_TIMEOUT.as_secs() / 60
+                        );
+                    }
+                };
             if !output.status.success() {
                 bail!(
                     "sftp failed: {}",

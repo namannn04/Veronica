@@ -44,11 +44,18 @@ export function MachinesPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    let live = true;
+    let timer: number | undefined;
+    // The next probe is scheduled when the last one has answered. A probe can
+    // take up to twenty seconds, so a fixed interval stacked several on top of
+    // each other and let an older answer overwrite a newer one.
+    const probe = async () => {
+      await load();
+      if (live) timer = window.setTimeout(() => void probe(), TICK_MS);
+    };
+    void probe();
     void loadDiscovered();
-    // Probing a remote host takes a moment, so the interval is generous.
-    const timer = setInterval(load, TICK_MS);
-    return () => clearInterval(timer);
+    return () => { live = false; window.clearTimeout(timer); };
   }, [load, loadDiscovered]);
 
   const add = async (sshTarget: string, label?: string) => {
