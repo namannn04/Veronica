@@ -17,6 +17,8 @@ type HomeData = {
 };
 
 const EMPTY: HomeData = { usage: null, limits: null, system: null, agenda: null, playing: null };
+const LIVE_POLL_MS = 3_000;
+const LIMITS_POLL_MS = 5 * 60_000;
 const DEFAULT_ZONES = ["America/New_York", "America/Los_Angeles"];
 const ZONE_SUGGESTIONS = [
   "Europe/London", "Europe/Berlin", "Asia/Kolkata", "Asia/Tokyo", "Asia/Singapore",
@@ -85,6 +87,37 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
   };
 
   useEffect(() => { void refresh(); }, []);
+
+  // The live cards poll on their own clocks: machine stats and the player at
+  // a glance-able pace, limits slowly because each read reaches the provider.
+  // A tick is skipped while the previous one is still waiting, so a slow
+  // reply can never land after (and overwrite) a newer one.
+  useEffect(() => {
+    let live = true;
+    const every = (ms: number, read: () => Promise<void>) => {
+      let busy = false;
+      const timer = window.setInterval(() => {
+        if (busy) return;
+        busy = true;
+        void read().finally(() => { busy = false; });
+      }, ms);
+      return () => window.clearInterval(timer);
+    };
+    const stopLive = every(LIVE_POLL_MS, async () => {
+      const [system, playing] = await Promise.allSettled([ipc.systemSnapshot(), ipc.mediaNowPlaying()]);
+      if (!live) return;
+      setData((current) => ({
+        ...current,
+        system: system.status === "fulfilled" ? system.value : current.system,
+        playing: playing.status === "fulfilled" ? playing.value : null,
+      }));
+    });
+    const stopLimits = every(LIMITS_POLL_MS, async () => {
+      const limits = await ipc.usageLimits().catch(() => null);
+      if (live && limits) setData((current) => ({ ...current, limits }));
+    });
+    return () => { live = false; stopLive(); stopLimits(); };
+  }, []);
   useEffect(() => {
     const changed = listenEvent("settings-updated", () => {
       void ipc.settingsAll().then(setSettings).catch(() => {});
