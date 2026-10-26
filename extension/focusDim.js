@@ -22,7 +22,12 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import { clampAnimationSeconds, clampIntensity, parseDisplayMode } from './focusDimMath.js';
+import {
+    clampAnimationSeconds,
+    clampIntensity,
+    overlayPlacement,
+    parseDisplayMode,
+} from './focusDimMath.js';
 
 export class FocusDim {
     /** @param {import('./settings.js').SettingsWatcher} settings */
@@ -150,17 +155,20 @@ export class FocusDim {
         for (const overlay of this._overlays) {
             const index = overlay._veronicaMonitorIndex;
             const bright = this._brightWindowFor(index, focus, focusMonitor);
+            const placement = overlayPlacement(this._config.mode, Boolean(bright), Boolean(focus));
+            const wanted = placement === 'off' ? 0 : target;
 
-            // Nothing to keep bright on this monitor: no window means an empty
-            // desktop, and dimming a bare wallpaper is pointless noise.
-            const wanted = bright ? target : 0;
-
-            if (bright) {
+            if (placement === 'below') {
                 // Below the window that stays bright, above everything else.
                 const actor = bright.get_compositor_private();
                 if (actor && actor.get_parent() === global.window_group) {
                     global.window_group.set_child_below_sibling(overlay, actor);
                 }
+            } else if (placement === 'top') {
+                // Nothing on this monitor stays bright, so the dim covers every
+                // window on it. Redone on each restack, which can put a newly
+                // mapped window above the overlay.
+                global.window_group.set_child_above_sibling(overlay, null);
             }
 
             if (overlay.opacity === wanted)
