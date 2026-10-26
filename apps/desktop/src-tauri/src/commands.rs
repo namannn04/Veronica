@@ -852,12 +852,45 @@ fn stop_companion_process(recording: &mut crate::state::CompanionRecording) {
 #[tauri::command]
 pub fn companion_record_stop(app: AppHandle) -> CommandResult<veronica_core::CompanionItem> {
     let state = app.state::<AppState>();
-    let mut recording = state
+    let recording = state
         .companion_recording
         .lock()
         .expect("companion recording lock")
         .take()
         .ok_or_else(|| "no voice memo is recording".to_string())?;
+    let item = finish_companion_recording(&state, recording)?;
+    let _ = app.emit("companion-updated", item.id);
+    Ok(item)
+}
+
+/// Keep a memo that is still recording when Veronica quits.
+///
+/// The recorder is its own process and does not die with the app, and Tauri
+/// ends the process without running `AppState`'s destructor. Without this the
+/// microphone kept recording after Quit, into a file nothing would index.
+pub fn finish_companion_recording_on_exit(app: &AppHandle) {
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    let Some(recording) = state
+        .companion_recording
+        .lock()
+        .expect("companion recording lock")
+        .take()
+    else {
+        return;
+    };
+    match finish_companion_recording(&state, recording) {
+        Ok(item) => tracing::info!("saved the voice memo in progress at quit as #{}", item.id),
+        Err(error) => tracing::warn!("cannot save the voice memo in progress at quit: {error}"),
+    }
+}
+
+/// Stop the recorder cleanly, so the WAV header is finalised, and index it.
+fn finish_companion_recording(
+    state: &AppState,
+    mut recording: crate::state::CompanionRecording,
+) -> CommandResult<veronica_core::CompanionItem> {
     stop_companion_process(&mut recording);
     let bytes = std::fs::metadata(&recording.path)
         .map(|metadata| metadata.len())
@@ -866,15 +899,13 @@ pub fn companion_record_stop(app: AppHandle) -> CommandResult<veronica_core::Com
         let _ = std::fs::remove_file(&recording.path);
         return Err("the microphone produced no audio; check PipeWire input access".to_string());
     }
-    let item = companion_repository(&state)
+    companion_repository(state)
         .add_voice(
             &recording.path,
             recording.started.elapsed().as_secs().max(1),
             chrono::Utc::now(),
         )
-        .map_err(fail)?;
-    let _ = app.emit("companion-updated", item.id);
-    Ok(item)
+        .map_err(fail)
 }
 
 #[tauri::command]
@@ -1355,6 +1386,8 @@ fn install_deb_release(version: &str) -> CommandResult<String> {
 /// Start the newly installed version in place of this one.
 #[tauri::command]
 pub fn app_restart(app: AppHandle) {
+    // `restart` re-executes without raising `RunEvent::Exit`.
+    finish_companion_recording_on_exit(&app);
     app.restart();
 }
 

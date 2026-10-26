@@ -111,15 +111,3 @@ impl AppState {
         Ok(())
     }
 }
-
-impl Drop for AppState {
-    fn drop(&mut self) {
-        if let Ok(recording) = self.companion_recording.get_mut() {
-            if let Some(recording) = recording.as_mut() {
-                let _ = recording.child.kill();
-                let _ = recording.child.wait();
-                let _ = std::fs::remove_file(&recording.path);
-            }
-        }
-    }
-}
