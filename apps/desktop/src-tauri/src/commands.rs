@@ -893,15 +893,15 @@ pub fn companion_record_cancel(state: State<'_, AppState>) -> CommandResult<()> 
 }
 
 #[tauri::command]
+/// Where a voice memo's recording is, for the page to play through the asset
+/// protocol. The recordings directory is added to the asset scope at launch.
+///
+/// Returning the audio inline as a `data:` URL was blocked by the content
+/// policy's `media-src`, so no memo ever played, and it pushed up to 64 MiB
+/// of base64 through IPC for every selection.
 pub fn companion_audio(state: State<'_, AppState>, id: u64) -> CommandResult<String> {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
     let path = companion_repository(&state).audio_path(id).map_err(fail)?;
-    let metadata = std::fs::metadata(&path).map_err(|error| error.to_string())?;
-    if metadata.len() > 64 * 1024 * 1024 {
-        return Err("voice memo is too large to play in the app".to_string());
-    }
-    let bytes = std::fs::read(path).map_err(|error| error.to_string())?;
-    Ok(format!("data:audio/wav;base64,{}", STANDARD.encode(bytes)))
+    Ok(path.display().to_string())
 }
 
 #[tauri::command]

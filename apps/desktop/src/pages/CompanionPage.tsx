@@ -1,3 +1,4 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { countdown, timeAgo } from "../lib/format";
@@ -54,7 +55,7 @@ export function CompanionPage() {
   const selected = items.find((item) => item.id === selectedId) ?? null;
   useEffect(() => {
     setTitle(selected?.title ?? ""); setBody(selected?.body ?? ""); setPinned(selected?.pinned ?? false); setAudio("");
-    if (selected?.kind === "voice") void ipc.companionAudio(selected.id).then(setAudio).catch((reason) => setNotice(String(reason)));
+    if (selected?.kind === "voice") void ipc.companionAudio(selected.id).then((path) => setAudio(convertFileSrc(path))).catch((reason) => setNotice(String(reason)));
   }, [selectedId, selected?.updatedAt]);
 
   const visible = useMemo(() => items.filter((item) => section === "all" || section === "activity" || item.kind === section), [items, section]);

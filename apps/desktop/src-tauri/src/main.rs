@@ -318,6 +318,22 @@ fn run(background: bool) -> Result<()> {
             // Probing the desktop portal needs D-Bus, so the session is
             // resolved on the async runtime and the state is seeded with the
             // synchronous answer first.
+            // Voice memos play from disk through the asset protocol. The scope
+            // is granted here rather than in tauri.conf.json because the data
+            // directory follows XDG_DATA_HOME, which a static pattern cannot.
+            let recordings =
+                veronica_core::CompanionRepository::new(directories.companion_dir()).recordings_dir();
+            if let Err(error) = std::fs::create_dir_all(&recordings)
+                .map_err(anyhow::Error::from)
+                .and_then(|()| {
+                    app.asset_protocol_scope()
+                        .allow_directory(&recordings, true)
+                        .map_err(anyhow::Error::from)
+                })
+            {
+                tracing::warn!("voice memos cannot be played in the app: {error:#}");
+            }
+
             let session = veronica_core::DesktopSession::detect();
             let state = AppState::new(directories.clone(), session)?;
             app.manage(state);
