@@ -21,27 +21,44 @@ pub struct Settings {
 impl Settings {
     /// Read the settings file. A missing file is the default state, not an
     /// error, because that is simply a first launch.
+    ///
+    /// A file that does not parse is set aside as `settings.json.corrupt-<ts>`
+    /// and the defaults are used. Failing instead stopped the app at launch
+    /// with no window and made every `vr config` command, including the ones
+    /// that would repair it, fail too. Writes are atomic, so this is a damaged
+    /// or hand-edited file, and keeping its bytes beside it loses nothing.
     pub fn load(path: &Path) -> Result<Self> {
-        match std::fs::read(path) {
-            Ok(bytes) => serde_json::from_slice(&bytes)
-                .with_context(|| format!("{} is not valid JSON", path.display())),
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(err) => Err(err).with_context(|| format!("cannot read {}", path.display())),
+        let bytes = match std::fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(Self::default()),
+            Err(err) => return Err(err).with_context(|| format!("cannot read {}", path.display())),
+        };
+        match serde_json::from_slice(&bytes) {
+            Ok(settings) => Ok(settings),
+            Err(error) => {
+                let aside = path.with_extension(format!(
+                    "json.corrupt-{}",
+                    chrono::Utc::now().format("%Y%m%dT%H%M%S")
+                ));
+                std::fs::rename(path, &aside).with_context(|| {
+                    format!(
+                        "{} is not valid JSON ({error}) and cannot be set aside",
+                        path.display()
+                    )
+                })?;
+                eprintln!(
+                    "veronica: {} was not valid JSON ({error}); kept it as {} and started from defaults",
+                    path.display(),
+                    aside.display()
+                );
+                Ok(Self::default())
+            }
         }
     }
 
-    /// Write atomically. A crash mid-write would otherwise leave a truncated
-    /// file that fails to parse on the next launch.
+    /// Write atomically, through a temporary file unique to this writer.
     pub fn save(&self, path: &Path) -> Result<()> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let body = serde_json::to_vec_pretty(self)?;
-        let temp = path.with_extension("json.tmp");
-        std::fs::write(&temp, &body)?;
-        std::fs::rename(&temp, path)
-            .with_context(|| format!("cannot replace {}", path.display()))?;
-        Ok(())
+        crate::fsutil::write_atomic(path, &serde_json::to_vec_pretty(self)?)
     }
 
     pub fn get(&self, key: &str) -> Option<&Value> {
@@ -121,6 +138,36 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_corrupt_file_is_set_aside_and_defaults_are_used() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("settings.json");
+        std::fs::write(&path, br#"{"appearance": "dark","#).unwrap();
+
+        let settings = Settings::load(&path).expect("a corrupt file must not be fatal");
+        assert_eq!(settings, Settings::default());
+        assert!(!path.exists(), "the corrupt file is moved, not overwritten");
+        let kept: Vec<_> = std::fs::read_dir(root.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(kept.len(), 1);
+        assert!(kept[0].starts_with("settings.json.corrupt-"), "{kept:?}");
+        assert_eq!(
+            std::fs::read(root.path().join(&kept[0])).unwrap(),
+            br#"{"appearance": "dark","#
+        );
+
+        // And the next save starts a fresh, valid file.
+        let mut settings = settings;
+        settings.set("appearance", Value::from("light"));
+        settings.save(&path).unwrap();
+        assert_eq!(
+            Settings::load(&path).unwrap().string("appearance"),
+            Some("light")
+        );
+    }
 
     #[test]
     fn coerces_scalars_to_their_json_types() {
