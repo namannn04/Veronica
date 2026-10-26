@@ -668,7 +668,14 @@ export class NotchPanel {
             console.debug('veronica: no colour was picked');
             return;
         }
-        Main.notify('Color copied', picked.value ?? picked.hex);
+        // `vr` keeps the swatch even when the clipboard refuses the text, and
+        // says so with a null `copiedVia`; claiming "copied" then would send
+        // someone to paste a colour that is not there.
+        const value = picked.value ?? picked.hex;
+        if (picked.copiedVia)
+            Main.notify('Color copied', value);
+        else
+            Main.notify('Color picked, not copied', `${value} — saved in Color Picker's history`);
     }
 
     async _refreshClipboard() {
