@@ -82,8 +82,13 @@ pub trait Fetch {
     fn get(&self, url: &Url) -> impl std::future::Future<Output = Result<String>> + Send;
 }
 
-/// Discover the pages to audit, starting from whatever the user typed.
-pub async fn pages<F: Fetch + Sync>(fetcher: &F, input: &Url) -> Result<Vec<Url>> {
+/// Discover up to `want` pages to audit, starting from whatever the user typed.
+///
+/// `want` stops the walk as well as trimming its result: a sitemap index can
+/// hold hundreds of child sitemaps, each fetched in turn, and an audit of ten
+/// pages used to fetch every one of them before checking a single page.
+pub async fn pages<F: Fetch + Sync>(fetcher: &F, input: &Url, want: usize) -> Result<Vec<Url>> {
+    let want = want.clamp(1, MAX_PAGES);
     let mut candidates = Vec::new();
     if input.path().to_lowercase().ends_with(".xml") {
         candidates.push(input.clone());
@@ -97,9 +102,9 @@ pub async fn pages<F: Fetch + Sync>(fetcher: &F, input: &Url) -> Result<Vec<Url>
 
     let mut visited = HashSet::new();
     for candidate in unique(candidates) {
-        let found = crawl(fetcher, &candidate, &mut visited).await;
+        let found = crawl(fetcher, &candidate, &mut visited, want).await;
         if !found.is_empty() {
-            return Ok(unique(found).into_iter().take(MAX_PAGES).collect());
+            return Ok(unique(found).into_iter().take(want).collect());
         }
     }
 
@@ -115,6 +120,7 @@ async fn crawl<F: Fetch + Sync>(
     fetcher: &F,
     sitemap: &Url,
     visited: &mut HashSet<Url>,
+    want: usize,
 ) -> Vec<Url> {
     if visited.len() >= MAX_SITEMAPS || !visited.insert(sitemap.clone()) {
         return Vec::new();
@@ -131,10 +137,11 @@ async fn crawl<F: Fetch + Sync>(
     // losing the whole index.
     let mut pages = Vec::new();
     for child in document.locations {
-        if pages.len() >= MAX_PAGES {
+        pages = unique(pages);
+        if pages.len() >= want {
             break;
         }
-        pages.extend(Box::pin(crawl(fetcher, &child, visited)).await);
+        pages.extend(Box::pin(crawl(fetcher, &child, visited, want)).await);
     }
     unique(pages)
 }
@@ -188,6 +195,50 @@ mod tests {
 
     fn url(raw: &str) -> Url {
         Url::parse(raw).unwrap()
+    }
+
+    /// Records what was fetched.
+    struct Counting(Canned, std::sync::Mutex<Vec<String>>);
+
+    impl Fetch for Counting {
+        async fn get(&self, url: &Url) -> Result<String> {
+            self.1.lock().unwrap().push(url.to_string());
+            self.0.get(url).await
+        }
+    }
+
+    #[tokio::test]
+    async fn an_index_is_walked_only_as_far_as_the_pages_wanted() {
+        let mut pairs = vec![(
+            "https://a.test/sitemap.xml".to_string(),
+            (0..50)
+                .map(|i| format!("<sitemap><loc>https://a.test/s{i}.xml</loc></sitemap>"))
+                .collect::<String>(),
+        )];
+        pairs[0].1 = format!("<sitemapindex>{}</sitemapindex>", pairs[0].1);
+        for i in 0..50 {
+            pairs.push((
+                format!("https://a.test/s{i}.xml"),
+                format!(
+                    "<urlset><url><loc>https://a.test/{i}/a</loc></url>\
+                     <url><loc>https://a.test/{i}/b</loc></url></urlset>"
+                ),
+            ));
+        }
+        let fetcher = Counting(
+            Canned(pairs.into_iter().collect()),
+            std::sync::Mutex::new(Vec::new()),
+        );
+        let found = pages(&fetcher, &url("https://a.test/"), 3).await.unwrap();
+        assert_eq!(found.len(), 3);
+        let children = fetcher
+            .1
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|fetched| fetched.ends_with(".xml") && !fetched.ends_with("/sitemap.xml"))
+            .count();
+        assert_eq!(children, 2, "two child sitemaps hold three pages");
     }
 
     #[test]
@@ -250,7 +301,7 @@ mod tests {
             "https://a.test/sitemap.xml",
             "<urlset><url><loc>https://a.test/one</loc></url></urlset>",
         )]);
-        let pages = pages(&fetcher, &url("https://a.test/deep/page"))
+        let pages = pages(&fetcher, &url("https://a.test/deep/page"), MAX_PAGES)
             .await
             .unwrap();
         assert_eq!(
@@ -275,7 +326,9 @@ mod tests {
                 "<urlset><url><loc>https://a.test/conventional</loc></url></urlset>",
             ),
         ]);
-        let pages = pages(&fetcher, &url("https://a.test/")).await.unwrap();
+        let pages = pages(&fetcher, &url("https://a.test/"), MAX_PAGES)
+            .await
+            .unwrap();
         assert_eq!(pages[0].as_str(), "https://a.test/from-robots");
     }
 
@@ -296,7 +349,9 @@ mod tests {
                 "<urlset><url><loc>https://a.test/2</loc></url></urlset>",
             ),
         ]);
-        let pages = pages(&fetcher, &url("https://a.test/")).await.unwrap();
+        let pages = pages(&fetcher, &url("https://a.test/"), MAX_PAGES)
+            .await
+            .unwrap();
         assert_eq!(
             pages.iter().map(Url::as_str).collect::<Vec<_>>(),
             ["https://a.test/1", "https://a.test/2"]
@@ -316,7 +371,9 @@ mod tests {
                 "<urlset><url><loc>https://a.test/2</loc></url></urlset>",
             ),
         ]);
-        let pages = pages(&fetcher, &url("https://a.test/")).await.unwrap();
+        let pages = pages(&fetcher, &url("https://a.test/"), MAX_PAGES)
+            .await
+            .unwrap();
         assert_eq!(
             pages.iter().map(Url::as_str).collect::<Vec<_>>(),
             ["https://a.test/2"]
@@ -330,7 +387,9 @@ mod tests {
             "<sitemapindex><sitemap><loc>https://a.test/sitemap.xml</loc></sitemap></sitemapindex>",
         )]);
         // The point is that this returns at all.
-        let pages = pages(&fetcher, &url("https://a.test/page")).await.unwrap();
+        let pages = pages(&fetcher, &url("https://a.test/page"), MAX_PAGES)
+            .await
+            .unwrap();
         assert_eq!(
             pages.iter().map(Url::as_str).collect::<Vec<_>>(),
             ["https://a.test/page"]
@@ -340,7 +399,9 @@ mod tests {
     #[tokio::test]
     async fn a_site_with_no_sitemap_audits_the_page_it_was_given() {
         let fetcher = canned(&[]);
-        let pages = pages(&fetcher, &url("https://a.test/one")).await.unwrap();
+        let pages = pages(&fetcher, &url("https://a.test/one"), MAX_PAGES)
+            .await
+            .unwrap();
         assert_eq!(
             pages.iter().map(Url::as_str).collect::<Vec<_>>(),
             ["https://a.test/one"]
@@ -351,7 +412,9 @@ mod tests {
     async fn a_url_that_claimed_to_be_a_sitemap_and_was_not_is_an_error() {
         // Auditing sitemap.xml as if it were a page would be nonsense.
         let fetcher = canned(&[("https://a.test/s.xml", "<urlset></urlset>")]);
-        assert!(pages(&fetcher, &url("https://a.test/s.xml")).await.is_err());
+        assert!(pages(&fetcher, &url("https://a.test/s.xml"), MAX_PAGES)
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -361,7 +424,9 @@ mod tests {
             "<urlset><url><loc>https://a.test/x</loc></url>\
              <url><loc>https://a.test/x</loc></url></urlset>",
         )]);
-        let pages = pages(&fetcher, &url("https://a.test/")).await.unwrap();
+        let pages = pages(&fetcher, &url("https://a.test/"), MAX_PAGES)
+            .await
+            .unwrap();
         assert_eq!(pages.len(), 1);
     }
 }
