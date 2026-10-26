@@ -81,6 +81,26 @@ impl Machine {
 /// Turn a name into an identifier: lowercase, with runs of anything unusual
 /// collapsed to single hyphens, so it is safe in settings keys and on a
 /// command line.
+/// Refuse an SSH destination that `ssh` or `sftp` would read as something
+/// else.
+///
+/// A target starting with `-` is parsed as an option: `-oProxyCommand=...`
+/// runs that command on this computer, on every probe. Whitespace and control
+/// characters have no place in a host or alias either, and would only reach
+/// the terminal launcher's command line.
+pub fn validate_ssh_target(target: &str) -> anyhow::Result<()> {
+    if target.is_empty() {
+        anyhow::bail!("an SSH target is needed, such as user@host or a Host alias");
+    }
+    if target.starts_with('-') {
+        anyhow::bail!("an SSH target cannot start with '-': {target:?}");
+    }
+    if target.chars().any(|c| c.is_whitespace() || c.is_control()) {
+        anyhow::bail!("an SSH target cannot contain spaces or control characters: {target:?}");
+    }
+    Ok(())
+}
+
 pub fn slugify(name: &str) -> String {
     let mut out = String::with_capacity(name.len());
     let mut pending_hyphen = false;
@@ -162,6 +182,28 @@ pub fn fleet(stored: Vec<Machine>) -> Vec<Machine> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_target_ssh_would_read_as_an_option_is_refused() {
+        for bad in [
+            "",
+            "-oProxyCommand=touch /tmp/x",
+            "-p",
+            "user@host extra",
+            "host\nX",
+        ] {
+            assert!(validate_ssh_target(bad).is_err(), "{bad:?}");
+        }
+        for good in [
+            "user@host",
+            "devbox",
+            "me@10.0.0.4",
+            "a-b.example.com",
+            "user@[::1]",
+        ] {
+            assert!(validate_ssh_target(good).is_ok(), "{good:?}");
+        }
+    }
 
     #[test]
     fn the_local_machine_needs_no_configuration() {

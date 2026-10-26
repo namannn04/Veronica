@@ -362,6 +362,7 @@ pub fn open_terminal(machine: &Machine) -> Result<()> {
     let command: Vec<String> = match &machine.reach {
         Reach::Local => vec![std::env::var("SHELL").unwrap_or_else(|_| "bash".into())],
         Reach::Ssh { target, port } => {
+            crate::host::validate_ssh_target(target)?;
             let mut command = vec!["ssh".to_string()];
             command.extend(ssh_options(Duration::from_secs(20)));
             if let Some(port) = port {
@@ -468,6 +469,7 @@ pub async fn download_file(
             std::fs::copy(remote_path, &destination)?;
         }
         Reach::Ssh { target, port } => {
+            crate::host::validate_ssh_target(target)?;
             let mut command = tokio::process::Command::from(veronica_core::host::command("sftp"));
             command.args([
                 "-q",

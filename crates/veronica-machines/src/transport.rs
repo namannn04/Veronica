@@ -61,6 +61,9 @@ pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> R
             command
         }
         Reach::Ssh { target, port } => {
+            // Checked here as well as when added, so an entry stored before
+            // the check existed cannot pass an option to ssh either.
+            crate::host::validate_ssh_target(target)?;
             let mut command = Command::from(veronica_core::host::command("ssh"));
             command.args(ssh_args(target, *port, script, timeout));
             command
