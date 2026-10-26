@@ -45,21 +45,20 @@ impl DayRange {
             && self.end.as_deref().is_none_or(|e| period <= e)
     }
 
-    /// The last `days` calendar days present in the document, which avoids
-    /// showing an empty chart when the machine was idle for a while.
-    pub fn last_days(document: &UsageDocument, days: usize) -> Self {
-        let mut periods: Vec<&str> = document.daily.iter().map(|d| d.period.as_str()).collect();
-        periods.sort_unstable();
-        periods.dedup();
-        let start = periods
-            .len()
-            .checked_sub(days)
-            .and_then(|i| periods.get(i))
-            .or(periods.first())
-            .map(|s| s.to_string());
+    /// The last `days` calendar days, ending today.
+    ///
+    /// This used to be the last `days` days *with data*, ending on the last
+    /// collected day: with the machine idle since August, "7d" in October
+    /// showed a week of August and the notch called it "this week". Idle days
+    /// are now part of the window, and show as idle.
+    pub fn last_days(days: usize, today: chrono::NaiveDate) -> Self {
+        let back = days.max(1) as u64 - 1;
+        let start = today
+            .checked_sub_days(chrono::Days::new(back))
+            .unwrap_or(today);
         Self {
-            start,
-            end: periods.last().map(|s| s.to_string()),
+            start: Some(start.format("%Y-%m-%d").to_string()),
+            end: Some(today.format("%Y-%m-%d").to_string()),
         }
     }
 }
@@ -196,6 +195,25 @@ pub fn per_day(
             point
         })
         .collect();
+    // A bounded window shows its idle days as zero, so a gap reads as a gap
+    // rather than as neighbouring bars.
+    if let (Some(start), Some(end)) = (&range.start, &range.end) {
+        let parse = |day: &str| chrono::NaiveDate::parse_from_str(day, "%Y-%m-%d").ok();
+        if let (Some(mut day), Some(last)) = (parse(start), parse(end)) {
+            let present: std::collections::HashSet<String> =
+                points.iter().map(|point| point.period.clone()).collect();
+            while day <= last {
+                let period = day.format("%Y-%m-%d").to_string();
+                if !present.contains(&period) {
+                    points.push(DayPoint {
+                        period,
+                        ..Default::default()
+                    });
+                }
+                day = day.succ_opt().unwrap_or(last + chrono::Days::new(1));
+            }
+        }
+    }
     points.sort_by(|a, b| a.period.cmp(&b.period));
     points
 }
@@ -802,18 +820,44 @@ mod tests {
     }
 
     #[test]
-    fn last_days_window_uses_days_present_in_the_document() {
-        let doc = document();
-        let range = DayRange::last_days(&doc, 1);
-        assert_eq!(range.start.as_deref(), Some("2026-08-19"));
-        assert_eq!(range.end.as_deref(), Some("2026-08-19"));
+    fn last_days_is_a_calendar_window_ending_today() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 10, 26).unwrap();
+        let week = DayRange::last_days(7, today);
+        assert_eq!(week.start.as_deref(), Some("2026-10-20"));
+        assert_eq!(week.end.as_deref(), Some("2026-10-26"));
+        let one = DayRange::last_days(1, today);
+        assert_eq!(one.start.as_deref(), Some("2026-10-26"));
+        // Zero is treated as today alone rather than an empty window.
+        assert_eq!(DayRange::last_days(0, today), one);
     }
 
     #[test]
-    fn last_days_clamps_when_asked_for_more_days_than_exist() {
+    fn an_idle_window_has_nothing_from_older_days() {
+        // The fixture's data is from August; a week ending in October is idle.
         let doc = document();
-        let range = DayRange::last_days(&doc, 90);
-        assert_eq!(range.start.as_deref(), Some("2026-08-18"));
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 10, 26).unwrap();
+        let range = DayRange::last_days(7, today);
+        assert_eq!(totals(&doc, &range, &SourceSelection::All).cost, 0.0);
+        let days = per_day(&doc, &range, &SourceSelection::All);
+        assert_eq!(days.len(), 7, "every day of the window, idle ones as zero");
+        assert!(days.iter().all(|day| day.cost == 0.0));
+    }
+
+    #[test]
+    fn idle_days_inside_a_window_are_filled_with_zero() {
+        let doc = document();
+        let range = DayRange {
+            start: Some("2026-08-17".into()),
+            end: Some("2026-08-20".into()),
+        };
+        let periods: Vec<String> = per_day(&doc, &range, &SourceSelection::All)
+            .into_iter()
+            .map(|day| day.period)
+            .collect();
+        assert_eq!(
+            periods,
+            ["2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20"]
+        );
     }
 
     #[test]

@@ -117,9 +117,9 @@ fn selection(sources: &[String]) -> SourceSelection {
     }
 }
 
-fn range(document: &veronica_usage::UsageDocument, days: Option<usize>) -> DayRange {
+fn range(days: Option<usize>) -> DayRange {
     match days {
-        Some(days) => DayRange::last_days(document, days),
+        Some(days) => DayRange::last_days(days, chrono::Local::now().date_naive()),
         None => DayRange::default(),
     }
 }
@@ -132,7 +132,7 @@ pub async fn run(
     match command {
         UsageCommand::Summary { days, sources } => {
             let document = load(directories)?;
-            let range = range(&document, *days);
+            let range = range(*days);
             let board = aggregate::dashboard(&document, &range, &selection(sources));
 
             #[derive(serde::Serialize)]
@@ -183,7 +183,7 @@ pub async fn run(
 
         UsageCommand::Sources { days } => {
             let document = load(directories)?;
-            let range = range(&document, *days);
+            let range = range(*days);
             let rows = aggregate::by_source(&document, &range, &SourceSelection::All);
             output.emit(&rows, || {
                 let table: Vec<Vec<String>> = rows
@@ -203,7 +203,7 @@ pub async fn run(
 
         UsageCommand::Models { days, sources } => {
             let document = load(directories)?;
-            let range = range(&document, *days);
+            let range = range(*days);
             let rows = aggregate::by_model(&document, &range, &selection(sources));
             output.emit(&rows, || {
                 let table: Vec<Vec<String>> = rows
@@ -232,7 +232,7 @@ pub async fn run(
             chats,
         } => {
             let document = load(directories)?;
-            let range = range(&document, *days);
+            let range = range(*days);
             let rows = aggregate::projects(&document, &range, &selection(sources));
             let show_chats = *chats;
             output.emit(&rows, || {
@@ -288,7 +288,7 @@ pub async fn run(
 
         UsageCommand::Calendar { days } => {
             let document = load(directories)?;
-            let range = range(&document, *days);
+            let range = range(*days);
             let cells = aggregate::heatmap(&document, &range, &SourceSelection::All);
             output.emit(&cells, || {
                 // Five shades, quietest to busiest, so the calendar reads in a
@@ -512,7 +512,7 @@ pub async fn run(
             };
 
             let document = load(directories)?;
-            let range = range(&document, *days);
+            let range = range(*days);
             let board = aggregate::dashboard(&document, &range, &selection(sources));
             if board.totals.tokens == 0 {
                 anyhow::bail!("no usage in this window, so there is nothing to put on a card");

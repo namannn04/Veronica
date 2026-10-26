@@ -80,7 +80,7 @@ pub fn usage_view(
     };
 
     let range = match days {
-        Some(days) => DayRange::last_days(document, days),
+        Some(days) => DayRange::last_days(days, chrono::Local::now().date_naive()),
         None => DayRange::default(),
     };
     let selection = if sources.is_empty() {
@@ -153,7 +153,9 @@ pub async fn usage_export(
             .as_ref()
             .ok_or_else(|| "No usage has been collected yet.".to_string())?;
         let range = match days {
-            Some(days) => veronica_usage::DayRange::last_days(document, days),
+            Some(days) => {
+                veronica_usage::DayRange::last_days(days, chrono::Local::now().date_naive())
+            }
             None => veronica_usage::DayRange::default(),
         };
         let label = match (range.start.as_deref(), range.end.as_deref()) {
