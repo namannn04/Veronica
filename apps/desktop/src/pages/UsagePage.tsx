@@ -263,6 +263,9 @@ export function UsagePage() {
   );
 }
 
+/** Older than this, the page says the figures are out of date. */
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
 function Head({
   generatedAt,
   refreshing,
@@ -274,6 +277,15 @@ function Head({
 }) {
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState("");
+  // "Collected 3m ago" is relative to now, so it has to move while the page
+  // stays open rather than keep the moment it was first drawn.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const ageMs = generatedAt ? now - new Date(generatedAt).getTime() : 0;
+  const stale = ageMs > STALE_AFTER_MS;
 
   // Cards are for posting, so they carry no repository, path, chat title or
   // dollar cost. The button says so rather than leaving it to be discovered.
@@ -290,6 +302,7 @@ function Head({
   };
 
   return (
+    <>
     <div className="page-head">
       <div>
         <h1>Agent Usage</h1>
@@ -314,6 +327,13 @@ function Head({
         </button>
       </div>
     </div>
+    {stale && generatedAt && !refreshing && (
+      <div className="banner warn">
+        These figures were collected {timeAgo(generatedAt)}, so recent use is missing. Press Refresh,
+        or choose how often Veronica collects in Settings › General.
+      </div>
+    )}
+    </>
   );
 }
 
