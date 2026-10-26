@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { tokens } from "../src/lib/format";
+import { stopwatch, tokens } from "../src/lib/format";
 
 describe("tokens", () => {
   test("keeps three significant figures", () => {
@@ -17,5 +17,16 @@ describe("tokens", () => {
     expect(tokens(999_999)).toBe("1.00M");
     expect(tokens(999_499)).toBe("999K");
     expect(tokens(999.6)).toBe("1.00K");
+  });
+});
+
+describe("stopwatch", () => {
+  test("reads like a clock, seconds always shown", () => {
+    expect(stopwatch(0)).toBe("0:00");
+    expect(stopwatch(7)).toBe("0:07");
+    expect(stopwatch(61)).toBe("1:01");
+    expect(stopwatch(754)).toBe("12:34");
+    expect(stopwatch(3723)).toBe("1:02:03");
+    expect(stopwatch(-4)).toBe("0:00");
   });
 });
