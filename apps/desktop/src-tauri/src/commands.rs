@@ -2463,6 +2463,13 @@ pub fn presenter_set(app: AppHandle, action: String) -> CommandResult<()> {
         "resume" => ("presenterAutoPaused", serde_json::Value::Bool(false)),
         other => return Err(format!("unknown presenter action: {other}")),
     };
+    // As `vr presenter` does: a manual flag stored while the feature is off
+    // blurs nothing, and the notch would show it as on.
+    if matches!(action.as_str(), "start" | "stop")
+        && !state.settings_snapshot().bool_or("presenterEnabled", false)
+    {
+        return Err("presenter mode is not enabled; turn it on in Settings › Presenter".into());
+    }
     state.set_setting(key, value).map_err(fail)?;
     let _ = app.emit("settings-updated", "presenter");
     Ok(())

@@ -5,7 +5,7 @@ import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ipc, listenEvent } from "../lib/ipc";
 import { limitProviderOf, storedLimitProvider, type LimitProvider } from "../lib/preferences";
-import type { AgendaView, GaugeReport, NowPlaying, SystemSnapshot, UsageView } from "../lib/types";
+import type { AgendaView, GaugeReport, NowPlaying, PresenterView, SystemSnapshot, UsageView } from "../lib/types";
 
 type HomeRoute = "usage" | "media" | "calendar" | "system";
 type HomeData = {
@@ -59,6 +59,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [desktopReady, setDesktopReady] = useState(true);
   const [actionError, setActionError] = useState("");
+  const [presenter, setPresenter] = useState<PresenterView | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1_000);
@@ -69,6 +70,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     const requests = await Promise.allSettled([
       ipc.usageView(null, []), ipc.usageLimits(), ipc.systemSnapshot(),
       ipc.calendarAgenda(2, false), ipc.mediaNowPlaying(), ipc.settingsAll(),
+      ipc.presenterState(),
     ] as const);
     if (requests.every((result) => result.status === "rejected")) setDesktopReady(false);
     setData({
@@ -79,11 +81,15 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       playing: requests[4].status === "fulfilled" ? requests[4].value : null,
     });
     if (requests[5].status === "fulfilled") setSettings(requests[5].value);
+    if (requests[6].status === "fulfilled") setPresenter(requests[6].value);
   };
 
   useEffect(() => { void refresh(); }, []);
   useEffect(() => {
-    const changed = listenEvent("settings-updated", () => void ipc.settingsAll().then(setSettings).catch(() => {}));
+    const changed = listenEvent("settings-updated", () => {
+      void ipc.settingsAll().then(setSettings).catch(() => {});
+      void ipc.presenterState().then(setPresenter).catch(() => {});
+    });
     const usage = listenEvent("usage-updated", () => void refresh());
     return () => { void changed.then((unlisten) => unlisten()); void usage.then((unlisten) => unlisten()); };
   }, []);
@@ -96,6 +102,25 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       setSettings((current) => ({ ...current, [key]: previous }));
       setActionError(String(error));
     }
+  };
+
+  /**
+   * The tile reflects the gate the core resolves, not the raw manual flag, and
+   * undoes whatever holds presenter mode on: the switch, a detected share, or
+   * both. Off, it turns the feature on as well, since that is what a click on
+   * "Presenter mode" means when the feature has never been enabled.
+   */
+  const togglePresenter = async () => {
+    if (!presenter) return;
+    const sharing = presenter.autoActive && presenter.autoEnabled && !presenter.autoPaused;
+    const actions = !presenter.enabled ? ["enable", "start"]
+      : !presenter.active ? ["start"]
+      : [...(presenter.manual ? ["stop"] : []), ...(sharing ? ["dismiss"] : [])];
+    try {
+      for (const action of actions) await ipc.presenterSet(action);
+      setPresenter(await ipc.presenterState());
+      setActionError("");
+    } catch (error) { setActionError(String(error)); }
   };
 
   const cleanKeys = async () => {
@@ -120,7 +145,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
 
     <div className="home-top-grid">
       <WorldClocks now={now} zones={zonesFrom(settings.homeClockZones)} onChange={(zones) => void set("homeClockZones", zones)} />
-      <QuickActions settings={settings} onToggle={(key) => void set(key, !Boolean(settings[key]))} onCleanKeys={() => void cleanKeys()} />
+      <QuickActions settings={settings} presenterActive={Boolean(presenter?.active)} onToggle={(key) => void set(key, !Boolean(settings[key]))} onPresenter={() => void togglePresenter()} onCleanKeys={() => void cleanKeys()} />
     </div>
 
     {data.usage?.dashboard && <section className="card home-card activity-card blur-money"><div className="card-head"><h2>Activity</h2><span className="card-note">daily cost</span></div><SpendCalendar cells={data.usage.dashboard.heatmap} /></section>}
@@ -182,8 +207,8 @@ function offsetMinutes(date: Date, zone: string) {
   return Math.round((Date.UTC(take("year"), take("month") - 1, take("day"), take("hour"), take("minute")) - date.getTime()) / 60_000);
 }
 
-function QuickActions({ settings, onToggle, onCleanKeys }: { settings: Record<string, unknown>; onToggle: (key: string) => void; onCleanKeys: () => void }) {
-  return <section className="card home-card actions-card"><div className="card-head"><h2>Quick actions</h2></div><div className="action-tiles"><Action icon="⌨" title="Clean keys" detail="Lock the keyboard to wipe it" onClick={onCleanKeys} /><Action icon="☾" title="Keep awake" detail="Stop this computer from sleeping" active={Boolean(settings.preventSleep)} onClick={() => onToggle("preventSleep")} /><Action icon="◯" title="Presenter mode" detail="Blur sensitive values on screen" active={Boolean(settings.presenterMode)} onClick={() => onToggle("presenterMode")} /><Action icon="▰" title="Lid awake" detail="Keep running with the lid closed" active={Boolean(settings.lidAwakeEnabled)} onClick={() => onToggle("lidAwakeEnabled")} /></div></section>;
+function QuickActions({ settings, presenterActive, onToggle, onPresenter, onCleanKeys }: { settings: Record<string, unknown>; presenterActive: boolean; onToggle: (key: string) => void; onPresenter: () => void; onCleanKeys: () => void }) {
+  return <section className="card home-card actions-card"><div className="card-head"><h2>Quick actions</h2></div><div className="action-tiles"><Action icon="⌨" title="Clean keys" detail="Lock the keyboard to wipe it" onClick={onCleanKeys} /><Action icon="☾" title="Keep awake" detail="Stop this computer from sleeping" active={Boolean(settings.preventSleep)} onClick={() => onToggle("preventSleep")} /><Action icon="◯" title="Presenter mode" detail="Blur sensitive values on screen" active={presenterActive} onClick={onPresenter} /><Action icon="▰" title="Lid awake" detail="Keep running with the lid closed" active={Boolean(settings.lidAwakeEnabled)} onClick={() => onToggle("lidAwakeEnabled")} /></div></section>;
 }
 
 function Action({ icon, title, detail, active, onClick }: { icon: string; title: string; detail: string; active?: boolean; onClick: () => void }) {
