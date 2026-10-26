@@ -218,7 +218,7 @@ function UpdatePane({ current }: { current: string }) {
   };
   const status = installed ? `Version ${update?.latestVersion} is installed. Restart Veronica to use it.` : update ? update.updateAvailable ? `Version ${update.latestVersion} is available.` : "You are up to date." : busy ? "Checking GitHub releases…" : "Check whenever you like; nothing runs in the background.";
   const action = installed
-    ? <button className="button primary" onClick={() => void ipc.appRestart()}>Restart Veronica</button>
+    ? <button className="button primary" onClick={() => void ipc.appRestart().catch((reason) => setError(String(reason)))}>Restart Veronica</button>
     : update?.updateAvailable && update.canInstall
       ? <button className="button primary" disabled={installing} onClick={() => void install()}>{installing ? "Installing…" : `Update to ${update.latestVersion}`}</button>
       : update?.updateAvailable
