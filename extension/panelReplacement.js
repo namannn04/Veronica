@@ -58,13 +58,53 @@ export class PanelReplacement {
             return;
         }
 
+        this._redirectCalendar();
         this._active = true;
+    }
+
+    /**
+     * Point the shell's calendar calls at the notch while it stands in for
+     * the date menu.
+     *
+     * Super+V calls `Main.panel.toggleCalendar()`, and clicking a notification
+     * or a media player calls `closeCalendar()`. Both target the hidden
+     * `dateMenu`, whose `_toggleMenu`/`_closeMenu` bail out because it is not
+     * mapped: the shortcut did nothing and the notch stayed open after a click.
+     */
+    _redirectCalendar() {
+        const panel = Main.panel;
+        this._stockCalendar = {
+            toggle: Object.getOwnPropertyDescriptor(panel, 'toggleCalendar'),
+            close: Object.getOwnPropertyDescriptor(panel, 'closeCalendar'),
+        };
+        panel.toggleCalendar = () => this._notch?.toggleNotifications();
+        panel.closeCalendar = () => this._notch?.closeMenu();
+    }
+
+    _restoreCalendar() {
+        if (!this._stockCalendar)
+            return;
+        const panel = Main.panel;
+        // The originals live on the prototype; deleting the own property
+        // uncovers them unless something had already set its own before us.
+        for (const [name, descriptor] of [
+            ['toggleCalendar', this._stockCalendar.toggle],
+            ['closeCalendar', this._stockCalendar.close],
+        ]) {
+            if (descriptor)
+                Object.defineProperty(panel, name, descriptor);
+            else
+                delete panel[name];
+        }
+        this._stockCalendar = null;
     }
 
     /** Restore the stock chrome exactly as it was. Safe to call twice. */
     disable() {
         if (!this._active)
             return;
+
+        this._restoreCalendar();
 
         if (this._notch) {
             // addToStatusArea already parents the button; destroying it is
