@@ -6,6 +6,12 @@ import { applyAppearance } from "../lib/preferences";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
 
 const PAGE = 120;
+/**
+ * A group being browsed is shown whole. The page size is for search results;
+ * applied to a group it cut People, Objects and Flags off part-way, with no
+ * way to reach the rest. The largest group has about four hundred.
+ */
+const WHOLE_GROUP = 2_000;
 
 export function EmojiPicker() {
   const [groups, setGroups] = useState<EmojiGroup[]>([]);
@@ -43,7 +49,7 @@ export function EmojiPicker() {
   const activeGroup = query.trim() ? null : group;
   useEffect(() => {
     let live = true;
-    void ipc.emojiSearch(query, activeGroup, PAGE)
+    void ipc.emojiSearch(query, activeGroup, activeGroup === null ? PAGE : WHOLE_GROUP)
       .then((rows) => {
         if (live) {
           setEmoji(rows);
