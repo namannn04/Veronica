@@ -34,6 +34,7 @@ export function ExtensionsPage({
   const [group, setGroup] = useState<ExtensionGroup | "all">("all");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [toggleErrors, setToggleErrors] = useState<Record<string, string>>({});
   const [installing, setInstalling] = useState<string | null>(null);
   const [installNotices, setInstallNotices] = useState<
     Record<string, InstallNotice | { tone: "critical"; text: string }>
@@ -70,9 +71,14 @@ export function ExtensionsPage({
     // The key comes from the catalogue rather than a copy here, so the two
     // cannot drift as extensions are added.
     setBusy(entry.id);
+    setToggleErrors(({ [entry.id]: _cleared, ...rest }) => rest);
     try {
       await ipc.settingsSet(entry.defaultsKey, !entry.enabled);
       onChanged();
+    } catch (reason) {
+      // Without this a refusal (logind declining Lid Awake, say) was an
+      // unhandled rejection and the switch simply did not move.
+      setToggleErrors((current) => ({ ...current, [entry.id]: String(reason) }));
     } finally {
       setBusy(null);
     }
@@ -194,6 +200,11 @@ export function ExtensionsPage({
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+                {toggleErrors[entry.id] && (
+                  <div className="extension-install-notice critical" role="alert">
+                    Could not turn {entry.title} {entry.enabled ? "off" : "on"}: {toggleErrors[entry.id]}
                   </div>
                 )}
                 {notices.map(({ tool, notice }) => (
