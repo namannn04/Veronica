@@ -583,18 +583,19 @@ pub(crate) async fn call_shell_method(method: &str) -> CommandResult<()> {
     Ok(())
 }
 
-fn clear_awake_deadline(app: &AppHandle, until_key: &str) -> CommandResult<()> {
+/// Best effort: if the deadline cannot be written, the switch write that
+/// follows fails the same way and is handled there, with its lock released.
+fn clear_awake_deadline(app: &AppHandle, until_key: &str) {
     let state = app.state::<AppState>();
     if state
         .settings_snapshot()
         .get(until_key)
         .is_some_and(|value| !value.is_null())
     {
-        state
-            .set_setting(until_key, serde_json::Value::Null)
-            .map_err(fail)?;
+        if let Err(error) = state.set_setting(until_key, serde_json::Value::Null) {
+            tracing::warn!("cannot clear {until_key}: {error:#}");
+        }
     }
-    Ok(())
 }
 
 #[tauri::command]
