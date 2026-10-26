@@ -10,6 +10,13 @@ import GLib from 'gi://GLib';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 
+// GLib 2.86 moved DesktopAppInfo to GioUnix, and GJS warns on every use of
+// the old Gio name. Older releases may not ship GioUnix at all, so it is
+// loaded when present and Gio's copy is the fallback.
+const DesktopAppInfo = await import('gi://GioUnix')
+    .then(module => module.default.DesktopAppInfo)
+    .catch(() => Gio.DesktopAppInfo);
+
 // GJS async methods take a callback unless promisified. The shell promisifies a
 // handful of these itself, so this is guarded: promisifying twice throws.
 try {
@@ -109,8 +116,8 @@ export async function runJson(args, cancellable = null) {
 export function launchApp() {
     // The Debian package installs Veronica.desktop; the Flatpak exports its
     // entry under the application id.
-    const app = Gio.DesktopAppInfo.new('Veronica.desktop') ??
-        Gio.DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    const app = DesktopAppInfo.new('Veronica.desktop') ??
+        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
     if (app) {
         app.launch([], null);
         return;
