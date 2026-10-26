@@ -220,8 +220,12 @@ impl MetricsSampler {
         self.system.refresh_cpu_all();
         self.system
             .refresh_memory_specifics(MemoryRefreshKind::everything());
-        self.disks.refresh();
-        self.networks.refresh();
+        // The lists, not only the figures: `refresh` updates what was known
+        // at launch, so a USB drive plugged in later never appeared, and one
+        // removed stayed listed with the numbers of whatever was underneath
+        // its mount point. Same for an interface such as a VPN or a phone.
+        self.disks.refresh_list();
+        self.networks.refresh_list();
 
         // Read this before borrowing the cpu list, which borrows `system` too.
         let physical_cores = self.system.physical_core_count();
