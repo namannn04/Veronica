@@ -168,7 +168,8 @@ export function AlertsPane() {
               label="Warn at"
               detail="The percentage that counts as the first level, when time-aware levels are off."
               value={s.thresholds.warningPercent}
-              options={[40, 50, 60, 70, 80].map((v) => ({ value: v, label: `${v}%` }))}
+              // Only levels below Critical, so the warning level stays reachable.
+              options={[40, 50, 60, 70, 80].filter((v) => v < s.thresholds.criticalPercent).map((v) => ({ value: v, label: `${v}%` }))}
               busy={busy}
               onChange={(value) => void set("limitsWarnPercent", value)}
             />
@@ -176,7 +177,7 @@ export function AlertsPane() {
               label="Critical at"
               detail="The percentage that counts as the top level."
               value={s.thresholds.criticalPercent}
-              options={[70, 80, 85, 90, 95].map((v) => ({ value: v, label: `${v}%` }))}
+              options={[70, 80, 85, 90, 95].filter((v) => v > s.thresholds.warningPercent).map((v) => ({ value: v, label: `${v}%` }))}
               busy={busy}
               onChange={(value) => void set("limitsCritPercent", value)}
             />
