@@ -1407,10 +1407,7 @@ pub async fn database_browse(
         .await
         .map_err(fail)?;
     let parent = (!path.is_empty()).then(|| {
-        veronica_database::identify::ObjectIdentifier::new(
-            veronica_database::identify::ObjectKind::Table,
-            path,
-        )
+        veronica_database::identify::ObjectIdentifier::for_path(definition.product_hint, path)
     });
     session.objects(parent.as_ref()).await.map_err(fail)
 }
@@ -1456,10 +1453,7 @@ pub async fn database_read(
         .map_err(fail)?;
     session
         .read(
-            &veronica_database::identify::ObjectIdentifier::new(
-                veronica_database::identify::ObjectKind::Table,
-                path,
-            ),
+            &veronica_database::identify::ObjectIdentifier::for_path(definition.product_hint, path),
             &veronica_database::paging::PageRequest {
                 page_size: veronica_database::paging::PageSize::clamped(limit),
                 offset,

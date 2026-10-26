@@ -90,6 +90,25 @@ impl ObjectIdentifier {
         }
     }
 
+    /// What a bare path names on `product`, for callers that hold only the
+    /// path: the CLI's dotted argument and the interface's breadcrumb.
+    ///
+    /// One component is a namespace on the servers that have one — a schema on
+    /// PostgreSQL, a database on MySQL and MariaDB — and the adapters list a
+    /// namespace's tables only when asked with that kind. Calling everything a
+    /// table made a schema look empty in the app.
+    pub fn for_path(product: crate::product::Product, path: Vec<String>) -> Self {
+        use crate::product::{Family, Product};
+        let kind = match (product.family(), path.len()) {
+            (Family::KeyValue, _) => ObjectKind::Key,
+            (Family::Document, 2) => ObjectKind::Collection,
+            (_, 1) if product == Product::Postgresql => ObjectKind::Schema,
+            (_, 1) if matches!(product, Product::Mysql | Product::MariaDb) => ObjectKind::Database,
+            _ => ObjectKind::Table,
+        };
+        Self::new(kind, path)
+    }
+
     /// For display only. Never put this back into a statement: it is lossy by
     /// design, because a name containing a dot would come back as two.
     pub fn display_path(&self) -> String {
@@ -163,6 +182,41 @@ impl TargetIdentifier {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_bare_path_names_the_namespace_each_product_has() {
+        use crate::product::Product;
+        let one = || vec!["public".to_string()];
+        let two = || vec!["public".to_string(), "orders".to_string()];
+        assert_eq!(
+            ObjectIdentifier::for_path(Product::Postgresql, one()).kind,
+            ObjectKind::Schema
+        );
+        assert_eq!(
+            ObjectIdentifier::for_path(Product::Postgresql, two()).kind,
+            ObjectKind::Table
+        );
+        assert_eq!(
+            ObjectIdentifier::for_path(Product::Mysql, one()).kind,
+            ObjectKind::Database
+        );
+        assert_eq!(
+            ObjectIdentifier::for_path(Product::MariaDb, one()).kind,
+            ObjectKind::Database
+        );
+        assert_eq!(
+            ObjectIdentifier::for_path(Product::Sqlite, one()).kind,
+            ObjectKind::Table
+        );
+        assert_eq!(
+            ObjectIdentifier::for_path(Product::MongoDb, two()).kind,
+            ObjectKind::Collection
+        );
+        assert_eq!(
+            ObjectIdentifier::for_path(Product::Redis, one()).kind,
+            ObjectKind::Key
+        );
+    }
 
     #[test]
     fn a_path_is_kept_as_components_not_a_joined_string() {
