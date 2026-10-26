@@ -17,7 +17,7 @@ use serde_json::json;
 use uuid::Uuid;
 use veronica_core::AppDirectories;
 use veronica_database::connection::*;
-use veronica_database::identify::{ObjectIdentifier, ObjectKind, TargetIdentifier};
+use veronica_database::identify::{ObjectIdentifier, TargetIdentifier};
 use veronica_database::mutation::*;
 use veronica_database::paging::{PageRequest, PageSize};
 use veronica_database::product::Product;
@@ -221,15 +221,7 @@ fn path_components(path: &str) -> Vec<String> {
 }
 
 fn object_from_path(product: Product, path: &str) -> ObjectIdentifier {
-    let components = path_components(path);
-    let kind = match (product.family(), components.len()) {
-        (veronica_database::product::Family::KeyValue, _) => ObjectKind::Key,
-        (veronica_database::product::Family::Document, 2) => ObjectKind::Collection,
-        (_, 1) if product == Product::Postgresql => ObjectKind::Schema,
-        (_, 1) if matches!(product, Product::Mysql | Product::MariaDb) => ObjectKind::Database,
-        _ => ObjectKind::Table,
-    };
-    ObjectIdentifier::new(kind, components)
+    ObjectIdentifier::for_path(product, path_components(path))
 }
 
 fn render_page(page: &veronica_database::paging::Page) -> String {

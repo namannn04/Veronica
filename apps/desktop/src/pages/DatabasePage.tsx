@@ -18,6 +18,9 @@ import type { DatabaseConnection, DatabaseObject, DatabasePage, DatabaseOperatio
  */
 type Tab = "browse" | "query" | "history";
 
+/** Kinds that hold rows. A schema or database is opened, not read. */
+const READABLE = new Set(["table", "view", "materializedView", "collection", "key"]);
+
 export function DatabasePage() {
   const [connections, setConnections] = useState<DatabaseConnection[]>([]);
   const [selected, setSelected] = useState<string>("");
@@ -141,7 +144,7 @@ export function DatabasePage() {
                     <strong>{object.path[object.path.length - 1]}</strong>
                     <small>{object.kind}{object.nativeIdentifier ? ` · ${object.nativeIdentifier}` : ""}</small>
                   </button>
-                  {object.kind !== "column" && <button className="button" onClick={() => void open(object)}>Read</button>}
+                  {READABLE.has(object.kind) && <button className="button" onClick={() => void open(object)}>Read</button>}
                 </div>
               ))}
             </div>}
