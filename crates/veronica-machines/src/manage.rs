@@ -401,13 +401,14 @@ pub fn open_terminal(machine: &Machine) -> Result<()> {
         ),
     ];
     for (terminal, args) in terminals {
-        if veronica_core::host::command(terminal)
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .is_ok()
+        if veronica_core::host::spawn_detached(
+            veronica_core::host::command(terminal)
+                .args(args)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null()),
+        )
+        .is_ok()
         {
             return Ok(());
         }
