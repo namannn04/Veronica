@@ -343,21 +343,33 @@ fn read_millidegrees(path: &std::path::Path) -> Option<f32> {
 
 /// Battery from sysfs. Desktops have no battery, so this is optional.
 fn read_battery() -> Option<BatteryStats> {
-    let entries = std::fs::read_dir("/sys/class/power_supply").ok()?;
-    for entry in entries.flatten() {
+    read_battery_from(std::path::Path::new("/sys/class/power_supply"))
+}
+
+/// The computer's own battery under a `power_supply` directory.
+///
+/// A wireless mouse, keyboard or headset reports a battery too, with
+/// `scope` set to `Device`; whichever came first in directory order used to
+/// win, so the System page could show a mouse's charge as the laptop's. An
+/// entry that cannot be read is skipped rather than ending the search.
+fn read_battery_from(root: &std::path::Path) -> Option<BatteryStats> {
+    let read = |path: &std::path::Path, name: &str| {
+        std::fs::read_to_string(path.join(name))
+            .ok()
+            .map(|value| value.trim().to_string())
+    };
+    for entry in std::fs::read_dir(root).ok()?.flatten() {
         let path = entry.path();
-        let kind = std::fs::read_to_string(path.join("type")).ok()?;
-        if kind.trim() != "Battery" {
+        if read(&path, "type").as_deref() != Some("Battery")
+            || read(&path, "scope").as_deref() == Some("Device")
+        {
             continue;
         }
-        let percent = std::fs::read_to_string(path.join("capacity"))
-            .ok()?
-            .trim()
-            .parse::<f64>()
-            .ok()?;
-        let status = std::fs::read_to_string(path.join("status"))
-            .map(|s| s.trim().to_string())
-            .unwrap_or_default();
+        let Some(percent) = read(&path, "capacity").and_then(|value| value.parse::<f64>().ok())
+        else {
+            continue;
+        };
+        let status = read(&path, "status").unwrap_or_default();
         return Some(BatteryStats {
             percent,
             charging: status == "Charging" || status == "Full",
@@ -391,6 +403,54 @@ pub fn human_bytes(bytes: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn supply(root: &std::path::Path, name: &str, fields: &[(&str, &str)]) {
+        let dir = root.join(name);
+        std::fs::create_dir_all(&dir).unwrap();
+        for (field, value) in fields {
+            std::fs::write(dir.join(field), format!("{value}\n")).unwrap();
+        }
+    }
+
+    #[test]
+    fn a_peripherals_battery_is_not_the_computers() {
+        let root = tempfile::tempdir().unwrap();
+        // Named to sort first, as a Bluetooth device can.
+        supply(
+            root.path(),
+            "AAA_hid_mouse",
+            &[("type", "Battery"), ("scope", "Device"), ("capacity", "12")],
+        );
+        supply(
+            root.path(),
+            "BAT0",
+            &[
+                ("type", "Battery"),
+                ("capacity", "80"),
+                ("status", "Discharging"),
+            ],
+        );
+        let battery = read_battery_from(root.path()).unwrap();
+        assert_eq!(battery.percent, 80.0);
+        assert!(!battery.charging);
+    }
+
+    #[test]
+    fn an_unreadable_entry_does_not_end_the_search() {
+        let root = tempfile::tempdir().unwrap();
+        supply(root.path(), "AAA_odd", &[]);
+        supply(
+            root.path(),
+            "BAT1",
+            &[
+                ("type", "Battery"),
+                ("capacity", "55"),
+                ("status", "Charging"),
+            ],
+        );
+        assert_eq!(read_battery_from(root.path()).unwrap().percent, 55.0);
+        assert!(read_battery_from(&root.path().join("missing")).is_none());
+    }
 
     #[test]
     fn snap_and_loop_mounts_are_excluded_from_the_disk_list() {
