@@ -492,16 +492,15 @@ fn run(background: bool) -> Result<()> {
             }
         })
         .build(tauri::generate_context!())?
-        .run(|_, event| {
+        .run(|app, event| match event {
             // Destroying the last window normally exits a Tauri application.
             // Keep the native tray process alive, but still honour the tray's
             // explicit `app.exit(0)` (which carries an exit code).
-            if let RunEvent::ExitRequested {
+            RunEvent::ExitRequested {
                 code: None, api, ..
-            } = event
-            {
-                api.prevent_exit();
-            }
+            } => api.prevent_exit(),
+            RunEvent::Exit => commands::finish_companion_recording_on_exit(app),
+            _ => {}
         });
 
     Ok(())
