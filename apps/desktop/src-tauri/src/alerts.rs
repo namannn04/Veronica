@@ -67,8 +67,12 @@ pub async fn run(app: AppHandle) {
             )
         };
         let notify_settings = NotifySettings::from_settings(&settings);
+        // Turning Agent Usage off in Extensions promises its timers and
+        // background work stop; alerts are part of that feature.
+        let usage_enabled = veronica_core::extensions::entry("usage")
+            .is_some_and(|entry| settings.extension_enabled(entry));
 
-        if !notify_settings.master {
+        if !notify_settings.master || !usage_enabled {
             // Alerts being off clears the remembered levels, so switching them
             // back on does not immediately announce a state the user never saw a
             // transition into. Edith clears the same four values.
