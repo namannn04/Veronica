@@ -8,6 +8,7 @@ mod commands;
 mod emoji_picker;
 mod main_window;
 mod presenter;
+mod single_instance;
 mod state;
 mod tray;
 
@@ -187,6 +188,12 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
 }
 
 fn run(background: bool) -> Result<()> {
+    let instance = match single_instance::claim(background) {
+        Some(single_instance::Claim::AlreadyRunning) => return Ok(()),
+        Some(single_instance::Claim::First(guard)) => Some(guard),
+        None => None,
+    };
+
     let directories = AppDirectories::current()?;
     directories.prepare()?;
     if let Err(error) = commands::install_bundled_shell_extension(&directories) {
@@ -321,6 +328,12 @@ fn run(background: bool) -> Result<()> {
             let session = veronica_core::DesktopSession::detect();
             let state = AppState::new(directories.clone(), session)?;
             app.manage(state);
+
+            if let Some(guard) = instance {
+                guard.attach(&handle);
+                // Managed state lives as long as the app, and so does the name.
+                app.manage(guard);
+            }
 
             tray::install(&handle)?;
 
