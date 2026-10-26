@@ -27,6 +27,27 @@ const DEFINITIONS = {
     },
 };
 
+/**
+ * Whether gnome-session is on the bus to take an inhibitor.
+ *
+ * Without it `gnome-session-inhibit` exits at once, and since either half
+ * dying ends the switch, Keep Awake would lose its logind lock too. The app
+ * treats the session half as best effort in the same way.
+ */
+function sessionManagerPresent() {
+    try {
+        const [owned] = Gio.DBus.session.call_sync(
+            'org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+            'NameHasOwner', new GLib.Variant('(s)', ['org.gnome.SessionManager']),
+            new GLib.VariantType('(b)'), Gio.DBusCallFlags.NONE, 1000, null
+        ).deepUnpack();
+        return owned;
+    } catch (error) {
+        console.debug(`veronica: cannot ask the bus for gnome-session: ${error}`);
+        return false;
+    }
+}
+
 /** The argument vectors that hold a switch, one process each. */
 function commandsFor(definition) {
     const commands = [];
@@ -44,7 +65,7 @@ function commandsFor(definition) {
         ]);
     }
     const session = GLib.find_program_in_path('gnome-session-inhibit');
-    if (session) {
+    if (session && sessionManagerPresent()) {
         commands.push([
             session,
             `--app-id=${APP_ID}`,
