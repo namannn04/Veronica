@@ -60,8 +60,13 @@ export function ClipboardPage() {
   };
 
   const clear = async () => {
-    if (!window.confirm(`Delete all ${rows.length} clipboard entries?\n\nThis cannot be undone.`)) return;
     try {
+      // Clearing removes the whole history, not the search's matches, so the
+      // confirmation counts the whole history.
+      const total = query ? (await ipc.clipboardList("")).length : rows.length;
+      if (total === 0) return;
+      const scope = query ? `, not only the ${rows.length} matching “${query}”` : "";
+      if (!window.confirm(`Delete all ${total} clipboard entries${scope}?\n\nThis cannot be undone.`)) return;
       await ipc.clipboardClear();
       await load();
     } catch (e) {
@@ -78,7 +83,7 @@ export function ClipboardPage() {
             Everything you have copied, kept on this computer
           </div>
         </div>
-        <button className="button danger" onClick={clear} disabled={rows.length === 0}>
+        <button className="button danger" onClick={clear} disabled={!query && rows.length === 0}>
           Clear all
         </button>
       </div>
