@@ -17,6 +17,7 @@ import {
     MIN_INTENSITY,
     clampAnimationSeconds,
     clampIntensity,
+    overlayPlacement,
     parseDisplayMode,
 } from './focusDimMath.js';
 
@@ -79,4 +80,19 @@ test('a known mode is accepted case-insensitively, as in the core', () => {
     assert.equal(parseDisplayMode('dimUnfocused'), 'dimUnfocused');
     assert.equal(parseDisplayMode('DIMUNFOCUSED'), 'dimUnfocused');
     assert.equal(parseDisplayMode('perScreenFront'), 'perScreenFront');
+});
+
+test('dimUnfocused darkens a monitor without the focused window whole', () => {
+    assert.equal(overlayPlacement('dimUnfocused', false, true), 'top');
+    assert.equal(overlayPlacement('dimUnfocused', true, true), 'below');
+});
+
+test('with nothing focused, dimUnfocused leaves every monitor alone', () => {
+    assert.equal(overlayPlacement('dimUnfocused', false, false), 'off');
+});
+
+test('perScreenFront only dims a monitor that has a window to keep bright', () => {
+    assert.equal(overlayPlacement('perScreenFront', true, true), 'below');
+    assert.equal(overlayPlacement('perScreenFront', false, true), 'off');
+    assert.equal(overlayPlacement('perScreenFront', false, false), 'off');
 });

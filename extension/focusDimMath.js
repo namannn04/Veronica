@@ -57,3 +57,21 @@ export function parseDisplayMode(raw) {
     const match = DISPLAY_MODES.find(mode => mode.toLowerCase() === raw.toLowerCase());
     return match ?? DEFAULT_DISPLAY_MODE;
 }
+
+/**
+ * Where one monitor's overlay goes: `'below'` the window that stays bright on
+ * that monitor, `'top'` of every window so the whole monitor darkens, or
+ * `'off'`.
+ *
+ * `dimUnfocused` means exactly that: with a window focused somewhere, every
+ * other monitor has nothing to keep bright and is dimmed whole. With nothing
+ * focused there is nothing to set apart, so, as for a monitor with no windows
+ * in `perScreenFront`, dimming would only darken a bare wallpaper.
+ */
+export function overlayPlacement(mode, hasBrightWindow, hasFocus) {
+    if (hasBrightWindow)
+        return 'below';
+    if (mode === 'dimUnfocused' && hasFocus)
+        return 'top';
+    return 'off';
+}
