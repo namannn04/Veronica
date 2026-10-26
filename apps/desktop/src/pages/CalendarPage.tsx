@@ -5,6 +5,10 @@ import { eventSlot, untilLabel } from "../lib/format";
 import type { AgendaView, CalendarEvent } from "../lib/types";
 
 const PAGE_DAYS = 14;
+/** Picks up new and changed events, and moves "Happening now" along. */
+const RELOAD_MS = 60_000;
+/** Keeps "in 2h" and similar relative labels true between reloads. */
+const TICK_MS = 30_000;
 
 export function CalendarPage() {
   const [view, setView] = useState<AgendaView | null>(null);
@@ -12,14 +16,23 @@ export function CalendarPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const [, setTick] = useState(0);
+
+  // `quiet` reloads in the background without the "Reading…" state, so the
+  // page does not flicker every minute.
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try { setView(await ipc.calendarAgenda(days, true)); setError(null); }
     catch (reason) { setError(String(reason)); }
-    finally { setLoading(false); }
+    finally { if (!quiet) setLoading(false); }
   }, [days]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const reload = window.setInterval(() => void load(true), RELOAD_MS);
+    const tick = window.setInterval(() => setTick((value) => value + 1), TICK_MS);
+    return () => { window.clearInterval(reload); window.clearInterval(tick); };
+  }, [load]);
 
   return <div className="calendar-page">
     <div className="page-head edith-head"><div><h1>Calendar</h1>{view?.nextUp && <div className="page-sub">Next: {view.nextUp.summary} {untilLabel(view.nextUp.start)}</div>}</div><div className="head-actions"><button className="button" onClick={() => void load()} disabled={loading}>{loading ? "Reading…" : "Refresh"}</button><button className="button primary" onClick={() => void ipc.calendarOpen().catch((reason) => setError(String(reason)))}>Open Calendar ↗</button></div></div>
