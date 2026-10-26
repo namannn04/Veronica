@@ -2294,6 +2294,8 @@ pub fn machines_add(
 ) -> CommandResult<veronica_machines::Machine> {
     use veronica_machines::host;
 
+    let target = target.trim().to_string();
+    host::validate_ssh_target(&target).map_err(fail)?;
     let label = name
         .filter(|n| !n.trim().is_empty())
         .unwrap_or_else(|| target.clone());

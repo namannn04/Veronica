@@ -198,6 +198,7 @@ pub async fn run(
             port,
             mac,
         } => {
+            host::validate_ssh_target(target)?;
             let mut machines = load_machines(&settings);
             let label = name.clone().unwrap_or_else(|| target.clone());
             let id = host::slugify(&label);
