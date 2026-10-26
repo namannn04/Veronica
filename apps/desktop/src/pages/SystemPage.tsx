@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { CleanerPane } from "./CleanerPane";
-import { ipc } from "../lib/ipc";
+import { ipc, listenEvent } from "../lib/ipc";
 import { bytes, countdown, percent } from "../lib/format";
 import type { AudioStream, BluetoothState, RunningProcess, SystemSnapshot, VolumeState } from "../lib/types";
 
@@ -34,13 +34,22 @@ export function SystemPage() {
     return () => { live = false; clearInterval(timer); };
   }, []);
 
-  useEffect(() => { void ipc.microphoneState().then(setMic).catch((reason) => setError(String(reason))); }, []);
+  useEffect(() => {
+    void ipc.microphoneState().then(setMic).catch((reason) => setError(String(reason)));
+    // Ctrl+Alt+M toggles the microphone from anywhere and announces it; read
+    // once on open, the button kept the old state until the page was reopened.
+    const toggled = listenEvent<VolumeState>("microphone-updated", (event) => setMic(event.payload));
+    return () => { void toggled.then((unlisten) => unlisten()); };
+  }, []);
 
   useEffect(() => {
     let live = true;
     const tick = async () => {
-      const [mixer, radio] = await Promise.allSettled([ipc.audioStreams(), ipc.bluetoothState()]);
+      // The microphone is re-read with the devices, since GNOME's own sound
+      // controls and other apps can mute it without telling Veronica.
+      const [mixer, radio, microphone] = await Promise.allSettled([ipc.audioStreams(), ipc.bluetoothState(), ipc.microphoneState()]);
       if (!live) return;
+      if (microphone.status === "fulfilled") setMic(microphone.value);
       // A missing pw-dump or BlueZ is reported by the card itself, not as a
       // page-level error that would sit above working metrics.
       setStreams(mixer.status === "fulfilled" ? mixer.value : []);
