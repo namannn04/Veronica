@@ -271,27 +271,35 @@ export function RankedBars({
 
   const shown = rows.slice(0, MAX_SERIES);
   const folded = rows.slice(MAX_SERIES);
-  const foldedCost = folded.reduce((sum, r) => sum + r.cost, 0);
-  const max = explicitMax ?? Math.max(...rows.map((r) => r.cost), 0);
+  // Every figure of the folded rows is summed, not only the spend: copying the
+  // first folded row's tokens put one model's count beside everyone's spend.
+  const other: NamedAmount = folded.reduce(
+    (sum, r) => ({
+      ...sum,
+      cost: sum.cost + r.cost,
+      tokens: sum.tokens + r.tokens,
+      inputTokens: sum.inputTokens + r.inputTokens,
+      outputTokens: sum.outputTokens + r.outputTokens,
+      cacheCreationTokens: sum.cacheCreationTokens + r.cacheCreationTokens,
+      cacheReadTokens: sum.cacheReadTokens + r.cacheReadTokens,
+    }),
+    { name: "other", label: `Other (${folded.length})`, cost: 0, tokens: 0, inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
+  );
 
   const entries = [
     ...shown.map((row) => ({ row, color: colorOf(row.name) })),
     // A ninth series is never a new hue; it folds into a neutral "Other".
-    ...(folded.length > 0
-      ? [
-          {
-            row: { ...folded[0], name: "other", label: `Other (${folded.length})`, cost: foldedCost },
-            color: "var(--axis)",
-          },
-        ]
-      : []),
+    ...(folded.length > 0 ? [{ row: other, color: "var(--axis)" }] : []),
   ];
+  // The scale covers what is drawn, "Other" included, which can outweigh the
+  // largest single row.
+  const max = explicitMax ?? Math.max(...entries.map(({ row }) => row.cost), 0);
 
   return (
     <>
       <div style={{ display: "grid", gap: 9 }}>
         {entries.map(({ row, color }) => {
-          const share = max > 0 ? (row.cost / max) * 100 : 0;
+          const share = max > 0 ? Math.min(100, (row.cost / max) * 100) : 0;
           const name = labelOf ? labelOf(row) : row.label || row.name;
           return (
             <div
