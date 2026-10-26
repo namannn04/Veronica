@@ -103,7 +103,7 @@ export function CleanerPane() {
           ? scan.items.length === 0
             ? "Nothing to reclaim."
             : `${scan.items.length} item${scan.items.length === 1 ? "" : "s"} · moving to the Trash does not free the space until you empty it`
-          : "Scanning reads only. Project folders such as node_modules are swept with vr cleaner --root."}
+          : "Scanning reads only. Project folders such as node_modules are swept with vr cleaner scan --root <folder>."}
       </span>
     </div>
   </section>;

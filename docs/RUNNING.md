@@ -15,7 +15,7 @@ vr usage refresh --progress
 The installer enables the GNOME Shell extension and opens Veronica for you.
 
 The app puts an icon in the top bar. Left-click opens the window; right-click
-gives a menu with Refresh usage, Toggle notch, and Quit.
+gives a menu with Open Veronica, Refresh usage, and Quit.
 
 ## The top bar
 

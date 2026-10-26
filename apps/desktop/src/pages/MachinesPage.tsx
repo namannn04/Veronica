@@ -111,7 +111,7 @@ export function MachinesPage() {
           <p>
             {loading
               ? "Reading this computer, then every host in your SSH config."
-              : "This computer should always be listed. Refresh, and if it stays empty run `vr machines probe` to see what the probe reports."}
+              : "This computer should always be listed. Refresh, and if it stays empty run `vr machines list` to see what the probe reports."}
           </p>
         </div>
       )}
