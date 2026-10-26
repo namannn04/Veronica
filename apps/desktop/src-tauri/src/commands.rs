@@ -583,6 +583,21 @@ pub(crate) async fn call_shell_method(method: &str) -> CommandResult<()> {
     Ok(())
 }
 
+/// Best effort: if the deadline cannot be written, the switch write that
+/// follows fails the same way and is handled there, with its lock released.
+fn clear_awake_deadline(app: &AppHandle, until_key: &str) {
+    let state = app.state::<AppState>();
+    if state
+        .settings_snapshot()
+        .get(until_key)
+        .is_some_and(|value| !value.is_null())
+    {
+        if let Err(error) = state.set_setting(until_key, serde_json::Value::Null) {
+            tracing::warn!("cannot clear {until_key}: {error:#}");
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn settings_set(
     app: AppHandle,
@@ -604,6 +619,10 @@ pub async fn settings_set(
         if enabled {
             sync_lid_awake(&app, true).await?;
         }
+        // A switch flipped here is open-ended, as `vr power ... on` without
+        // `--for` is. Clearing the deadline first means a session that ran out
+        // earlier is not resumed (and immediately expired) by switching on.
+        clear_awake_deadline(&app, veronica_core::awake::LID_AWAKE_UNTIL_KEY);
         if let Err(error) = app.state::<AppState>().set_setting(&key, value) {
             if enabled && !was_enabled {
                 let _ = sync_lid_awake(&app, false).await;
@@ -624,6 +643,10 @@ pub async fn settings_set(
         if enabled {
             sync_prevent_sleep(&app, true).await?;
         }
+        // A switch flipped here is open-ended, as `vr power ... on` without
+        // `--for` is. Clearing the deadline first means a session that ran out
+        // earlier is not resumed (and immediately expired) by switching on.
+        clear_awake_deadline(&app, veronica_core::awake::KEEP_AWAKE_UNTIL_KEY);
         if let Err(error) = app.state::<AppState>().set_setting(&key, value) {
             if enabled && !was_enabled {
                 let _ = sync_prevent_sleep(&app, false).await;
