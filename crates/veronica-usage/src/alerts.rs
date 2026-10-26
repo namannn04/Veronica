@@ -142,16 +142,35 @@ impl NotifySettings {
             token_expired: settings.bool_or("notifyTokenExpired", default.token_expired),
             smart_color: settings.bool_or("smartColor", default.smart_color),
             pacing_margin: settings.f64_or("limitsPacingMargin", default.pacing_margin),
-            thresholds: UsageThresholds {
-                warning_percent: settings
+            thresholds: ordered_thresholds(
+                settings
                     .get("limitsWarnPercent")
                     .and_then(|value| value.as_i64())
                     .unwrap_or(DEFAULT_WARN_PERCENT),
-                critical_percent: settings
+                settings
                     .get("limitsCritPercent")
                     .and_then(|value| value.as_i64())
                     .unwrap_or(DEFAULT_CRITICAL_PERCENT),
-            },
+            ),
+        }
+    }
+}
+
+/// Warn below Critical, or the defaults.
+///
+/// With Warn at 80 and Critical at 70 the orange level could never be
+/// reached: anything past 70 was already critical. A pair that is not in
+/// order is a mistake rather than a choice, so neither value is trusted.
+fn ordered_thresholds(warning_percent: i64, critical_percent: i64) -> UsageThresholds {
+    if warning_percent < critical_percent {
+        UsageThresholds {
+            warning_percent,
+            critical_percent,
+        }
+    } else {
+        UsageThresholds {
+            warning_percent: DEFAULT_WARN_PERCENT,
+            critical_percent: DEFAULT_CRITICAL_PERCENT,
         }
     }
 }
@@ -672,6 +691,23 @@ pub fn reminder_fire_at(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn warn_above_critical_falls_back_to_the_defaults() {
+        let mut settings = veronica_core::Settings::default();
+        settings.set("limitsWarnPercent", serde_json::json!(80));
+        settings.set("limitsCritPercent", serde_json::json!(70));
+        let thresholds = NotifySettings::from_settings(&settings).thresholds;
+        assert_eq!(thresholds.warning_percent, DEFAULT_WARN_PERCENT);
+        assert_eq!(thresholds.critical_percent, DEFAULT_CRITICAL_PERCENT);
+
+        settings.set("limitsWarnPercent", serde_json::json!(50));
+        let thresholds = NotifySettings::from_settings(&settings).thresholds;
+        assert_eq!(
+            (thresholds.warning_percent, thresholds.critical_percent),
+            (50, 70)
+        );
+    }
     use chrono::TimeZone;
 
     fn at(secs: i64) -> DateTime<Utc> {
