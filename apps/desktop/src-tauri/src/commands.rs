@@ -1211,6 +1211,20 @@ struct GithubAsset {
     browser_download_url: String,
 }
 
+/// The release file that updates this installation.
+///
+/// GitHub lists assets alphabetically, so taking the first `.deb` or
+/// `.AppImage` gave a Debian install the AppImage, while the page told the
+/// user to `apt install` the `.deb`.
+fn package_asset<'a>(assets: &'a [GithubAsset], kind: &str) -> Option<&'a GithubAsset> {
+    let suffix = match kind {
+        "appimage" => ".AppImage",
+        "flatpak" => ".flatpak",
+        _ => "_amd64.deb",
+    };
+    assets.iter().find(|asset| asset.name.ends_with(suffix))
+}
+
 fn version_parts(value: &str) -> Vec<u64> {
     value
         .trim_start_matches(['v', 'V'])
@@ -1254,8 +1268,7 @@ pub async fn update_check() -> CommandResult<UpdateInfo> {
         if release_output.status.success() {
             let release: GithubRelease = serde_json::from_slice(&release_output.stdout)
                 .map_err(|error| format!("GitHub returned invalid release data: {error}"))?;
-            let package_url = release.assets.iter()
-                .find(|asset| asset.name.ends_with("_amd64.deb") || asset.name.ends_with(".AppImage"))
+            let package_url = package_asset(&release.assets, install_kind())
                 .map(|asset| asset.browser_download_url.clone());
             return Ok(UpdateInfo {
                 update_available: newer_version(&release.tag_name, &current),
@@ -2984,6 +2997,27 @@ mod tests {
     }
 
     use super::{newer_version, parsed_shell_extension_status, with_veronica_enabled};
+
+    #[test]
+    fn each_installation_is_offered_its_own_package() {
+        // In the order GitHub lists them: alphabetical.
+        let assets: Vec<super::GithubAsset> = [
+            "SHA256SUMS",
+            "Veronica_0.1.15_amd64.AppImage",
+            "Veronica_0.1.15_amd64.deb",
+            "Veronica_0.1.15_x86_64.flatpak",
+        ]
+        .into_iter()
+        .map(|name| super::GithubAsset {
+            name: name.into(),
+            browser_download_url: format!("https://example.test/{name}"),
+        })
+        .collect();
+        let pick = |kind| super::package_asset(&assets, kind).map(|asset| asset.name.as_str());
+        assert_eq!(pick("deb"), Some("Veronica_0.1.15_amd64.deb"));
+        assert_eq!(pick("appimage"), Some("Veronica_0.1.15_amd64.AppImage"));
+        assert_eq!(pick("flatpak"), Some("Veronica_0.1.15_x86_64.flatpak"));
+    }
 
     #[test]
     fn shell_extension_info_becomes_an_actionable_ui_state() {
