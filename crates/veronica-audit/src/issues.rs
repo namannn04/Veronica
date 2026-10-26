@@ -163,7 +163,7 @@ pub fn issues(url: &Url, status: Option<u16>, metadata: &Metadata) -> Vec<Issue>
     // A local development server is not a public page, so its lack of TLS is
     // not a finding.
     let host = url.host_str().unwrap_or_default();
-    if url.scheme() != "https" && host != "localhost" && host != "127.0.0.1" {
+    if url.scheme() != "https" && !crate::is_development_host(host) {
         found.push(issue(
             "https",
             Severity::Error,
