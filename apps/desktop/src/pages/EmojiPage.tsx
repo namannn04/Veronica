@@ -54,8 +54,12 @@ export function EmojiPage() {
   useEffect(() => {
     void ipc.emojiGroups().then(setGroups).catch((reason) => setError(String(reason)));
     void ipc.settingsAll().then(setSettings).catch(() => {});
-    void loadRecents();
-  }, [loadRecents]);
+  }, []);
+
+  // Recents are stored as the base character and rendered in the chosen
+  // tone, so they are read again when it changes; the grid already was, and
+  // "Most used" kept showing the old tone beside it.
+  useEffect(() => { void loadRecents(); }, [loadRecents, tone]);
 
   // Searching narrows across every group, so an active tab is cleared the
   // moment there is a query — otherwise a hit outside the tab looks like a
