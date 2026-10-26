@@ -5,7 +5,7 @@
 //! selection so a deselected collector disappears from every figure at once,
 //! which is what makes the source filter feel consistent across the dashboard.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use serde::Serialize;
 
@@ -476,6 +476,30 @@ fn project_amount(
     (cost, tokens)
 }
 
+/// Distinct chats active on any day in the range, for the selected sources.
+///
+/// The document's own `sessions` list has no dates, so counting it ignored
+/// the range: "Sessions" read the same for one day, a week and all time.
+/// Across all days the two counts agree, since every session is a chat.
+fn sessions_in(document: &UsageDocument, range: &DayRange, selection: &SourceSelection) -> usize {
+    let mut ids: HashSet<&str> = HashSet::new();
+    for day in document
+        .daily
+        .iter()
+        .filter(|day| range.contains(&day.period))
+    {
+        for project in &day.projects {
+            let worktree_chats = project.worktrees.iter().flat_map(|w| &w.chats);
+            for chat in project.chats.iter().chain(worktree_chats) {
+                if selection.includes(&chat.source, document) {
+                    ids.insert(chat.id.as_str());
+                }
+            }
+        }
+    }
+    ids.len()
+}
+
 /// One pass producing every rollup the dashboard renders.
 pub fn dashboard(
     document: &UsageDocument,
@@ -484,11 +508,7 @@ pub fn dashboard(
 ) -> Dashboard {
     let days = per_day(document, range, selection);
     let active_days = days.iter().filter(|d| d.cost > 0.0 || d.tokens > 0).count();
-    let session_count = document
-        .sessions
-        .iter()
-        .filter(|s| selection.includes(&s.source, document))
-        .count();
+    let session_count = sessions_in(document, range, selection);
 
     Dashboard {
         totals: totals(document, range, selection),
@@ -865,7 +885,8 @@ mod tests {
         let doc = document();
         let board = dashboard(&doc, &DayRange::default(), &SourceSelection::All);
         assert_eq!(board.active_days, 2);
-        assert_eq!(board.session_count, 2);
+        // One chat, active on both days.
+        assert_eq!(board.session_count, 1);
 
         let cli = dashboard(
             &doc,
@@ -873,6 +894,33 @@ mod tests {
             &SourceSelection::Only(vec!["cli".into()]),
         );
         assert_eq!(cli.session_count, 1);
+        let codex = dashboard(
+            &doc,
+            &DayRange::default(),
+            &SourceSelection::Only(vec!["codex".into()]),
+        );
+        assert_eq!(codex.session_count, 0, "the only chat is from cli");
+    }
+
+    #[test]
+    fn sessions_follow_the_range() {
+        let doc = document();
+        let outside = DayRange {
+            start: Some("2030-01-01".into()),
+            end: Some("2030-01-07".into()),
+        };
+        assert_eq!(
+            dashboard(&doc, &outside, &SourceSelection::All).session_count,
+            0
+        );
+        let one_day = DayRange {
+            start: Some("2026-08-19".into()),
+            end: Some("2026-08-19".into()),
+        };
+        assert_eq!(
+            dashboard(&doc, &one_day, &SourceSelection::All).session_count,
+            1
+        );
     }
 
     #[test]
