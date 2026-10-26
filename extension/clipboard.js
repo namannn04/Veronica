@@ -16,6 +16,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import { isSecretCopy } from './clipboardPolicy.js';
 import { findCli, runJson } from './lib.js';
 
 /**
@@ -70,6 +71,10 @@ export class ClipboardWatcher {
         // queueing them, since only the latest clipboard content matters.
         if (this._pending)
             return;
+        // Checked before reading, so a password never even reaches this
+        // process's memory as text, let alone the history file.
+        if (isSecretCopy(this._mimeTypes()))
+            return;
         this._pending = true;
         const generation = this._generation;
 
@@ -87,6 +92,15 @@ export class ClipboardWatcher {
             console.debug(`veronica: recording a copy of ${text.length} characters`);
             this._record(text);
         });
+    }
+
+    _mimeTypes() {
+        try {
+            return this._selection?.get_mimetypes(Meta.SelectionType.SELECTION_CLIPBOARD) ?? [];
+        } catch (error) {
+            console.debug(`veronica: cannot list clipboard types: ${error}`);
+            return [];
+        }
     }
 
     /** Pipe the text to `vr clipboard record` on stdin. */
