@@ -52,9 +52,11 @@ static H1: LazyLock<Regex> = LazyLock::new(|| element_pattern("h1"));
 static BODY: LazyLock<Regex> = LazyLock::new(|| element_pattern("body"));
 /// `key="value"` and `key='value'` as two alternatives rather than one with a
 /// backreference, which Rust's regex engine does not support — and does not
-/// need to, since there are exactly two quote characters.
+/// need to, since there are exactly two quote characters. A third alternative
+/// takes HTML's unquoted `key=value`, which minified pages use for `lang`,
+/// `name` and `rel` alike; it runs to the next space or the tag's end.
 static ATTRIBUTE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"(?s)([A-Za-z_:][A-Za-z0-9_:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')"#)
+    Regex::new(r#"(?s)([A-Za-z_:][A-Za-z0-9_:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))"#)
         .expect("a literal pattern")
 });
 static TAGS: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?is)<[^>]+>").expect("a literal"));
@@ -79,9 +81,12 @@ fn attributes(tag: &str) -> HashMap<String, String> {
     ATTRIBUTE
         .captures_iter(tag)
         .filter_map(|caps| {
-            // Whichever quote style matched; a name with no value is not an
+            // Whichever quoting style matched; a name with no value is not an
             // attribute this reads.
-            let value = caps.get(2).or_else(|| caps.get(3))?;
+            let value = caps
+                .get(2)
+                .or_else(|| caps.get(3))
+                .or_else(|| caps.get(4))?;
             Some((caps[1].to_lowercase(), decode(value.as_str())))
         })
         .collect()
@@ -348,6 +353,35 @@ mod tests {
             parse(html, &base()).description.as_deref(),
             Some("Single quoted")
         );
+    }
+
+    #[test]
+    fn unquoted_attribute_values_are_read() {
+        // Minifiers drop the quotes wherever HTML allows it; the fields are
+        // still there and must not be reported missing.
+        let html = concat!(
+            "<html lang=en><head>",
+            r#"<meta name=description content="Minified, but described.">"#,
+            "<meta name=robots content=noindex>",
+            "<link rel=canonical href=/>",
+            "</head></html>",
+        );
+        let meta = parse(html, &base());
+        assert_eq!(meta.language.as_deref(), Some("en"));
+        assert_eq!(
+            meta.description.as_deref(),
+            Some("Minified, but described.")
+        );
+        assert_eq!(meta.robots.as_deref(), Some("noindex"));
+        assert_eq!(meta.canonical_url.as_deref(), Some("https://example.com/"));
+    }
+
+    #[test]
+    fn an_equals_sign_inside_a_quoted_value_is_not_an_attribute() {
+        let html = r#"<meta content="name=robots" name="description">"#;
+        let meta = parse(html, &base());
+        assert_eq!(meta.description.as_deref(), Some("name=robots"));
+        assert_eq!(meta.robots, None);
     }
 
     #[test]
