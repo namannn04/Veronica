@@ -39,6 +39,7 @@ export class FocusDim {
         this._focusId = 0;
         this._monitorsId = 0;
         this._restackId = 0;
+        this._workspaceId = 0;
         // Seeded with the defaults, via the same clamps, so there is no moment
         // where the config is undefined.
         this._config = {
@@ -94,6 +95,10 @@ export class FocusDim {
         this._restackId = global.display.connect('restacked', () => this._update());
         this._monitorsId = Main.layoutManager.connect(
             'monitors-changed', () => { this._build(); this._update(); });
+        // What is on screen changes with the workspace even when no window
+        // restacks.
+        this._workspaceId = global.workspace_manager.connect(
+            'active-workspace-changed', () => this._update());
 
         this._update();
     }
@@ -110,6 +115,10 @@ export class FocusDim {
         if (this._monitorsId) {
             Main.layoutManager.disconnect(this._monitorsId);
             this._monitorsId = 0;
+        }
+        if (this._workspaceId) {
+            global.workspace_manager.disconnect(this._workspaceId);
+            this._workspaceId = 0;
         }
         this._destroyOverlays();
         this._active = false;
@@ -213,11 +222,15 @@ export class FocusDim {
      * Whether a window counts as content worth keeping bright.
      *
      * Docks, panels and notifications are chrome: raising one above the dim
-     * would leave a bright strip and defeat the effect. Minimised windows are
-     * not on screen at all.
+     * would leave a bright strip and defeat the effect. Minimised windows, and
+     * windows on another workspace, are not on screen at all; counting those
+     * dimmed an empty workspace's wallpaper because a hidden window "won".
      */
     _isDimmable(window) {
         if (!window || window.minimized)
+            return false;
+        const workspace = global.workspace_manager.get_active_workspace();
+        if (!window.is_on_all_workspaces() && !window.located_on_workspace(workspace))
             return false;
         const type = window.get_window_type();
         return type === Meta.WindowType.NORMAL || type === Meta.WindowType.DIALOG;
