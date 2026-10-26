@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SpendCalendar } from "../components/charts";
 import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
+import { money, tokens } from "../lib/format";
 import { ipc, listenEvent } from "../lib/ipc";
 import { limitProviderOf, storedLimitProvider, type LimitProvider } from "../lib/preferences";
 import type { AgendaView, GaugeReport, NowPlaying, PresenterView, SystemSnapshot, UsageView } from "../lib/types";
@@ -30,10 +31,6 @@ function greeting(hour: number) {
   if (hour < 17) return "Good afternoon";
   if (hour < 22) return "Good evening";
   return "Up late";
-}
-
-function compact(value: number) {
-  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function zoneName(id: string) {
@@ -186,7 +183,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     <div className="home-grid">
       <section className="card home-card blur-calendar"><div className="card-head"><h2>Today's meetings</h2><span className="card-note">{nextEvent ? "Next up" : ""}</span></div>{nextEvent ? <div className="meeting"><strong>{nextEvent.summary}</strong><span>{new Date(nextEvent.start).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</span></div> : <p className="quiet">No meetings today. Clear runway.</p>}<JumpLink label="Open Calendar" onClick={() => onNavigate("calendar")} /></section>
 
-      <section className="card home-card blur-money blur-usage"><div className="card-head"><h2>Agent usage</h2><span className="card-note">all time</span></div><div className="metric-row compact-metrics"><Metric label="Spend" value={totals ? `$${totals.cost.toFixed(2)}` : "—"} /><Metric label="Tokens" value={totals ? compact(totals.tokens) : "—"} /></div><JumpLink label="Open Agent Usage" onClick={() => onNavigate("usage")} /></section>
+      <section className="card home-card blur-money blur-usage"><div className="card-head"><h2>Agent usage</h2><span className="card-note">all time</span></div><div className="metric-row compact-metrics"><Metric label="Spend" value={totals ? money(totals.cost) : "—"} /><Metric label="Tokens" value={totals ? tokens(totals.tokens) : "—"} /></div><JumpLink label="Open Agent Usage" onClick={() => onNavigate("usage")} /></section>
 
       <section className="card home-card blur-agents"><div className="card-head"><div className="limits-title"><h2>Rate limits</h2><ProviderSelector compact value={selectedProvider} onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))} /></div></div><div className="limit-list">{gauges.length ? gauges.map((gauge) => <div className="limit-row" key={`${gauge.provider}-${gauge.window}`}><span>{gauge.window}</span><div><i style={{ width: `${Math.min(100, gauge.percent)}%` }} /></div><b>{Math.round(gauge.percent)}%</b></div>) : <span className="card-note">{data.limits?.notes.some(note => note.startsWith(selectedProvider)) ? `${selectedProvider} needs attention — open limits for details` : "No limit data yet"}</span>}</div><JumpLink label="View limits" onClick={() => onNavigate("usage")} /></section>
 
