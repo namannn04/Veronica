@@ -113,15 +113,19 @@ pub fn group_by_day(events: &[Event], now: DateTime<Local>) -> Vec<AgendaDay> {
     let mut days: BTreeMap<NaiveDate, Vec<Event>> = BTreeMap::new();
 
     for event in events {
-        let first = event.start.date_naive();
-        // An all-day event's exclusive midnight end would otherwise add one
-        // spurious extra day.
-        let last_instant = if event.all_day {
+        // An event that began before today is listed from today: the agenda
+        // looks forward, and an ongoing conference otherwise put "Yesterday"
+        // and older days above Today.
+        let start_day = event.start.date_naive();
+        let first = start_day.max(today);
+        // Every end is exclusive. A midnight end, whether an all-day event's
+        // or a 23:00-00:00 meeting's, would otherwise add a spurious next day.
+        let last_instant = if event.end > event.start {
             event.end - Duration::seconds(1)
         } else {
             event.end
         };
-        let last = last_instant.date_naive().max(first);
+        let last = last_instant.date_naive().max(start_day);
 
         let mut date = first;
         while date <= last {
@@ -322,6 +326,44 @@ mod tests {
         assert_eq!(days[0].events[0].summary, "Holiday");
         assert!(days[0].events[0].all_day);
         assert_eq!(days[0].events[1].summary, "Standup");
+    }
+
+    #[test]
+    fn an_ongoing_event_is_listed_from_today_not_from_its_start() {
+        let now = at("2026-08-20", 9, 0);
+        let events = vec![event(
+            "Conference",
+            at("2026-08-18", 9, 0),
+            at("2026-08-21", 17, 0),
+        )];
+        let days = group_by_day(&events, now);
+        let dates: Vec<&str> = days.iter().map(|day| day.date.as_str()).collect();
+        assert_eq!(dates, ["2026-08-20", "2026-08-21"]);
+        assert_eq!(days[0].label, "Today");
+    }
+
+    #[test]
+    fn a_meeting_ending_at_midnight_stays_on_its_own_day() {
+        let now = at("2026-08-20", 9, 0);
+        let events = vec![event(
+            "Late call",
+            at("2026-08-20", 23, 0),
+            at("2026-08-21", 0, 0),
+        )];
+        let days = group_by_day(&events, now);
+        assert_eq!(days.len(), 1);
+        assert_eq!(days[0].date, "2026-08-20");
+    }
+
+    #[test]
+    fn a_meeting_past_midnight_is_on_both_days() {
+        let now = at("2026-08-20", 9, 0);
+        let events = vec![event(
+            "Night deploy",
+            at("2026-08-20", 23, 0),
+            at("2026-08-21", 1, 0),
+        )];
+        assert_eq!(group_by_day(&events, now).len(), 2);
     }
 
     #[test]
