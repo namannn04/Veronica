@@ -60,7 +60,12 @@ export function QuinjetPage() {
 
     {error && <div className="banner error">{error}</div>}
 
-    {board?.projects.length === 0 && !busy
+    {/* Before the first answer there is nothing to list yet: an empty
+        "Projects" card read as "you have no projects". The shimmer is the
+        same one Calendar uses while it reads. */}
+    {!board && !error && <div className="calendar-skeleton" aria-label="Reading Quinjet projects"><i /><i /></div>}
+
+    {!board ? null : board.projects.length === 0 && !busy
       ? <div className="empty"><div className="empty-glyph">◈</div><h3>No recent projects</h3><p>Quinjet lists the repositories you have opened in it. Open one, then refresh.</p></div>
       : <section className="card">
         <div className="card-head"><h2>Projects</h2><span className="card-note">opens in your terminal</span></div>
