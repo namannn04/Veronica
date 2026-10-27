@@ -395,15 +395,21 @@ impl Capabilities {
             },
         );
 
-        // Watching key presses is the compositor's job for the same reason
-        // dimming is: on Wayland no client may observe input meant for another
-        // window, and there is no permission that changes it.
+        // No client may observe input meant for another window, and on GNOME
+        // the shell cannot either: Mutter passes an application's key presses
+        // straight to it, past every signal and event filter an extension can
+        // reach, so the extension sees only keys typed into the shell itself.
+        // (Mutter's keyboard monitor serves only the Orca screen reader.)
+        // Reporting this as one switch away promised a feature that showed
+        // nothing while typing in any application.
         set(
             KeystrokeObservation,
             if session.is_gnome {
-                CapabilityState::permission(
-                    "Enable Veronica's GNOME Shell extension, which reads key presses \
-                     inside the compositor and never consumes one.",
+                CapabilityState::integration(
+                    "GNOME hands an application's key presses straight to it, so the \
+                     shell extension can only show keys typed into the shell itself, such \
+                     as Activities search. Showing every key would need read access to the \
+                     keyboard device (the input group), which Veronica does not take.",
                 )
             } else {
                 CapabilityState::integration(
@@ -508,6 +514,19 @@ mod tests {
             other.is_gnome = false;
             assert!(matches!(
                 Capabilities::resolve(&other).state(Capability::WindowDimming),
+                CapabilityState::IntegrationRequired { .. }
+            ));
+        }
+    }
+
+    #[test]
+    fn keystroke_highlight_is_not_offered_as_working_on_gnome() {
+        // It sees only the shell's own key presses, which is not the feature.
+        for kind in [SessionKind::Wayland, SessionKind::X11] {
+            let mut gnome = session(kind);
+            gnome.is_gnome = true;
+            assert!(matches!(
+                Capabilities::resolve(&gnome).state(Capability::KeystrokeObservation),
                 CapabilityState::IntegrationRequired { .. }
             ));
         }

@@ -3,8 +3,11 @@
  * Edith installs a listen-only `CGEventTap`, which macOS grants after the user
  * approves Input Monitoring. Wayland has no such grant to give — a client
  * cannot observe key presses meant for another window, by design, and no
- * permission changes that. The compositor can, so on Ubuntu both the reading
- * and the drawing happen here.
+ * permission changes that. Nor, on GNOME, can an extension: Mutter hands an
+ * application's key presses to it before the stage sees them, so this shows
+ * only keys typed into the shell itself (Activities search, the run dialog).
+ * The capability reports that limit rather than offering the feature as
+ * working; see "Keystroke observation" in docs/ARCHITECTURE.md.
  *
  * It stays listen-only. The handler is connected to the stage's `captured-event`
  * and always returns `Clutter.EVENT_PROPAGATE`, so every press continues to the
