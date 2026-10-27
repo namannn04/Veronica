@@ -38,7 +38,10 @@ export class AttentionTracker {
             return;
         const window = global.display.focus_window;
         const idleMs = global.backend.get_core_idle_monitor().get_idletime();
-        const threshold = Number(this._settings.get('attentionIdleSeconds', 300)) * 1000;
+        // A hand-edited or damaged value would make this NaN, and nothing is
+        // ever ">= NaN": "Away" would never be recorded again.
+        const seconds = Number(this._settings.get('attentionIdleSeconds', 300));
+        const threshold = (Number.isFinite(seconds) && seconds > 0 ? seconds : 300) * 1000;
         const idle = !window || idleMs >= threshold;
         const application = idle ? 'Away' : (window.get_wm_class() || window.get_wm_class_instance() || 'Unknown');
         // `--name=value` keeps a value that starts with '-' a value: a
