@@ -17,6 +17,7 @@ export function SystemPage() {
   const [processes, setProcesses] = useState<RunningProcess[]>([]);
   const [mic, setMic] = useState<VolumeState | null>(null);
   const [streams, setStreams] = useState<AudioStream[]>([]);
+  const [mixerError, setMixerError] = useState<string | null>(null);
   const [bluetooth, setBluetooth] = useState<BluetoothState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; ascending: boolean }>({ key: "cpu", ascending: false });
@@ -53,6 +54,9 @@ export function SystemPage() {
       // A missing pw-dump or BlueZ is reported by the card itself, not as a
       // page-level error that would sit above working metrics.
       setStreams(mixer.status === "fulfilled" ? mixer.value : []);
+      // A failed read is not an empty mixer: saying "Nothing is playing" hid
+      // a missing or broken pw-dump behind a claim about the audio.
+      setMixerError(mixer.status === "rejected" ? String(mixer.reason) : null);
       if (radio.status === "fulfilled") setBluetooth(radio.value);
     };
     void tick();
@@ -113,7 +117,9 @@ export function SystemPage() {
     <div className="grid two-col system-detail-grid">
       <section className="card mixer-card">
         <div className="card-head"><h2>Audio mixer</h2><span className="card-note">{streams.length ? `${streams.length} stream${streams.length === 1 ? "" : "s"}` : "per application"}</span></div>
-        {streams.length === 0
+        {mixerError
+          ? <p className="quiet">The mixer cannot be read: {mixerError}</p>
+          : streams.length === 0
           ? <p className="quiet">Nothing is playing or recording. Applications appear here the moment they open an audio stream.</p>
           : <div className="mixer-list">{streams.map((stream) => <div className="mixer-row" key={stream.id}>
               <div className="mixer-name"><strong>{streamLabel(stream)}</strong><small>{stream.direction === "capture" ? "Recording" : "Playing"}</small></div>
