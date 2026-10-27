@@ -95,7 +95,7 @@ export function MachinesPage() {
             This computer and any host you can reach over SSH
           </div>
         </div>
-        <button className="button" onClick={load} disabled={loading}>
+        <button className="button" onClick={() => { setLoading(true); void load(); }} disabled={loading}>
           {loading ? "Probing…" : "Refresh"}
         </button>
       </div>
