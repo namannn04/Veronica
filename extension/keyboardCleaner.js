@@ -8,11 +8,20 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { vbox } from './lib.js';
 
+/**
+ * The mode ends on its own after this long. "Done" needs a pointer, and
+ * someone whose mouse is flat or whose touchpad is off would otherwise be left
+ * with a keyboard that answers nothing; no key can be the way out, because a
+ * cloth presses any key at all.
+ */
+const LIMIT_SECONDS = 120;
+
 export class KeyboardCleaner {
     constructor() {
         this._overlay = null;
         this._grab = null;
         this._idleId = 0;
+        this._countdownId = 0;
     }
 
     start() {
@@ -41,10 +50,23 @@ export class KeyboardCleaner {
             });
             card.add_child(new St.Icon({ icon_name: 'input-keyboard-symbolic' }));
             card.add_child(new St.Label({ text: 'Keyboard cleaning mode' }));
-            card.add_child(new St.Label({
-                text: 'Keys are blocked. Use the pointer to finish.',
-                style_class: 'veronica-clean-detail',
-            }));
+            const detail = new St.Label({ style_class: 'veronica-clean-detail' });
+            card.add_child(detail);
+            let remaining = LIMIT_SECONDS;
+            const describe = () => {
+                detail.text = `Keys are blocked. Use the pointer to finish, or wait ${remaining}s.`;
+            };
+            describe();
+            this._countdownId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+                remaining -= 1;
+                if (remaining <= 0) {
+                    this._countdownId = 0;
+                    this.stop();
+                    return GLib.SOURCE_REMOVE;
+                }
+                describe();
+                return GLib.SOURCE_CONTINUE;
+            });
             const done = new St.Button({
                 style_class: 'veronica-clean-done',
                 label: 'Done',
@@ -65,6 +87,10 @@ export class KeyboardCleaner {
         if (this._idleId) {
             GLib.Source.remove(this._idleId);
             this._idleId = 0;
+        }
+        if (this._countdownId) {
+            GLib.Source.remove(this._countdownId);
+            this._countdownId = 0;
         }
         if (this._grab) {
             Main.popModal(this._grab);
