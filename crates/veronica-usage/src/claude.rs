@@ -241,6 +241,9 @@ pub async fn fetch_limits(access_token: &str) -> Result<ClaudeLimits> {
     Ok(parse_limits(&body))
 }
 
+/// Held while an expired token is being refreshed.
+static REFRESHING: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 /// Read the credentials, refreshing and saving if the token has expired, then
 /// fetch the limits.
 ///
@@ -257,6 +260,20 @@ pub async fn limits_for_user(now: DateTime<Utc>) -> Result<Option<ClaudeLimits>>
     let mut access_token = credentials.access_token.clone();
 
     if credentials.needs_refresh(now) {
+        // Home, the rate-limit rings and the alerts poll can all arrive here
+        // at once. A provider that rotates refresh tokens accepts each one
+        // only once, so two concurrent refreshes leave one caller with a token
+        // already spent, and whichever saves last can keep the dead one. One
+        // refresh at a time, and a waiter reads again: by then another caller
+        // has usually done the work.
+        let _refreshing = REFRESHING.lock().await;
+        let Some(credentials) = Credentials::read(&path)? else {
+            return Ok(None);
+        };
+        access_token = credentials.access_token.clone();
+        if !credentials.needs_refresh(now) {
+            return Ok(Some(fetch_limits(&access_token).await?));
+        }
         match credentials.usable_refresh_token(now) {
             Some(refresh) => {
                 let response = refresh_token(refresh).await?;
