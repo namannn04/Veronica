@@ -83,10 +83,14 @@ withholds capabilities that X11 grants:
 - **Input suppression** (keyboard lock) — needs an exclusive evdev grab, which
   needs membership of the `input` group.
 - **Keystroke observation** (Keystroke Highlight) — a compositor hands key
-  presses only to the focused window, so showing them on screen means reading
-  them from inside the compositor. Veronica's extension does, listen-only: it
-  never consumes an event, and records nothing while the shell holds a modal
-  grab, which is where passwords are typed.
+  presses only to the focused window. Inside GNOME Shell that is still true for
+  an extension: Mutter passes an application's keys straight to it, past the
+  stage's signals and every Clutter event filter, so the extension sees only
+  keys typed into the shell itself (verified in a headless shell by typing into
+  a focused GNOME Calculator). Mutter's `org.freedesktop.a11y.KeyboardMonitor`
+  would see them but serves only the Orca screen reader. The capability
+  therefore resolves to `IntegrationRequired`; showing every key would need
+  listen-only access to the keyboard device through the `input` group.
 - **Paste in place**, and the emoji picker's insert-in-place — synthesising
   input into a window Veronica does not own is the same problem in reverse. The
   extension sends one Ctrl+V through a virtual keyboard on the seat, which needs
