@@ -282,6 +282,22 @@ impl SecretStore {
         }
     }
 
+    /// A store that never opens the desktop keyring and keeps everything in
+    /// `path`.
+    ///
+    /// For tests: `new` reaches the real Secret Service on the session bus, so
+    /// a test suite wrote, read and deleted items in the developer's own
+    /// keyring, and failed at random whenever the keyring daemon dropped a
+    /// reply under the load of parallel tests.
+    pub fn file_only(path: impl Into<PathBuf>) -> Self {
+        let store = Self::new(path);
+        store
+            .service
+            .set(None)
+            .expect("a new store has not opened the keyring yet");
+        store
+    }
+
     /// The keyring session, or `None` on a machine without one.
     async fn service(&self) -> Option<&Service> {
         self.service
@@ -481,7 +497,7 @@ mod tests {
     #[tokio::test]
     async fn a_secret_round_trips_and_can_be_forgotten() {
         // Against whichever store this machine has; both must behave the same.
-        let store = SecretStore::new(scratch("roundtrip"));
+        let store = SecretStore::file_only(scratch("roundtrip"));
         let identifier = Uuid::new_v4();
         assert!(store
             .load(identifier, SecretPurpose::Password)
@@ -515,7 +531,7 @@ mod tests {
     #[tokio::test]
     async fn a_secret_with_awkward_bytes_survives() {
         // A key file is binary and a passphrase can contain a newline.
-        let store = SecretStore::new(scratch("bytes"));
+        let store = SecretStore::file_only(scratch("bytes"));
         let identifier = Uuid::new_v4();
         let secret = vec![0u8, 10, 13, 255, 128, b'"', b'\\'];
         store
@@ -569,7 +585,7 @@ mod tests {
     async fn a_signing_key_is_generated_once_and_then_reused() {
         // A key that changed between runs would invalidate every outstanding
         // preview on restart.
-        let store = SecretStore::new(scratch("signing"));
+        let store = SecretStore::file_only(scratch("signing"));
         let identifier = Uuid::new_v4();
         let first = store
             .signing_key(identifier, SecretPurpose::ConfirmationSigningKey)
@@ -608,7 +624,7 @@ mod tests {
     async fn racing_callers_end_up_with_the_same_signing_key() {
         // The naive read-then-write leaves one caller holding a key the store
         // does not have, and its own tokens then fail to verify.
-        let store = std::sync::Arc::new(SecretStore::new(scratch("race")));
+        let store = std::sync::Arc::new(SecretStore::file_only(scratch("race")));
         let identifier = Uuid::new_v4();
         let mut tasks = Vec::new();
         for _ in 0..8 {
