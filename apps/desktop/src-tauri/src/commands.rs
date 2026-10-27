@@ -2267,12 +2267,28 @@ pub async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<Agend
 /// Open the user's normal GNOME calendar application without sending calendar
 /// data anywhere. `gtk-launch` respects the installed desktop entry.
 #[tauri::command]
-pub fn calendar_open() -> CommandResult<()> {
-    veronica_core::host::spawn_detached(
-        veronica_core::host::command("gtk-launch").arg("org.gnome.Calendar"),
-    )
-    .map(|_| ())
-    .map_err(|error| format!("cannot open GNOME Calendar: {error}"))
+pub async fn calendar_open() -> CommandResult<()> {
+    // gtk-launch returns once the application has been started, so its exit
+    // status is the answer. Not waiting for it hid "no such application":
+    // without GNOME Calendar installed the button simply did nothing.
+    let output = tauri::async_runtime::spawn_blocking(|| {
+        veronica_core::host::command("gtk-launch")
+            .arg("org.gnome.Calendar")
+            .stdin(std::process::Stdio::null())
+            .output()
+    })
+    .await
+    .map_err(|error| format!("cannot open GNOME Calendar: {error}"))?
+    .map_err(|error| format!("cannot open GNOME Calendar: {error}"))?;
+    if output.status.success() {
+        return Ok(());
+    }
+    let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(if detail.contains("no such application") {
+        "GNOME Calendar is not installed. Install it from the App Center, or add an account in Settings › Online Accounts to see events here.".to_string()
+    } else {
+        format!("cannot open GNOME Calendar: {detail}")
+    })
 }
 
 /// The notification history, newest first.

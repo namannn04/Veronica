@@ -39,7 +39,7 @@ export function CalendarPage() {
 
     {error && <div className="banner error">{error}</div>}
     {!view && loading && <CalendarSkeleton />}
-    {view && !view.hasCalendars && <div className="empty calendar-empty"><div className="empty-glyph">▣</div><h3>Calendar access is ready</h3><p>Add an account in Ubuntu Settings › Online Accounts, or create a local calendar. Every configured calendar appears here automatically.</p><button className="button primary" onClick={() => void ipc.calendarOpen()}>Open Calendar</button></div>}
+    {view && !view.hasCalendars && <div className="empty calendar-empty"><div className="empty-glyph">▣</div><h3>Calendar access is ready</h3><p>Add an account in Ubuntu Settings › Online Accounts, or create a local calendar. Every configured calendar appears here automatically.</p><button className="button primary" onClick={() => void ipc.calendarOpen().catch((reason) => setError(String(reason)))}>Open Calendar</button></div>}
     {view?.hasCalendars && view.days.length === 0 && !loading && <div className="empty calendar-empty"><div className="empty-glyph">✓</div><h3>Clear runway</h3><p>Nothing scheduled in the next {days} days.</p></div>}
 
     {view?.happeningNow && <section className="calendar-now blur-calendar"><div><span>Happening now</span><strong>{view.happeningNow.summary}</strong><small>{eventSlot(view.happeningNow.start, view.happeningNow.end, view.happeningNow.allDay)}</small></div>{view.happeningNow.joinUrl && <button className="button primary" onClick={() => void ipc.openExternal(view.happeningNow!.joinUrl!)}>Join meeting</button>}</section>}
