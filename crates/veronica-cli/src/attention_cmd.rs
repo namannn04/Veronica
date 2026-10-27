@@ -173,7 +173,12 @@ pub fn run(directories: &AppDirectories, command: &AttentionCommand, output: Out
             }
             repository.save_settings(&settings)?;
             let mut shared = Settings::load(&directories.settings_file())?;
-            shared.set("tabAttentionEnabled", serde_json::json!(settings.enabled));
+            // Tracking has its own key. Mirroring it into the page's switch,
+            // tabAttentionEnabled, made pausing tracking remove the page.
+            shared.set(
+                "attentionTrackingEnabled",
+                serde_json::json!(settings.enabled),
+            );
             shared.set(
                 "attentionPrivacy",
                 serde_json::json!(if settings.privacy == AttentionPrivacy::Detailed {
