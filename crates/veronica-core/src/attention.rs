@@ -231,10 +231,17 @@ impl AttentionRepository {
                 return Ok(Some(merged));
             }
         }
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(self.events_file())?;
+        let path = self.events_file();
+        // A record cut short (the shell stopped mid-write at logout, say)
+        // has no newline; appending straight after it would glue this event
+        // onto the broken one and lose both.
+        let torn = fs::read(&path)
+            .map(|body| body.last().is_some_and(|byte| *byte != b'\n'))
+            .unwrap_or(false);
+        let mut file = OpenOptions::new().create(true).append(true).open(&path)?;
+        if torn {
+            file.write_all(b"\n")?;
+        }
         file.write_all(&serde_json::to_vec(&event)?)?;
         file.write_all(b"\n")?;
         Ok(Some(event))
@@ -246,10 +253,25 @@ impl AttentionRepository {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
             Err(error) => return Err(error.into()),
         };
-        body.lines()
+        // One unreadable line is skipped rather than failing the whole log:
+        // failing made every later summary and record fail too, so a single
+        // torn write ended Attention for good.
+        let mut skipped = 0;
+        let events = body
+            .lines()
             .filter(|line| !line.trim().is_empty())
-            .map(|line| serde_json::from_str(line).context("invalid Attention event"))
-            .collect()
+            .filter_map(|line| match serde_json::from_str(line) {
+                Ok(event) => Some(event),
+                Err(_) => {
+                    skipped += 1;
+                    None
+                }
+            })
+            .collect();
+        if skipped > 0 {
+            eprintln!("veronica: skipped {skipped} unreadable Attention event(s)");
+        }
+        Ok(events)
     }
 
     fn write_events(&self, events: &[AttentionEvent]) -> Result<()> {
@@ -439,6 +461,41 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static NEXT: AtomicUsize = AtomicUsize::new(1);
+
+    #[test]
+    fn recording_after_a_torn_line_starts_a_fresh_one() {
+        let repo = repository();
+        let mut settings = repo.load_settings().unwrap();
+        settings.enabled = true;
+        repo.save_settings(&settings).unwrap();
+        fs::write(repo.events_file(), "{\"id\":\"cut").unwrap();
+
+        repo.record("Code", None, false, 10, now()).unwrap();
+        let events = repo.events().unwrap();
+        assert_eq!(events.len(), 1, "the new event survives the torn one");
+        assert_eq!(events[0].application, "Code");
+    }
+
+    #[test]
+    fn a_torn_line_costs_one_event_not_the_whole_log() {
+        let repo = repository();
+        fs::create_dir_all(&repo.root).unwrap();
+        let good = AttentionEvent {
+            id: "1".into(),
+            started_at: Utc::now() - Duration::seconds(60),
+            duration_seconds: 30,
+            application: "code".into(),
+            title: None,
+            idle: false,
+        };
+        let mut body = serde_json::to_string(&good).unwrap();
+        body.push_str("\n{\"id\":\"2\",\"startedAt\":\"20");
+        fs::write(repo.events_file(), body).unwrap();
+
+        let events = repo.events().expect("a torn line must not fail the log");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].application, "code");
+    }
 
     fn repository() -> AttentionRepository {
         let root = std::env::temp_dir().join(format!(
