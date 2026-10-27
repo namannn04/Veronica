@@ -553,13 +553,14 @@ pub fn open_terminal(session: &str, pane_id: Option<&str>) -> Result<()> {
         ),
     ];
     for (terminal, arguments) in terminals {
-        if veronica_core::host::command(terminal)
-            .args(arguments)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .is_ok()
+        if veronica_core::host::spawn_detached(
+            veronica_core::host::command(terminal)
+                .args(arguments)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null()),
+        )
+        .is_ok()
         {
             return Ok(());
         }

@@ -2268,11 +2268,11 @@ pub async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<Agend
 /// data anywhere. `gtk-launch` respects the installed desktop entry.
 #[tauri::command]
 pub fn calendar_open() -> CommandResult<()> {
-    veronica_core::host::command("gtk-launch")
-        .arg("org.gnome.Calendar")
-        .spawn()
-        .map(|_| ())
-        .map_err(|error| format!("cannot open GNOME Calendar: {error}"))
+    veronica_core::host::spawn_detached(
+        veronica_core::host::command("gtk-launch").arg("org.gnome.Calendar"),
+    )
+    .map(|_| ())
+    .map_err(|error| format!("cannot open GNOME Calendar: {error}"))
 }
 
 /// The notification history, newest first.
@@ -3035,9 +3035,7 @@ pub fn open_external(target: String) -> CommandResult<()> {
     if !allowed {
         return Err(format!("refusing to open {target:?}"));
     }
-    veronica_core::host::command("xdg-open")
-        .arg(&target)
-        .spawn()
+    veronica_core::host::spawn_detached(veronica_core::host::command("xdg-open").arg(&target))
         .map_err(|e| format!("cannot open {target}: {e}"))?;
     Ok(())
 }

@@ -30,6 +30,20 @@ pub fn is_sandboxed() -> bool {
     *SANDBOXED.get_or_init(|| Path::new("/.flatpak-info").exists())
 }
 
+/// Start a program that outlives the call, without leaving a zombie.
+///
+/// A child that is spawned and dropped stays in the process table as a zombie
+/// once it exits, until Veronica itself exits: every "Open in browser",
+/// terminal and calendar launch added one. A thread waits for it instead.
+pub fn spawn_detached(command: &mut Command) -> std::io::Result<u32> {
+    let mut child = command.spawn()?;
+    let id = child.id();
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(id)
+}
+
 /// A command that runs `program` on the host.
 pub fn command(program: impl AsRef<OsStr>) -> Command {
     command_with_env(program, &[])
@@ -125,6 +139,21 @@ pub fn is_executable(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_detached_child_is_reaped_when_it_exits() {
+        let id = spawn_detached(&mut Command::new("true")).unwrap();
+        let stat = format!("/proc/{id}/stat");
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        // Gone from the process table, rather than lingering as a zombie.
+        while std::path::Path::new(&stat).exists() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "child {id} was not reaped"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+    }
 
     #[test]
     fn system_paths_are_read_through_the_host_mount() {
