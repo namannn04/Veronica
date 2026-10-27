@@ -7,7 +7,9 @@
  */
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
@@ -20,7 +22,6 @@ import { SystemStatsIndicator } from './systemStats.js';
 
 /** How often the clock label is redrawn. Minute precision does not need a
  * faster tick, and a faster one would only cost battery for no visible change. */
-const CLOCK_TICK_SECONDS = 15;
 
 export const NotchButton = GObject.registerClass(
 class NotchButton extends PanelMenu.Button {
@@ -30,7 +31,8 @@ class NotchButton extends PanelMenu.Button {
         this._cancellable = cancellable;
         this._settings = settings;
         this._keyboardCleaner = keyboardCleaner;
-        this._clockTimeoutId = 0;
+        this._wallClockId = 0;
+        this._clockFormatId = 0;
 
         this._clockLabel = new St.Label({
             style_class: 'veronica-notch-clock',
@@ -44,15 +46,16 @@ class NotchButton extends PanelMenu.Button {
         this.add_child(this._stats.actor);
         this._stats.enable();
 
+        // The same clock GNOME's own top bar uses: it changes exactly on the
+        // minute and follows timezone changes. A fifteen-second timer showed
+        // the new minute up to fifteen seconds late. The 12/24-hour choice in
+        // Settings is followed too, where a fixed %H:%M ignored it.
+        this._wallClock = new GnomeDesktop.WallClock();
+        this._wallClockId = this._wallClock.connect('notify::clock', () => this._tick());
+        this._interfaceSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.interface' });
+        this._clockFormatId = this._interfaceSettings.connect(
+            'changed::clock-format', () => this._tick());
         this._tick();
-        this._clockTimeoutId = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT_IDLE,
-            CLOCK_TICK_SECONDS,
-            () => {
-                this._tick();
-                return GLib.SOURCE_CONTINUE;
-            }
-        );
 
         try {
             this._buildMenu();
@@ -78,8 +81,10 @@ class NotchButton extends PanelMenu.Button {
     }
 
     _tick() {
-        const now = GLib.DateTime.new_now_local();
-        this._clockLabel.text = now.format('%b %-d  %H:%M') ?? '';
+        const zone = this._wallClock?.timezone ?? GLib.TimeZone.new_local();
+        const now = GLib.DateTime.new_now(zone);
+        const twelveHour = this._interfaceSettings?.get_string('clock-format') === '12h';
+        this._clockLabel.text = now.format(twelveHour ? '%b %-d  %-l:%M %p' : '%b %-d  %H:%M') ?? '';
     }
 
     _buildMenu() {
@@ -213,10 +218,16 @@ class NotchButton extends PanelMenu.Button {
     }
 
     destroy() {
-        if (this._clockTimeoutId) {
-            GLib.Source.remove(this._clockTimeoutId);
-            this._clockTimeoutId = 0;
+        if (this._wallClockId) {
+            this._wallClock.disconnect(this._wallClockId);
+            this._wallClockId = 0;
         }
+        this._wallClock = null;
+        if (this._clockFormatId) {
+            this._interfaceSettings.disconnect(this._clockFormatId);
+            this._clockFormatId = 0;
+        }
+        this._interfaceSettings = null;
         this._stats?.disable();
         this._stats = null;
         this._notchPanel?.destroy();
