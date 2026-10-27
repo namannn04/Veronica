@@ -1,7 +1,7 @@
 //! `vr attention` — durable focus timers, usable with the desktop app closed.
 
 use anyhow::{Context, Result};
-use chrono::{Duration, Utc};
+use chrono::Utc;
 use veronica_core::{AppDirectories, AttentionPrivacy, AttentionRepository, Settings};
 
 use crate::format::{countdown, table, Output};
@@ -140,7 +140,7 @@ pub fn run(directories: &AppDirectories, command: &AttentionCommand, output: Out
             })
         }
         AttentionCommand::Summary { days } => {
-            let from = now - Duration::days((*days).clamp(1, 365));
+            let from = veronica_core::AttentionRepository::window_start(*days, now);
             let overview = repository.overview(from, now)?;
             output.emit(&overview, || {
                 format!(

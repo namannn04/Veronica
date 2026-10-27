@@ -290,6 +290,22 @@ impl AttentionRepository {
         Ok(())
     }
 
+    /// Where a window of `days` days ending `now` begins: local midnight,
+    /// `days - 1` days ago. "Today" is since this morning, not the last
+    /// twenty-four hours.
+    pub fn window_start(days: i64, now: DateTime<Utc>) -> DateTime<Utc> {
+        use chrono::{Local, TimeZone};
+        let local = now.with_timezone(&Local).date_naive() - Duration::days(days.clamp(1, 365) - 1);
+        let midnight = local.and_hms_opt(0, 0, 0).expect("midnight exists");
+        // A day whose midnight is skipped by a clock change starts at its
+        // first moment instead.
+        Local
+            .from_local_datetime(&midnight)
+            .earliest()
+            .map(|start| start.with_timezone(&Utc))
+            .unwrap_or(now - Duration::days(days.clamp(1, 365)))
+    }
+
     pub fn overview(&self, from: DateTime<Utc>, to: DateTime<Utc>) -> Result<AttentionOverview> {
         let settings = self.load_settings()?;
         let events: Vec<_> = self
@@ -308,12 +324,19 @@ impl AttentionRepository {
         let mut switches = 0;
         let mut previous = None;
         for event in &events {
+            // Only the part inside the window counts. Counting whole events
+            // gave "Today" ten hours for an event that began yesterday and
+            // ended this morning, and merging makes long events the norm.
+            let end = event.started_at + Duration::seconds(event.duration_seconds);
+            let seconds = (end.min(to) - event.started_at.max(from))
+                .num_seconds()
+                .max(0);
             if event.idle {
-                idle += event.duration_seconds;
+                idle += seconds;
                 continue;
             }
-            active += event.duration_seconds;
-            *apps.entry(event.application.clone()).or_default() += event.duration_seconds;
+            active += seconds;
+            *apps.entry(event.application.clone()).or_default() += seconds;
             if previous.as_ref() != Some(&event.application) && previous.is_some() {
                 switches += 1;
             }
@@ -330,9 +353,9 @@ impl AttentionRepository {
                 })
                 .map(|category| category.id.clone())
                 .unwrap_or_else(|| "unclassified".into());
-            *categories.entry(category.clone()).or_default() += event.duration_seconds;
+            *categories.entry(category.clone()).or_default() += seconds;
             if category == "focus" {
-                focused += event.duration_seconds;
+                focused += seconds;
             }
         }
         let sort = |map: std::collections::HashMap<String, i64>| {
@@ -619,5 +642,42 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(event.title.unwrap().chars().count(), 240);
+    }
+
+    #[test]
+    fn only_the_part_of_an_event_inside_the_window_counts() {
+        let repo = repository();
+        fs::create_dir_all(&repo.root).unwrap();
+        let to = Utc::now();
+        let from = to - Duration::hours(24);
+        let event = AttentionEvent {
+            id: "long".into(),
+            started_at: to - Duration::hours(30),
+            duration_seconds: 10 * 3600,
+            application: "code".into(),
+            title: None,
+            idle: false,
+        };
+        fs::write(
+            repo.events_file(),
+            format!("{}\n", serde_json::to_string(&event).unwrap()),
+        )
+        .unwrap();
+        let overview = repo.overview(from, to).unwrap();
+        assert_eq!(overview.active_seconds, 4 * 3600);
+    }
+
+    #[test]
+    fn a_window_of_one_day_starts_this_morning() {
+        use chrono::{Local, Timelike};
+        let now = Utc::now();
+        let start = AttentionRepository::window_start(1, now).with_timezone(&Local);
+        assert_eq!((start.hour(), start.minute(), start.second()), (0, 0, 0));
+        assert_eq!(start.date_naive(), now.with_timezone(&Local).date_naive());
+        let week = AttentionRepository::window_start(7, now).with_timezone(&Local);
+        assert_eq!(
+            (now.with_timezone(&Local).date_naive() - week.date_naive()).num_days(),
+            6
+        );
     }
 }

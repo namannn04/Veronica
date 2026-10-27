@@ -1007,7 +1007,10 @@ pub fn attention_overview(
 ) -> CommandResult<veronica_core::AttentionOverview> {
     let now = chrono::Utc::now();
     veronica_core::AttentionRepository::new(state.directories.attention_dir())
-        .overview(now - chrono::Duration::days(days.clamp(1, 365)), now)
+        .overview(
+            veronica_core::AttentionRepository::window_start(days, now),
+            now,
+        )
         .map_err(fail)
 }
 
