@@ -1034,7 +1034,13 @@ pub fn attention_settings_save(
         .map_err(fail)?;
     state
         .update_settings(|shared| {
-            shared.set("tabAttentionEnabled", serde_json::json!(settings.enabled));
+            // Tracking has its own key. Mirroring it into the page's switch,
+            // tabAttentionEnabled, made unticking "Enable Attention" remove
+            // the page, its focus timer and its history with it.
+            shared.set(
+                "attentionTrackingEnabled",
+                serde_json::json!(settings.enabled),
+            );
             shared.set(
                 "attentionPrivacy",
                 serde_json::json!(match settings.privacy {

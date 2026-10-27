@@ -31,7 +31,11 @@ export class AttentionTracker {
     }
 
     _pulse() {
-        if (this._running || !this._settings?.bool('tabAttentionEnabled', false))
+        // The feature (its page and this tracker) and tracking itself are two
+        // switches. Absent, tracking follows the feature, as it did when the
+        // two were one key.
+        const tracking = this._settings?.bool('attentionTrackingEnabled', true);
+        if (this._running || !this._settings?.bool('tabAttentionEnabled', false) || !tracking)
             return;
         const cli = findCli();
         if (!cli)
