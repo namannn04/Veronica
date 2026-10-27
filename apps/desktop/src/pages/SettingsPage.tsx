@@ -151,7 +151,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       </SettingsGroup>
       <SettingsGroup title="Emoji Picker" subtitle="Edith's catalogue and ranking, on Ctrl+Alt+E. The clipboard always works; typing the emoji into the app you were in needs the shell extension.">
         <Toggle label="Emoji Picker" detail="Adds the page and its shortcut." checked={Boolean(values.emojiEnabled)} onChange={(value) => void set("emojiEnabled", value)} />
-        <Toggle label="Type into the app I was in" detail={diagnostics?.session.isGnome ? "Sends one Ctrl+V through the compositor after copying." : "This desktop is not GNOME; the picker still copies."} checked={Boolean(values.emojiInsertInPlace)} onChange={(value) => void set("emojiInsertInPlace", value)} />
+        <Toggle label="Ctrl+Alt+E types into the app I was in" detail={diagnostics?.session.isGnome ? "The picker sends one Ctrl+V through the compositor after copying. Off, it only copies." : "This desktop is not GNOME; the picker copies."} checked={values.emojiInsertInPlace !== false} onChange={(value) => void set("emojiInsertInPlace", value)} />
       </SettingsGroup>
       <SettingsGroup title="Color Picker" subtitle="Sampling and the swatch history live on the Color Picker page; these are the switches behind them.">
         <Toggle label="Color Picker" detail="Adds the page and the top bar's Pick Color action." checked={Boolean(values.colorPickerEnabled)} onChange={(value) => void set("colorPickerEnabled", value)} />

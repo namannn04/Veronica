@@ -69,9 +69,10 @@ export function EmojiPicker() {
     if (busy) return;
     setBusy(true);
     try {
-      // The compact surface is an insertion tool, not the settings page: a
-      // click always returns the character to the app that had focus.
-      await ipc.emojiCopy(row.character, true);
+      // Typing into the app that had focus is the picker's point, so it is
+      // on unless the setting has been switched off; then a click copies.
+      const settings = await ipc.settingsAll().catch(() => ({} as Record<string, unknown>));
+      await ipc.emojiCopy(row.character, settings.emojiInsertInPlace !== false);
       close();
     } catch (reason) {
       setError(String(reason));
