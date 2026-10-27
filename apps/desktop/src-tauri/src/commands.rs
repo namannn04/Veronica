@@ -1423,11 +1423,60 @@ fn install_deb_release(version: &str) -> CommandResult<String> {
 }
 
 /// Start the newly installed version in place of this one.
+///
+/// Tauri's own `restart` re-executes this process with its original
+/// arguments, so a copy started at login with `--background` came back with
+/// no window, and inside a Flatpak it restarted the old deployment the sandbox
+/// still had mounted. And with one Veronica per session, a new copy started
+/// while this one still holds the bus name would only hand over and exit.
+///
+/// So a detached shell starts the new copy once this one has gone, and this
+/// one exits normally, which also saves a voice memo in progress.
 #[tauri::command]
-pub fn app_restart(app: AppHandle) {
-    // `restart` re-executes without raising `RunEvent::Exit`.
-    finish_companion_recording_on_exit(&app);
-    app.restart();
+pub fn app_restart(app: AppHandle) -> CommandResult<()> {
+    let relaunch = restart_command(install_kind(), std::env::current_exe().ok());
+    std::process::Command::new(&relaunch[0])
+        .args(&relaunch[1..])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|error| format!("cannot start the new version: {error}"))?;
+    app.exit(0);
+    Ok(())
+}
+
+/// What starts the newly installed Veronica, after a pause for this one to exit.
+fn restart_command(kind: &str, current_exe: Option<std::path::PathBuf>) -> Vec<String> {
+    const WAIT: &str = "sleep 2";
+    match kind {
+        // The new deployment is only reachable from outside this sandbox.
+        "flatpak" => vec![
+            "flatpak-spawn".into(),
+            "--host".into(),
+            "sh".into(),
+            "-c".into(),
+            format!("{WAIT}; exec flatpak run io.github.namannn04.Veronica"),
+        ],
+        _ => {
+            // An upgrade replaces the file, and Linux then reports the running
+            // executable as "<path> (deleted)"; the path itself is the new one.
+            let program = std::env::var("APPIMAGE").ok().or_else(|| {
+                current_exe.map(|path| {
+                    let shown = path.display().to_string();
+                    shown.trim_end_matches(" (deleted)").to_string()
+                })
+            });
+            let program = program.unwrap_or_else(|| "veronica".into());
+            vec![
+                "setsid".into(),
+                "sh".into(),
+                "-c".into(),
+                format!("{WAIT}; exec \"$0\""),
+                program,
+            ]
+        }
+    }
 }
 
 /// One reading of the machine, taken off the main thread.
@@ -3031,6 +3080,24 @@ mod tests {
         assert_eq!(pick("deb"), Some("Veronica_0.1.15_amd64.deb"));
         assert_eq!(pick("appimage"), Some("Veronica_0.1.15_amd64.AppImage"));
         assert_eq!(pick("flatpak"), Some("Veronica_0.1.15_x86_64.flatpak"));
+    }
+
+    #[test]
+    fn a_restart_starts_the_replaced_binary_without_background() {
+        let command = super::restart_command(
+            "deb",
+            Some(std::path::PathBuf::from("/usr/bin/veronica (deleted)")),
+        );
+        assert_eq!(command[0], "setsid");
+        assert_eq!(command.last().unwrap(), "/usr/bin/veronica");
+        assert!(!command.iter().any(|part| part.contains("--background")));
+
+        let flatpak = super::restart_command("flatpak", None);
+        assert_eq!(&flatpak[..2], ["flatpak-spawn", "--host"]);
+        assert!(flatpak
+            .last()
+            .unwrap()
+            .ends_with("flatpak run io.github.namannn04.Veronica"));
     }
 
     #[test]
