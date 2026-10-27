@@ -217,7 +217,7 @@ export function ColorPickerPage() {
               <div className="swatch" key={swatch.id}>
                 <button
                   className={`swatch-chip ${swatch.prefersDarkText ? "on-light" : "on-dark"}`}
-                  style={{ background: swatch.hex }}
+                  style={{ background: paint(swatch) }}
                   onClick={() => void copy(swatch)}
                   title={`Copy as ${format}`}
                 >
@@ -263,4 +263,15 @@ export function ColorPickerPage() {
       )}
     </div>
   );
+}
+
+/**
+ * The CSS that shows a swatch as picked. A Display P3 swatch's components are
+ * in P3 space, and painting its hex as sRGB showed a different colour from
+ * the one recorded; WebKit draws `color(display-p3 …)` itself.
+ */
+function paint(swatch: SwatchRow): string {
+  return swatch.profile === "displayP3"
+    ? `color(display-p3 ${swatch.red} ${swatch.green} ${swatch.blue})`
+    : swatch.hex;
 }
