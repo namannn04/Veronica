@@ -22,7 +22,10 @@ export function parseCpuTicks(stat) {
     const fields = line.trim().split(/\s+/).slice(1).map(Number);
     if (fields.length < 5 || fields.some(value => !Number.isFinite(value)))
         return null;
-    const total = fields.reduce((sum, value) => sum + value, 0);
+    // guest and guest_nice (fields nine and ten) are already counted inside
+    // user and nice; adding them again inflated the load while a virtual
+    // machine ran.
+    const total = fields.slice(0, 8).reduce((sum, value) => sum + value, 0);
     const idle = fields[3] + fields[4];
     return { total, idle };
 }
