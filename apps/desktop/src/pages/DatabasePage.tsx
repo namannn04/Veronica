@@ -18,6 +18,12 @@ import type { DatabaseConnection, DatabaseObject, DatabasePage, DatabaseOperatio
  */
 type Tab = "browse" | "query" | "history";
 
+type PageSource =
+  | { kind: "read"; path: string[]; size: number }
+  | { kind: "query"; statement: string; size: number };
+
+type Paging = { offset: number; onPrevious?: () => void; onNext?: () => void; busy: boolean };
+
 /** Kinds that hold rows. A schema or database is opened, not read. */
 const READABLE = new Set(["table", "view", "materializedView", "collection", "key"]);
 
@@ -62,24 +68,43 @@ export function DatabasePage() {
     void ipc.databaseOperations(50).then(setHistory).catch((reason) => setError(String(reason)));
   }, [tab]);
 
-  const open = async (object: DatabaseObject) => {
-    // A column has nothing inside it; the row it belongs to is what to show.
-    if (object.kind === "column") return;
+  // What produced the page on screen, so Next and Previous can ask again
+  // from another offset. "More available" used to be a dead end.
+  const [source, setSource] = useState<PageSource | null>(null);
+  const [offset, setOffset] = useState(0);
+
+  const fetchPage = async (from: PageSource, at: number) => {
     setBusy(true); setError("");
     try {
-      setPage(await ipc.databaseRead(selected, object.path, 100, 0));
+      setPage(from.kind === "read"
+        ? await ipc.databaseRead(selected, from.path, from.size, at)
+        : await ipc.databaseQuery(selected, from.statement, from.size, at));
+      setSource(from); setOffset(at);
     } catch (reason) { setError(String(reason)); }
     finally { setBusy(false); }
   };
 
+  // Another connection's rows must not stay on screen under this one's name.
+  useEffect(() => { setPage(null); setSource(null); setOffset(0); }, [selected]);
+
+  const open = async (object: DatabaseObject) => {
+    // A column has nothing inside it; the row it belongs to is what to show.
+    if (object.kind === "column") return;
+    await fetchPage({ kind: "read", path: object.path, size: 100 }, 0);
+  };
+
   const run = async () => {
     if (!statement.trim()) return;
-    setBusy(true); setError(""); setPage(null);
-    try {
-      setPage(await ipc.databaseQuery(selected, statement, 200, 0));
-    } catch (reason) { setError(String(reason)); }
-    finally { setBusy(false); }
+    setPage(null);
+    await fetchPage({ kind: "query", statement, size: 200 }, 0);
   };
+
+  const paging = page && source ? {
+    offset,
+    onPrevious: offset > 0 ? () => void fetchPage(source, Math.max(0, offset - source.size)) : undefined,
+    onNext: page.hasMore && page.nextOffset !== null ? () => void fetchPage(source, page.nextOffset!) : undefined,
+    busy,
+  } : undefined;
 
   const connection = connections.find((entry) => entry.id === selected);
   // Derived here rather than expected from the backend: the definition carries
@@ -149,7 +174,7 @@ export function DatabasePage() {
               ))}
             </div>}
       </section>
-      {page && <ResultGrid page={page} />}
+      {page && <ResultGrid page={page} paging={paging} />}
     </>}
 
     {tab === "query" && <>
@@ -172,7 +197,7 @@ export function DatabasePage() {
           </span>
         </div>
       </section>
-      {page && <ResultGrid page={page} />}
+      {page && <ResultGrid page={page} paging={paging} />}
     </>}
 
     {tab === "history" && <section className="card">
@@ -197,14 +222,19 @@ export function DatabasePage() {
 }
 
 /** A page of records. Wide results scroll inside the card rather than widening it. */
-function ResultGrid({ page }: { page: DatabasePage }) {
+function ResultGrid({ page, paging }: { page: DatabasePage; paging?: Paging }) {
   if (page.rows.length === 0) {
     return <section className="card"><p className="quiet">No rows.</p></section>;
   }
+  const first = (paging?.offset ?? 0) + 1;
   return <section className="card">
     <div className="card-head">
-      <h2>{page.rows.length} row{page.rows.length === 1 ? "" : "s"}</h2>
-      <span className="card-note">{page.elapsedMillis} ms{page.hasMore ? " · more available" : ""}</span>
+      <h2>{paging && paging.offset > 0 ? `Rows ${first}–${first + page.rows.length - 1}` : `${page.rows.length} row${page.rows.length === 1 ? "" : "s"}`}</h2>
+      <div className="head-actions">
+        <span className="card-note">{page.elapsedMillis} ms{page.hasMore ? " · more available" : ""}</span>
+        {paging?.onPrevious && <button className="button" disabled={paging.busy} onClick={paging.onPrevious}>Previous</button>}
+        {paging?.onNext && <button className="button" disabled={paging.busy} onClick={paging.onNext}>Next</button>}
+      </div>
     </div>
     <div className="result-scroll">
       <table className="result-grid">
