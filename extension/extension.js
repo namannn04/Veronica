@@ -16,11 +16,12 @@ import { FocusDim } from './focusDim.js';
 import { ActionBridge } from './actionBridge.js';
 import { AttentionTracker } from './attention.js';
 import { KeystrokeHighlight } from './keystrokeHighlight.js';
-import { FeatureSwitch } from './featureSwitch.js';
+import { FeatureSwitch, booleanSetting } from './featureSwitch.js';
 import { KeyboardCleaner } from './keyboardCleaner.js';
 import { findCli } from './lib.js';
 import { PanelReplacement } from './panelReplacement.js';
 import { SettingsWatcher } from './settings.js';
+import { StandaloneStats } from './systemStats.js';
 
 export default class VeronicaExtension extends Extension {
     enable() {
@@ -63,9 +64,16 @@ export default class VeronicaExtension extends Extension {
             ),
             () => this._panelReplacement?.disable()
         );
+        this._standaloneStats = new StandaloneStats(this._settings);
         this._lifecycleUnsubscribe = this._settings.subscribe(values => {
             this._clipboardSwitch?.update(values);
             this._notchSwitch?.update(values);
+            // The notch shows the CPU/memory readout itself; without it, the
+            // readout needs a place of its own.
+            if (booleanSetting(values, 'notchShelfEnabled', true))
+                this._standaloneStats?.hide();
+            else
+                this._standaloneStats?.show();
         });
         this._actionBridge = new ActionBridge({
             cleanKeys: () => this._keyboardCleaner?.start(),
@@ -97,6 +105,8 @@ export default class VeronicaExtension extends Extension {
         this._lifecycleUnsubscribe = null;
         this._notchSwitch?.disable();
         this._notchSwitch = null;
+        this._standaloneStats?.hide();
+        this._standaloneStats = null;
         this._clipboardSwitch?.disable();
         this._clipboardSwitch = null;
 
