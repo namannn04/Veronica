@@ -43,9 +43,12 @@ export function EmojiPage() {
   const [error, setError] = useState<string | null>(null);
 
   const tone = typeof settings.emojiSkinTone === "string" ? settings.emojiSkinTone : "standard";
-  // Inserting needs the extension; without it the picker still copies, so the
-  // switch defaults off rather than silently failing on every pick.
-  const insert = settings.emojiInsertInPlace === true;
+  // The setting is for the Ctrl+Alt+E picker, which knows the app you were
+  // in. This page has focus itself, so typing "into the app I was in" from
+  // here pasted into Veronica; a click on this page copies. Absent means on,
+  // which is what the picker always did; a paste that cannot happen still
+  // leaves the emoji on the clipboard.
+  const insert = settings.emojiInsertInPlace !== false;
 
   const loadRecents = useCallback(async () => {
     try { setRecents(await ipc.emojiRecents(24)); } catch { /* an empty ledger is not an error */ }
@@ -85,7 +88,7 @@ export function EmojiPage() {
 
   const pick = async (row: EmojiRow) => {
     try {
-      const result = await ipc.emojiCopy(row.character, insert);
+      const result = await ipc.emojiCopy(row.character, false);
       setCopied(result.character);
       setError(null);
       window.setTimeout(() => setCopied((current) => (current === result.character ? null : current)), 1200);
@@ -107,7 +110,7 @@ export function EmojiPage() {
         </select>
         <label className="emoji-insert">
           <input type="checkbox" checked={insert} onChange={(event) => void set("emojiInsertInPlace", event.target.checked)} />
-          Type into the app I was in
+          Ctrl+Alt+E types into the app I was in
         </label>
       </div>
     </div>
