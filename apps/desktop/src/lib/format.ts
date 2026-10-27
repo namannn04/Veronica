@@ -167,3 +167,15 @@ export function agoFromMillis(millis: number): string {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
 }
+
+/**
+ * Elapsed time as a clock reads it: "0:07", "12:34", "1:02:03". For a
+ * recording, where `countdown`'s "1m" held still for a whole minute.
+ */
+export function stopwatch(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = String(seconds % 60).padStart(2, "0");
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${rest}` : `${minutes}:${rest}`;
+}
