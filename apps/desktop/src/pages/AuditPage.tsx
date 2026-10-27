@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { ipc } from "../lib/ipc";
 import type { AuditReport, AuditSeverity } from "../lib/types";
@@ -19,20 +19,37 @@ const SEVERITIES: { id: AuditSeverity; label: string; pill: string }[] = [
   { id: "notice", label: "Notices", pill: "" },
 ];
 
+/**
+ * The latest run, kept outside the page.
+ *
+ * Only the page on screen is mounted, so a run held in its state was thrown
+ * away as soon as you went elsewhere, while the crawl carried on in the
+ * background with nowhere to put its answer. Held here, a run finishes into
+ * this store and is waiting when you come back.
+ */
+type AuditRun = { site: string; limit: number; report: AuditReport | null; running: boolean; error: string };
+let current: AuditRun = { site: "", limit: 50, report: null, running: false, error: "" };
+const listeners = new Set<() => void>();
+const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
+const update = (next: Partial<AuditRun>) => { current = { ...current, ...next }; listeners.forEach((listener) => listener()); };
+
+async function startAudit(site: string, limit: number) {
+  update({ site, limit, running: true, error: "", report: null });
+  try { update({ report: await ipc.auditSite(site, limit, 4) }); }
+  catch (reason) { update({ error: String(reason) }); }
+  finally { update({ running: false }); }
+}
+
 export function AuditPage() {
-  const [site, setSite] = useState("");
-  const [limit, setLimit] = useState(50);
-  const [report, setReport] = useState<AuditReport | null>(null);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState("");
+  const { report, running, error, site: lastSite, limit: lastLimit } = useSyncExternalStore(subscribe, () => current);
+  const [site, setSite] = useState(lastSite);
+  const [limit, setLimit] = useState(lastLimit);
   const [open, setOpen] = useState<string | null>(null);
 
   const run = async () => {
-    if (!site.trim()) return;
-    setRunning(true); setError(""); setReport(null); setOpen(null);
-    try { setReport(await ipc.auditSite(site.trim(), limit, 4)); }
-    catch (reason) { setError(String(reason)); }
-    finally { setRunning(false); }
+    if (!site.trim() || running) return;
+    setOpen(null);
+    await startAudit(site.trim(), limit);
   };
 
   const counts = report
