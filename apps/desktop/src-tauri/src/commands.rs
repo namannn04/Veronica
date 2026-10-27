@@ -465,7 +465,7 @@ fn parsed_shell_extension_status(info: &str) -> ShellExtensionStatus {
     } else if state == "ERROR" {
         ShellExtensionStatus {
             state: "error".into(),
-            detail: "GNOME loaded the extension, but it reported an error. Open Permissions for diagnostics.".into(),
+            detail: "GNOME loaded the extension, but it reported an error. Its message is in the session log: journalctl --user -b | grep -i veronica".into(),
             can_enable: false,
         }
     } else if enabled {

@@ -102,7 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Veronica",
     items: [
-      { id: "extensions", label: "Extensions", icon: <ExtensionsIcon />, hint: "The GNOME Shell extension", keywords: "gnome shell notch install enable" },
+      { id: "extensions", label: "Extensions", icon: <ExtensionsIcon />, hint: "Turn features on or off", keywords: "features catalogue enable disable install tools notch" },
       { id: "settings", label: "Settings", icon: <SettingsIcon />, hint: "Appearance, alerts and shortcuts", keywords: "preferences theme appearance dark light alerts presenter backup shortcuts updates permissions" },
       { id: "about", label: "About", icon: <AboutIcon />, hint: "Version and licence", keywords: "version licence gpl credits" },
     ],
