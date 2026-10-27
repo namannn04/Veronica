@@ -127,8 +127,14 @@ export class UsageCard {
 
         const totals = data.summary?.totals ?? {};
         const sessions = data.summary?.sessions ?? 0;
+        // The spend covers every agent, not the provider whose rings are
+        // shown, so it says so; and figures that have not been collected for
+        // a day or more say how old they are rather than passing for current.
+        const generated = Date.parse(data.summary?.generatedAt ?? '');
+        const ageSeconds = Number.isFinite(generated) ? (Date.now() - generated) / 1000 : 0;
+        const stale = ageSeconds >= 86400 ? ` · ${countdown(ageSeconds).split(' ')[0]} old` : '';
         this._lastSpendText = providerGauges.length > 0
-            ? `${money(totals.cost ?? 0)} · ${sessions} ${sessions === 1 ? 'session' : 'sessions'} this week`
+            ? `${money(totals.cost ?? 0)} · ${sessions} ${sessions === 1 ? 'session' : 'sessions'} in 7 days, all agents${stale}`
             : `${this._provider} limits unavailable`;
         this._spendLine.text = this._private ? 'Private while presenting' : this._lastSpendText;
         this._ringsBox.visible = !this._private;
