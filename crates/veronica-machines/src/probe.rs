@@ -86,7 +86,10 @@ impl CpuSample {
         let idle = values[3] + values.get(4).copied().unwrap_or(0);
         Some(Self {
             idle,
-            total: values.iter().sum(),
+            // guest and guest_nice (the ninth and tenth values) are already
+            // inside user and nice; summing them again inflated the load
+            // while a virtual machine ran.
+            total: values.iter().take(8).sum(),
         })
     }
 
@@ -409,6 +412,14 @@ pub fn parse(output: &str) -> MachineStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn guest_time_is_not_counted_twice() {
+        // user=100 includes guest=60, so the busy share is 100 of 400, not 160.
+        let sample = CpuSample::parse("cpu  100 0 0 300 0 0 0 0 60 0").unwrap();
+        assert_eq!(sample.total, 400);
+        assert_eq!(sample.idle, 300);
+    }
 
     /// Real output shape, with values captured from a live machine.
     const SAMPLE: &str = "\

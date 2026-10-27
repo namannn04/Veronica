@@ -112,3 +112,10 @@ test('the real files on this machine parse', async () => {
     const memory = memoryPercent(meminfo);
     assert.ok(memory !== null && memory > 0 && memory < 100, `memory was ${memory}`);
 });
+
+test('guest time is not counted twice', () => {
+    // user=100 already includes guest=60.
+    const ticks = parseCpuTicks('cpu  100 0 0 300 0 0 0 0 60 0\n');
+    assert.equal(ticks.total, 400);
+    assert.equal(ticks.idle, 300);
+});
