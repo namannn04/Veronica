@@ -20,6 +20,8 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 import { cpuPercent, memoryPercent, parseCpuTicks } from './procStats.js';
 
@@ -130,5 +132,39 @@ export class SystemStatsIndicator {
             this._cpu.text = `CPU ${Math.round(cpu)}%`;
         if (memory !== null)
             this._memory.text = `MEM ${Math.round(memory)}%`;
+    }
+}
+
+/**
+ * The readout on its own, for when the notch is switched off.
+ *
+ * The notch carries the readout beside its clock, so with the notch shelf off
+ * there was nowhere for it to appear and its switch did nothing. This places
+ * the same indicator in the top bar by itself; it is removed again while the
+ * notch is on, so the two are never shown together.
+ */
+export class StandaloneStats {
+    constructor(settings) {
+        this._settings = settings;
+        this._button = null;
+        this._stats = null;
+    }
+
+    show() {
+        if (this._button)
+            return;
+        this._stats = new SystemStatsIndicator(this._settings);
+        // No menu: the readout is the whole item.
+        this._button = new PanelMenu.Button(0.0, 'Veronica system stats', true);
+        this._button.add_child(this._stats.actor);
+        this._stats.enable();
+        Main.panel.addToStatusArea('veronica-system-stats', this._button, 0, 'right');
+    }
+
+    hide() {
+        this._stats?.disable();
+        this._stats = null;
+        this._button?.destroy();
+        this._button = null;
     }
 }
