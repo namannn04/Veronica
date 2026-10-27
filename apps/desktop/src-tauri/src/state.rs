@@ -96,10 +96,35 @@ impl AppState {
 
     /// Write one setting through to disk, so the CLI and a restart both see it.
     pub fn set_setting(&self, key: &str, value: serde_json::Value) -> Result<()> {
-        let mut settings = self.settings.lock().expect("settings lock");
-        settings.set(key, value);
-        settings.save(&self.directories.settings_file())?;
-        Ok(())
+        self.update_settings(|settings| {
+            settings.set(key, value);
+            Ok(())
+        })
+    }
+
+    /// Change the settings file and the cached copy together.
+    ///
+    /// The change is applied to the file as it is now, not to the cached copy:
+    /// the notch and `vr` write the same file, and the cache is up to two
+    /// seconds behind them. Saving the cache put back whatever they had just
+    /// changed, so a Keep Awake switched on from the notch reverted the moment
+    /// the app saved any other setting.
+    pub fn update_settings<T>(&self, change: impl FnOnce(&mut Settings) -> Result<T>) -> Result<T> {
+        let mut cached = self.settings.lock().expect("settings lock");
+        let path = self.directories.settings_file();
+        let mut settings = match Settings::load(&path) {
+            Ok(current) => current,
+            // Unreadable rather than corrupt (a corrupt file loads as the
+            // defaults): the cache is the best copy there is.
+            Err(error) => {
+                tracing::warn!("cannot re-read {}: {error:#}", path.display());
+                cached.clone()
+            }
+        };
+        let result = change(&mut settings)?;
+        settings.save(&path)?;
+        *cached = settings;
+        Ok(result)
     }
 
     /// Refresh process-local caches after a backup import replaced files.
@@ -109,5 +134,62 @@ impl AppState {
         let usage = veronica_usage::collector::read_document(&self.directories.usage_file())?;
         *self.usage.lock().expect("usage lock") = usage;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn state_in(root: &std::path::Path) -> AppState {
+        let directories = AppDirectories {
+            configuration: root.join("config"),
+            data: root.join("data"),
+            cache: root.join("cache"),
+            runtime: root.join("runtime"),
+            state: root.join("state"),
+        };
+        AppState::new(directories, veronica_core::DesktopSession::detect()).unwrap()
+    }
+
+    #[test]
+    fn a_write_from_the_app_keeps_what_another_process_wrote() {
+        let root = tempfile::tempdir().unwrap();
+        let state = state_in(root.path());
+        state
+            .set_setting("appearance", serde_json::json!("dark"))
+            .unwrap();
+
+        // The notch, through `vr config set`, while the app's copy is stale.
+        let path = state.directories.settings_file();
+        let mut outside = Settings::load(&path).unwrap();
+        outside.set("preventSleep", serde_json::json!(true));
+        outside.save(&path).unwrap();
+
+        state
+            .set_setting("appearance", serde_json::json!("light"))
+            .unwrap();
+
+        let stored = Settings::load(&path).unwrap();
+        assert_eq!(stored.get("preventSleep"), Some(&serde_json::json!(true)));
+        assert_eq!(stored.string("appearance"), Some("light"));
+        // And the cache now matches the file.
+        assert_eq!(state.settings_snapshot(), stored);
+    }
+
+    #[test]
+    fn a_change_that_fails_writes_nothing() {
+        let root = tempfile::tempdir().unwrap();
+        let state = state_in(root.path());
+        state
+            .set_setting("appearance", serde_json::json!("dark"))
+            .unwrap();
+        let refused: Result<()> = state.update_settings(|settings| {
+            settings.set("appearance", serde_json::json!("light"));
+            anyhow::bail!("refused")
+        });
+        assert!(refused.is_err());
+        let stored = Settings::load(&state.directories.settings_file()).unwrap();
+        assert_eq!(stored.string("appearance"), Some("dark"));
     }
 }

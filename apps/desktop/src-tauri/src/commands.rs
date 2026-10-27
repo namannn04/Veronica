@@ -1029,21 +1029,22 @@ pub fn attention_settings_save(
     veronica_core::AttentionRepository::new(state.directories.attention_dir())
         .save_settings(&settings)
         .map_err(fail)?;
-    let mut shared = state.settings.lock().expect("settings mutex poisoned");
-    shared.set("tabAttentionEnabled", serde_json::json!(settings.enabled));
-    shared.set(
-        "attentionPrivacy",
-        serde_json::json!(match settings.privacy {
-            veronica_core::AttentionPrivacy::Detailed => "detailed",
-            _ => "applications",
-        }),
-    );
-    shared.set(
-        "attentionIdleSeconds",
-        serde_json::json!(settings.idle_threshold_seconds),
-    );
-    shared
-        .save(&state.directories.settings_file())
+    state
+        .update_settings(|shared| {
+            shared.set("tabAttentionEnabled", serde_json::json!(settings.enabled));
+            shared.set(
+                "attentionPrivacy",
+                serde_json::json!(match settings.privacy {
+                    veronica_core::AttentionPrivacy::Detailed => "detailed",
+                    _ => "applications",
+                }),
+            );
+            shared.set(
+                "attentionIdleSeconds",
+                serde_json::json!(settings.idle_threshold_seconds),
+            );
+            Ok(())
+        })
         .map_err(fail)?;
     let _ = app.emit("settings-updated", ());
     Ok(())
@@ -2317,16 +2318,6 @@ pub fn machines_add(
         return Err("\"local\" is reserved for this computer".to_string());
     }
 
-    let mut settings = state.settings.lock().expect("settings lock");
-    let mut machines: Vec<veronica_machines::Machine> = settings
-        .get(MACHINES_KEY)
-        .and_then(|value| serde_json::from_value(value.clone()).ok())
-        .unwrap_or_default();
-
-    if machines.iter().any(|machine| machine.id == id) {
-        return Err(format!("a machine called {id} already exists"));
-    }
-
     let machine = veronica_machines::Machine {
         id,
         name: label,
@@ -2335,37 +2326,42 @@ pub fn machines_add(
         // the user has to hand; the interface adds machines by SSH target.
         mac: None,
     };
-    machines.push(machine.clone());
-    settings.set(
-        MACHINES_KEY,
-        serde_json::to_value(&machines).map_err(|e| e.to_string())?,
-    );
-    settings
-        .save(&state.directories.settings_file())
+    // Read from the file, so a machine just added with `vr machines add` is
+    // kept rather than overwritten by the app's older copy of the list.
+    state
+        .update_settings(|settings| {
+            let mut machines: Vec<veronica_machines::Machine> = settings
+                .get(MACHINES_KEY)
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
+                .unwrap_or_default();
+            if machines.iter().any(|existing| existing.id == machine.id) {
+                anyhow::bail!("a machine called {} already exists", machine.id);
+            }
+            machines.push(machine.clone());
+            settings.set(MACHINES_KEY, serde_json::to_value(&machines)?);
+            Ok(())
+        })
         .map_err(fail)?;
     Ok(machine)
 }
 
 #[tauri::command]
 pub fn machines_remove(state: State<'_, AppState>, id: String) -> CommandResult<()> {
-    let mut settings = state.settings.lock().expect("settings lock");
-    let mut machines: Vec<veronica_machines::Machine> = settings
-        .get(MACHINES_KEY)
-        .and_then(|value| serde_json::from_value(value.clone()).ok())
-        .unwrap_or_default();
-    let before = machines.len();
-    machines.retain(|machine| machine.id != id);
-    if machines.len() == before {
-        return Err(format!("no machine called {id}"));
-    }
-    settings.set(
-        MACHINES_KEY,
-        serde_json::to_value(&machines).map_err(|e| e.to_string())?,
-    );
-    settings
-        .save(&state.directories.settings_file())
-        .map_err(fail)?;
-    Ok(())
+    state
+        .update_settings(|settings| {
+            let mut machines: Vec<veronica_machines::Machine> = settings
+                .get(MACHINES_KEY)
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
+                .unwrap_or_default();
+            let before = machines.len();
+            machines.retain(|machine| machine.id != id);
+            if machines.len() == before {
+                anyhow::bail!("no machine called {id}");
+            }
+            settings.set(MACHINES_KEY, serde_json::to_value(&machines)?);
+            Ok(())
+        })
+        .map_err(fail)
 }
 
 /// SSH aliases in the user's config that are not configured yet.
