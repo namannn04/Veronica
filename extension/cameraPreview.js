@@ -9,14 +9,27 @@
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
 import GLib from 'gi://GLib';
-import Gst from 'gi://Gst';
-// Importing GstApp registers AppSink's pull_sample method with GJS.
-import GstApp from 'gi://GstApp';
 import St from 'gi://St';
 
 const FRAME_WIDTH = 320;
 const FRAME_HEIGHT = 180;
 const FRAME_STRIDE = FRAME_WIDTH * 4;
+
+// GStreamer is loaded here rather than imported, so a machine without its
+// introspection data loses the camera and nothing else: a failed static import
+// stopped the whole extension (notch, clipboard and all) from loading. GNOME
+// Shell depends on Gst but not on GstApp, so this happens in practice where the
+// extension arrives without the Debian package (the Flatpak, a source install).
+let Gst = null;
+// Importing GstApp registers AppSink's pull_sample method with GJS.
+let GstApp = null;
+try {
+    Gst = (await import('gi://Gst')).default;
+    GstApp = (await import('gi://GstApp')).default;
+} catch (error) {
+    console.debug(`veronica: camera preview unavailable without GStreamer: ${error}`);
+    Gst = null;
+}
 
 let gstInitialised = false;
 
@@ -55,6 +68,12 @@ export class CameraPreview {
     start() {
         if (this.isRunning)
             return;
+        if (!Gst) {
+            this._reportError(
+                'The camera preview needs GStreamer for GNOME Shell: install gir1.2-gst-plugins-base-1.0, then log out and back in.'
+            );
+            return;
+        }
         ensureGst();
         this._hasFrame = false;
 
