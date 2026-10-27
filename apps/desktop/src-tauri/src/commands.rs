@@ -130,6 +130,9 @@ pub async fn usage_export(
     state: State<'_, AppState>,
     cards: Vec<String>,
     days: Option<usize>,
+    // The cards show what the page shows. Ignoring the source filter and
+    // the range rendered all-time, all-source cards from a filtered view.
+    sources: Option<Vec<String>>,
 ) -> CommandResult<Vec<String>> {
     use veronica_usage::cards::{self, Card};
 
@@ -163,8 +166,12 @@ pub async fn usage_export(
             (Some(start), Some(end)) => format!("{start} to {end}"),
             _ => "all time".to_string(),
         };
+        let selection = match sources.filter(|sources| !sources.is_empty()) {
+            Some(sources) => veronica_usage::SourceSelection::Only(sources),
+            None => veronica_usage::SourceSelection::All,
+        };
         (
-            veronica_usage::dashboard(document, &range, &veronica_usage::SourceSelection::All),
+            veronica_usage::dashboard(document, &range, &selection),
             label,
         )
     };

@@ -127,8 +127,8 @@ export const ipc = {
   usageLimits: () => invoke<GaugeReport>("usage_limits"),
 
   /** Writes branded PNG cards to ~/Pictures and returns their paths. */
-  usageExport: (cards: string[], days: number | null) =>
-    invoke<string[]>("usage_export", { cards, days }),
+  usageExport: (cards: string[], days: number | null, sources: string[] = []) =>
+    invoke<string[]>("usage_export", { cards, days, sources }),
   usageRefresh: () => invoke<string>("usage_refresh"),
 
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),

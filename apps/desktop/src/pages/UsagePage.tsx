@@ -135,7 +135,7 @@ export function UsagePage() {
 
   return (
     <>
-      <Head generatedAt={view?.generatedAt ?? null} refreshing={refreshing} onRefresh={refresh} />
+      <Head generatedAt={view?.generatedAt ?? null} refreshing={refreshing} onRefresh={refresh} days={days} sources={sources} />
 
       {error && <div className="banner error">{error}</div>}
       {refreshing && progress && (
@@ -270,10 +270,15 @@ function Head({
   generatedAt,
   refreshing,
   onRefresh,
+  days = null,
+  sources = [],
 }: {
   generatedAt: string | null;
   refreshing: boolean;
   onRefresh: () => void;
+  /** The page's selection, which the share cards follow. */
+  days?: number | null;
+  sources?: string[];
 }) {
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState("");
@@ -292,7 +297,7 @@ function Head({
   const share = async () => {
     setExporting(true); setExported("");
     try {
-      const files = await ipc.usageExport([], null);
+      const files = await ipc.usageExport([], days, sources);
       setExported(`Saved ${files.length} card${files.length === 1 ? "" : "s"} to ~/Pictures`);
     } catch (reason) {
       setExported(String(reason));
