@@ -2888,3 +2888,7 @@ html:has(.emoji-popover), body:has(.emoji-popover), #root:has(.emoji-popover) {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: none; }
 }
+
+/* The local player's position, under the track it belongs to. */
+.local-seek { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; font-size: 12px; color: var(--ink-secondary); font-variant-numeric: tabular-nums; }
+.local-seek input { flex: 1; min-width: 0; }

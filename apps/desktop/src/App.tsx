@@ -13,6 +13,7 @@ import { ExtensionsPage } from "./pages/ExtensionsPage";
 import { MachinesPage } from "./pages/MachinesPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
 import { MediaPage } from "./pages/MediaPage";
+import { LocalPlayerProvider } from "./lib/localPlayer";
 import { SystemPage } from "./pages/SystemPage";
 import { UsagePage } from "./pages/UsagePage";
 import { HomePage } from "./pages/HomePage";
@@ -165,6 +166,7 @@ export function App() {
         </div>
       </nav>
 
+      <LocalPlayerProvider>
       <main className="content">
         {route === "home" && <HomePage onNavigate={setRoute} />}
         {route === "usage" && <UsagePage />}
@@ -188,6 +190,7 @@ export function App() {
         {route === "settings" && <SettingsPage diagnostics={diagnostics} />}
         {route === "about" && <AboutPage diagnostics={diagnostics} />}
       </main>
+      </LocalPlayerProvider>
 
       <CommandPalette
         open={paletteOpen}
