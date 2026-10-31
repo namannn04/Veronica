@@ -82,13 +82,22 @@ pub async fn write(text: &str) -> Result<Writer> {
 /// the user can reach, which is the difference between a degraded feature and a
 /// lost one.
 pub async fn paste_in_place() -> Result<()> {
+    paste_with_method("PasteInPlace").await
+}
+
+/// Focus the typing app through Shell without unmapping the floating picker.
+pub async fn paste_from_picker() -> Result<()> {
+    paste_with_method("PasteEmoji").await
+}
+
+async fn paste_with_method(method: &str) -> Result<()> {
     let connection = Connection::session().await.context("no session bus")?;
     connection
         .call_method(
             Some(SHELL_ACTION_BUS),
             SHELL_ACTION_PATH,
             Some(SHELL_ACTION_INTERFACE),
-            "PasteInPlace",
+            method,
             &(),
         )
         .await

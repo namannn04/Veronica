@@ -19,6 +19,7 @@
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 export const ACTION_BUS = 'io.github.namannn04.Veronica.Shell';
 export const ACTION_PATH = '/io/github/namannn04/Veronica/Shell';
@@ -34,6 +35,7 @@ const XML = `
       <arg type="s" direction="in" name="text"/>
     </method>
     <method name="PasteInPlace"/>
+    <method name="PasteEmoji"/>
   </interface>
 </node>`;
 
@@ -41,18 +43,26 @@ export class ActionBridge {
     constructor(actions) {
         this._actions = actions;
         this._ownerId = 0;
+        this._focusId = 0;
+        this._pasteTimer = 0;
+        this._pasteInvocation = null;
+        this._emojiWindow = null;
+        this._typingWindow = null;
         this._object = Gio.DBusExportedObject.wrapJSObject(XML, {
             CleanKeys: () => this._actions?.cleanKeys?.(),
             PickColor: () => this._actions?.pickColor?.(),
             ShowClipboard: () => this._actions?.showClipboard?.(),
             WriteClipboard: text => this._actions?.writeClipboard?.(text),
             PasteInPlace: () => this._pasteInPlace(),
+            PasteEmojiAsync: (_args, invocation) => this._pasteEmoji(invocation),
         });
     }
 
     enable() {
         if (this._ownerId)
             return;
+        this._focusId = global.display.connect('notify::focus-window', () => this._trackFocus());
+        this._trackFocus();
         this._ownerId = Gio.bus_own_name(
             Gio.BusType.SESSION,
             ACTION_BUS,
@@ -61,6 +71,65 @@ export class ActionBridge {
             null,
             () => console.debug('veronica: Shell action D-Bus name was lost')
         );
+    }
+
+    _trackFocus() {
+        const focused = global.display.focus_window;
+        if (!focused)
+            return;
+        if (focused.get_title() === 'Veronica Emoji Picker') {
+            this._emojiWindow = focused;
+            // GTK's keep-above hint is ignored by native Wayland windows.
+            // Mutter owns stacking, so enforce the floating state here.
+            focused.make_above();
+        } else if (!this._pasteInvocation) {
+            this._typingWindow = focused;
+        }
+    }
+
+    _pasteEmoji(invocation) {
+        const target = this._typingWindow;
+        const picker = this._emojiWindow;
+        if (this._pasteInvocation || !target?.get_compositor_private() ||
+            !picker?.get_compositor_private()) {
+            invocation.return_dbus_error(`${ACTION_INTERFACE}.NoTarget`,
+                'Focus the text field before opening the emoji picker');
+            return;
+        }
+        this._pasteInvocation = invocation;
+        target.focus(global.get_current_time());
+        this._pasteTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 40, () => {
+            this._pasteTimer = 0;
+            if (global.display.focus_window !== target) {
+                this._finishPaste('The typing window could not receive focus');
+                return GLib.SOURCE_REMOVE;
+            }
+            try {
+                this._pasteInPlace();
+            } catch (error) {
+                this._finishPaste(`${error}`);
+                return GLib.SOURCE_REMOVE;
+            }
+            // Allow the target to consume the queued keyboard events before
+            // returning focus. The picker stays mapped and above throughout.
+            this._pasteTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
+                this._pasteTimer = 0;
+                if (picker.get_compositor_private() && global.display.focus_window === target)
+                    picker.focus(global.get_current_time());
+                this._finishPaste();
+                return GLib.SOURCE_REMOVE;
+            });
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _finishPaste(error = null) {
+        const invocation = this._pasteInvocation;
+        this._pasteInvocation = null;
+        if (error)
+            invocation?.return_dbus_error(`${ACTION_INTERFACE}.PasteFailed`, error);
+        else
+            invocation?.return_value(null);
     }
 
     /**
@@ -88,6 +157,15 @@ export class ActionBridge {
     }
 
     disable() {
+        if (this._focusId)
+            global.display.disconnect(this._focusId);
+        this._focusId = 0;
+        if (this._pasteTimer)
+            GLib.Source.remove(this._pasteTimer);
+        this._pasteTimer = 0;
+        this._finishPaste('The Veronica extension was disabled');
+        this._emojiWindow = null;
+        this._typingWindow = null;
         this._object?.unexport();
         if (this._ownerId)
             Gio.bus_unown_name(this._ownerId);
