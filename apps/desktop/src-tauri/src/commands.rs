@@ -2102,9 +2102,9 @@ pub async fn emoji_copy(
         .map(|writer| writer.title().to_string())
         .map_err(fail)?;
 
-    // The compact picker temporarily owns focus. Hide it before synthesising
-    // Ctrl+V so GNOME restores the app the user was typing in, then give the
-    // compositor one frame to settle before sending the keystroke.
+    // Release focus to the typing app while pasting, then restore the same
+    // picker so its search, scroll position and dragged location survive.
+    // Repeating this handoff also keeps Ctrl+V out of the picker search field.
     if should_restore_emoji_target(window.label(), insert) {
         window
             .hide()
@@ -2125,6 +2125,14 @@ pub async fn emoji_copy(
     } else {
         false
     };
+
+    if should_restore_emoji_target(window.label(), insert) {
+        // Shell input is queued; let the target consume Ctrl+V before taking
+        // keyboard focus back for the next selection or Escape.
+        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+        window.show().map_err(|error| error.to_string())?;
+        window.set_focus().map_err(|error| error.to_string())?;
+    }
 
     Ok(EmojiCopyResult {
         character,
