@@ -134,7 +134,7 @@ export class UsageCard {
         const ageSeconds = Number.isFinite(generated) ? (Date.now() - generated) / 1000 : 0;
         const stale = ageSeconds >= 86400 ? ` · ${countdown(ageSeconds).split(' ')[0]} old` : '';
         this._lastSpendText = providerGauges.length > 0
-            ? `${money(totals.cost ?? 0)} · ${sessions} ${sessions === 1 ? 'session' : 'sessions'} in 7 days, all agents${stale}`
+            ? `${money(totals.cost ?? 0)} estimated · ${sessions} ${sessions === 1 ? 'session' : 'sessions'} in 7 days, all agents${stale}`
             : `${this._provider} limits unavailable`;
         this._spendLine.text = this._private ? 'Private while presenting' : this._lastSpendText;
         this._ringsBox.visible = !this._private;

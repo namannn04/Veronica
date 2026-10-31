@@ -177,7 +177,7 @@ export function UsagePage() {
         <div className="usage-sensitive">
           <div className="grid tiles">
             <Tile
-              label="Spend"
+              label="Estimated API cost"
               value={money(board.totals.cost)}
               note={`${board.activeDays} active ${board.activeDays === 1 ? "day" : "days"}`}
             />
@@ -197,7 +197,7 @@ export function UsagePage() {
           <div className="grid two-col">
             <section className="card">
               <div className="card-head">
-                <h2>Spend per day</h2>
+                <h2>Estimated API cost per day</h2>
                 <span className="card-note">
                   {board.days.length} {board.days.length === 1 ? "day" : "days"}
                 </span>
