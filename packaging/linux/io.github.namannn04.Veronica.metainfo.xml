@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.17" date="2026-10-31">
+      <description>
+        <p>The emoji picker stays available for multiple insertions, supports dragging, and closes explicitly with the close button or Escape. The notch gains a rounded dark surface and smoother transitions that respect reduced motion without adding idle animation work.</p>
+      </description>
+    </release>
     <release version="0.1.16" date="2026-10-27">
       <description>
         <p>A broad reliability release. The notch now builds on GNOME 46 and 47, Keep Awake really stops GNOME from dimming and suspending, presenter mode hides figures during a detected screen share, and passwords copied from a password manager stay out of clipboard history. Agent usage is collected on a schedule, ranges end today, and chat costs and session counts are correct. Database queries can no longer change data, Site Audit reads unquoted attributes and addresses with a port, and only one Veronica runs per session. Many smaller fixes across every page.</p>
