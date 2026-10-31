@@ -33,6 +33,7 @@ class NotchButton extends PanelMenu.Button {
         this._keyboardCleaner = keyboardCleaner;
         this._wallClockId = 0;
         this._clockFormatId = 0;
+        this.add_style_class_name('veronica-notch-button');
 
         this._clockLabel = new St.Label({
             style_class: 'veronica-notch-clock',
@@ -124,14 +125,21 @@ class NotchButton extends PanelMenu.Button {
         if (!box)
             return;
 
+        // Read the desktop preference per transition; no animation timer runs
+        // while the island is idle, and reduced motion takes effect immediately.
+        const shouldAnimate = animate => Boolean(animate) && St.Settings.get().enable_animations;
+        const collapsedWidth = () => Math.max(0.15, Math.min(1,
+            this.width / Math.max(1, box.width)));
+
         box.open = (animate, onComplete) => {
+            animate = shouldAnimate(animate);
             box.remove_all_transitions();
             box.bin.remove_all_transitions();
             box.set_pivot_point(0.5, 0);
             box.opacity = 255;
             box.translation_y = animate ? -4 : 0;
-            box.scale_x = animate ? 0.36 : 1;
-            box.scale_y = animate ? 0.12 : 1;
+            box.scale_x = animate ? collapsedWidth() : 1;
+            box.scale_y = animate ? 0.08 : 1;
             box.bin.opacity = animate ? 0 : 255;
             box._muteKeys = false;
             box._muteInput = true;
@@ -140,8 +148,8 @@ class NotchButton extends PanelMenu.Button {
                 translation_y: 0,
                 scale_x: 1,
                 scale_y: 1,
-                duration: animate ? 300 : 0,
-                mode: Clutter.AnimationMode.EASE_OUT_EXPO,
+                duration: animate ? 340 : 0,
+                mode: Clutter.AnimationMode.EASE_OUT_QUINT,
                 onComplete: () => {
                     box._muteInput = false;
                     onComplete?.();
@@ -149,13 +157,14 @@ class NotchButton extends PanelMenu.Button {
             });
             box.bin.ease({
                 opacity: 255,
-                delay: animate ? 72 : 0,
+                delay: animate ? 110 : 0,
                 duration: animate ? 170 : 0,
                 mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             });
         };
 
         box.close = (animate, onComplete) => {
+            animate = shouldAnimate(animate);
             if (!box.visible)
                 return;
             box._muteInput = true;
@@ -171,10 +180,10 @@ class NotchButton extends PanelMenu.Button {
             box.ease({
                 opacity: 255,
                 translation_y: animate ? -4 : 0,
-                scale_x: animate ? 0.36 : 1,
-                scale_y: animate ? 0.12 : 1,
-                duration: animate ? 210 : 0,
-                mode: Clutter.AnimationMode.EASE_IN_EXPO,
+                scale_x: animate ? collapsedWidth() : 1,
+                scale_y: animate ? 0.08 : 1,
+                duration: animate ? 240 : 0,
+                mode: Clutter.AnimationMode.EASE_IN_OUT_CUBIC,
                 onComplete: () => {
                     box.hide();
                     box.opacity = 255;
