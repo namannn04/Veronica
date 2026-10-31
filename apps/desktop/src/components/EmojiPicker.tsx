@@ -66,8 +66,9 @@ export function EmojiPicker() {
     try {
       // Respect copy-only mode while keeping the picker available for more picks.
       const settings = await ipc.settingsAll().catch(() => ({} as Record<string, unknown>));
-      await ipc.emojiCopy(row.character, settings.emojiInsertInPlace !== false);
-      setError(null);
+      const insert = settings.emojiInsertInPlace !== false;
+      const result = await ipc.emojiCopy(row.character, insert);
+      setError(insert && !result.inserted ? "Copied. Focus your text field, then choose another emoji to insert." : null);
       void ipc.emojiRecents(18).then(setRecents).catch(() => {});
     } catch (reason) {
       setError(String(reason));
