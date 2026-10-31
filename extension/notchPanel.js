@@ -296,8 +296,11 @@ export class NotchPanel {
             x_align: Clutter.ActorAlign.CENTER,
             clip_to_allocation: true,
         });
-        this._cameraSurface = new St.Widget({
-            style_class: 'veronica-camera-preview-surface',
+        // St.Widget overrides paint_node for CSS backgrounds; raw image
+        // content needs Clutter.Actor's content painting path.
+        this._cameraSurface = new Clutter.Actor({
+            width: 292,
+            height: 164,
             x_expand: true,
             y_expand: true,
         });

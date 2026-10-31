@@ -129,16 +129,15 @@ export class CameraPreview {
         if (!this.isRunning)
             return;
 
-        const sample = this._sink.try_pull_sample(0);
-        const buffer = sample?.get_buffer();
-        if (!buffer)
-            return;
-
-        const data = buffer.extract_dup(0, buffer.get_size());
-        if (data.length < FRAME_STRIDE * FRAME_HEIGHT)
-            return;
-
         try {
+            const sample = this._sink.try_pull_sample(0);
+            const buffer = sample?.get_buffer();
+            if (!buffer)
+                return;
+            const data = buffer.extract_dup(0, buffer.get_size());
+            if (data.length < FRAME_STRIDE * FRAME_HEIGHT)
+                throw new Error('The camera returned an incomplete RGBA frame');
+
             const bytes = new GLib.Bytes(data);
             const args = [
                 bytes,
@@ -154,7 +153,9 @@ export class CameraPreview {
                     throw new Error('GNOME could not provide a video rendering context');
                 args.unshift(context);
             }
-            this._content.set_bytes(...args);
+            if (this._content.set_bytes(...args) === false)
+                throw new Error('GNOME could not upload the camera frame');
+            this._surface.queue_redraw();
             if (!this._hasFrame) {
                 this._hasFrame = true;
                 if (this._startupTimeoutId) {
