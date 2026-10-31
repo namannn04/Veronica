@@ -2102,18 +2102,13 @@ pub async fn emoji_copy(
         .map(|writer| writer.title().to_string())
         .map_err(fail)?;
 
-    // Release focus to the typing app while pasting, then restore the same
-    // picker so its search, scroll position and dragged location survive.
-    // Repeating this handoff also keeps Ctrl+V out of the picker search field.
-    if should_restore_emoji_target(window.label(), insert) {
-        window
-            .hide()
-            .map_err(|error| format!("cannot dismiss the emoji picker: {error}"))?;
-        tokio::time::sleep(std::time::Duration::from_millis(180)).await;
-    }
-
     let inserted = if insert {
-        match veronica_system::selection::paste_in_place().await {
+        let result = if uses_emoji_target(window.label(), insert) {
+            veronica_system::selection::paste_from_picker().await
+        } else {
+            veronica_system::selection::paste_in_place().await
+        };
+        match result {
             Ok(()) => true,
             Err(error) => {
                 // The emoji is on the clipboard either way, so a refused portal
@@ -2126,14 +2121,6 @@ pub async fn emoji_copy(
         false
     };
 
-    if should_restore_emoji_target(window.label(), insert) {
-        // Shell input is queued; let the target consume Ctrl+V before taking
-        // keyboard focus back for the next selection or Escape.
-        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
-        window.show().map_err(|error| error.to_string())?;
-        window.set_focus().map_err(|error| error.to_string())?;
-    }
-
     Ok(EmojiCopyResult {
         character,
         copied_via,
@@ -2141,7 +2128,7 @@ pub async fn emoji_copy(
     })
 }
 
-fn should_restore_emoji_target(window_label: &str, insert: bool) -> bool {
+fn uses_emoji_target(window_label: &str, insert: bool) -> bool {
     insert && window_label == crate::emoji_picker::LABEL
 }
 
@@ -3212,16 +3199,10 @@ mod wire_shape_tests {
     use super::*;
 
     #[test]
-    fn compact_emoji_picker_releases_focus_before_inserting() {
-        assert!(should_restore_emoji_target(
-            crate::emoji_picker::LABEL,
-            true
-        ));
-        assert!(!should_restore_emoji_target("main", true));
-        assert!(!should_restore_emoji_target(
-            crate::emoji_picker::LABEL,
-            false
-        ));
+    fn compact_picker_uses_the_shell_target_without_hiding() {
+        assert!(uses_emoji_target(crate::emoji_picker::LABEL, true));
+        assert!(!uses_emoji_target("main", true));
+        assert!(!uses_emoji_target(crate::emoji_picker::LABEL, false));
     }
 
     /// Every key in a JSON object, recursively, as `parent.child` paths.
