@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.18" date="2026-10-31">
+      <description>
+        <p>The emoji picker gains transparent rounded corners and stays visible above applications during insertion. Files opens a native copy-based drop shelf with persistent storage. Camera frames use the correct rendering path, awake settings survive file replacement, and partial Codex limit responses retain their weekly or session identity. Locally modeled API costs are labeled as estimates.</p>
+      </description>
+    </release>
     <release version="0.1.17" date="2026-10-31">
       <description>
         <p>The emoji picker stays available for multiple insertions, supports dragging, and closes explicitly with the close button or Escape. The notch gains a rounded dark surface and smoother transitions that respect reduced motion without adding idle animation work.</p>
