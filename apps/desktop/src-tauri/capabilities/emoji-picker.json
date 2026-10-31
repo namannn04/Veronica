@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "emoji-picker",
+  "description": "Allow the compact emoji picker to close and drag its own window.",
+  "windows": ["emoji-picker"],
+  "permissions": ["core:window:allow-close", "core:window:allow-start-dragging"]
+}

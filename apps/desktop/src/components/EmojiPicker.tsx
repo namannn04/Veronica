@@ -23,7 +23,7 @@ export function EmojiPicker() {
   const [error, setError] = useState<string | null>(null);
 
   const close = useCallback(() => {
-    void getCurrentWindow().close();
+    void getCurrentWindow().close().catch((reason) => setError(String(reason)));
   }, []);
 
   useEffect(() => {
@@ -36,13 +36,8 @@ export function EmojiPicker() {
     };
     window.addEventListener("keydown", onKeyDown);
 
-    // Ignore the focus transition while the webview is first being mapped;
-    // afterwards clicking anywhere else dismisses it like a real popover.
-    const blurTimer = window.setTimeout(() => window.addEventListener("blur", close), 300);
     return () => {
-      window.clearTimeout(blurTimer);
       window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("blur", close);
     };
   }, [close]);
 
@@ -69,13 +64,14 @@ export function EmojiPicker() {
     if (busy) return;
     setBusy(true);
     try {
-      // Typing into the app that had focus is the picker's point, so it is
-      // on unless the setting has been switched off; then a click copies.
+      // Respect copy-only mode while keeping the picker available for more picks.
       const settings = await ipc.settingsAll().catch(() => ({} as Record<string, unknown>));
       await ipc.emojiCopy(row.character, settings.emojiInsertInPlace !== false);
-      close();
+      setError(null);
+      void ipc.emojiRecents(18).then(setRecents).catch(() => {});
     } catch (reason) {
       setError(String(reason));
+    } finally {
       setBusy(false);
     }
   };
@@ -84,7 +80,7 @@ export function EmojiPicker() {
     <header className="emoji-popover-head" data-tauri-drag-region>
       <div data-tauri-drag-region>
         <strong data-tauri-drag-region>Emoji</strong>
-        <span data-tauri-drag-region>Choose to insert</span>
+        <span data-tauri-drag-region>Drag to move</span>
       </div>
       <button className="emoji-popover-close" onClick={close} aria-label="Close">×</button>
     </header>
@@ -127,7 +123,7 @@ export function EmojiPicker() {
       </section>
     </div>
 
-    <footer>Click an emoji to insert it into your previous app</footer>
+    <footer>Pick multiple emoji · Close with × or Esc</footer>
   </main>;
 }
 
