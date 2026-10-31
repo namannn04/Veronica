@@ -48,6 +48,7 @@ export class SettingsWatcher {
         this._file = null;
         this._monitor = null;
         this._changedId = 0;
+        this._reloadId = 0;
         this._listeners = new Set();
     }
 
@@ -55,8 +56,22 @@ export class SettingsWatcher {
         this._file = Gio.File.new_for_path(settingsPath());
         this._read();
         try {
-            this._monitor = this._file.monitor_file(Gio.FileMonitorFlags.NONE, null);
-            this._changedId = this._monitor.connect('changed', () => this._read());
+            // Settings are saved with atomic rename. Watch the parent so the
+            // monitor survives replacement and also works before first save.
+            const parent = this._file.get_parent();
+            GLib.mkdir_with_parents(parent.get_path(), 0o700);
+            this._monitor = parent.monitor_directory(Gio.FileMonitorFlags.NONE, null);
+            this._changedId = this._monitor.connect('changed', (_monitor, file, other) => {
+                if (file?.get_basename() !== 'settings.json' && other?.get_basename() !== 'settings.json')
+                    return;
+                if (this._reloadId)
+                    GLib.Source.remove(this._reloadId);
+                this._reloadId = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 80, () => {
+                    this._reloadId = 0;
+                    this._read();
+                    return GLib.SOURCE_REMOVE;
+                });
+            });
         } catch (error) {
             // Without a monitor the values simply stay as they were at login,
             // which is better than failing to enable at all.
@@ -66,6 +81,9 @@ export class SettingsWatcher {
     }
 
     disable() {
+        if (this._reloadId)
+            GLib.Source.remove(this._reloadId);
+        this._reloadId = 0;
         if (this._monitor && this._changedId)
             this._monitor.disconnect(this._changedId);
         this._monitor?.cancel();
@@ -115,7 +133,15 @@ export class SettingsWatcher {
             // Absent on a first launch, or momentarily replaced by the atomic
             // rename the app uses to save. Either way, nothing to report.
         }
-        const next = parseSettings(text);
+        // An unreadable or partially written file is not an instruction to
+        // switch off working inhibitors. Retain the last complete snapshot.
+        if (text === null)
+            return;
+        let parsed;
+        try { parsed = JSON.parse(text); } catch { return; }
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+            return;
+        const next = parsed;
         // A file monitor fires several times for one atomic replace, so only a
         // real change is forwarded.
         if (JSON.stringify(next) === JSON.stringify(this._values))
