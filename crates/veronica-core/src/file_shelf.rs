@@ -194,7 +194,10 @@ mod tests {
         );
         let entries = shelf.entries().unwrap();
         shelf.remove(&entries[0].id).unwrap();
-        assert_eq!(shelf.import_legacy(&[source.clone()]).unwrap(), 0);
+        assert_eq!(
+            shelf.import_legacy(std::slice::from_ref(&source)).unwrap(),
+            0
+        );
         assert!(shelf.entries().unwrap().is_empty());
         assert!(source.exists());
     }

@@ -130,6 +130,21 @@ export function launchApp() {
     }
 }
 
+/** Native URI drop surface, opened from the notch Files tab. */
+export function launchFileShelf() {
+    const app = DesktopAppInfo.new('Veronica.desktop') ??
+        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    if (app?.list_actions().includes('FileShelf')) {
+        app.launch_action('FileShelf', null);
+        return;
+    }
+    try {
+        Gio.Subprocess.new(['veronica', '--file-shelf'], Gio.SubprocessFlags.NONE);
+    } catch (error) {
+        console.debug(`veronica: cannot open file shelf: ${error}`);
+    }
+}
+
 // -- formatting -------------------------------------------------------------
 
 export function money(value) {

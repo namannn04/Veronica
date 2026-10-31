@@ -45,6 +45,17 @@ struct Instance {
 
 #[zbus::interface(name = "io.github.namannn04.Veronica.Instance")]
 impl Instance {
+    fn show_file_shelf(&self) {
+        if let Some(app) = self.app.get() {
+            let handle = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                if let Err(error) = crate::file_shelf::show(&handle) {
+                    tracing::warn!("cannot open file shelf: {error:#}");
+                }
+            });
+        }
+    }
+
     /// Show the window, unless the second launch was itself a background one
     /// (an autostart racing a manual launch has nothing to show).
     fn activate(&self, background: bool) {
@@ -71,7 +82,7 @@ impl Instance {
 ///
 /// `None` means there is no usable session bus, and the app runs unguarded
 /// rather than refusing to start.
-pub(crate) fn claim(background: bool) -> Option<Claim> {
+pub(crate) fn claim(background: bool, shelf: bool) -> Option<Claim> {
     tauri::async_runtime::block_on(async move {
         let connection = match zbus::Connection::session().await {
             Ok(connection) => connection,
@@ -108,16 +119,28 @@ pub(crate) fn claim(background: bool) -> Option<Claim> {
                 app,
             }));
         }
-        match connection
-            .call_method(
-                Some(BUS_NAME),
-                OBJECT_PATH,
-                Some(INTERFACE),
-                "Activate",
-                &(background,),
-            )
-            .await
-        {
+        let result = if shelf {
+            connection
+                .call_method(
+                    Some(BUS_NAME),
+                    OBJECT_PATH,
+                    Some(INTERFACE),
+                    "ShowFileShelf",
+                    &(),
+                )
+                .await
+        } else {
+            connection
+                .call_method(
+                    Some(BUS_NAME),
+                    OBJECT_PATH,
+                    Some(INTERFACE),
+                    "Activate",
+                    &(background,),
+                )
+                .await
+        };
+        match result {
             Ok(_) => Some(Claim::AlreadyRunning),
             Err(error) => {
                 // The owner is wedged or is something else entirely; starting

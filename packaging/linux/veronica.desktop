@@ -11,3 +11,9 @@ Categories=System;Monitor;
 Keywords=usage;claude;codex;monitor;clipboard;control;
 StartupNotify=true
 StartupWMClass=Veronica
+
+Actions=FileShelf;
+
+[Desktop Action FileShelf]
+Name=File Shelf
+Exec=veronica --file-shelf
