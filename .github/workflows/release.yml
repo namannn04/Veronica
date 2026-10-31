@@ -75,14 +75,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
-          gh release create "v${version}" \
-            "target/release/bundle/deb/Veronica_${version}_amd64.deb" \
-            "target/release/bundle/appimage/Veronica_${version}_amd64.AppImage" \
-            "target/flatpak/Veronica_${version}_x86_64.flatpak" \
-            "target/release/bundle/SHA256SUMS" \
-            --title "Veronica ${version}" \
-            --generate-notes \
-            --verify-tag
+          artifacts=(
+            "target/release/bundle/deb/Veronica_${version}_amd64.deb"
+            "target/release/bundle/appimage/Veronica_${version}_amd64.AppImage"
+            "target/flatpak/Veronica_${version}_x86_64.flatpak"
+            "target/release/bundle/SHA256SUMS"
+          )
+          # A maintainer can prepare a draft under their own account before
+          # pushing the tag. Finish that draft without replacing its author.
+          if gh release view "v${version}" --json isDraft > /tmp/veronica-release.json; then
+            jq -e '.isDraft == true' /tmp/veronica-release.json
+            gh release upload "v${version}" "${artifacts[@]}" --clobber
+            gh release edit "v${version}" --draft=false --latest
+          else
+            gh release create "v${version}" "${artifacts[@]}" \
+              --title "Veronica ${version}" \
+              --generate-notes \
+              --verify-tag
+          fi
 
       - name: Republish the Flatpak repository
         env:
