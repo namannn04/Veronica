@@ -457,7 +457,11 @@ export class NotchPanel {
             const state = awakeState(values, awakeSwitch, now);
             if (button)
                 this._setToggle(button, state.active);
-            this._power?.set(awakeSwitch.key, state.active);
+            if (this._power?.set(awakeSwitch.key, state.active) === false && state.active) {
+                if (button)
+                    this._setToggle(button, false);
+                Main.notify('Veronica', `${awakeSwitch.title} could not acquire its inhibitors.`);
+            }
             // With the app closed nothing else ends a timed session, so the
             // stored pair is cleared here; the app does the same if it is open.
             if (state.expired)
