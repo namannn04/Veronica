@@ -50,6 +50,9 @@ impl CodexLimits {
 
 fn to_window(raw: &RawWindow) -> Option<(f64, LimitWindow)> {
     let percent = raw.used_percent?;
+    if !percent.is_finite() || !(0.0..=100.0).contains(&percent) {
+        return None;
+    }
     let resets_at = raw
         .resets_at
         .and_then(|seconds| chrono::DateTime::from_timestamp(seconds as i64, 0));
@@ -61,25 +64,29 @@ fn to_window(raw: &RawWindow) -> Option<(f64, LimitWindow)> {
 
 /// Map the reply's rate-limit snapshot onto session and weekly windows.
 ///
-/// Ordered by duration rather than trusting the `primary`/`secondary` naming,
-/// which says nothing about which window is which.
+/// Classify each available duration independently, including partial replies.
 pub fn parse_snapshot(snapshot: &Value) -> CodexLimits {
-    let mut windows: Vec<(f64, LimitWindow)> = ["primary", "secondary"]
-        .iter()
-        .filter_map(|key| snapshot.get(*key))
-        .filter_map(|value| serde_json::from_value::<RawWindow>(value.clone()).ok())
-        .filter_map(|raw| to_window(&raw))
-        .collect();
-
-    windows.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-
     let mut limits = CodexLimits::default();
-    let mut iter = windows.into_iter();
-    if let Some((_, window)) = iter.next() {
-        limits.session = Some(window);
-    }
-    if let Some((_, window)) = iter.next() {
-        limits.week = Some(window);
+    for key in ["primary", "secondary"] {
+        let Some((duration, window)) = snapshot
+            .get(key)
+            .and_then(|value| serde_json::from_value::<RawWindow>(value.clone()).ok())
+            .and_then(|raw| to_window(&raw))
+        else {
+            continue;
+        };
+        // Classify each window independently. If only a weekly window is
+        // available, sorting a one-item list used to relabel it as Session.
+        let weekly = if duration > 0.0 {
+            duration > 24.0 * 60.0
+        } else {
+            key == "secondary"
+        };
+        if weekly {
+            limits.week = Some(window);
+        } else {
+            limits.session = Some(window);
+        }
     }
     limits
 }
@@ -284,9 +291,31 @@ mod tests {
             "secondary": {"usedPercent": 20.0, "windowDurationMins": 10080}
         });
         let limits = parse_snapshot(&snapshot);
-        // Only the usable window survives, and it lands in the session slot.
-        assert_eq!(limits.session.unwrap().percent, 20.0);
-        assert!(limits.week.is_none());
+        assert!(limits.session.is_none());
+        assert_eq!(limits.week.unwrap().percent, 20.0);
+    }
+
+    #[test]
+    fn a_lone_weekly_primary_stays_weekly() {
+        let limits = parse_snapshot(&json!({
+            "primary": {"usedPercent": 32.0, "windowDurationMins": 10080}
+        }));
+        assert!(limits.session.is_none());
+        assert_eq!(limits.week.unwrap().percent, 32.0);
+    }
+
+    #[test]
+    fn unknown_secondary_duration_does_not_become_session_usage() {
+        let limits = parse_snapshot(&json!({"secondary": {"usedPercent": 55.0}}));
+        assert!(limits.session.is_none());
+        assert_eq!(limits.week.unwrap().percent, 55.0);
+    }
+
+    #[test]
+    fn invalid_percentages_are_unavailable_instead_of_fabricated() {
+        for percent in [-1.0, 101.0] {
+            assert!(parse_snapshot(&json!({"primary": {"usedPercent": percent}})).is_empty());
+        }
     }
 
     #[test]
