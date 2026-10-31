@@ -114,7 +114,14 @@ export class NotchPanel {
             });
             content.add_child(label);
             button.set_child(content);
-            button.connect('clicked', () => this._selectTab(id));
+            button.connect('clicked', () => {
+                if (id === 'files') {
+                    this._closeMenu?.();
+                    launchFileShelf();
+                } else {
+                    this._selectTab(id);
+                }
+            });
             button._veronicaLabel = label;
             this._tabButtons.set(id, button);
             header.add_child(button);

@@ -15,6 +15,7 @@ pub mod clipboard;
 pub mod companion;
 pub mod emoji;
 pub mod extensions;
+pub mod file_shelf;
 pub mod focus_dim;
 pub mod fsutil;
 pub mod host;

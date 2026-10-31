@@ -6,6 +6,7 @@ mod alerts;
 mod art;
 mod commands;
 mod emoji_picker;
+mod file_shelf;
 mod main_window;
 mod presenter;
 mod single_instance;
@@ -24,9 +25,10 @@ fn main() {
     init_logging();
     force_x11_backend();
 
-    let background = is_background_launch(std::env::args_os());
+    let shelf = std::env::args().any(|arg| arg == "--file-shelf");
+    let background = shelf || is_background_launch(std::env::args_os());
 
-    if let Err(error) = run(background) {
+    if let Err(error) = run(background, shelf) {
         eprintln!("veronica: {error:#}");
         std::process::exit(1);
     }
@@ -191,8 +193,8 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
     }
 }
 
-fn run(background: bool) -> Result<()> {
-    let instance = match single_instance::claim(background) {
+fn run(background: bool, shelf: bool) -> Result<()> {
+    let instance = match single_instance::claim(background, shelf) {
         Some(single_instance::Claim::AlreadyRunning) => return Ok(()),
         Some(single_instance::Claim::First(guard)) => Some(guard),
         None => None,
@@ -362,7 +364,9 @@ fn run(background: bool) -> Result<()> {
             // still get their chance.
             sync_global_shortcuts(&handle, &handle.state::<AppState>().settings_snapshot());
 
-            if !background {
+            if shelf {
+                file_shelf::show(&handle)?;
+            } else if !background {
                 main_window::show(&handle, Some("home"))?;
             }
 
