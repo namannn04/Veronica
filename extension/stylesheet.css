@@ -139,6 +139,21 @@
  * same visual language as the macOS app this is a port of.
  */
 
+.veronica-notch-button {
+  background-color: #050506;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 2px 0;
+  padding: 0 14px;
+  color: #f5f5f7;
+  transition-duration: 180ms;
+}
+
+.veronica-notch-button:hover, .veronica-notch-button:active {
+  background-color: #121214;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
 .veronica-notch-clock {
   font-feature-settings: "tnum";
   padding: 0 4px;
@@ -164,17 +179,18 @@
 
 .veronica-notch-shell-menu .popup-menu-content {
   padding: 0;
-  border-radius: 22px;
+  border-radius: 30px;
   background-color: rgba(4, 4, 5, 0.985);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: none;
 }
 
 .veronica-notch-shell-menu {
-  -arrow-rise: 7px;
-  -arrow-border-radius: 22px;
+  -arrow-rise: 0px;
+  -arrow-base: 0px;
+  -arrow-border-radius: 30px;
   -arrow-background-color: rgba(4, 4, 5, 0.985);
-  -arrow-border-color: rgba(255, 255, 255, 0.16);
+  -arrow-border-color: rgba(255, 255, 255, 0.08);
   -arrow-border-width: 1px;
   box-shadow: none;
 }
