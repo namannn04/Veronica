@@ -12,8 +12,32 @@ import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 const FRAME_WIDTH = 320;
-const FRAME_HEIGHT = 180;
-const FRAME_STRIDE = FRAME_WIDTH * 4;
+const DEFAULT_HEIGHT = 180;
+
+export function previewSize(width, height) {
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0)
+        throw new Error('The camera returned invalid dimensions');
+    const scale = Math.min(292 / width, 164 / height);
+    return { width: width * scale, height: height * scale };
+}
+
+export function rgbaFrame(info, byteLength) {
+    const { width, height } = info;
+    const stride = info.stride[0];
+    const offset = info.offset[0];
+    if (![width, height, stride, offset].every(Number.isInteger) ||
+        width <= 0 || height <= 0 || offset < 0 || stride < width * 4 ||
+        offset + (height - 1) * stride + width * 4 > byteLength)
+        throw new Error('The camera returned an incomplete RGBA frame');
+    return { width, height, stride, offset };
+}
+
+export function cameraPipeline(flipHorizontal = false) {
+    return 'v4l2src do-timestamp=true ! videoconvert ! videoscale add-borders=false ! ' +
+        `videoflip name=veronica_camera_flip video-direction=${flipHorizontal ? 'horiz' : 'identity'} ! ` +
+        `video/x-raw,format=RGBA,width=${FRAME_WIDTH},pixel-aspect-ratio=1/1 ! ` +
+        'appsink name=veronica_camera_sink emit-signals=false sync=false max-buffers=1 drop=true';
+}
 
 // GStreamer is loaded here rather than imported, so a machine without its
 // introspection data loses the camera and nothing else: a failed static import
@@ -23,9 +47,11 @@ const FRAME_STRIDE = FRAME_WIDTH * 4;
 let Gst = null;
 // Importing GstApp registers AppSink's pull_sample method with GJS.
 let GstApp = null;
+let GstVideo = null;
 try {
     Gst = (await import('gi://Gst')).default;
     GstApp = (await import('gi://GstApp')).default;
+    GstVideo = (await import('gi://GstVideo')).default;
 } catch (error) {
     console.debug(`veronica: camera preview unavailable without GStreamer: ${error}`);
     Gst = null;
@@ -41,10 +67,13 @@ function ensureGst() {
 }
 
 export class CameraPreview {
-    constructor(surface, onFrame, onError) {
+    constructor(surface, onFrame, onError, onSize = null) {
         this._surface = surface;
         this._onFrame = onFrame;
         this._onError = onError;
+        this._onSize = onSize;
+        this._flipHorizontal = false;
+        this._size = null;
         this._pipeline = null;
         this._sink = null;
         this._bus = null;
@@ -55,7 +84,7 @@ export class CameraPreview {
 
         this._content = new St.ImageContent({
             preferred_width: FRAME_WIDTH,
-            preferred_height: FRAME_HEIGHT,
+            preferred_height: DEFAULT_HEIGHT,
         });
         this._surface.set_content(this._content);
         this._surface.content_gravity = Clutter.ContentGravity.RESIZE_ASPECT;
@@ -63,6 +92,12 @@ export class CameraPreview {
 
     get isRunning() {
         return this._pipeline !== null;
+    }
+
+    setFlipHorizontal(value) {
+        this._flipHorizontal = value === true;
+        this._pipeline?.get_by_name('veronica_camera_flip')
+            ?.set_property('video-direction', this._flipHorizontal ? 4 : 0);
     }
 
     start() {
@@ -78,11 +113,7 @@ export class CameraPreview {
         this._hasFrame = false;
 
         try {
-            this._pipeline = Gst.parse_launch(
-                'v4l2src do-timestamp=true ! videoconvert ! videoscale ! ' +
-                `video/x-raw,format=RGBA,width=${FRAME_WIDTH},height=${FRAME_HEIGHT} ! ` +
-                'appsink name=veronica_camera_sink emit-signals=false sync=false max-buffers=1 drop=true'
-            );
+            this._pipeline = Gst.parse_launch(cameraPipeline(this._flipHorizontal));
             this._sink = this._pipeline.get_by_name('veronica_camera_sink');
             if (!this._sink)
                 throw new Error('The camera preview sink could not be created');
@@ -135,16 +166,21 @@ export class CameraPreview {
             if (!buffer)
                 return;
             const data = buffer.extract_dup(0, buffer.get_size());
-            if (data.length < FRAME_STRIDE * FRAME_HEIGHT)
-                throw new Error('The camera returned an incomplete RGBA frame');
-
-            const bytes = new GLib.Bytes(data);
+            const info = GstVideo.VideoInfo.new_from_caps(sample.get_caps());
+            const { width, height, stride, offset } = rgbaFrame(info, data.length);
+            if (this._size?.width !== width || this._size?.height !== height) {
+                this._size = { width, height };
+                this._content.set_preferred_width(width);
+                this._content.set_preferred_height(height);
+                this._onSize?.(previewSize(width, height));
+            }
+            const bytes = new GLib.Bytes(offset === 0 ? data : data.subarray(offset));
             const args = [
                 bytes,
                 Cogl.PixelFormat.RGBA_8888,
-                FRAME_WIDTH,
-                FRAME_HEIGHT,
-                FRAME_STRIDE,
+                width,
+                height,
+                stride,
             ];
             // GNOME 48+ requires the compositor's CoglContext explicitly.
             if (this._content.set_bytes.length === 6) {
@@ -200,6 +236,7 @@ export class CameraPreview {
         this._sink = null;
         this._bus = null;
         this._hasFrame = false;
+        this._size = null;
     }
 
     destroy() {
@@ -209,6 +246,7 @@ export class CameraPreview {
         this._content = null;
         this._onFrame = null;
         this._onError = null;
+        this._onSize = null;
     }
 }
 
