@@ -11,7 +11,13 @@ pub fn download_https(url: &str, destination: &Path) -> Result<PathBuf> {
     if !url.starts_with("https://") {
         bail!("Release downloads require HTTPS");
     }
-    download_with(url, destination, curl_command)
+    download_with(
+        url,
+        destination,
+        curl_command,
+        5,
+        std::time::Duration::from_secs(1),
+    )
 }
 
 fn curl_command(url: &str, partial: &Path) -> Command {
@@ -30,13 +36,10 @@ fn curl_command(url: &str, partial: &Path) -> Command {
             "15",
             "--max-time",
             "300",
-            "--retry",
-            "4",
-            "--retry-all-errors",
-            "--retry-delay",
-            "1",
-            "--retry-max-time",
-            "600",
+            "--continue-at",
+            "-",
+            "--write-out",
+            "%{http_code}",
             "--output",
         ])
         .arg(partial)
@@ -47,7 +50,9 @@ fn curl_command(url: &str, partial: &Path) -> Command {
 fn download_with(
     url: &str,
     destination: &Path,
-    command: impl FnOnce(&str, &Path) -> Command,
+    command: impl Fn(&str, &Path) -> Command,
+    attempts: usize,
+    delay: std::time::Duration,
 ) -> Result<PathBuf> {
     let name = destination
         .file_name()
@@ -64,13 +69,35 @@ fn download_with(
             .write(true)
             .create_new(true)
             .open(&partial)?;
-        let output = command(url, &partial).output().context("cannot run curl")?;
-        if !output.status.success() {
-            bail!("Download failed after bounded retries: {}. Try again or download from the release page.",
-                String::from_utf8_lossy(&output.stderr).trim());
+        let started = std::time::Instant::now();
+        let budget = std::time::Duration::from_secs(900);
+        let mut detail = String::new();
+        for attempt in 0..attempts {
+            let remaining = budget.saturating_sub(started.elapsed());
+            if remaining.is_zero() {
+                break;
+            }
+            let output = command(url, &partial)
+                .args(["--max-time", &remaining.as_secs().clamp(1, 300).to_string()])
+                .output()
+                .context("cannot run curl")?;
+            if output.status.success() {
+                std::fs::rename(&partial, destination)
+                    .context("cannot finish the release download")?;
+                return Ok(destination.to_path_buf());
+            }
+            detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            // Keep received bytes and ask for the remainder on the next call.
+            // If a server cannot resume, restart safely instead of appending
+            // a complete response to the partial body.
+            if matches!(output.status.code(), Some(33 | 36)) || output.stdout == b"416" {
+                std::fs::write(&partial, [])?;
+            }
+            if attempt + 1 < attempts {
+                std::thread::sleep(delay.min(budget.saturating_sub(started.elapsed())));
+            }
         }
-        std::fs::rename(&partial, destination).context("cannot finish the release download")?;
-        Ok(destination.to_path_buf())
+        bail!("Download failed after bounded retries: {detail}. Try again or download from the release page.")
     })();
     if result.is_err() {
         let _ = std::fs::remove_file(partial);
@@ -111,7 +138,7 @@ mod tests {
             "--proto-redir",
             "=http",
             "--retry",
-            "1",
+            "0",
             "--retry-delay",
             "1",
             "--retry-max-time",
@@ -122,18 +149,32 @@ mod tests {
         command
     }
     #[test]
-    fn interrupted_transfer_is_restarted_without_duplicating_partial_bytes() {
+    fn interrupted_transfer_is_resumed_without_duplicating_partial_bytes() {
         let (url, server) = serve(vec![
-            b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\nbad",
-            b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\ncomplete",
+            b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\ncom",
+            b"HTTP/1.1 206 Partial Content\r\nContent-Length: 5\r\nContent-Range: bytes 3-7/8\r\nConnection: close\r\n\r\nplete",
         ]);
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("package.deb");
-        download_with(&url, &path, local_command).unwrap();
+        download_with(&url, &path, local_command, 2, std::time::Duration::ZERO).unwrap();
         server.join().unwrap();
         assert_eq!(std::fs::read(path).unwrap(), b"complete");
         assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
     }
+    #[test]
+    fn a_server_ignoring_range_requests_falls_back_to_a_clean_download() {
+        let (url, server) = serve(vec![
+            b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\ncom",
+            b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\ncomplete",
+            b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\ncomplete",
+        ]);
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("package.deb");
+        download_with(&url, &path, local_command, 3, std::time::Duration::ZERO).unwrap();
+        server.join().unwrap();
+        assert_eq!(std::fs::read(path).unwrap(), b"complete");
+    }
+
     #[test]
     fn exhausted_retries_leave_no_installable_partial_package() {
         let (url, server) = serve(vec![
@@ -142,7 +183,7 @@ mod tests {
         ]);
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("package.deb");
-        assert!(download_with(&url, &path, local_command).is_err());
+        assert!(download_with(&url, &path, local_command, 2, std::time::Duration::ZERO).is_err());
         server.join().unwrap();
         assert!(!path.exists());
         assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
@@ -155,7 +196,7 @@ mod tests {
         ]);
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("SHA256SUMS");
-        download_with(&url, &path, local_command).unwrap();
+        download_with(&url, &path, local_command, 2, std::time::Duration::ZERO).unwrap();
         server.join().unwrap();
         assert_eq!(std::fs::read(path).unwrap(), b"ok");
     }
