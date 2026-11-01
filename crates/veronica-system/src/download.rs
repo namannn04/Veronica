@@ -201,6 +201,42 @@ mod tests {
         assert_eq!(std::fs::read(path).unwrap(), b"ok");
     }
     #[test]
+    fn terminal_installer_resumes_an_interrupted_transfer() {
+        let (url, server) = serve(vec![
+            b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\nConnection: close\r\n\r\ncom",
+            b"HTTP/1.1 206 Partial Content\r\nContent-Length: 5\r\nContent-Range: bytes 3-7/8\r\nConnection: close\r\n\r\nplete",
+        ]);
+        let source = include_str!("../../../install.sh");
+        let helpers = source
+            .split("fetch() {")
+            .nth(1)
+            .unwrap()
+            .split("\nversion=")
+            .next()
+            .unwrap();
+        let helpers = format!("fetch() {{{helpers}").replace(
+            "--proto '=https' --proto-redir '=https'",
+            "--proto '=http' --proto-redir '=http'",
+        );
+        let script = format!("set -euo pipefail\n{helpers}\ndownload_file \"$1\" \"$2\"");
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("package.deb");
+        let output = Command::new("bash")
+            .args(["-c", &script, "download-test"])
+            .arg(&path)
+            .arg(url)
+            .output()
+            .unwrap();
+        server.join().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(std::fs::read(path).unwrap(), b"complete");
+    }
+
+    #[test]
     fn insecure_release_urls_are_refused() {
         let root = tempfile::tempdir().unwrap();
         assert!(download_https("http://example.invalid/file", &root.path().join("file")).is_err());
