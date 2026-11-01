@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 pub struct FileShelf {
     root: PathBuf,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 pub struct ShelfEntry {
     pub id: String,
     pub name: String,
