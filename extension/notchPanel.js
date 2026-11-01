@@ -311,6 +311,7 @@ export class NotchPanel {
             x_expand: true,
             y_expand: true,
         });
+        this._cameraFrame = frame;
         frame.add_child(this._cameraSurface);
 
         this._cameraPlaceholder = vbox({
@@ -347,14 +348,39 @@ export class NotchPanel {
         this._cameraButton.connect('clicked', () => this._toggleCameraPreview());
         panel.add_child(this._cameraButton);
 
+        this._cameraFlipButton = new St.Button({
+            style_class: 'veronica-camera-preview-button',
+            label: 'Flip horizontally: Off',
+            can_focus: true,
+            x_align: Clutter.ActorAlign.CENTER,
+        });
+        this._cameraFlipButton.connect('clicked', () => {
+            const next = !this._cameraFlipHorizontal;
+            runJson(['config', 'set', 'cameraFlipHorizontal', String(next)], this._cancellable)
+                .then(result => {
+                    if (result !== null)
+                        this._applyCameraOrientation(next);
+                });
+        });
+        const controls = new St.BoxLayout({ style: 'spacing: 8px;', x_align: Clutter.ActorAlign.CENTER });
+        panel.remove_child(this._cameraButton);
+        controls.add_child(this._cameraButton);
+        controls.add_child(this._cameraFlipButton);
+        panel.add_child(controls);
+
         this._cameraPreview = new CameraPreview(
             this._cameraSurface,
             () => {
                 if (this._cameraPlaceholder)
                     this._cameraPlaceholder.visible = false;
             },
-            error => this._cameraPreviewFailed(error)
+            error => this._cameraPreviewFailed(error),
+            size => {
+                this._cameraFrame?.set_style(`width: ${size.width}px; height: ${size.height}px;`);
+                this._cameraSurface?.set_size(size.width, size.height);
+            }
         );
+        this._applyCameraOrientation(this._settings?.values?.cameraFlipHorizontal === true);
         return panel;
     }
 
@@ -593,6 +619,13 @@ export class NotchPanel {
         return row;
     }
 
+    _applyCameraOrientation(enabled) {
+        this._cameraFlipHorizontal = enabled === true;
+        this._cameraPreview?.setFlipHorizontal(this._cameraFlipHorizontal);
+        if (this._cameraFlipButton)
+            this._cameraFlipButton.label = `Flip horizontally: ${this._cameraFlipHorizontal ? 'On' : 'Off'}`;
+    }
+
     _toggleCameraPreview() {
         if (this._cameraPreview?.isRunning) {
             this._stopCameraPreview();
@@ -640,6 +673,7 @@ export class NotchPanel {
     }
 
     _applyFeatureSettings(values) {
+        this._applyCameraOrientation(values?.cameraFlipHorizontal === true);
         this._clipboardEnabled = booleanSetting(values, 'clipboardEnabled', true);
         const clipboardButton = this._tabButtons.get('clipboard');
         const clipboardPanel = this._panels.get('clipboard');
@@ -833,6 +867,8 @@ export class NotchPanel {
         this._fileRows = null;
         this._messageList = null;
         this._cameraSurface = null;
+        this._cameraFrame = null;
+        this._cameraFlipButton = null;
         this._cameraPlaceholder = null;
         this._cameraTitle = null;
         this._cameraDetail = null;
