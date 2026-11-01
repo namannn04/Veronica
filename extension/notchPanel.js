@@ -17,7 +17,7 @@ import { AWAKE_SWITCHES, awakeState, nextDeadline } from './awakeState.js';
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
-import { launchApp, runJson, vbox } from './lib.js';
+import { launchApp, launchFileShelf, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { presenterClick, presenterState } from './presenterGate.js';
@@ -39,11 +39,13 @@ export class NotchPanel {
         closeMenu = null,
         onThemeChanged = null,
         settings = null,
-        keyboardCleaner = null
+        keyboardCleaner = null,
+        reopenFiles = null
     ) {
         this._clipboardWatcher = clipboardWatcher;
         this._cancellable = cancellable;
         this._closeMenu = closeMenu;
+        this._reopenFiles = reopenFiles;
         this._onThemeChanged = onThemeChanged;
         this._settings = settings;
         this._keyboardCleaner = keyboardCleaner;
@@ -114,14 +116,7 @@ export class NotchPanel {
             });
             content.add_child(label);
             button.set_child(content);
-            button.connect('clicked', () => {
-                if (id === 'files') {
-                    this._closeMenu?.();
-                    launchFileShelf();
-                } else {
-                    this._selectTab(id);
-                }
-            });
+            button.connect('clicked', () => this._selectTab(id));
             button._veronicaLabel = label;
             this._tabButtons.set(id, button);
             header.add_child(button);
@@ -271,8 +266,9 @@ export class NotchPanel {
         }));
         toolbar.add_child(new St.Widget({ x_expand: true }));
         toolbar.add_child(this._smallButton('list-add-symbolic', 'Add files', () => this._chooseFiles()));
+        toolbar.add_child(this._smallButton('view-grid-symbolic', 'Open drag-and-drop shelf', () => launchFileShelf()));
         toolbar.add_child(this._smallButton('edit-clear-all-symbolic', 'Clear shelf', () => {
-            this._saveFiles([]).catch(() => {});
+            this._fileAction(['clear']).catch(() => {});
         }));
         panel.add_child(toolbar);
 
@@ -543,23 +539,26 @@ export class NotchPanel {
         );
     }
 
-    async _readFiles() {
-        const value = await runJson(['config', 'get', 'notchShelfFiles'], this._cancellable);
-        return Array.isArray(value)
-            ? value.filter(path => typeof path === 'string' && GLib.file_test(path, GLib.FileTest.EXISTS))
-            : [];
-    }
-
-    async _saveFiles(paths) {
-        await runJson(
-            ['config', 'set', 'notchShelfFiles', JSON.stringify([...new Set(paths)])],
-            this._cancellable
-        );
-        await this._refreshFiles();
+    async _fileAction(args) {
+        const request = this._filesRequest = (this._filesRequest ?? 0) + 1;
+        const result = await runJson(['shelf', ...args], this._cancellable);
+        if (!this._fileRows || request !== this._filesRequest)
+            return;
+        this._fileRows.destroy_all_children();
+        const entries = result?.entries;
+        if (!Array.isArray(entries) || entries.length === 0) {
+            this._fileRows.add_child(new St.Label({
+                text: Array.isArray(entries) ? 'Add files to keep a copy here' : 'The shelf could not be loaded. Check that Veronica and vr are up to date.',
+                style_class: 'veronica-empty veronica-files-empty',
+                x_align: Clutter.ActorAlign.CENTER,
+            }));
+            return;
+        }
+        for (const entry of entries)
+            this._fileRows.add_child(this._fileRow(entry));
     }
 
     async _chooseFiles() {
-        this._closeMenu?.();
         try {
             const process = Gio.Subprocess.new([
                 'zenity', '--file-selection', '--multiple', '--separator=\n',
@@ -569,37 +568,27 @@ export class NotchPanel {
             if (!process.get_successful() || !stdout?.trim())
                 return;
             const selected = stdout.split('\n').map(path => path.trim()).filter(Boolean);
-            await this._saveFiles([...(await this._readFiles()), ...selected]);
+            await this._fileAction(['add', ...selected]);
         } catch (error) {
             console.debug(`veronica: file chooser failed: ${error}`);
+        } finally {
+            if (this.actor)
+                this._reopenFiles?.();
         }
     }
 
     async _refreshFiles() {
-        if (!this._fileRows)
-            return;
-        const paths = await this._readFiles();
-        if (!this._fileRows)
-            return;
-        this._fileRows.destroy_all_children();
-        if (paths.length === 0) {
-            this._fileRows.add_child(new St.Label({
-                text: 'Add files to keep them one click away',
-                style_class: 'veronica-empty veronica-files-empty',
-                x_align: Clutter.ActorAlign.CENTER,
-            }));
-            return;
-        }
-        for (const path of paths)
-            this._fileRows.add_child(this._fileRow(path, paths));
+        if (this._activeTab === 'files')
+            await this._fileAction(['list']);
     }
 
-    _fileRow(path, allPaths) {
+    _fileRow(entry) {
+        const { path, id, name } = entry;
         const row = new St.BoxLayout({ style_class: 'veronica-file-row', x_expand: true });
         row.add_child(new St.Icon({ icon_name: 'text-x-generic-symbolic', style_class: 'veronica-file-icon' }));
         const open = new St.Button({
             style_class: 'veronica-file-open',
-            label: GLib.path_get_basename(path),
+            label: name,
             can_focus: true,
             x_expand: true,
             x_align: Clutter.ActorAlign.START,
@@ -614,7 +603,7 @@ export class NotchPanel {
         });
         row.add_child(open);
         row.add_child(this._smallButton('user-trash-symbolic', `Remove ${path}`, () => {
-            this._saveFiles(allPaths.filter(item => item !== path)).catch(() => {});
+            this._fileAction(['remove', id]).catch(() => {});
         }));
         return row;
     }
@@ -876,6 +865,7 @@ export class NotchPanel {
         this._onThemeChanged = null;
         this._settings = null;
         this._keyboardCleaner = null;
+        this._reopenFiles = null;
         this.actor?.destroy();
         this.actor = null;
     }

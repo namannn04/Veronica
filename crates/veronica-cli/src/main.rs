@@ -27,6 +27,7 @@ mod media_cmd;
 mod power_cmd;
 mod presenter_cmd;
 mod quinjet_cmd;
+mod shelf_cmd;
 mod system_cmd;
 mod tools_cmd;
 mod usage_cmd;
@@ -130,6 +131,9 @@ enum Command {
     /// The live Herdr agent board.
     #[command(subcommand)]
     Herdr(herdr_cmd::HerdrCommand),
+    /// Owned file copies shared by the notch and native drop shelf.
+    #[command(subcommand)]
+    Shelf(shelf_cmd::ShelfCommand),
     /// Your private notes and voice-memo metadata.
     #[command(subcommand)]
     Companion(companion_cmd::CompanionCommand),
@@ -223,6 +227,7 @@ async fn run(cli: &Cli) -> Result<()> {
             .await
         }
         Command::Config(command) => config(&directories, command, output),
+        Command::Shelf(command) => shelf_cmd::run(&directories, command, output),
         Command::Usage(command) => usage_cmd::run(&directories, command, output).await,
         Command::Alerts(command) => alerts_cmd::run(&directories, command, output).await,
         Command::Attention(command) => attention_cmd::run(&directories, command, output),

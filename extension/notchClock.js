@@ -95,7 +95,11 @@ class NotchButton extends PanelMenu.Button {
             () => this.menu.close(),
             theme => this._applyTheme(theme),
             this._settings,
-            this._keyboardCleaner
+            this._keyboardCleaner,
+            () => {
+                this._notchPanel?.showTab('files');
+                this.menu.open();
+            }
         );
         const item = new PopupMenu.PopupBaseMenuItem({ reactive: false, can_focus: false });
         item.add_style_class_name('veronica-notch-root-item');
