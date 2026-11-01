@@ -7,6 +7,7 @@
 pub mod audio;
 pub mod bluetooth;
 pub mod color;
+pub mod download;
 pub mod herdr;
 pub mod metrics;
 pub mod notifications;
