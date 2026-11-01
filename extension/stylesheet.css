@@ -1128,3 +1128,12 @@
     font-size: 20px;
     font-weight: 600;
 }
+
+/* The BoxPointer border paints the themed island material. Keep the content
+ * layer transparent so it can reveal at full scale over the material morph.
+ * Match theme-selector specificity and override their duplicated backgrounds. */
+.veronica-notch-shell-menu.popup-menu-boxpointer .popup-menu-content {
+  background-color: transparent;
+  border-width: 0;
+  box-shadow: none;
+}
