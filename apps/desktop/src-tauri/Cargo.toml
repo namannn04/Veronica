@@ -35,12 +35,10 @@ chrono = { workspace = true }
 # Album art arrives as a local file path; it is inlined as a data URL because the
 # webview's content policy does not load file:// URLs.
 base64 = "0.22"
+tempfile = "3"
 
 # The notch overlay limits its clickable area with an X11 input shape, which
 # needs the GTK window Tauri wraps. Pinned to the versions Tauri 2 links.
 [target."cfg(target_os = \"linux\")".dependencies]
 gtk = "0.18"
 cairo-rs = "0.18"
-
-[dev-dependencies]
-tempfile = "3"

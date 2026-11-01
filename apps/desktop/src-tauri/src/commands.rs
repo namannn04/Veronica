@@ -1365,34 +1365,16 @@ pub async fn update_install(version: String) -> CommandResult<String> {
 fn install_deb_release(version: &str) -> CommandResult<String> {
     let asset = format!("Veronica_{version}_amd64.deb");
     let root = format!("https://github.com/namannn04/Veronica/releases/download/v{version}");
-    let work =
-        std::env::temp_dir().join(format!("veronica-update-{version}-{}", std::process::id()));
-    std::fs::create_dir_all(&work).map_err(|error| error.to_string())?;
-    let result = (|| {
+    let directory = tempfile::Builder::new()
+        .prefix(&format!("veronica-update-{version}-"))
+        .tempdir()
+        .map_err(|error| format!("cannot prepare update download: {error}"))?;
+    let work = directory.path();
+    (|| {
         let download = |name: &str| -> CommandResult<std::path::PathBuf> {
             let path = work.join(name);
-            let output = std::process::Command::new("curl")
-                .args([
-                    "--fail",
-                    "--silent",
-                    "--show-error",
-                    "--location",
-                    "--max-time",
-                    "300",
-                    "--output",
-                ])
-                .arg(&path)
-                .arg(format!("{root}/{name}"))
-                .output()
-                .map_err(|error| format!("cannot run curl: {error}"))?;
-            if output.status.success() {
-                Ok(path)
-            } else {
-                Err(format!(
-                    "cannot download {name}: {}",
-                    String::from_utf8_lossy(&output.stderr).trim()
-                ))
-            }
+            veronica_system::download::download_https(&format!("{root}/{name}"), &path)
+                .map_err(|error| format!("cannot download {name}: {error:#}"))
         };
         let package = download(&asset)?;
         let sums =
@@ -1433,9 +1415,7 @@ fn install_deb_release(version: &str) -> CommandResult<String> {
                 Err(tail.into_iter().rev().collect::<Vec<_>>().join("\n"))
             }
         }
-    })();
-    let _ = std::fs::remove_dir_all(&work);
-    result
+    })()
 }
 
 /// Start the newly installed version in place of this one.
