@@ -28,9 +28,18 @@ for command in curl sha256sum; do
 done
 command -v apt >/dev/null 2>&1 || fail "apt is required; use the AppImage on non-Debian systems."
 
+# Retry transient TLS/connection failures. With --output curl discards the
+# failed partial body before retrying; checksum verification still gates apt.
+fetch() {
+  curl --fail --silent --show-error --location \
+    --proto '=https' --proto-redir '=https' \
+    --connect-timeout 15 --max-time 300 \
+    --retry 4 --retry-all-errors --retry-delay 1 --retry-max-time 600 "$@"
+}
+
 version="${VERONICA_VERSION:-}"
 if [ -z "$version" ]; then
-  latest_url="$(curl --fail --silent --show-error --location \
+  latest_url="$(fetch \
     --output /dev/null --write-out '%{url_effective}' "${release_root}/latest")"
   version="${latest_url##*/}"
   version="${version#v}"
@@ -44,9 +53,9 @@ work_dir="$(mktemp -d)"
 trap 'rm -rf -- "$work_dir"' EXIT
 
 echo "Downloading Veronica ${version}..."
-curl --fail --silent --show-error --location \
+fetch \
   --output "${work_dir}/${asset}" "${download_root}/${asset}"
-curl --fail --silent --show-error --location \
+fetch \
   --output "${work_dir}/SHA256SUMS" "${download_root}/SHA256SUMS"
 
 expected="$(awk -v asset="$asset" '$2 == asset { print $1 }' "${work_dir}/SHA256SUMS")"

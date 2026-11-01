@@ -29,14 +29,14 @@ fn curl_command(url: &str, partial: &Path) -> Command {
             "--connect-timeout",
             "15",
             "--max-time",
-            "60",
+            "300",
             "--retry",
             "4",
             "--retry-all-errors",
             "--retry-delay",
             "1",
             "--retry-max-time",
-            "120",
+            "600",
             "--output",
         ])
         .arg(partial)
