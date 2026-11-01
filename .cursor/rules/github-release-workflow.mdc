@@ -1,0 +1,15 @@
+---
+description: Naman's GitHub identity and automatic release workflow for Veronica
+alwaysApply: true
+---
+
+# GitHub and releases
+
+- Use the authenticated `namannn04` GitHub account. Verify the active login and existing Git author identity before creating public artifacts. Commits must map to Naman's account; preserve the configured, account-associated identity.
+- Create a repository issue before implementing each feature or bug fix. Work on a separate `codex/` branch and make meaningful progress commits linked to the issue.
+- Create the PR under Naman's account. Complete the appropriate checks, resolve failures, then merge it into `main`, preserving the progress commits with a merge commit.
+- A completed feature or bug-fix batch includes publishing the next patch release in the same task. Do not wait for another release reminder unless the user explicitly defers publication. Routine PR merges and release publication are authorized by this workflow.
+- Prepare the release in its own issue and branch. Keep workspace/Cargo.lock, desktop package/Tauri, extension version, AppStream notes and installation examples consistent. Follow the existing release preparation pattern.
+- After the release PR passes CI and merges, create a maintainer-authored GitHub draft before pushing the annotated version tag. The existing release workflow uploads packages and publishes the draft while preserving Naman as author.
+- Verify the release is public, its tag matches the application version, and Debian, AppImage, Flatpak and SHA256SUMS assets are uploaded. Report remaining live verification limits accurately; a draft or running build is not a completed release.
+- Keep unrelated user changes out of commits, including untracked local files.
