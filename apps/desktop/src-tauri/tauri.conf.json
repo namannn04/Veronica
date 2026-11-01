@@ -86,6 +86,7 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/sections.js": "../../../extension/sections.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/nowPlaying.js": "../../../extension/nowPlaying.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchClock.js": "../../../extension/notchClock.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchAnimation.js": "../../../extension/notchAnimation.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchPanel.js": "../../../extension/notchPanel.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/themes.js": "../../../extension/themes.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/ring.js": "../../../extension/ring.js",
