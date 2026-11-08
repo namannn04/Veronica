@@ -145,6 +145,17 @@ export function launchFileShelf() {
     }
 }
 
+/** Desktop actions preserve the Flatpak launcher and its sandbox arguments. */
+export function launchNotchTools() {
+    const app = DesktopAppInfo.new('Veronica.desktop') ??
+        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    if (app?.list_actions().includes('NotchTools')) {
+        app.launch_action('NotchTools', null);
+        return;
+    }
+    Gio.Subprocess.new(['veronica', '--notch-tools'], Gio.SubprocessFlags.NONE);
+}
+
 // -- formatting -------------------------------------------------------------
 
 export function money(value) {

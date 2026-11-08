@@ -17,7 +17,7 @@ import { AWAKE_SWITCHES, awakeState, nextDeadline } from './awakeState.js';
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
-import { launchApp, launchFileShelf, runJson, vbox } from './lib.js';
+import { launchApp, launchFileShelf, launchNotchTools, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { presenterClick, presenterState } from './presenterGate.js';
@@ -262,7 +262,7 @@ export class NotchPanel {
         const open = new St.Button({ label: 'Open Image & QR Tools', can_focus: true, style_class: 'veronica-action-tile' });
         open.connect('clicked', () => {
             try {
-                Gio.Subprocess.new(['veronica', '--notch-tools'], Gio.SubprocessFlags.NONE);
+                launchNotchTools();
                 this._closeMenu?.();
             } catch (error) {
                 Main.notify('Veronica', `Could not open image tools: ${error.message}`);

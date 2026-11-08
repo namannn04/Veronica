@@ -1,7 +1,10 @@
 //! Native notch utility surface: GTK owns clipboard image and URI-drop protocols.
 use crate::image_tools::{self, Source};
 use gtk::{gdk_pixbuf::PixbufLoader, gio, glib, prelude::*};
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 thread_local! { static WINDOW: RefCell<Option<gtk::Window>> = const { RefCell::new(None) }; }
 struct ResultImage {
@@ -72,11 +75,11 @@ pub fn show() -> anyhow::Result<()> {
     qr_row.pack_start(&link, true, true, 0);
     qr_row.add(&generate);
     body.add(&qr_row);
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Job>();
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(u64, Job)>();
     let (result_tx, mut results) = tokio::sync::mpsc::unbounded_channel();
     std::thread::spawn(move || {
         let mut source: Option<Source> = None;
-        while let Some(job) = rx.blocking_recv() {
+        while let Some((request, job)) = rx.blocking_recv() {
             let result: anyhow::Result<(Option<ResultImage>, String, Vec<u8>)> = (|| {
                 match job {
                     Job::Load(bytes) => {
@@ -102,7 +105,11 @@ pub fn show() -> anyhow::Result<()> {
                             .as_ref()
                             .ok_or_else(|| anyhow::anyhow!("Choose an image first"))?;
                         let bytes = image_tools::encode(source, &format)?;
-                        let preview = image_tools::encode(source, "png")?;
+                        let preview = if format == "jpg" {
+                            image_tools::encode(&image_tools::decode(&bytes)?, "png")?
+                        } else {
+                            image_tools::encode(source, "png")?
+                        };
                         return Ok((
                             Some(ResultImage {
                                 bytes,
@@ -141,19 +148,23 @@ pub fn show() -> anyhow::Result<()> {
                 ))
             })();
             if result_tx
-                .send(result.map_err(|error| error.to_string()))
+                .send((request, result.map_err(|error| error.to_string())))
                 .is_err()
             {
                 break;
             }
         }
     });
+    let latest = Rc::new(Cell::new(0_u64));
+    let pending_request = latest.clone();
     let pending_actions = actions.clone();
     let pending_status = status.clone();
     let submit = Rc::new(move |job| {
         pending_actions.hide();
         pending_status.set_text("Processing locally…");
-        let _ = tx.send(job);
+        let request = pending_request.get() + 1;
+        pending_request.set(request);
+        let _ = tx.send((request, job));
     });
     for (name, format) in [("PNG", "png"), ("JPG", "jpg"), ("SVG", "svg")] {
         let button = gtk::Button::with_label(name);
@@ -304,7 +315,10 @@ pub fn show() -> anyhow::Result<()> {
     });
     let weak = window.downgrade();
     let task = glib::MainContext::default().spawn_local(async move {
-        while let Some(result) = results.recv().await {
+        while let Some((request, result)) = results.recv().await {
+            if request != latest.get() {
+                continue;
+            }
             if weak.upgrade().is_none() {
                 break;
             }
