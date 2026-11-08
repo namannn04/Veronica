@@ -348,7 +348,9 @@ pub fn show() -> anyhow::Result<()> {
                         }
                     }
                     if image.is_some() {
+                        actions.set_no_show_all(false);
                         actions.show_all();
+                        actions.set_no_show_all(true);
                     }
                     *output.borrow_mut() = image;
                 }
