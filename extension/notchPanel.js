@@ -29,6 +29,7 @@ const TABS = [
     ['notifications', 'preferences-system-notifications-symbolic', 'Notifications'],
     ['files', 'folder-symbolic', 'Files'],
     ['clipboard', 'edit-paste-symbolic', 'Clipboard'],
+    ['tools', 'applications-utilities-symbolic', 'Tools'],
     ['camera', 'camera-photo-symbolic', 'Camera'],
 ];
 
@@ -73,6 +74,7 @@ export class NotchPanel {
         this._addPanel('home', this._homePanel());
         this._addPanel('notifications', this._notificationsPanel());
         this._addPanel('files', this._filesPanel());
+        this._addPanel('tools', this._toolsPanel());
         this._addPanel('clipboard', this._clipboardPanel());
         this._addPanel('camera', this._cameraPanel());
         this._selectTab('home');
@@ -250,6 +252,23 @@ export class NotchPanel {
         this._messageList = new Calendar.CalendarMessageList();
         this._messageList.add_style_class_name('veronica-shelf-messages');
         panel.add_child(this._messageList);
+        return panel;
+    }
+
+    _toolsPanel() {
+        const panel = vbox({ style_class: 'veronica-shelf-panel', x_expand: true });
+        panel.add_child(new St.Label({ text: 'Image conversion & QR codes', style_class: 'veronica-files-title' }));
+        panel.add_child(new St.Label({ text: 'PNG · JPG / JPEG · SVG\nDrop, paste or choose an image. Generate a QR from a link.', style_class: 'veronica-empty' }));
+        const open = new St.Button({ label: 'Open Image & QR Tools', can_focus: true, style_class: 'veronica-action-tile' });
+        open.connect('clicked', () => {
+            try {
+                Gio.Subprocess.new(['veronica', '--notch-tools'], Gio.SubprocessFlags.NONE);
+                this._closeMenu?.();
+            } catch (error) {
+                Main.notify('Veronica', `Could not open image tools: ${error.message}`);
+            }
+        });
+        panel.add_child(open);
         return panel;
     }
 

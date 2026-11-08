@@ -266,3 +266,23 @@ VERONICA_LOG=debug veronica     # or: VERONICA_LOG=debug vr usage refresh
 ```
 
 Logs go to stderr so stdout stays a single JSON document for the CLI.
+
+## Image conversion and link QR codes
+
+Open **Tools** in the notch, then **Open Image & QR Tools**. The compact native
+window accepts an image through **Choose image**, file-manager drag and drop,
+or **Paste image** / **Ctrl+V**. It detects PNG, JPG/JPEG and SVG from content.
+Choose one of the three output buttons: **PNG**, **JPG** or **SVG**. Once ready,
+use **Download** or **Copy image**. Clipboard copy supplies pixels that other
+apps can paste; Download preserves the selected file format.
+
+PNG preserves transparency. JPG uses a white background. SVG input retains
+vector shapes in SVG output; photo-to-SVG embeds the photo without vector
+tracing. Images are limited to 20 MiB and 16 million pixels. SVG external image
+references are disabled.
+
+Paste a link into the QR field and press Enter or **Generate QR**. Download or
+copy the resulting PNG. QR codes encode the original link directly and have no
+expiry, redirect service or subscription. Processing runs entirely on your
+computer, with no uploads or paid APIs. To open the utility directly, run
+`veronica --notch-tools`.

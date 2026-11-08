@@ -10,6 +10,7 @@ const MAX_PIXELS: u64 = 16_000_000;
 pub struct Source {
     pub pixels: DynamicImage,
     pub format: &'static str,
+    pub svg: Option<Vec<u8>>,
 }
 
 pub fn decode(bytes: &[u8]) -> Result<Source> {
@@ -25,6 +26,7 @@ pub fn decode(bytes: &[u8]) -> Result<Source> {
         let pixels = image::load_from_memory_with_format(bytes, format)?;
         return Ok(Source {
             pixels,
+            svg: None,
             format: if format == ImageFormat::Png {
                 "PNG"
             } else {
@@ -52,6 +54,10 @@ pub fn decode(bytes: &[u8]) -> Result<Source> {
     Ok(Source {
         pixels: image::load_from_memory(&png)?,
         format: "SVG",
+        svg: Some(
+            tree.to_string(&resvg::usvg::WriteOptions::default())
+                .into_bytes(),
+        ),
     })
 }
 
@@ -80,6 +86,9 @@ pub fn encode(source: &Source, format: &str) -> Result<Vec<u8>> {
                 .encode_image(&DynamicImage::ImageRgb8(rgb))?;
         }
         "svg" => {
+            if let Some(svg) = &source.svg {
+                return Ok(svg.clone());
+            }
             let png = STANDARD.encode(encode(source, "png")?);
             return Ok(format!(r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{}" height="{}" viewBox="0 0 {} {}"><image width="100%" height="100%" xlink:href="data:image/png;base64,{}"/></svg>"#, source.pixels.width(), source.pixels.height(), source.pixels.width(), source.pixels.height(), png).into_bytes());
         }
@@ -116,6 +125,7 @@ mod tests {
                 image::Rgba([255, 0, 0, 0]),
             )),
             format: "PNG",
+            svg: None,
         };
         for (format, detected) in [("png", "PNG"), ("jpg", "JPG"), ("svg", "SVG")] {
             let decoded = decode(&encode(&source, format).unwrap()).unwrap();

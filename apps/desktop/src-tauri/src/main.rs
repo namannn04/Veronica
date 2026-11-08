@@ -7,7 +7,9 @@ mod art;
 mod commands;
 mod emoji_picker;
 mod file_shelf;
+mod image_tools;
 mod main_window;
+mod notch_tools;
 mod presenter;
 mod single_instance;
 mod state;
@@ -26,9 +28,10 @@ fn main() {
     force_x11_backend();
 
     let shelf = std::env::args().any(|arg| arg == "--file-shelf");
-    let background = shelf || is_background_launch(std::env::args_os());
+    let tools = std::env::args().any(|arg| arg == "--notch-tools");
+    let background = tools || shelf || is_background_launch(std::env::args_os());
 
-    if let Err(error) = run(background, shelf) {
+    if let Err(error) = run(background, shelf, tools) {
         eprintln!("veronica: {error:#}");
         std::process::exit(1);
     }
@@ -193,8 +196,8 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
     }
 }
 
-fn run(background: bool, shelf: bool) -> Result<()> {
-    let instance = match single_instance::claim(background, shelf) {
+fn run(background: bool, shelf: bool, tools: bool) -> Result<()> {
+    let instance = match single_instance::claim(background, shelf, tools) {
         Some(single_instance::Claim::AlreadyRunning) => return Ok(()),
         Some(single_instance::Claim::First(guard)) => Some(guard),
         None => None,
@@ -364,7 +367,9 @@ fn run(background: bool, shelf: bool) -> Result<()> {
             // still get their chance.
             sync_global_shortcuts(&handle, &handle.state::<AppState>().settings_snapshot());
 
-            if shelf {
+            if tools {
+                notch_tools::show()?;
+            } else if shelf {
                 file_shelf::show(&handle)?;
             } else if !background {
                 main_window::show(&handle, Some("home"))?;
