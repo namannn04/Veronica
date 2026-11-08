@@ -377,3 +377,90 @@ fn pixbuf(bytes: &[u8]) -> anyhow::Result<gtk::gdk_pixbuf::Pixbuf> {
         .pixbuf()
         .ok_or_else(|| anyhow::anyhow!("Cannot display image"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    /// Run explicitly in a GNOME/X11 session; CI exercises the pure engine tests.
+    #[test]
+    #[ignore = "requires a desktop display and image clipboard"]
+    fn native_image_and_qr_clipboard() {
+        gtk::init().expect("GTK display");
+        show().unwrap();
+        let window = WINDOW.with(|slot| slot.borrow().as_ref().unwrap().clone());
+        let body = window.child().unwrap().downcast::<gtk::Box>().unwrap();
+        let children = body.children();
+        let actions = children[6].clone().downcast::<gtk::Box>().unwrap();
+        assert!(!actions.is_visible());
+        let status = children[5].clone().downcast::<gtk::Label>().unwrap();
+        let input =
+            gtk::gdk_pixbuf::Pixbuf::new(gtk::gdk_pixbuf::Colorspace::Rgb, true, 8, 2, 3).unwrap();
+        input.fill(0xff000000);
+        gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD).set_image(&input);
+        let import = children[1].clone().downcast::<gtk::Box>().unwrap();
+        import.children()[1]
+            .clone()
+            .downcast::<gtk::Button>()
+            .unwrap()
+            .emit_clicked();
+        pump_until(|| status.text().starts_with("Detected PNG"));
+        let formats = children[2].clone().downcast::<gtk::Box>().unwrap();
+        formats.children()[1]
+            .clone()
+            .downcast::<gtk::Button>()
+            .unwrap()
+            .emit_clicked();
+        pump_until(|| actions.is_visible());
+        actions.children()[1]
+            .clone()
+            .downcast::<gtk::Button>()
+            .unwrap()
+            .emit_clicked();
+        let copied_jpg = Rc::new(Cell::new(false));
+        let received_jpg = copied_jpg.clone();
+        gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD).request_image(move |_, image| {
+            let image = image.expect("converted JPEG clipboard pixels");
+            assert_eq!((image.width(), image.height()), (2, 3));
+            assert!(image.read_pixel_bytes()[..3]
+                .iter()
+                .all(|channel| *channel > 245));
+            received_jpg.set(true);
+        });
+        pump_until(|| copied_jpg.get());
+        let qr_row = children[7].clone().downcast::<gtk::Box>().unwrap();
+        let entry = qr_row.children()[0]
+            .clone()
+            .downcast::<gtk::Entry>()
+            .unwrap();
+        entry.set_text("https://example.com/veronica?test=1&source=notch");
+        entry.emit_activate();
+        pump_until(|| actions.is_visible());
+        let copy = actions.children()[1]
+            .clone()
+            .downcast::<gtk::Button>()
+            .unwrap();
+        copy.emit_clicked();
+        let copied = Rc::new(Cell::new(false));
+        let received = copied.clone();
+        gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD).request_image(move |_, image| {
+            let image = image.expect("actual image clipboard payload");
+            assert!(image.width() >= 320 && image.height() >= 320);
+            received.set(true);
+        });
+        pump_until(|| copied.get());
+        window.close();
+    }
+    fn pump_until(done: impl Fn() -> bool) {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        while !done() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "native operation timed out"
+            );
+            while glib::MainContext::default().pending() {
+                glib::MainContext::default().iteration(false);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+}
