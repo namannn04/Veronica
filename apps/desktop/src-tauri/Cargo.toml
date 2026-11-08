@@ -42,3 +42,8 @@ tempfile = "3"
 [target."cfg(target_os = \"linux\")".dependencies]
 gtk = "0.18"
 cairo-rs = "0.18"
+
+# Offline image conversion and static QR encoding.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+resvg = "0.48"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }

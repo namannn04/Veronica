@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 function harness() {
-    let closed = 0, launched = 0;
+    let closed = 0, launched = 0, tools = 0;
     const calls = [];
     class Actor {
         constructor(props = {}) { Object.assign(this,props); this.children=[]; this.signals={}; }
@@ -20,6 +20,7 @@ function harness() {
     const names = source.match(/import \{([^}]+)\} from '\.\/lib.js';/)[1].split(',').map(n=>n.trim());
     const helpers = {
         vbox: props=>new Actor(props), launchApp() {}, launchFileShelf: ()=>{ launched++; },
+        launchNotchTools: ()=>{ tools++; },
         runJson: async args=>{ calls.push(args); return {entries:[{id:'123-456',name:'saved.txt',path:'/private/shelf/saved.txt'}]}; },
     };
     const body = source.replace(/^import .*;\n/gm,'').replace('export class NotchPanel','class NotchPanel');
@@ -30,9 +31,9 @@ function harness() {
     panel._tabButtons=new Map(); panel._panels=new Map(); panel._activeTab='home';
     panel._closeMenu=()=>{closed++;};
     panel._fileRows=new Actor();
-    for (const id of ['home','notifications','files','clipboard','camera']) panel._panels.set(id,new Actor());
+    for (const id of ['home','notifications','files','clipboard','camera','tools']) panel._panels.set(id,new Actor());
     panel._header();
-    return {panel,calls,closed:()=>closed,launched:()=>launched};
+    return {panel,calls,closed:()=>closed,launched:()=>launched,tools:()=>tools};
 }
 
 test('selecting Files changes the panel without closing or launching another window', async () => {
@@ -56,4 +57,14 @@ test('native drag-and-drop shelf is available only through its explicit action',
     const button=files.children[0].children.find(child=>child.accessible_name==='Open drag-and-drop shelf');
     assert.ok(button); button.click(); assert.equal(h.launched(),1);
     assert.equal(h.closed(),0);
+});
+
+ test('Tools stays in the notch until the explicit native utility action', () => {
+    const h=harness();
+    h.panel._tabButtons.get('tools').click();
+    assert.equal(h.panel._activeTab,'tools');
+    assert.equal(h.tools(),0); assert.equal(h.closed(),0);
+    const tools=h.panel._toolsPanel();
+    tools.children.find(child=>child.label==='Open Image & QR Tools').click();
+    assert.equal(h.tools(),1); assert.equal(h.closed(),1);
 });

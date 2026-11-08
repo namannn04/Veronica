@@ -45,6 +45,16 @@ struct Instance {
 
 #[zbus::interface(name = "io.github.namannn04.Veronica.Instance")]
 impl Instance {
+    fn show_notch_tools(&self) {
+        if let Some(app) = self.app.get() {
+            let _ = app.run_on_main_thread(move || {
+                if let Err(error) = crate::notch_tools::show() {
+                    tracing::warn!("cannot open notch tools: {error:#}");
+                }
+            });
+        }
+    }
+
     fn show_file_shelf(&self) {
         if let Some(app) = self.app.get() {
             let handle = app.clone();
@@ -82,7 +92,7 @@ impl Instance {
 ///
 /// `None` means there is no usable session bus, and the app runs unguarded
 /// rather than refusing to start.
-pub(crate) fn claim(background: bool, shelf: bool) -> Option<Claim> {
+pub(crate) fn claim(background: bool, shelf: bool, tools: bool) -> Option<Claim> {
     tauri::async_runtime::block_on(async move {
         let connection = match zbus::Connection::session().await {
             Ok(connection) => connection,
@@ -119,7 +129,17 @@ pub(crate) fn claim(background: bool, shelf: bool) -> Option<Claim> {
                 app,
             }));
         }
-        let result = if shelf {
+        let result = if tools {
+            connection
+                .call_method(
+                    Some(BUS_NAME),
+                    OBJECT_PATH,
+                    Some(INTERFACE),
+                    "ShowNotchTools",
+                    &(),
+                )
+                .await
+        } else if shelf {
             connection
                 .call_method(
                     Some(BUS_NAME),
