@@ -305,3 +305,14 @@ export function countdown(seconds) {
         return `${minutes}m`;
     return `${Math.floor(seconds)}s`;
 }
+
+/** Launch the developer-services route through the installed package. */
+export function launchServices() {
+    const app = DesktopAppInfo.new('Veronica.desktop') ??
+        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    if (app?.list_actions().includes('Services')) {
+        app.launch_action('Services', null);
+        return;
+    }
+    Gio.Subprocess.new(['veronica', '--services'], Gio.SubprocessFlags.NONE);
+}

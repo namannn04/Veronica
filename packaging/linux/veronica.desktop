@@ -12,7 +12,7 @@ Keywords=usage;claude;codex;monitor;clipboard;control;
 StartupNotify=true
 StartupWMClass=Veronica
 
-Actions=FileShelf;NotchTools;
+Actions=FileShelf;NotchTools;Services;
 
 [Desktop Action FileShelf]
 Name=File Shelf
@@ -21,3 +21,7 @@ Exec=veronica --file-shelf
 [Desktop Action NotchTools]
 Name=Image & QR Tools
 Exec=veronica --notch-tools
+
+[Desktop Action Services]
+Name=Ports & Docker
+Exec=veronica --services

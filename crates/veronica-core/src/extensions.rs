@@ -174,7 +174,7 @@ pub const ENTRIES: &[ExtensionEntry] = &[
     ExtensionEntry {
         id: "system",
         title: "System",
-        subtitle: "Running apps, prevent sleep, and the keyboard-cleaning lock.",
+        subtitle: "Running apps, listening ports, Docker, sleep controls and keyboard cleaning.",
         icon: "toggle-right",
         group: G::System,
         featured: true,

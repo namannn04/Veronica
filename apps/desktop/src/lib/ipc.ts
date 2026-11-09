@@ -209,6 +209,10 @@ export const ipc = {
     invoke<void>("machines_power", { id, action }),
   machinesWake: (id: string) => invoke<void>("machines_wake", { id }),
 
+  portsSnapshot: () => invoke<import("./types").PortsSnapshot>("ports_snapshot"),
+  portsStop: (request: { pid: number; startedAt: string; inode: string }) => invoke<string>("ports_stop", { request }),
+  dockerSnapshot: () => invoke<import("./types").DockerSnapshot>("docker_snapshot"),
+  dockerAction: (endpoint: string, id: string, action: "start" | "stop" | "restart") => invoke<void>("docker_action", { endpoint, id, action }),
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
   powerStatus: () => invoke<PowerStatus>("power_status"),
   updateCheck: () => invoke<UpdateInfo>("update_check"),

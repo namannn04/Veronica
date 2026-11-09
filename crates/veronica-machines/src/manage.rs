@@ -42,6 +42,7 @@ pub struct ContainerInfo {
     pub status: String,
     pub state: String,
     pub engine: String,
+    pub ports: String,
 }
 
 fn shell_quote(value: &str) -> Result<String> {
@@ -140,7 +141,7 @@ elif command -v podman >/dev/null 2>&1; then engine=podman
 else printf 'N\0'; exit 0
 fi
 printf 'G\0%s\0' "$engine"
-"$engine" ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.State}}' 2>/dev/null
+"$engine" ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.State}}\t{{.Ports}}' 2>/dev/null
 "#;
 
 pub fn parse_containers(output: &str) -> Vec<ContainerInfo> {
@@ -162,6 +163,7 @@ pub fn parse_containers(output: &str) -> Vec<ContainerInfo> {
                 status: fields[3].to_string(),
                 state: fields[4].to_string(),
                 engine: engine.clone(),
+                ports: fields.get(5).copied().unwrap_or_default().to_string(),
             })
         })
         .collect()

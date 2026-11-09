@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 function harness() {
-    let closed = 0, launched = 0, tools = 0;
+    let closed = 0, launched = 0, tools = 0, services = 0;
     const calls = [];
     class Actor {
         constructor(props = {}) { Object.assign(this,props); this.children=[]; this.signals={}; }
@@ -20,6 +20,7 @@ function harness() {
     const names = source.match(/import \{([^}]+)\} from '\.\/lib.js';/)[1].split(',').map(n=>n.trim());
     const helpers = {
         vbox: props=>new Actor(props), launchApp() {}, launchFileShelf: ()=>{ launched++; },
+        launchServices: ()=>{ services++; },
         launchNotchTools: ()=>{ tools++; },
         runJson: async args=>{ calls.push(args); return {entries:[{id:'123-456',name:'saved.txt',path:'/private/shelf/saved.txt'}]}; },
     };
@@ -33,7 +34,7 @@ function harness() {
     panel._fileRows=new Actor();
     for (const id of ['home','notifications','files','clipboard','camera','tools']) panel._panels.set(id,new Actor());
     panel._header();
-    return {panel,calls,closed:()=>closed,launched:()=>launched,tools:()=>tools};
+    return {panel,calls,closed:()=>closed,launched:()=>launched,tools:()=>tools,services:()=>services};
 }
 
 test('selecting Files changes the panel without closing or launching another window', async () => {
@@ -67,4 +68,12 @@ test('native drag-and-drop shelf is available only through its explicit action',
     const tools=h.panel._toolsPanel();
     tools.children.find(child=>child.label==='Open Image & QR Tools').click();
     assert.equal(h.tools(),1); assert.equal(h.closed(),1);
+});
+
+test('Ports and Docker launches only through the explicit utility action', () => {
+    const h=harness();
+    const panel=h.panel._toolsPanel();
+    panel.children.find(child=>child.label==='Ports & Docker').click();
+    assert.equal(h.services(),1);
+    assert.equal(h.closed(),1);
 });

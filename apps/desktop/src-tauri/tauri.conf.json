@@ -50,6 +50,7 @@
     "linux": {
       "deb": {
         "depends": [
+          "python3",
           "curl",
           "jq",
           "zenity",

@@ -114,7 +114,7 @@ fn parse_containers(text: &str) -> Result<Vec<DockerContainer>> {
 async fn snapshot_with(binary: &std::path::Path) -> Result<DockerSnapshot> {
     let endpoint = endpoint(binary).await?;
     if !local_endpoint(&endpoint) {
-        return Ok(DockerSnapshot::unavailable("remote", "The selected Docker endpoint is remote. This page only manages Docker on this computer; use Machines for remote hosts.", Some(endpoint)));
+        return Ok(DockerSnapshot::unavailable("remote", "This page supports local Unix-socket Docker endpoints. Network and SSH endpoints are not managed here; use Machines for remote hosts.", Some(endpoint)));
     }
     let version = run(
         binary,
