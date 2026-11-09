@@ -539,6 +539,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn container_reading_preserves_published_port_mappings() {
+        let rows = parse_containers("G\0docker\0abc\tweb\tnginx\tUp 1 hour\trunning\t127.0.0.1:3000->80/tcp, [::]:3000->80/tcp\n");
+        assert_eq!(rows[0].ports, "127.0.0.1:3000->80/tcp, [::]:3000->80/tcp");
+    }
+
+    #[test]
     fn the_listing_script_opens_a_folder_reached_through_a_link() {
         let root = tempfile::tempdir().unwrap();
         std::fs::create_dir(root.path().join("real")).unwrap();
