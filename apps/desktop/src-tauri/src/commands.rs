@@ -3351,3 +3351,22 @@ mod wire_shape_tests {
         assert_eq!(json["reason"], "The prefix is not writable.");
     }
 }
+
+#[tauri::command]
+pub async fn ports_snapshot() -> CommandResult<veronica_system::ports::PortsSnapshot> {
+    veronica_system::ports::snapshot().await.map_err(fail)
+}
+#[tauri::command]
+pub async fn ports_stop(request: veronica_system::ports::StopRequest) -> CommandResult<String> {
+    veronica_system::ports::stop(&request).await.map_err(fail)
+}
+#[tauri::command]
+pub async fn docker_snapshot() -> veronica_system::docker::DockerSnapshot {
+    veronica_system::docker::snapshot().await
+}
+#[tauri::command]
+pub async fn docker_action(endpoint: String, id: String, action: String) -> CommandResult<()> {
+    veronica_system::docker::action(&endpoint, &id, &action)
+        .await
+        .map_err(fail)
+}

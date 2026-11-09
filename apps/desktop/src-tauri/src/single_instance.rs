@@ -45,6 +45,17 @@ struct Instance {
 
 #[zbus::interface(name = "io.github.namannn04.Veronica.Instance")]
 impl Instance {
+    fn show_services(&self) {
+        if let Some(app) = self.app.get() {
+            let handle = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                if let Err(error) = crate::main_window::show(&handle, Some("services")) {
+                    tracing::warn!("cannot open developer services: {error:#}");
+                }
+            });
+        }
+    }
+
     fn show_notch_tools(&self) {
         if let Some(app) = self.app.get() {
             let _ = app.run_on_main_thread(move || {
@@ -92,7 +103,7 @@ impl Instance {
 ///
 /// `None` means there is no usable session bus, and the app runs unguarded
 /// rather than refusing to start.
-pub(crate) fn claim(background: bool, shelf: bool, tools: bool) -> Option<Claim> {
+pub(crate) fn claim(background: bool, shelf: bool, tools: bool, services: bool) -> Option<Claim> {
     tauri::async_runtime::block_on(async move {
         let connection = match zbus::Connection::session().await {
             Ok(connection) => connection,
@@ -129,7 +140,17 @@ pub(crate) fn claim(background: bool, shelf: bool, tools: bool) -> Option<Claim>
                 app,
             }));
         }
-        let result = if tools {
+        let result = if services {
+            connection
+                .call_method(
+                    Some(BUS_NAME),
+                    OBJECT_PATH,
+                    Some(INTERFACE),
+                    "ShowServices",
+                    &(),
+                )
+                .await
+        } else if tools {
             connection
                 .call_method(
                     Some(BUS_NAME),

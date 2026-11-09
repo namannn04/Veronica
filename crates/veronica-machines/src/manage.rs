@@ -42,6 +42,7 @@ pub struct ContainerInfo {
     pub status: String,
     pub state: String,
     pub engine: String,
+    pub ports: String,
 }
 
 fn shell_quote(value: &str) -> Result<String> {
@@ -140,7 +141,7 @@ elif command -v podman >/dev/null 2>&1; then engine=podman
 else printf 'N\0'; exit 0
 fi
 printf 'G\0%s\0' "$engine"
-"$engine" ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.State}}' 2>/dev/null
+"$engine" ps -a --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.State}}\t{{.Ports}}' 2>/dev/null
 "#;
 
 pub fn parse_containers(output: &str) -> Vec<ContainerInfo> {
@@ -162,6 +163,7 @@ pub fn parse_containers(output: &str) -> Vec<ContainerInfo> {
                 status: fields[3].to_string(),
                 state: fields[4].to_string(),
                 engine: engine.clone(),
+                ports: fields.get(5).copied().unwrap_or_default().to_string(),
             })
         })
         .collect()
@@ -535,6 +537,12 @@ pub async fn download_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn container_reading_preserves_published_port_mappings() {
+        let rows = parse_containers("G\0docker\0abc\tweb\tnginx\tUp 1 hour\trunning\t127.0.0.1:3000->80/tcp, [::]:3000->80/tcp\n");
+        assert_eq!(rows[0].ports, "127.0.0.1:3000->80/tcp, [::]:3000->80/tcp");
+    }
 
     #[test]
     fn the_listing_script_opens_a_folder_reached_through_a_link() {

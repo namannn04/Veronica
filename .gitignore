@@ -20,3 +20,6 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Embedded host-helper test imports
+__pycache__/

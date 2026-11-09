@@ -286,3 +286,43 @@ copy the resulting PNG. QR codes encode the original link directly and have no
 expiry, redirect service or subscription. Processing runs entirely on your
 computer, with no uploads or paid APIs. To open the utility directly, run
 `veronica --notch-tools`.
+
+## Ports and Docker
+
+Open **Ports & Docker** in the sidebar or **notch → Tools → Ports & Docker**.
+The page shows host TCP listeners and bound, unconnected UDP sockets (IPv4 and
+IPv6). Search `3000` to match that exact port, or search a process/container name.
+Readings refresh while the page is open; Refresh also reads both sections.
+
+**Stop process** asks for confirmation, then sends SIGTERM to the selected owned
+process. It stops the whole process, including other ports it owns. Process start
+time and socket ownership are rechecked with a Linux pidfd before signaling, so
+an old row cannot target a reused PID. Other-user/hidden owners cannot be stopped,
+and a supervisor may restart a process. Veronica does not escalate privileges or
+force-kill it. Shared sockets can have multiple owners; stopping one owner may not
+free the port. Process visibility depends on Linux permissions.
+
+Docker reports **Not installed**, **Unavailable** (including daemon/permission
+errors), an unsupported external endpoint, or a working local daemon separately
+from an empty container list. Containers show image, name, state, status and port
+mappings, with confirmed Start/Stop/Restart actions. A mapping like
+`127.0.0.1:3000 → 80/tcp` publishes a host port; a bare `80/tcp` is only exposed
+inside Docker. NAT-only Docker mappings may not appear in the host listener list.
+This page manages local Unix-socket Docker endpoints; Machines retains SSH-host
+container controls. Veronica never installs Docker or changes Docker permissions.
+
+Port inspection uses the host's standard-library Python 3, including through
+`flatpak-spawn --host` for Flatpak; Debian declares that dependency. AppImage and
+Flatpak users need Python 3 on the host. No network scanner or website is involved.
+To open the page directly, run `veronica --services`.
+
+CLI equivalents:
+
+```sh
+vr ports list --port 3000 --json
+vr docker status --json
+# Use identity fields returned by the port reading:
+vr ports stop --pid PID --started-at STARTED_AT --inode INODE --confirm
+# Use the full container ID and local endpoint returned by docker status:
+vr docker action stop CONTAINER_ID --endpoint unix:///var/run/docker.sock --confirm
+```

@@ -29,9 +29,10 @@ fn main() {
 
     let shelf = std::env::args().any(|arg| arg == "--file-shelf");
     let tools = std::env::args().any(|arg| arg == "--notch-tools");
-    let background = tools || shelf || is_background_launch(std::env::args_os());
+    let services = std::env::args().any(|arg| arg == "--services");
+    let background = services || tools || shelf || is_background_launch(std::env::args_os());
 
-    if let Err(error) = run(background, shelf, tools) {
+    if let Err(error) = run(background, shelf, tools, services) {
         eprintln!("veronica: {error:#}");
         std::process::exit(1);
     }
@@ -196,8 +197,8 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
     }
 }
 
-fn run(background: bool, shelf: bool, tools: bool) -> Result<()> {
-    let instance = match single_instance::claim(background, shelf, tools) {
+fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()> {
+    let instance = match single_instance::claim(background, shelf, tools, services) {
         Some(single_instance::Claim::AlreadyRunning) => return Ok(()),
         Some(single_instance::Claim::First(guard)) => Some(guard),
         None => None,
@@ -253,6 +254,10 @@ fn run(background: bool, shelf: bool, tools: bool) -> Result<()> {
             commands::attention_settings_save,
             commands::shell_action,
             commands::system_snapshot,
+            commands::ports_snapshot,
+            commands::ports_stop,
+            commands::docker_snapshot,
+            commands::docker_action,
             commands::power_status,
             commands::update_check,
             commands::update_install,
@@ -371,6 +376,8 @@ fn run(background: bool, shelf: bool, tools: bool) -> Result<()> {
                 notch_tools::show()?;
             } else if shelf {
                 file_shelf::show(&handle)?;
+            } else if services {
+                main_window::show(&handle, Some("services"))?;
             } else if !background {
                 main_window::show(&handle, Some("home"))?;
             }

@@ -380,7 +380,7 @@ export interface Machine {
 }
 export interface MachineFile { name: string; path: string; kind: "directory" | "file" | "link" | "other"; sizeBytes: number; modifiedUnix: number; }
 export interface MachineDirectory { path: string; parent: string | null; entries: MachineFile[]; }
-export interface ContainerInfo { id: string; name: string; image: string; status: string; state: string; engine: "docker" | "podman"; }
+export interface ContainerInfo { id: string; name: string; image: string; status: string; state: string; engine: "docker" | "podman"; ports: string; }
 
 export interface MachineDisk {
   mountPoint: string;
@@ -813,3 +813,9 @@ export interface DatabaseOperation {
   error: string | null;
   at: string;
 }
+
+export type PortOwner = { pid: number; startedAt: string; uid: number; name: string; canStop: boolean };
+export type ListeningPort = { address: string; port: number; protocol: "TCP" | "UDP"; inode: string; owners: PortOwner[] };
+export type PortsSnapshot = { ports: ListeningPort[]; warnings: string[] };
+export type DockerContainer = { id: string; name: string; image: string; state: string; status: string; ports: string };
+export type DockerSnapshot = { status: "ready" | "missing" | "unavailable" | "remote"; detail: string; endpoint: string | null; version: string | null; containers: DockerContainer[] };

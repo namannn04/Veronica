@@ -34,6 +34,7 @@ import {
 export type Route =
   | "home" | "usage" | "herdr" | "quinjet"
   | "system"
+  | "services"
   | "machines"
   | "maintenance"
   | "database"
@@ -82,6 +83,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "This computer",
     items: [
       { id: "system", label: "System", icon: <SystemIcon />, extensionId: "system", hint: "CPU, memory, disks and audio", keywords: "cpu memory ram disk temperature sensors audio volume bluetooth processes" },
+      { id: "services", label: "Ports & Docker", icon: <MachinesIcon />, extensionId: "system", hint: "Listening ports and local containers", keywords: "ports port localhost 3000 8080 server process stop docker containers daemon" },
       { id: "machines", label: "Machines", icon: <MachinesIcon />, extensionId: "machines", hint: "This computer and SSH hosts", keywords: "ssh remote servers hosts docker containers wake" },
       { id: "maintenance", label: "App Maintenance", icon: <MaintenanceIcon />, extensionId: "appMaintenance", hint: "Updates, packages and cleanup", keywords: "apt snap flatpak update upgrade packages clean cache trash" },
       { id: "database", label: "Database", icon: <DatabaseIcon />, extensionId: "database", hint: "Browse and query databases", keywords: "sql postgres mysql sqlite redis query tables" },

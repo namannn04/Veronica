@@ -17,7 +17,7 @@ import { AWAKE_SWITCHES, awakeState, nextDeadline } from './awakeState.js';
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
-import { launchApp, launchFileShelf, launchNotchTools, runJson, vbox } from './lib.js';
+import { launchApp, launchFileShelf, launchNotchTools, launchServices, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { presenterClick, presenterState } from './presenterGate.js';
@@ -257,7 +257,7 @@ export class NotchPanel {
 
     _toolsPanel() {
         const panel = vbox({ style_class: 'veronica-shelf-panel', x_expand: true });
-        panel.add_child(new St.Label({ text: 'Image conversion & QR codes', style_class: 'veronica-files-title' }));
+        panel.add_child(new St.Label({ text: 'Quick tools', style_class: 'veronica-files-title' }));
         panel.add_child(new St.Label({ text: 'PNG · JPG / JPEG · SVG\nDrop, paste or choose an image. Generate a QR from a link.', style_class: 'veronica-empty' }));
         const open = new St.Button({ label: 'Open Image & QR Tools', can_focus: true, style_class: 'veronica-action-tile' });
         open.connect('clicked', () => {
@@ -269,6 +269,16 @@ export class NotchPanel {
             }
         });
         panel.add_child(open);
+        const services = new St.Button({ label: 'Ports & Docker', can_focus: true, style_class: 'veronica-action-tile' });
+        services.connect('clicked', () => {
+            try {
+                launchServices();
+                this._closeMenu?.();
+            } catch (error) {
+                Main.notify('Veronica', `Could not open developer services: ${error.message}`);
+            }
+        });
+        panel.add_child(services);
         return panel;
     }
 

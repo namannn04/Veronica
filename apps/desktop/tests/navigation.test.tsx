@@ -29,6 +29,7 @@ describe("extension-aware navigation", () => {
       herdr: "herdr",
       quinjet: "quinjet",
       system: "system",
+      services: "system",
       machines: "machines",
       maintenance: "appMaintenance",
       database: "database",
