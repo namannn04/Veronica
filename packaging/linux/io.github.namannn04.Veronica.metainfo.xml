@@ -32,6 +32,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.21" date="2026-11-09">
+      <description>
+        <p>A new Ports &amp; Docker page and notch shortcut show host TCP listeners, bound UDP sockets, process owners and local container port mappings. Exact port search helps identify services using ports such as 3000. Confirmed process stops revalidate identity and socket ownership with pidfd before sending SIGTERM. Docker reports daemon and permission errors separately from an empty container list, with confirmed local start, stop and restart controls. Existing Machines container views also show port mappings.</p>
+      </description>
+    </release>
     <release version="0.1.20" date="2026-11-09">
       <description>
         <p>The notch gains Image &amp; QR Tools: choose, drop or paste PNG, JPG/JPEG and SVG images, detect the input format and convert locally with three output choices. Download the converted file or copy image pixels. SVG input retains vector shapes, photo-to-SVG embeds pixels, and JPEG composites transparency onto white. Generate static link QR codes without uploads, redirects, subscriptions or paid APIs.</p>
