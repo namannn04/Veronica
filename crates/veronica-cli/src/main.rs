@@ -27,6 +27,7 @@ mod media_cmd;
 mod power_cmd;
 mod presenter_cmd;
 mod quinjet_cmd;
+mod services_cmd;
 mod shelf_cmd;
 mod system_cmd;
 mod tools_cmd;
@@ -61,6 +62,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Inspect local TCP/UDP ports and gracefully stop owned processes.
+    #[command(subcommand)]
+    Ports(services_cmd::PortsCommand),
+    /// Local Docker status, containers and published ports.
+    #[command(subcommand)]
+    Docker(services_cmd::DockerCommand),
     /// Report the resolved environment, capabilities and extension state.
     Diagnose,
     /// Read and write settings.
@@ -233,6 +240,8 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Media(command) => media_cmd::run(command, output).await,
+        Command::Ports(command) => services_cmd::ports(command, output).await,
+        Command::Docker(command) => services_cmd::docker(command, output).await,
         Command::System(command) => system_cmd::run(command, output).await,
         Command::Power(command) => power_cmd::run(&directories, command, output).await,
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
