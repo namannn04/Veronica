@@ -424,7 +424,6 @@
 }
 
 .veronica-shelf-settings {
-  width: 30px;
   height: 24px;
   padding: 0;
   border-radius: 999px;
@@ -1161,12 +1160,12 @@
 .veronica-notch-shell-menu .popup-menu-content { background-color: rgba(19,20,25,0.89); border-color: rgba(255,255,255,0.20); background-gradient-direction: vertical; background-gradient-start: rgba(255,255,255,0.075); background-gradient-end: rgba(255,255,255,0.012); }
 .veronica-shelf { padding: 12px 14px 14px; spacing: 10px; }
 .veronica-shelf-header { height: 34px; spacing: 5px; }
-.veronica-shelf-tab { height: 30px; min-width: 28px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.055); transition-duration: 140ms; }
+.veronica-shelf-tab { height: 30px; min-width: 14px; padding: 0 8px; border: 1px solid rgba(255,255,255,0.055); transition-duration: 140ms; }
 .veronica-shelf-tab.active { background-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.96); border-color: rgba(255,255,255,0.22); }
 .veronica-shelf-tab:hover, .veronica-shelf-tab:focus { background-color: rgba(255,255,255,0.17); border-color: rgba(255,255,255,0.20); }
 .veronica-shelf-tab-content { spacing: 4px; }
 .veronica-shelf-tab-icon { icon-size: 13px; }
-.veronica-shelf-settings { width: auto; min-width: 28px; height: 30px; padding: 0 9px; transition-duration: 140ms; }
+.veronica-shelf-settings { min-width: 14px; height: 30px; padding: 0 8px; transition-duration: 140ms; }
 .veronica-shelf-settings:focus { background-color: rgba(255,255,255,0.17); }
 .veronica-notch-shell-menu.veronica-theme-midnight { -arrow-background-color: rgba(9,18,33,0.91); }
 .veronica-notch-shell-menu.veronica-theme-midnight .popup-menu-content { background-color: rgba(9,18,33,0.91); }
