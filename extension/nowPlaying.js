@@ -93,8 +93,8 @@ export class NowPlayingCard {
     async refresh(cancellable) {
         this._cancellable = cancellable;
         const playing = await runJson(['media', 'status'], cancellable, { terminateOnCancel: true });
-        if (!this.actor)
-            return; // destroyed while the subprocess ran
+        if (!this.actor || cancellable?.is_cancelled())
+            return; // destroyed or hidden while the subprocess ran
         this._render(playing);
     }
 

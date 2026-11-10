@@ -80,8 +80,8 @@ export class UsageCard {
 
     async refresh(cancellable) {
         const data = await fetchUsageData(cancellable);
-        if (!this.actor)
-            return; // destroyed while the subprocess ran
+        if (!this.actor || cancellable?.is_cancelled())
+            return; // destroyed or hidden while the subprocess ran
 
         if (!data.summary && data.gauges.length === 0) {
             this.actor.visible = false;

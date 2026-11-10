@@ -602,7 +602,9 @@ export class NotchPanel {
     async _fileAction(args) {
         const request = this._filesRequest = (this._filesRequest ?? 0) + 1;
         const reading = args[0] === 'list';
-        const result = await runJson(['shelf', ...args], reading ? this._readScope() : this._cancellable, { terminateOnCancel: reading });
+        const scope = reading ? this._readScope() : this._cancellable;
+        const result = await runJson(['shelf', ...args], scope, { terminateOnCancel: reading });
+        if (reading && scope?.is_cancelled()) return;
         if (!this._fileRows || request !== this._filesRequest)
             return;
         this._fileRows.destroy_all_children();
@@ -789,8 +791,9 @@ export class NotchPanel {
     async _refreshClipboard() {
         if (!this._clipboardRows)
             return;
-        const rows = await recentEntries(30, this._readScope());
-        if (!this._clipboardRows)
+        const scope = this._readScope();
+        const rows = await recentEntries(30, scope);
+        if (!this._clipboardRows || scope.is_cancelled())
             return;
         this._clipboardRows.destroy_all_children();
         if (rows.length === 0) {
