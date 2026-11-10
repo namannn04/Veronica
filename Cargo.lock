@@ -5801,9 +5801,6 @@ dependencies = [
  "cairo-rs",
  "chrono",
  "gtk",
- "image",
- "qrcode",
- "resvg",
  "serde",
  "serde_json",
  "tauri",
@@ -5856,8 +5853,12 @@ name = "veronica-system"
 version = "0.1.21"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "chrono",
  "futures-util",
+ "image",
+ "qrcode",
+ "resvg",
  "serde",
  "serde_json",
  "sysinfo",

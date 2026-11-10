@@ -32,6 +32,7 @@ mod shelf_cmd;
 mod system_cmd;
 mod tools_cmd;
 mod usage_cmd;
+mod utility_cmd;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -62,6 +63,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Local notch image conversion and QR generation.
+    #[command(subcommand)]
+    Utility(utility_cmd::UtilityCommand),
     /// Inspect local TCP/UDP ports and gracefully stop owned processes.
     #[command(subcommand)]
     Ports(services_cmd::PortsCommand),
@@ -240,6 +244,7 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Media(command) => media_cmd::run(command, output).await,
+        Command::Utility(command) => utility_cmd::run(&directories, command, output),
         Command::Ports(command) => services_cmd::ports(command, output).await,
         Command::Docker(command) => services_cmd::docker(command, output).await,
         Command::System(command) => system_cmd::run(command, output).await,
