@@ -1,3 +1,4 @@
+import { startVisiblePolling } from "../lib/polling";
 import { useCallback, useEffect, useState } from "react";
 
 import { LimitRing } from "./charts";
@@ -46,11 +47,10 @@ export function LimitRings() {
   }, []);
 
   useEffect(() => {
-    void load();
-    const refresh = setInterval(load, REFRESH_MS);
-    const tick = setInterval(() => setTick((n) => n + 1), 1000);
+    const stop = startVisiblePolling(load, REFRESH_MS);
+    const tick = setInterval(() => { if (!document.hidden) setTick((n) => n + 1); }, 1000);
     return () => {
-      clearInterval(refresh);
+      stop();
       clearInterval(tick);
     };
   }, [load]);

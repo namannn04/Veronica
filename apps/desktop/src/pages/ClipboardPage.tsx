@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
 import { bytes, timeAgo } from "../lib/format";
 import type { ClipRow } from "../lib/types";
@@ -34,9 +35,7 @@ export function ClipboardPage() {
   }, [query]);
 
   useEffect(() => {
-    void load();
-    const timer = setInterval(load, TICK_MS);
-    return () => clearInterval(timer);
+    return startVisiblePolling(load, TICK_MS);
   }, [load]);
 
   const copy = async (row: ClipRow) => {

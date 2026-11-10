@@ -1,3 +1,4 @@
+import { startVisiblePolling } from "../lib/polling";
 import { useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
@@ -29,9 +30,9 @@ export function CalendarPage() {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    const reload = window.setInterval(() => void load(true), RELOAD_MS);
-    const tick = window.setInterval(() => setTick((value) => value + 1), TICK_MS);
-    return () => { window.clearInterval(reload); window.clearInterval(tick); };
+    const stop = startVisiblePolling(() => load(true), RELOAD_MS, document, false);
+    const tick = window.setInterval(() => { if (!document.hidden) setTick((value) => value + 1); }, TICK_MS);
+    return () => { stop(); window.clearInterval(tick); };
   }, [load]);
 
   return <div className="calendar-page">

@@ -1,3 +1,4 @@
+import { startVisiblePolling } from "../lib/polling";
 import { useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
@@ -44,18 +45,9 @@ export function MachinesPage() {
   }, []);
 
   useEffect(() => {
-    let live = true;
-    let timer: number | undefined;
-    // The next probe is scheduled when the last one has answered. A probe can
-    // take up to twenty seconds, so a fixed interval stacked several on top of
-    // each other and let an older answer overwrite a newer one.
-    const probe = async () => {
-      await load();
-      if (live) timer = window.setTimeout(() => void probe(), TICK_MS);
-    };
-    void probe();
+    const stop = startVisiblePolling(load, TICK_MS);
     void loadDiscovered();
-    return () => { live = false; window.clearTimeout(timer); };
+    return stop;
   }, [load, loadDiscovered]);
 
   const add = async (sshTarget: string, label?: string) => {

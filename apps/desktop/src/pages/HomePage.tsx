@@ -1,3 +1,4 @@
+import { startVisiblePolling } from "../lib/polling";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SpendCalendar } from "../components/charts";
@@ -61,7 +62,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
   const [presenter, setPresenter] = useState<PresenterView | null>(null);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1_000);
+    const timer = window.setInterval(() => { if (!document.hidden) setNow(new Date()); }, 1_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -91,15 +92,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
   // reply can never land after (and overwrite) a newer one.
   useEffect(() => {
     let live = true;
-    const every = (ms: number, read: () => Promise<void>) => {
-      let busy = false;
-      const timer = window.setInterval(() => {
-        if (busy) return;
-        busy = true;
-        void read().finally(() => { busy = false; });
-      }, ms);
-      return () => window.clearInterval(timer);
-    };
+    const every = (ms: number, read: () => Promise<void>) => startVisiblePolling(read, ms, document, false);
     const stopLive = every(LIVE_POLL_MS, async () => {
       const [system, playing] = await Promise.allSettled([ipc.systemSnapshot(), ipc.mediaNowPlaying()]);
       if (!live) return;

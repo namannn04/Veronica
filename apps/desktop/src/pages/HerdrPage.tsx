@@ -1,3 +1,4 @@
+import { startVisiblePolling } from "../lib/polling";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { ipc } from "../lib/ipc";
@@ -19,21 +20,7 @@ export function HerdrPage() {
     catch (reason) { setError(String(reason)); }
   }, []);
 
-  useEffect(() => {
-    let live = true;
-    // A Herdr call can take up to twelve seconds against a stuck server, so a
-    // tick is skipped while the last one is still waiting. Otherwise calls
-    // piled up six deep and an older board could land after a newer one.
-    let inFlight = false;
-    const refresh = () => {
-      if (!live || inFlight) return;
-      inFlight = true;
-      void load().finally(() => { inFlight = false; });
-    };
-    refresh();
-    const timer = window.setInterval(refresh, 2_000);
-    return () => { live = false; window.clearInterval(timer); };
-  }, [load]);
+  useEffect(() => startVisiblePolling(load, 2000), [load]);
 
   const kindChoices = useMemo(() => [...new Set(board?.agents.map((agent) => agent.kind) ?? [])].sort(), [board]);
   const agents = useMemo(() => (board?.agents ?? []).filter((agent) => (session === "all" || agent.session === session) && (kinds.length === 0 || kinds.includes(agent.kind))), [board, kinds, session]);
