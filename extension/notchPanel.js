@@ -21,6 +21,7 @@ import { launchApp, launchFileShelf, launchNotchTools, launchServices, runJson, 
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { presenterClick, presenterState } from './presenterGate.js';
+import { UtilityPanel } from './utilityPanel.js';
 import { UsageCard } from './usageCard.js';
 import { isTheme } from './themes.js';
 
@@ -29,7 +30,9 @@ const TABS = [
     ['notifications', 'preferences-system-notifications-symbolic', 'Notifications'],
     ['files', 'folder-symbolic', 'Files'],
     ['clipboard', 'edit-paste-symbolic', 'Clipboard'],
-    ['tools', 'applications-utilities-symbolic', 'Tools'],
+    ['image', 'image-x-generic-symbolic', 'Image'],
+    ['qr', 'view-grid-symbolic', 'QR code'],
+    ['tools', 'applications-utilities-symbolic', 'Services'],
     ['camera', 'camera-photo-symbolic', 'Camera'],
 ];
 
@@ -74,6 +77,10 @@ export class NotchPanel {
         this._addPanel('home', this._homePanel());
         this._addPanel('notifications', this._notificationsPanel());
         this._addPanel('files', this._filesPanel());
+        this._imageTool = new UtilityPanel('image', this._cancellable, () => { this.showTab('image'); this._reopenFiles?.('image'); });
+        this._qrTool = new UtilityPanel('qr', this._cancellable, () => { this.showTab('qr'); this._reopenFiles?.('qr'); });
+        this._addPanel('image', this._imageTool.actor);
+        this._addPanel('qr', this._qrTool.actor);
         this._addPanel('tools', this._toolsPanel());
         this._addPanel('clipboard', this._clipboardPanel());
         this._addPanel('camera', this._cameraPanel());
@@ -147,6 +154,8 @@ export class NotchPanel {
     }
 
     _selectTab(id) {
+        if (this._activeTab === 'image' && id !== 'image') this._imageTool?.close();
+        if (this._activeTab === 'qr' && id !== 'qr') this._qrTool?.close();
         if (this._activeTab === 'camera' && id !== 'camera')
             this._stopCameraPreview();
         this._activeTab = id;
@@ -256,29 +265,17 @@ export class NotchPanel {
     }
 
     _toolsPanel() {
-        const panel = vbox({ style_class: 'veronica-shelf-panel', x_expand: true });
-        panel.add_child(new St.Label({ text: 'Quick tools', style_class: 'veronica-files-title' }));
-        panel.add_child(new St.Label({ text: 'PNG · JPG / JPEG · SVG\nDrop, paste or choose an image. Generate a QR from a link.', style_class: 'veronica-empty' }));
-        const open = new St.Button({ label: 'Open Image & QR Tools', can_focus: true, style_class: 'veronica-action-tile' });
-        open.connect('clicked', () => {
-            try {
-                launchNotchTools();
-                this._closeMenu?.();
-            } catch (error) {
-                Main.notify('Veronica', `Could not open image tools: ${error.message}`);
-            }
-        });
-        panel.add_child(open);
-        const services = new St.Button({ label: 'Ports & Docker', can_focus: true, style_class: 'veronica-action-tile' });
+        const panel = vbox({ style_class: 'veronica-shelf-panel veronica-services-launcher', x_expand: true });
+        const card = vbox({ style_class: 'veronica-utility-card veronica-services-card', x_expand: true });
+        card.add_child(new St.Icon({ icon_name: 'network-server-symbolic', icon_size: 32 }));
+        card.add_child(new St.Label({ text: 'Ports & Docker', style_class: 'veronica-utility-title' }));
+        card.add_child(new St.Label({ text: 'Find a busy port. Manage your local containers.', style_class: 'veronica-utility-detail' }));
+        const services = new St.Button({ label: 'Open developer services', can_focus: true, style_class: 'veronica-utility-button' });
         services.connect('clicked', () => {
-            try {
-                launchServices();
-                this._closeMenu?.();
-            } catch (error) {
-                Main.notify('Veronica', `Could not open developer services: ${error.message}`);
-            }
+            try { launchServices(); this._closeMenu?.(); }
+            catch (error) { Main.notify('Veronica', `Could not open developer services: ${error.message}`); }
         });
-        panel.add_child(services);
+        card.add_child(services); panel.add_child(card);
         return panel;
     }
 
@@ -680,6 +677,8 @@ export class NotchPanel {
     }
 
     onMenuClosed() {
+        this._imageTool?.close();
+        this._qrTool?.close();
         this._stopCameraPreview();
     }
 
@@ -879,6 +878,9 @@ export class NotchPanel {
         this._power = null;
         this._cameraPreview?.destroy();
         this._cameraPreview = null;
+        this._imageTool?.destroy();
+        this._qrTool?.destroy();
+        this._imageTool = this._qrTool = null;
         this._usage?.destroy();
         this._nowPlaying?.destroy();
         this._clipboardRows = null;

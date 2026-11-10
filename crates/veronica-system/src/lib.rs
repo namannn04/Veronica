@@ -10,6 +10,7 @@ pub mod color;
 pub mod docker;
 pub mod download;
 pub mod herdr;
+pub mod image_tools;
 pub mod metrics;
 pub mod notifications;
 pub mod notify;

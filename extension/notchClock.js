@@ -106,8 +106,8 @@ class NotchButton extends PanelMenu.Button {
             theme => this._applyTheme(theme),
             this._settings,
             this._keyboardCleaner,
-            () => {
-                this._notchPanel?.showTab('files');
+            (tab = 'files') => {
+                this._notchPanel?.showTab(tab);
                 this.menu.open();
             }
         );

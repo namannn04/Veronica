@@ -35,9 +35,43 @@ pub fn show() -> anyhow::Result<()> {
     window.set_title("Veronica · Image & QR Tools");
     window.set_default_size(480, 540);
     window.set_keep_above(true);
+    window.set_widget_name("veronica-utilities");
+    window.set_default_size(500, 440);
+    let notebook = gtk::Notebook::new();
+    notebook.set_show_border(false);
+    notebook.append_page(
+        &panel(&window, "image")?,
+        Some(&gtk::Label::new(Some("Image converter"))),
+    );
+    notebook.append_page(
+        &panel(&window, "qr")?,
+        Some(&gtk::Label::new(Some("QR code"))),
+    );
+    window.add(&notebook);
+    let css = gtk::CssProvider::new();
+    css.load_from_data(b"#veronica-utilities { background: @theme_bg_color; color: @theme_fg_color; border-radius: 22px; } #veronica-utilities notebook header { background: transparent; padding: 10px; border: none; } #veronica-utilities notebook tab { border-radius: 14px; padding: 10px 22px; margin: 0 4px; border: none; } #veronica-utilities notebook tab:checked { background: alpha(@theme_fg_color,0.10); box-shadow: none; } #veronica-utilities button { border-radius: 12px; padding: 8px 16px; } #veronica-utilities entry { border-radius: 12px; padding: 8px; }")?;
+    if let Some(screen) = gtk::prelude::WidgetExt::screen(&window) {
+        gtk::StyleContext::add_provider_for_screen(
+            &screen,
+            &css,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+        window
+            .connect_destroy(move |_| gtk::StyleContext::remove_provider_for_screen(&screen, &css));
+    }
+    window.connect_destroy(|_| {
+        WINDOW.with(|slot| {
+            slot.borrow_mut().take();
+        });
+    });
+    WINDOW.with(|slot| *slot.borrow_mut() = Some(window.clone()));
+    window.show_all();
+    window.present();
+    Ok(())
+}
+fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     let body = gtk::Box::new(gtk::Orientation::Vertical, 12);
     body.set_border_width(20);
-    window.add(&body);
     let hint = gtk::Label::new(Some("Drop an image, paste with Ctrl+V, or choose a file."));
     hint.set_line_wrap(true);
     body.pack_start(&hint, false, false, 0);
@@ -157,6 +191,21 @@ pub fn show() -> anyhow::Result<()> {
     });
     let latest = Rc::new(Cell::new(0_u64));
     let pending_request = latest.clone();
+    if kind == "image" {
+        qr_row.set_no_show_all(true);
+        qr_row.hide();
+    } else {
+        for widget in [
+            hint.upcast::<gtk::Widget>(),
+            import.upcast(),
+            formats.clone().upcast(),
+            note.upcast(),
+        ] {
+            widget.set_no_show_all(true);
+            widget.hide();
+        }
+        status.set_text("Paste a link below to create a QR code. Everything stays local.");
+    }
     let pending_actions = actions.clone();
     let pending_status = status.clone();
     let submit = Rc::new(move |job| {
@@ -223,7 +272,12 @@ pub fn show() -> anyhow::Result<()> {
     let paste_action = paste_image.clone();
     paste.connect_clicked(move |_| paste_action());
     let paste_entry = link.clone();
+    let page = body.downgrade();
+    let image_page = kind == "image";
     window.connect_key_press_event(move |_, event| {
+        if !image_page || !page.upgrade().is_some_and(|p| p.is_mapped()) {
+            return glib::Propagation::Proceed;
+        }
         if event.state().contains(gtk::gdk::ModifierType::CONTROL_MASK)
             && event.keyval() == gtk::gdk::keys::constants::v
         {
@@ -360,14 +414,8 @@ pub fn show() -> anyhow::Result<()> {
     });
     window.connect_destroy(move |_| {
         task.abort();
-        WINDOW.with(|slot| {
-            slot.borrow_mut().take();
-        });
     });
-    WINDOW.with(|slot| *slot.borrow_mut() = Some(window.clone()));
-    window.show_all();
-    window.present();
-    Ok(())
+    Ok(body)
 }
 fn pixbuf(bytes: &[u8]) -> anyhow::Result<gtk::gdk_pixbuf::Pixbuf> {
     let loader = PixbufLoader::new();
@@ -388,7 +436,12 @@ mod tests {
         gtk::init().expect("GTK display");
         show().unwrap();
         let window = WINDOW.with(|slot| slot.borrow().as_ref().unwrap().clone());
-        let body = window.child().unwrap().downcast::<gtk::Box>().unwrap();
+        let notebook = window.child().unwrap().downcast::<gtk::Notebook>().unwrap();
+        let body = notebook
+            .nth_page(Some(0))
+            .unwrap()
+            .downcast::<gtk::Box>()
+            .unwrap();
         let children = body.children();
         let actions = children[6].clone().downcast::<gtk::Box>().unwrap();
         assert!(!actions.is_visible());
@@ -427,6 +480,14 @@ mod tests {
             received_jpg.set(true);
         });
         pump_until(|| copied_jpg.get());
+        notebook.set_current_page(Some(1));
+        let body = notebook
+            .nth_page(Some(1))
+            .unwrap()
+            .downcast::<gtk::Box>()
+            .unwrap();
+        let children = body.children();
+        let actions = children[6].clone().downcast::<gtk::Box>().unwrap();
         let qr_row = children[7].clone().downcast::<gtk::Box>().unwrap();
         let entry = qr_row.children()[0]
             .clone()
