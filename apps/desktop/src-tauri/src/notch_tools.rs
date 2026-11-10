@@ -110,7 +110,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     qr_row.pack_start(&link, true, true, 0);
     qr_row.add(&generate);
     body.add(&qr_row);
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(u64, Job)>();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<(u64, Job)>(2);
     let (result_tx, mut results) = tokio::sync::mpsc::unbounded_channel();
     std::thread::spawn(move || {
         let mut source: Option<Source> = None;
@@ -225,8 +225,12 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
         pending_actions.hide();
         pending_status.set_text("Processing locally…");
         let request = pending_request.get() + 1;
-        pending_request.set(request);
-        let _ = tx.send((request, job));
+        match tx.try_send((request, job)) {
+            Ok(()) => pending_request.set(request),
+            Err(_) => {
+                pending_status.set_text("An operation is already queued. Please wait a moment.")
+            }
+        }
     });
     for (name, format) in [("PNG", "png"), ("JPG", "jpg"), ("SVG", "svg")] {
         let button = gtk::Button::with_label(name);

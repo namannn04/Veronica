@@ -82,6 +82,14 @@ export class NotchPanel {
         this._qrTool = new UtilityPanel('qr', this._cancellable, () => { this.showTab('qr'); this._reopenFiles?.('qr'); });
         this._addPanel('image', this._imageTool.actor);
         this._addPanel('qr', this._qrTool.actor);
+        this.actor.connect('key-press-event', (_actor, event) => {
+            if (this._activeTab === 'image' && (event.get_state() & Clutter.ModifierType.CONTROL_MASK)
+                && [Clutter.KEY_v, Clutter.KEY_V].includes(event.get_key_symbol())) {
+                this._imageTool?._paste();
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
         this._addPanel('tools', this._toolsPanel());
         this._addPanel('clipboard', this._clipboardPanel());
         this._addPanel('camera', this._cameraPanel());
