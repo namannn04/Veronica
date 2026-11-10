@@ -91,6 +91,8 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchPanel.js": "../../../extension/notchPanel.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/utilityPanel.js": "../../../extension/utilityPanel.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/capsuleMotion.js": "../../../extension/capsuleMotion.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/bannerPresentation.js": "../../../extension/bannerPresentation.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchBanners.js": "../../../extension/notchBanners.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/themes.js": "../../../extension/themes.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/ring.js": "../../../extension/ring.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/usageCard.js": "../../../extension/usageCard.js",
