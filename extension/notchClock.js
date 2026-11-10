@@ -13,12 +13,14 @@ import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { PopupAnimation } from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import { installNotchAnimation } from './notchAnimation.js';
+import { attachNotchBanners } from './notchBanners.js';
 import { NotchPanel } from './notchPanel.js';
 import { THEMES } from './themes.js';
 import { SystemStatsIndicator } from './systemStats.js';
@@ -67,6 +69,7 @@ class NotchButton extends PanelMenu.Button {
             this._buildMenu();
             this.menu.actor.add_style_class_name('veronica-notch-shell-menu');
             this._installNotchAnimation();
+            this._bannerPresentation = attachNotchBanners(Main.messageTray, this, this._notchTheme ?? 'dark');
         } catch (error) {
             // The caller never receives a button whose constructor threw, so
             // it cannot destroy it; without this the clock timer and the CPU
@@ -118,6 +121,8 @@ class NotchButton extends PanelMenu.Button {
     }
 
     _applyTheme(theme) {
+        this._notchTheme = theme;
+        this._bannerPresentation?.setTheme(theme);
         const actor = this.menu?.actor;
         if (!actor)
             return;
@@ -179,6 +184,8 @@ class NotchButton extends PanelMenu.Button {
     }
 
     destroy() {
+        this._bannerPresentation?.destroy();
+        this._bannerPresentation = null;
         this._motionCleanup?.();
         this._motionCleanup = null;
         if (this._openRefreshId)
