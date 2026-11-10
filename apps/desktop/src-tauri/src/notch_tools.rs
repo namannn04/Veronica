@@ -113,7 +113,12 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     let (result_tx, mut results) = tokio::sync::mpsc::unbounded_channel();
     std::thread::spawn(move || {
         let mut source: Option<Source> = None;
-        while let Some((request, job)) = rx.blocking_recv() {
+        while let Some((mut request, mut job)) = rx.blocking_recv() {
+            // A burst of clicks retains at most the newest pending operation.
+            while let Ok((next_request, next_job)) = rx.try_recv() {
+                request = next_request;
+                job = next_job;
+            }
             let result: anyhow::Result<(Option<ResultImage>, String, Vec<u8>)> = (|| {
                 match job {
                     Job::Load(bytes) => {
@@ -122,6 +127,10 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                     }
                     Job::Path(path) => {
                         source = None;
+                        anyhow::ensure!(
+                            std::fs::metadata(&path)?.is_file(),
+                            "Choose a regular image file"
+                        );
                         anyhow::ensure!(
                             std::fs::metadata(&path)?.len() <= image_tools::MAX_BYTES as u64,
                             "Image must be at most 20 MiB"
@@ -155,8 +164,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                         ));
                     }
                     Job::Qr(link) => {
-                        let svg = image_tools::qr(&link)?;
-                        let png = image_tools::encode(&image_tools::decode(&svg)?, "png")?;
+                        let png = image_tools::encode(&image_tools::qr_source(&link)?, "png")?;
                         return Ok((
                             Some(ResultImage {
                                 bytes: png.clone(),

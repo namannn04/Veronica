@@ -59,7 +59,7 @@ export class UtilityPanel {
         this._job?.cancel(); this._job = new Gio.Cancellable();
         const token = ++this._generation;
         this._exports.hide(); this._result = null; this._status.text = 'Working locally…';
-        const result = await runJson(['utility', ...args], this._job);
+        const result = await runJson(['utility', ...args], this._job, { terminateOnCancel: true });
         if (!this.actor || token !== this._generation) return;
         this._job = null;
         if (!result?.preview) { this._error('Could not process this image. Use a valid image up to 20 MiB / 16 megapixels.'); return; }

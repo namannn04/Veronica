@@ -85,16 +85,23 @@ export function resetCliCache() {
  * exactly one JSON document to stdout and logs to stderr, which is what makes
  * this safe to parse directly.
  */
-export async function runJson(args, cancellable = null) {
+export async function runJson(args, cancellable = null, { terminateOnCancel = false } = {}) {
     const cli = findCli();
     if (!cli)
         return null;
 
+    let proc = null, cancelledId = 0, deadlineId = 0;
     try {
-        const proc = Gio.Subprocess.new(
+        proc = Gio.Subprocess.new(
             [cli, ...args, '--json'],
             Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
         );
+        if (terminateOnCancel) {
+            const stop = () => { try { proc.force_exit(); } catch {} };
+            if (cancellable?.is_cancelled()) { stop(); return null; }
+            if (cancellable) cancelledId = cancellable.connect(stop);
+            deadlineId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => { deadlineId = 0; stop(); return GLib.SOURCE_REMOVE; });
+        }
         const [stdout, stderr] = await proc.communicate_utf8_async(null, cancellable);
         if (!proc.get_successful()) {
             console.debug(`veronica: vr ${args.join(' ')} failed: ${stderr?.trim() ?? ''}`);
@@ -109,6 +116,9 @@ export async function runJson(args, cancellable = null) {
             return null;
         console.debug(`veronica: cannot run vr ${args.join(' ')}: ${error}`);
         return null;
+    } finally {
+        if (cancelledId) cancellable.disconnect(cancelledId);
+        if (deadlineId) GLib.Source.remove(deadlineId);
     }
 }
 

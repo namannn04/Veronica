@@ -89,9 +89,8 @@ class NotchButton extends PanelMenu.Button {
                 this._notchPanel?.onMenuClosed();
             }
         });
-        // Restore persisted power actions at login without waiting for the
-        // user to open the notch for the first time.
-        this.refresh().catch(() => {});
+        // Power/settings subscriptions initialize immediately. Expensive panel
+        // reads wait until the popup is actually open.
     }
 
     _tick() {

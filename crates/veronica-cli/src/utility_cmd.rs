@@ -36,7 +36,7 @@ pub fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> R
         UtilityCommand::Image { path, format } => {
             (image_tools::decode(&read(path)?)?, format.as_deref())
         }
-        UtilityCommand::Qr { text } => (image_tools::decode(&image_tools::qr(text)?)?, Some("png")),
+        UtilityCommand::Qr { text } => (image_tools::qr_source(text)?, Some("png")),
     };
     let root =
         dirs.cache

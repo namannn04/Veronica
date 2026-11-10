@@ -189,16 +189,25 @@ where
     // The script honours EDITH_CACHE_DIR to keep its own tool cache (jq, bun)
     // inside Veronica's directories instead of the user's home. It runs on the
     // host so it finds the same git, perl and agents it would without a sandbox.
-    let mut child = Command::from(veronica_core::host::command_with_env(
-        "bash",
+    // A full history scan must yield CPU to the interactive desktop. The
+    // priority is inherited by the script's parsers; no global scheduler changes.
+    let nice = veronica_core::host::which("nice");
+    let program = nice.as_deref().unwrap_or_else(|| Path::new("bash"));
+    let mut command = Command::from(veronica_core::host::command_with_env(
+        program,
         &[("EDITH_CACHE_DIR", cache_dir.as_os_str())],
-    ))
-    .arg(script)
-    .arg(output_dir)
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped())
-    .spawn()
-    .with_context(|| format!("cannot run {}", script.display()))?;
+    ));
+    if nice.is_some() {
+        command.args(["-n", "10", "bash"]);
+    }
+    let mut child = command
+        .arg(script)
+        .arg(output_dir)
+        .kill_on_drop(true)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("cannot run {}", script.display()))?;
 
     let stdout = child.stdout.take().context("collector stdout missing")?;
     let stderr = child.stderr.take().context("collector stderr missing")?;
@@ -207,12 +216,15 @@ where
     // full pipe buffer would otherwise block it forever.
     let stderr_task = tokio::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
-        let mut collected = Vec::new();
+        let mut collected = std::collections::VecDeque::new();
         while let Ok(Some(line)) = lines.next_line().await {
             tracing::debug!(target: "veronica::collector", "{line}");
-            collected.push(line);
+            if collected.len() == 200 {
+                collected.pop_front();
+            }
+            collected.push_back(line);
         }
-        collected
+        collected.into_iter().collect::<Vec<_>>()
     });
 
     let mut events = Vec::new();

@@ -97,25 +97,61 @@ pub fn encode(source: &Source, format: &str) -> Result<Vec<u8>> {
     Ok(bytes.into_inner())
 }
 
-pub fn qr(link: &str) -> Result<Vec<u8>> {
+fn qr_code(link: &str) -> Result<qrcode::QrCode> {
     let link = link.trim();
     ensure!(!link.is_empty(), "Enter a link first");
     ensure!(
         !link.chars().any(char::is_control),
         "Link contains control characters"
     );
-    let code = qrcode::QrCode::new(link.as_bytes()).context("Link is too long for a QR code")?;
-    Ok(code
+    qrcode::QrCode::new(link.as_bytes()).context("Link is too long for a QR code")
+}
+pub fn qr(link: &str) -> Result<Vec<u8>> {
+    Ok(qr_code(link)?
         .render::<qrcode::render::svg::Color>()
         .min_dimensions(320, 320)
         .quiet_zone(true)
         .build()
         .into_bytes())
 }
+/// QR pixels do not require SVG parsing or scanning all installed system fonts.
+pub fn qr_source(link: &str) -> Result<Source> {
+    let code = qr_code(link)?;
+    let width = code.width();
+    let scale = 320_usize.div_ceil(width + 8);
+    let side = ((width + 8) * scale) as u32;
+    let mut pixels = image::GrayImage::from_pixel(side, side, image::Luma([255]));
+    for y in 0..width {
+        for x in 0..width {
+            if code[(x, y)] == qrcode::Color::Dark {
+                for dy in 0..scale {
+                    for dx in 0..scale {
+                        pixels.put_pixel(
+                            ((x + 4) * scale + dx) as u32,
+                            ((y + 4) * scale + dy) as u32,
+                            image::Luma([0]),
+                        );
+                    }
+                }
+            }
+        }
+    }
+    Ok(Source {
+        pixels: DynamicImage::ImageLuma8(pixels),
+        format: "PNG",
+        svg: None,
+    })
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn direct_qr_pixels_match_svg_rendering_without_font_discovery() {
+        let direct = qr_source("https://example.com/notch").unwrap();
+        let svg = decode(&qr("https://example.com/notch").unwrap()).unwrap();
+        assert_eq!(direct.pixels.to_luma8(), svg.pixels.to_luma8());
+    }
     #[test]
     fn formats_and_alpha_roundtrip() {
         let source = Source {
