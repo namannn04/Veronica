@@ -1202,3 +1202,7 @@
 .veronica-notch-native-banner.veronica-notification-light.veronica-banner-transparent { background-color: transparent; }
 .veronica-notch-native-banner.veronica-notification-light StLabel { color: #202027; }
 .veronica-notch-native-banner.veronica-notification-light .message-body { color: rgba(20,20,27,0.72); }
+
+.veronica-banner-material { background-gradient-start: rgba(35,36,43,0.94); background-gradient-end: rgba(15,16,22,0.92); }
+.veronica-banner-material.veronica-theme-light, .veronica-banner-material.veronica-theme-sandstone, .veronica-banner-material.veronica-theme-mist, .veronica-banner-material.veronica-theme-paper { background-gradient-start: rgba(252,252,255,0.96); background-gradient-end: rgba(235,236,242,0.94); }
+.veronica-banner-material.veronica-theme-carbon { background-gradient-start: black; background-gradient-end: black; }
