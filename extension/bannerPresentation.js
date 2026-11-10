@@ -9,6 +9,7 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
     const clear = () => {
         current?.remove_style_class_name('veronica-notch-native-banner');
         current?.remove_style_class_name('veronica-banner-transparent');
+        current?.remove_style_class_name('veronica-notification-light');
         material?.remove_all_transitions(); material?.destroy();
         current = material = null; started = false;
     };
@@ -16,6 +17,7 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
         if (!alive || child === material || !child?.has_style_class_name?.('notification-banner')) return;
         clear(); current = child;
         child.add_style_class_name('veronica-notch-native-banner');
+        if (['light','sandstone','mist','paper'].includes(appearance)) child.add_style_class_name('veronica-notification-light');
         try {
             material = createMaterial(bin, child);
             material?.set_style_class_name(`veronica-banner-material veronica-theme-${appearance}`);
@@ -65,7 +67,10 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
     bin.ease = wrapper;
     for (const child of bin.get_children?.() ?? []) attach(child);
     return {
-        setTheme(next) { appearance = next; material?.set_style_class_name(`veronica-banner-material veronica-theme-${appearance}`); },
+        setTheme(next) { appearance = next;
+            current?.remove_style_class_name('veronica-notification-light');
+            if (['light','sandstone','mist','paper'].includes(next)) current?.add_style_class_name('veronica-notification-light');
+            material?.set_style_class_name(`veronica-banner-material veronica-theme-${appearance}`); },
         destroy() {
             alive = false;
             if (bin.ease === wrapper) {
