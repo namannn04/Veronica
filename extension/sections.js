@@ -62,9 +62,9 @@ export class Section {
  * Returns null fields rather than throwing when `vr` has nothing to say.
  */
 export async function fetchUsageData(cancellable) {
-    const summary = await runJson(['usage', 'summary', '--days', '7'], cancellable);
-    const limits = await runJson(['usage', 'limits'], cancellable);
-    const sources = await runJson(['usage', 'sources', '--days', '7'], cancellable);
+    const summary = await runJson(['usage', 'summary', '--days', '7'], cancellable, { terminateOnCancel: true });
+    const limits = await runJson(['usage', 'limits'], cancellable, { terminateOnCancel: true });
+    const sources = await runJson(['usage', 'sources', '--days', '7'], cancellable, { terminateOnCancel: true });
     return {
         summary,
         gauges: Array.isArray(limits?.gauges) ? limits.gauges : [],

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { startVisiblePolling } from "../lib/polling";
 import { CleanerPane } from "./CleanerPane";
 import { ipc, listenEvent } from "../lib/ipc";
 import { bytes, countdown, percent } from "../lib/format";
@@ -30,9 +31,8 @@ export function SystemPage() {
       if (system.status === "fulfilled") setSnapshot(system.value);
       if (apps.status === "fulfilled") setProcesses(apps.value);
     };
-    void tick();
-    const timer = setInterval(tick, TICK_MS);
-    return () => { live = false; clearInterval(timer); };
+    const stop = startVisiblePolling(tick, TICK_MS);
+    return () => { live = false; stop(); };
   }, []);
 
   useEffect(() => {
@@ -59,9 +59,8 @@ export function SystemPage() {
       setMixerError(mixer.status === "rejected" ? String(mixer.reason) : null);
       if (radio.status === "fulfilled") setBluetooth(radio.value);
     };
-    void tick();
-    const timer = setInterval(tick, DEVICE_TICK_MS);
-    return () => { live = false; clearInterval(timer); };
+    const stop = startVisiblePolling(tick, DEVICE_TICK_MS);
+    return () => { live = false; stop(); };
   }, []);
 
   // The slider must feel immediate, so the row moves on input and the reported

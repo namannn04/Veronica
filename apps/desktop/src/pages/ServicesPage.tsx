@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
 import { endpointLabel, matchesContainer, matchesPort } from "../lib/services";
 import type { DockerContainer, DockerSnapshot, ListeningPort, PortOwner, PortsSnapshot } from "../lib/types";
@@ -37,10 +38,9 @@ export function ServicesPage() {
   }, []);
   useEffect(() => {
     live.current = true;
-    void loadPorts(); void loadDocker();
-    const portTimer = setInterval(() => { if (!actionRunning.current) void loadPorts(); }, 5000);
-    const dockerTimer = setInterval(() => { if (!actionRunning.current) void loadDocker(); }, 10000);
-    return () => { live.current = false; clearInterval(portTimer); clearInterval(dockerTimer); };
+    const stopPorts = startVisiblePolling(async () => { if (!actionRunning.current) await loadPorts(); }, 5000);
+    const stopDocker = startVisiblePolling(async () => { if (!actionRunning.current) await loadDocker(); }, 10000);
+    return () => { live.current = false; stopPorts(); stopDocker(); };
   }, [loadPorts, loadDocker]);
   const refresh = () => { void loadPorts(); void loadDocker(); };
   const apply = async () => {

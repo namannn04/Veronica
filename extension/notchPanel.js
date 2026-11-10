@@ -82,13 +82,24 @@ export class NotchPanel {
         this._qrTool = new UtilityPanel('qr', this._cancellable, () => { this.showTab('qr'); this._reopenFiles?.('qr'); });
         this._addPanel('image', this._imageTool.actor);
         this._addPanel('qr', this._qrTool.actor);
+        this.actor.connect('key-press-event', (_actor, event) => {
+            if (this._activeTab === 'image' && (event.get_state() & Clutter.ModifierType.CONTROL_MASK)
+                && [Clutter.KEY_v, Clutter.KEY_V].includes(event.get_key_symbol())) {
+                this._imageTool?._paste();
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
         this._addPanel('tools', this._toolsPanel());
         this._addPanel('clipboard', this._clipboardPanel());
         this._addPanel('camera', this._cameraPanel());
         this._selectTab('home');
-        this._watchSettings();
         this._featureUnsubscribe = this._settings?.subscribe(
-            values => this._applyFeatureSettings(values)
+            values => {
+                this._applyFeatureSettings(values);
+                this._usage?.setProvider(values.limitsProvider);
+                this._applyTheme(values.appearance);
+            }
         ) ?? null;
         // The power tiles follow the settings file, not just the menu opening:
         // the app, `vr power` and an expiring timed session all change it, and
@@ -167,6 +178,7 @@ export class NotchPanel {
     }
 
     _selectTab(id) {
+        if (id !== this._activeTab) this._viewCancellable?.cancel();
         if (this._activeTab === 'image' && id !== 'image') this._imageTool?.close();
         if (this._activeTab === 'qr' && id !== 'qr') this._qrTool?.close();
         if (this._activeTab === 'camera' && id !== 'camera')
@@ -193,6 +205,7 @@ export class NotchPanel {
             this._refreshClipboard().catch(() => {});
         if (id === 'files')
             this._refreshFiles().catch(() => {});
+        if (id === 'home' && this.actor?.mapped) this.refresh().catch(() => {});
     }
 
     _homePanel() {
@@ -588,7 +601,10 @@ export class NotchPanel {
 
     async _fileAction(args) {
         const request = this._filesRequest = (this._filesRequest ?? 0) + 1;
-        const result = await runJson(['shelf', ...args], this._cancellable);
+        const reading = args[0] === 'list';
+        const scope = reading ? this._readScope() : this._cancellable;
+        const result = await runJson(['shelf', ...args], scope, { terminateOnCancel: reading });
+        if (reading && scope?.is_cancelled()) return;
         if (!this._fileRows || request !== this._filesRequest)
             return;
         this._fileRows.destroy_all_children();
@@ -698,6 +714,7 @@ export class NotchPanel {
     }
 
     onMenuClosed() {
+        this._viewCancellable?.cancel();
         this._imageTool?.close();
         this._qrTool?.close();
         this._stopCameraPreview();
@@ -774,8 +791,9 @@ export class NotchPanel {
     async _refreshClipboard() {
         if (!this._clipboardRows)
             return;
-        const rows = await recentEntries(30, this._cancellable);
-        if (!this._clipboardRows)
+        const scope = this._readScope();
+        const rows = await recentEntries(30, scope);
+        if (!this._clipboardRows || scope.is_cancelled())
             return;
         this._clipboardRows.destroy_all_children();
         if (rows.length === 0) {
@@ -820,22 +838,21 @@ export class NotchPanel {
         return wrap;
     }
 
-    async refresh() {
-        await Promise.all([
-            this._refreshPreferences(),
-            this._usage?.refresh(this._cancellable),
-            this._nowPlaying?.refresh(this._cancellable),
-            this._refreshClipboard(),
-            this._refreshFiles(),
-        ]);
+    _readScope() {
+        if (!this._viewCancellable || this._viewCancellable.is_cancelled()) this._viewCancellable = new Gio.Cancellable();
+        return this._viewCancellable;
     }
 
-    async _refreshPreferences() {
-        const settings = await runJson(['config', 'list'], this._cancellable);
-        if (!this.actor)
-            return;
-        this._usage?.setProvider(settings?.limitsProvider);
-        this._applyTheme(settings?.appearance);
+    async refresh() {
+        if (!this.actor || this._refreshing) return;
+        this._refreshing = true;
+        try {
+            if (this._activeTab === 'home') await Promise.all([
+                this._usage?.refresh(this._readScope()), this._nowPlaying?.refresh(this._readScope()),
+            ]);
+            else if (this._activeTab === 'clipboard') await this._refreshClipboard();
+            else if (this._activeTab === 'files') await this._refreshFiles();
+        } finally { this._refreshing = false; }
     }
 
     _applyTheme(value) {
@@ -852,39 +869,9 @@ export class NotchPanel {
         this._onThemeChanged?.(theme);
     }
 
-    _watchSettings() {
-        try {
-            const directory = GLib.build_filenamev([GLib.get_user_config_dir(), 'veronica']);
-            GLib.mkdir_with_parents(directory, 0o700);
-            this._settingsMonitor = Gio.File.new_for_path(directory)
-                .monitor_directory(Gio.FileMonitorFlags.NONE, this._cancellable);
-            this._settingsMonitor.connect('changed', (_monitor, file) => {
-                if (file?.get_basename() !== 'settings.json')
-                    return;
-                if (this._settingsDebounceId)
-                    GLib.Source.remove(this._settingsDebounceId);
-                this._settingsDebounceId = GLib.timeout_add(
-                    GLib.PRIORITY_DEFAULT_IDLE,
-                    120,
-                    () => {
-                        this._settingsDebounceId = 0;
-                        this._refreshPreferences().catch(() => {});
-                        return GLib.SOURCE_REMOVE;
-                    }
-                );
-            });
-        } catch (error) {
-            console.debug(`veronica: cannot monitor shared settings: ${error}`);
-        }
-    }
-
     destroy() {
-        if (this._settingsDebounceId) {
-            GLib.Source.remove(this._settingsDebounceId);
-            this._settingsDebounceId = 0;
-        }
-        this._settingsMonitor?.cancel();
-        this._settingsMonitor = null;
+        this._viewCancellable?.cancel();
+        this._viewCancellable = null;
         this._featureUnsubscribe?.();
         this._featureUnsubscribe = null;
         this._awakeUnsubscribe?.();

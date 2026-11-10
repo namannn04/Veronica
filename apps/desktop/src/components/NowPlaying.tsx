@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
 import { trackTimeline } from "../lib/format";
 import type { MediaAction, NowPlaying as NowPlayingState } from "../lib/types";
@@ -30,16 +31,7 @@ export function useNowPlaying(active = true) {
 
   useEffect(() => {
     if (!active) return;
-    let live = true;
-    const tick = () => {
-      if (live) void refresh();
-    };
-    tick();
-    const timer = setInterval(tick, POLL_MS);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
+    return startVisiblePolling(refresh, POLL_MS);
   }, [active, refresh]);
 
   const control = useCallback(

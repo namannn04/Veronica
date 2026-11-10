@@ -269,9 +269,10 @@ Logs go to stderr so stdout stays a single JSON document for the CLI.
 
 ## Image conversion and link QR codes
 
-Open **Tools** in the notch, then **Open Image & QR Tools**. The compact native
-window accepts an image through **Choose image**, file-manager drag and drop,
-or **Paste image** / **Ctrl+V**. It detects PNG, JPG/JPEG and SVG from content.
+Open **Image** or **QR code** directly in the notch. The Image panel offers
+**Choose image**, **Paste** and **Ctrl+V**, detecting PNG, JPG/JPEG and SVG from
+content. Use **Drag & drop window** for file-manager drops in the native helper,
+which has separate Image converter and QR code tabs.
 Choose one of the three output buttons: **PNG**, **JPG** or **SVG**. Once ready,
 use **Download** or **Copy image**. Clipboard copy supplies pixels that other
 apps can paste; Download preserves the selected file format.
@@ -326,3 +327,26 @@ vr ports stop --pid PID --started-at STARTED_AT --inode INODE --confirm
 # Use the full container ID and local endpoint returned by docker status:
 vr docker action stop CONTAINER_ID --endpoint unix:///var/run/docker.sock --confirm
 ```
+
+## Notch appearance and resource use
+
+Tab names expand on hover or keyboard focus. The notch and native notification
+banner use a shared translucent material and bounded actor transitions; no
+full-screen live blur or JavaScript animation loop is used. Desktop reduced-motion
+settings disable the transitions. Notifications retain GNOME's own queue, actions,
+Do Not Disturb, timeouts and privacy rules. Disabling the extension restores the
+stock clock and banner methods.
+
+Closed utility panels cancel their pixel jobs. Only the active notch tab reads
+its data, previews are thumbnails, native utility queues are bounded, and temporary
+outputs are capped in private task caches. Desktop data polling pauses in hidden
+webviews and never stacks another request on a slow one. Camera capture remains
+bounded and stops when its tab/menu closes. Usage history collection yields CPU
+priority to interactive work; its diagnostic tail is bounded. Closing the main
+window continues to destroy its WebKit view rather than retaining an invisible UI.
+
+A short isolated GNOME 50 check with a closed notch measured approximately 0.33%
+CPU both with the extension and after disable, with total Shell RSS around 288 MiB.
+That is a six-second sample of the whole compositor, not per-extension memory or
+a guarantee against lag on every device. High-resolution image work, active camera
+capture, usage collection and other applications can still consume resources.

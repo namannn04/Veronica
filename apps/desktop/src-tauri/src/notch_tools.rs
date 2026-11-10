@@ -83,6 +83,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     body.add(&import);
     let formats = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     body.add(&formats);
+    formats.set_sensitive(false);
     let note = gtk::Label::new(Some(
         "SVG preserves the image in an SVG container. JPG uses a white background.",
     ));
@@ -109,11 +110,16 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     qr_row.pack_start(&link, true, true, 0);
     qr_row.add(&generate);
     body.add(&qr_row);
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(u64, Job)>();
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<(u64, Job)>(2);
     let (result_tx, mut results) = tokio::sync::mpsc::unbounded_channel();
     std::thread::spawn(move || {
         let mut source: Option<Source> = None;
-        while let Some((request, job)) = rx.blocking_recv() {
+        while let Some((mut request, mut job)) = rx.blocking_recv() {
+            // A burst of clicks retains at most the newest pending operation.
+            while let Ok((next_request, next_job)) = rx.try_recv() {
+                request = next_request;
+                job = next_job;
+            }
             let result: anyhow::Result<(Option<ResultImage>, String, Vec<u8>)> = (|| {
                 match job {
                     Job::Load(bytes) => {
@@ -122,6 +128,10 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                     }
                     Job::Path(path) => {
                         source = None;
+                        anyhow::ensure!(
+                            std::fs::metadata(&path)?.is_file(),
+                            "Choose a regular image file"
+                        );
                         anyhow::ensure!(
                             std::fs::metadata(&path)?.len() <= image_tools::MAX_BYTES as u64,
                             "Image must be at most 20 MiB"
@@ -155,8 +165,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                         ));
                     }
                     Job::Qr(link) => {
-                        let svg = image_tools::qr(&link)?;
-                        let png = image_tools::encode(&image_tools::decode(&svg)?, "png")?;
+                        let png = image_tools::encode(&image_tools::qr_source(&link)?, "png")?;
                         return Ok((
                             Some(ResultImage {
                                 bytes: png.clone(),
@@ -206,14 +215,22 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
         }
         status.set_text("Paste a link below to create a QR code. Everything stays local.");
     }
+    let pending_formats = formats.clone();
     let pending_actions = actions.clone();
     let pending_status = status.clone();
     let submit = Rc::new(move |job| {
+        if matches!(&job, Job::Load(_) | Job::Path(_)) {
+            pending_formats.set_sensitive(false);
+        }
         pending_actions.hide();
         pending_status.set_text("Processing locally…");
         let request = pending_request.get() + 1;
-        pending_request.set(request);
-        let _ = tx.send((request, job));
+        match tx.try_send((request, job)) {
+            Ok(()) => pending_request.set(request),
+            Err(_) => {
+                pending_status.set_text("An operation is already queued. Please wait a moment.")
+            }
+        }
     });
     for (name, format) in [("PNG", "png"), ("JPG", "jpg"), ("SVG", "svg")] {
         let button = gtk::Button::with_label(name);
@@ -381,6 +398,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
             preview.clear();
             match result {
                 Ok((image, text, bytes)) => {
+                    formats.set_sensitive(true);
                     status.set_text(&text);
                     if let Ok(pixels) = pixbuf(&bytes) {
                         if let Some(small) = pixels.scale_simple(
