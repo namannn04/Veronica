@@ -1137,3 +1137,21 @@
   border-width: 0;
   box-shadow: none;
 }
+
+/* The utility tasks share the notch's compact card vocabulary. */
+.veronica-utility-panel { spacing: 10px; padding-top: 8px; }
+.veronica-utility-card { padding: 12px; spacing: 12px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.12); background-color: rgba(255,255,255,0.065); }
+.veronica-utility-controls { spacing: 8px; }
+.veronica-utility-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.94); }
+.veronica-utility-detail { font-size: 11px; color: rgba(255,255,255,0.62); max-width: 310px; }
+.veronica-utility-row { spacing: 8px; }
+.veronica-utility-button { border-radius: 12px; padding: 6px 11px; background-color: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.94); font-size: 11px; font-weight: 600; transition-duration: 150ms; }
+.veronica-utility-button:hover, .veronica-utility-button:focus { background-color: rgba(255,255,255,0.18); }
+.veronica-utility-secondary { padding: 4px 0; background-color: transparent; border-color: transparent; color: rgba(255,255,255,0.60); }
+.veronica-utility-preview { width: 132px; height: 132px; border-radius: 16px; padding: 8px; background-color: rgba(255,255,255,0.04); color: rgba(255,255,255,0.36); }
+.veronica-utility-entry { border-radius: 12px; padding: 9px 12px; background-color: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.15); font-size: 12px; }
+.veronica-services-launcher { padding-top: 8px; }
+.veronica-services-card { spacing: 12px; }
+.veronica-theme-light .veronica-utility-title, .veronica-theme-sandstone .veronica-utility-title, .veronica-theme-mist .veronica-utility-title, .veronica-theme-paper .veronica-utility-title { color: #24242a; }
+.veronica-theme-light .veronica-utility-detail, .veronica-theme-sandstone .veronica-utility-detail, .veronica-theme-mist .veronica-utility-detail, .veronica-theme-paper .veronica-utility-detail { color: rgba(20,20,28,0.62); }
+.veronica-theme-light .veronica-utility-button, .veronica-theme-sandstone .veronica-utility-button, .veronica-theme-mist .veronica-utility-button, .veronica-theme-paper .veronica-utility-button, .veronica-theme-light .veronica-utility-entry, .veronica-theme-sandstone .veronica-utility-entry, .veronica-theme-mist .veronica-utility-entry, .veronica-theme-paper .veronica-utility-entry { color: #24242a; background-color: rgba(0,0,0,0.055); border-color: rgba(0,0,0,0.10); }

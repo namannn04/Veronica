@@ -32,7 +32,7 @@ function harness() {
     panel._tabButtons=new Map(); panel._panels=new Map(); panel._activeTab='home';
     panel._closeMenu=()=>{closed++;};
     panel._fileRows=new Actor();
-    for (const id of ['home','notifications','files','clipboard','camera','tools']) panel._panels.set(id,new Actor());
+    for (const id of ['home','notifications','files','clipboard','camera','tools','image','qr']) panel._panels.set(id,new Actor());
     panel._header();
     return {panel,calls,closed:()=>closed,launched:()=>launched,tools:()=>tools,services:()=>services};
 }
@@ -60,20 +60,20 @@ test('native drag-and-drop shelf is available only through its explicit action',
     assert.equal(h.closed(),0);
 });
 
- test('Tools stays in the notch until the explicit native utility action', () => {
+test('image and QR have distinct inline tabs instead of a combined launcher', () => {
     const h=harness();
-    h.panel._tabButtons.get('tools').click();
-    assert.equal(h.panel._activeTab,'tools');
+    for (const id of ['image','qr']) {
+        h.panel._tabButtons.get(id).click();
+        assert.equal(h.panel._activeTab,id);
+        assert.equal(h.panel._panels.get(id).visible,true);
+    }
     assert.equal(h.tools(),0); assert.equal(h.closed(),0);
-    const tools=h.panel._toolsPanel();
-    tools.children.find(child=>child.label==='Open Image & QR Tools').click();
-    assert.equal(h.tools(),1); assert.equal(h.closed(),1);
 });
 
 test('Ports and Docker launches only through the explicit utility action', () => {
     const h=harness();
     const panel=h.panel._toolsPanel();
-    panel.children.find(child=>child.label==='Ports & Docker').click();
+    panel.children[0].children.find(child=>child.label==='Open developer services').click();
     assert.equal(h.services(),1);
     assert.equal(h.closed(),1);
 });
