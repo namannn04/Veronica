@@ -170,6 +170,7 @@ export class NotchPanel {
     }
 
     _selectTab(id) {
+        if (id !== this._activeTab) this._viewCancellable?.cancel();
         if (this._activeTab === 'image' && id !== 'image') this._imageTool?.close();
         if (this._activeTab === 'qr' && id !== 'qr') this._qrTool?.close();
         if (this._activeTab === 'camera' && id !== 'camera')
@@ -592,7 +593,8 @@ export class NotchPanel {
 
     async _fileAction(args) {
         const request = this._filesRequest = (this._filesRequest ?? 0) + 1;
-        const result = await runJson(['shelf', ...args], this._cancellable);
+        const reading = args[0] === 'list';
+        const result = await runJson(['shelf', ...args], reading ? this._readScope() : this._cancellable, { terminateOnCancel: reading });
         if (!this._fileRows || request !== this._filesRequest)
             return;
         this._fileRows.destroy_all_children();
@@ -702,6 +704,7 @@ export class NotchPanel {
     }
 
     onMenuClosed() {
+        this._viewCancellable?.cancel();
         this._imageTool?.close();
         this._qrTool?.close();
         this._stopCameraPreview();
@@ -778,7 +781,7 @@ export class NotchPanel {
     async _refreshClipboard() {
         if (!this._clipboardRows)
             return;
-        const rows = await recentEntries(30, this._cancellable);
+        const rows = await recentEntries(30, this._readScope());
         if (!this._clipboardRows)
             return;
         this._clipboardRows.destroy_all_children();
@@ -824,12 +827,17 @@ export class NotchPanel {
         return wrap;
     }
 
+    _readScope() {
+        if (!this._viewCancellable || this._viewCancellable.is_cancelled()) this._viewCancellable = new Gio.Cancellable();
+        return this._viewCancellable;
+    }
+
     async refresh() {
         if (!this.actor || this._refreshing) return;
         this._refreshing = true;
         try {
             if (this._activeTab === 'home') await Promise.all([
-                this._usage?.refresh(this._cancellable), this._nowPlaying?.refresh(this._cancellable),
+                this._usage?.refresh(this._readScope()), this._nowPlaying?.refresh(this._readScope()),
             ]);
             else if (this._activeTab === 'clipboard') await this._refreshClipboard();
             else if (this._activeTab === 'files') await this._refreshFiles();
@@ -851,6 +859,8 @@ export class NotchPanel {
     }
 
     destroy() {
+        this._viewCancellable?.cancel();
+        this._viewCancellable = null;
         this._featureUnsubscribe?.();
         this._featureUnsubscribe = null;
         this._awakeUnsubscribe?.();

@@ -147,7 +147,7 @@ export class ClipboardWatcher {
 export async function recentEntries(limit, cancellable) {
     const rows = await runJson(
         ['clipboard', 'list', '--limit', String(limit)],
-        cancellable
+        cancellable, { terminateOnCancel: true }
     );
     return Array.isArray(rows) ? rows : [];
 }

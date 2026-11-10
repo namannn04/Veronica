@@ -83,6 +83,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     body.add(&import);
     let formats = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     body.add(&formats);
+    formats.set_sensitive(false);
     let note = gtk::Label::new(Some(
         "SVG preserves the image in an SVG container. JPG uses a white background.",
     ));
@@ -214,9 +215,13 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
         }
         status.set_text("Paste a link below to create a QR code. Everything stays local.");
     }
+    let pending_formats = formats.clone();
     let pending_actions = actions.clone();
     let pending_status = status.clone();
     let submit = Rc::new(move |job| {
+        if matches!(&job, Job::Load(_) | Job::Path(_)) {
+            pending_formats.set_sensitive(false);
+        }
         pending_actions.hide();
         pending_status.set_text("Processing locally…");
         let request = pending_request.get() + 1;
@@ -389,6 +394,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
             preview.clear();
             match result {
                 Ok((image, text, bytes)) => {
+                    formats.set_sensitive(true);
                     status.set_text(&text);
                     if let Ok(pixels) = pixbuf(&bytes) {
                         if let Some(small) = pixels.scale_simple(

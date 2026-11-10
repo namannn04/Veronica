@@ -86,6 +86,7 @@ export function resetCliCache() {
  * this safe to parse directly.
  */
 export async function runJson(args, cancellable = null, { terminateOnCancel = false } = {}) {
+    if (cancellable?.is_cancelled()) return null;
     const cli = findCli();
     if (!cli)
         return null;

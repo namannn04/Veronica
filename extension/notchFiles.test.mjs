@@ -27,7 +27,7 @@ function harness() {
     const body = source.replace(/^import .*;\n/gm,'').replace('export class NotchPanel','class NotchPanel');
     const Panel = new Function('St','Clutter','Gio','GLib','installCapsule',...names,`${body}\nreturn NotchPanel;`)(
         {Settings:{get:()=>({enable_animations:false})},BoxLayout:Actor,Button:Actor,Widget:Actor,Icon:Actor,Label:Actor,ScrollView:class extends Actor {set_child(c){this.child=c;}}},
-        {AnimationMode:{EASE_OUT_CUBIC:0},Orientation:{VERTICAL:0},ActorAlign:{CENTER:0,START:1}}, {}, {}, button=>()=>{}, ...names.map(n=>helpers[n]));
+        {AnimationMode:{EASE_OUT_CUBIC:0},Orientation:{VERTICAL:0},ActorAlign:{CENTER:0,START:1}}, {Cancellable:class {is_cancelled(){return false;}cancel(){}}}, {}, button=>()=>{}, ...names.map(n=>helpers[n]));
     const panel = Object.create(Panel.prototype);
     panel._tabButtons=new Map(); panel._panels=new Map(); panel._activeTab='home';
     panel._closeMenu=()=>{closed++;};
@@ -76,4 +76,14 @@ test('Ports and Docker launches only through the explicit utility action', () =>
     panel.children[0].children.find(child=>child.label==='Open developer services').click();
     assert.equal(h.services(),1);
     assert.equal(h.closed(),1);
+});
+
+test('utility tabs do not refresh hidden Home data and repeated Home reads coalesce', async () => {
+    const h=harness();h.panel.actor={};let usage=0,media=0,release;
+    const wait=new Promise(resolve=>{release=resolve;});
+    h.panel._usage={refresh:async()=>{usage++;await wait;}};
+    h.panel._nowPlaying={refresh:async()=>{media++;await wait;}};
+    h.panel._activeTab='qr';await h.panel.refresh();assert.equal(usage,0);assert.equal(media,0);
+    h.panel._activeTab='home';const first=h.panel.refresh();await h.panel.refresh();assert.equal(usage,1);assert.equal(media,1);
+    release();await first;
 });
