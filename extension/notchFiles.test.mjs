@@ -25,9 +25,9 @@ function harness() {
         runJson: async args=>{ calls.push(args); return {entries:[{id:'123-456',name:'saved.txt',path:'/private/shelf/saved.txt'}]}; },
     };
     const body = source.replace(/^import .*;\n/gm,'').replace('export class NotchPanel','class NotchPanel');
-    const Panel = new Function('St','Clutter','Gio','GLib',...names,`${body}\nreturn NotchPanel;`)(
-        {BoxLayout:Actor,Button:Actor,Widget:Actor,Icon:Actor,Label:Actor,ScrollView:class extends Actor {set_child(c){this.child=c;}}},
-        {Orientation:{VERTICAL:0},ActorAlign:{CENTER:0,START:1}}, {}, {}, ...names.map(n=>helpers[n]));
+    const Panel = new Function('St','Clutter','Gio','GLib','installCapsule',...names,`${body}\nreturn NotchPanel;`)(
+        {Settings:{get:()=>({enable_animations:false})},BoxLayout:Actor,Button:Actor,Widget:Actor,Icon:Actor,Label:Actor,ScrollView:class extends Actor {set_child(c){this.child=c;}}},
+        {AnimationMode:{EASE_OUT_CUBIC:0},Orientation:{VERTICAL:0},ActorAlign:{CENTER:0,START:1}}, {}, {}, button=>()=>{}, ...names.map(n=>helpers[n]));
     const panel = Object.create(Panel.prototype);
     panel._tabButtons=new Map(); panel._panels=new Map(); panel._activeTab='home';
     panel._closeMenu=()=>{closed++;};

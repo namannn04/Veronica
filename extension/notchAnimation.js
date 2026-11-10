@@ -46,7 +46,7 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         const animateNow = enabled() && animate !== flags.NONE;
         const motion = animateNow && Boolean(animate & flags.SLIDE);
         const fade = animateNow && Boolean(animate & flags.FADE);
-        const duration = animateNow ? 320 : 0;
+        const duration = animateNow ? 280 : 0;
         if (!wasVisible) {
             reset();
             const size = compact(motion, fade);
@@ -76,8 +76,8 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         });
         content.ease({
             opacity: 255, translation_y: 0,
-            delay: fade && content.opacity === 0 ? 130 : 0,
-            duration: fade ? 160 : duration,
+            delay: fade && content.opacity === 0 ? 75 : 0,
+            duration: fade ? 180 : duration,
             mode: modes.EASE_OUT_CUBIC,
         });
     };

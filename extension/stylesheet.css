@@ -424,7 +424,6 @@
 }
 
 .veronica-shelf-settings {
-  width: 30px;
   height: 24px;
   padding: 0;
   border-radius: 999px;
@@ -1155,3 +1154,31 @@
 .veronica-theme-light .veronica-utility-title, .veronica-theme-sandstone .veronica-utility-title, .veronica-theme-mist .veronica-utility-title, .veronica-theme-paper .veronica-utility-title { color: #24242a; }
 .veronica-theme-light .veronica-utility-detail, .veronica-theme-sandstone .veronica-utility-detail, .veronica-theme-mist .veronica-utility-detail, .veronica-theme-paper .veronica-utility-detail { color: rgba(20,20,28,0.62); }
 .veronica-theme-light .veronica-utility-button, .veronica-theme-sandstone .veronica-utility-button, .veronica-theme-mist .veronica-utility-button, .veronica-theme-paper .veronica-utility-button, .veronica-theme-light .veronica-utility-entry, .veronica-theme-sandstone .veronica-utility-entry, .veronica-theme-mist .veronica-utility-entry, .veronica-theme-paper .veronica-utility-entry { color: #24242a; background-color: rgba(0,0,0,0.055); border-color: rgba(0,0,0,0.10); }
+
+/* A lightweight translucent material, with a static specular edge. No screen blur. */
+.veronica-notch-shell-menu { -arrow-background-color: rgba(19,20,25,0.89); -arrow-border-color: rgba(255,255,255,0.20); }
+.veronica-notch-shell-menu .popup-menu-content { background-color: rgba(19,20,25,0.89); border-color: rgba(255,255,255,0.20); background-gradient-direction: vertical; background-gradient-start: rgba(255,255,255,0.075); background-gradient-end: rgba(255,255,255,0.012); }
+.veronica-shelf { padding: 12px 14px 14px; spacing: 10px; }
+.veronica-shelf-header { height: 34px; spacing: 5px; }
+.veronica-shelf-tab { height: 30px; min-width: 14px; padding: 0 8px; border: 1px solid rgba(255,255,255,0.055); transition-duration: 140ms; }
+.veronica-shelf-tab.active { background-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.96); border-color: rgba(255,255,255,0.22); }
+.veronica-shelf-tab:hover, .veronica-shelf-tab:focus { background-color: rgba(255,255,255,0.17); border-color: rgba(255,255,255,0.20); }
+.veronica-shelf-tab-content { spacing: 4px; }
+.veronica-shelf-tab-icon { icon-size: 13px; }
+.veronica-shelf-settings { min-width: 14px; height: 30px; padding: 0 8px; transition-duration: 140ms; }
+.veronica-shelf-settings:focus { background-color: rgba(255,255,255,0.17); }
+.veronica-notch-shell-menu.veronica-theme-midnight { -arrow-background-color: rgba(9,18,33,0.91); }
+.veronica-notch-shell-menu.veronica-theme-midnight .popup-menu-content { background-color: rgba(9,18,33,0.91); }
+.veronica-notch-shell-menu.veronica-theme-aubergine { -arrow-background-color: rgba(35,17,34,0.91); }
+.veronica-notch-shell-menu.veronica-theme-aubergine .popup-menu-content { background-color: rgba(35,17,34,0.91); }
+.veronica-notch-shell-menu.veronica-theme-forest { -arrow-background-color: rgba(9,25,20,0.91); }
+.veronica-notch-shell-menu.veronica-theme-forest .popup-menu-content { background-color: rgba(9,25,20,0.91); }
+.veronica-notch-shell-menu.veronica-theme-nord { -arrow-background-color: rgba(34,39,47,0.91); }
+.veronica-notch-shell-menu.veronica-theme-nord .popup-menu-content { background-color: rgba(34,39,47,0.91); }
+.veronica-notch-shell-menu.veronica-theme-ocean { -arrow-background-color: rgba(5,22,28,0.91); }
+.veronica-notch-shell-menu.veronica-theme-ocean .popup-menu-content { background-color: rgba(5,22,28,0.91); }
+.veronica-notch-shell-menu.veronica-theme-ember { -arrow-background-color: rgba(23,17,12,0.91); }
+.veronica-notch-shell-menu.veronica-theme-ember .popup-menu-content { background-color: rgba(23,17,12,0.91); }
+.veronica-theme-light .veronica-shelf-tab.active, .veronica-theme-sandstone .veronica-shelf-tab.active, .veronica-theme-mist .veronica-shelf-tab.active, .veronica-theme-paper .veronica-shelf-tab.active { background-color: rgba(0,0,0,0.09); color: #202027; border-color: rgba(0,0,0,0.13); }
+.veronica-theme-light .veronica-utility-card, .veronica-theme-sandstone .veronica-utility-card, .veronica-theme-mist .veronica-utility-card, .veronica-theme-paper .veronica-utility-card { background-color: rgba(0,0,0,0.025); border-color: rgba(0,0,0,0.09); }
+.veronica-theme-light .veronica-utility-preview, .veronica-theme-sandstone .veronica-utility-preview, .veronica-theme-mist .veronica-utility-preview, .veronica-theme-paper .veronica-utility-preview { color: rgba(0,0,0,0.4); background-color: rgba(0,0,0,0.025); }

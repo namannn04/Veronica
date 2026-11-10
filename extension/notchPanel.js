@@ -14,6 +14,7 @@ import * as Calendar from 'resource:///org/gnome/shell/ui/calendar.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { AWAKE_SWITCHES, awakeState, nextDeadline } from './awakeState.js';
+import { installCapsule } from './capsuleMotion.js';
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
@@ -114,6 +115,7 @@ export class NotchPanel {
             const button = new St.Button({
                 style_class: 'veronica-shelf-tab',
                 can_focus: true,
+                track_hover: true,
                 accessible_name: title,
             });
             const content = new St.BoxLayout({ style_class: 'veronica-shelf-tab-content' });
@@ -129,6 +131,11 @@ export class NotchPanel {
             button._veronicaLabel = label;
             this._tabButtons.set(id, button);
             header.add_child(button);
+            button._syncCapsule = installCapsule(button, {
+                active: () => this._activeTab === id,
+                enabled: () => St.Settings.get().enable_animations,
+                mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+            });
         }
 
         const spacer = new St.Widget({ x_expand: true });
@@ -137,8 +144,14 @@ export class NotchPanel {
             style_class: 'veronica-shelf-settings',
             can_focus: true,
             accessible_name: 'Open Veronica settings',
-            child: new St.Icon({ icon_name: 'emblem-system-symbolic' }),
+            track_hover: true,
         });
+        const settingsContent = new St.BoxLayout({ style_class: 'veronica-shelf-tab-content' });
+        settingsContent.add_child(new St.Icon({ icon_name: 'emblem-system-symbolic' }));
+        settings._veronicaLabel = new St.Label({ text: 'Settings', style_class: 'veronica-shelf-tab-label', y_align: Clutter.ActorAlign.CENTER });
+        settingsContent.add_child(settings._veronicaLabel);
+        settings.set_child(settingsContent);
+        installCapsule(settings, { active: () => false, enabled: () => St.Settings.get().enable_animations, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
         settings.connect('clicked', () => {
             this._closeMenu?.();
             launchApp();
@@ -164,10 +177,18 @@ export class NotchPanel {
             button.set_style_class_name(
                 active ? 'veronica-shelf-tab active' : 'veronica-shelf-tab'
             );
-            button._veronicaLabel.visible = active;
+            button._syncCapsule?.();
         }
-        for (const [panelId, panel] of this._panels)
-            panel.visible = panelId === id;
+        for (const [panelId, panel] of this._panels) {
+            const show = panelId === id;
+            const entering = show && !panel.visible;
+            panel.remove_all_transitions?.();
+            panel.visible = show;
+            if (entering && St.Settings.get().enable_animations && panel.mapped) {
+                panel.opacity = 0;
+                panel.ease({ opacity: 255, duration: 120, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+            } else panel.opacity = 255;
+        }
         if (id === 'clipboard')
             this._refreshClipboard().catch(() => {});
         if (id === 'files')
