@@ -5859,6 +5859,7 @@ dependencies = [
  "image",
  "libc",
  "qrcode",
+ "reqwest 0.12.28",
  "resvg",
  "serde",
  "serde_json",
@@ -5866,6 +5867,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+ "url",
  "veronica-core",
  "zbus",
 ]

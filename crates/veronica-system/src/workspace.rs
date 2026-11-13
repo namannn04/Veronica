@@ -10,6 +10,7 @@ use std::{
     time::Duration,
 };
 
+static CHECKS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
 const MAX_FILE: u64 = 256 * 1024;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -136,6 +137,9 @@ fn inspect(root: &str) -> Result<DoctorReport> {
     Ok(report)
 }
 pub async fn doctor(request: DoctorRequest) -> Result<DoctorReport> {
+    let _permit = CHECKS
+        .try_acquire()
+        .context("Two project checks are already running")?;
     ensure!(
         request.ports.len() <= 16 && request.ports.iter().all(|p| *p != 0),
         "Choose at most 16 non-zero ports"

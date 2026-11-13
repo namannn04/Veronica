@@ -102,7 +102,12 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/focusDim.js": "../../../extension/focusDim.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/focusDimMath.js": "../../../extension/focusDimMath.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/keystrokeHighlight.js": "../../../extension/keystrokeHighlight.js",
-          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/keystrokeLabels.js": "../../../extension/keystrokeLabels.js"
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/keystrokeLabels.js": "../../../extension/keystrokeLabels.js",
+          "/usr/share/veronica/graftcode/index.cjs": "../../../integrations/graftcode/index.cjs",
+          "/usr/share/veronica/graftcode/start.cjs": "../../../integrations/graftcode/start.cjs",
+          "/usr/share/veronica/graftcode/package.json": "../../../integrations/graftcode/package.json",
+          "/usr/share/veronica/graftcode/package-lock.json": "../../../integrations/graftcode/package-lock.json",
+          "/usr/share/doc/veronica/GRAFTCODE.md": "../../../docs/GRAFTCODE.md"
         }
       },
       "appimage": {

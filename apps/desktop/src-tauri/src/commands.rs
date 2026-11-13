@@ -3380,3 +3380,23 @@ pub async fn workspace_doctor(
         .await
         .map_err(fail)
 }
+
+#[tauri::command]
+pub async fn graft_discover(
+    connection: veronica_system::graftcode::Connection,
+) -> CommandResult<veronica_system::graftcode::Discovery> {
+    veronica_system::graftcode::discover(connection)
+        .await
+        .map_err(fail)
+}
+#[tauri::command]
+pub async fn graft_call(
+    connection: veronica_system::graftcode::Connection,
+    name: String,
+    arguments: serde_json::Value,
+    confirmed: bool,
+) -> CommandResult<serde_json::Value> {
+    veronica_system::graftcode::call(connection, name, arguments, confirmed)
+        .await
+        .map_err(fail)
+}
