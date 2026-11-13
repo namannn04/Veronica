@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { AboutPage } from "./pages/AboutPage";
 import { AttentionPage } from "./pages/AttentionPage";
@@ -14,7 +14,6 @@ import { MachinesPage } from "./pages/MachinesPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
 import { MediaPage } from "./pages/MediaPage";
 import { LocalPlayerProvider } from "./lib/localPlayer";
-import { WorkspacePage } from "./pages/WorkspacePage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SystemPage } from "./pages/SystemPage";
 import { UsagePage } from "./pages/UsagePage";
@@ -28,6 +27,8 @@ import { ipc, listenEvent } from "./lib/ipc";
 import { isRoute, routeFromSearch, routeIsVisible, visibleNavGroups, type Route } from "./lib/navigation";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
+
+const WorkspacePage = lazy(() => import("./pages/WorkspacePage").then(module => ({ default: module.WorkspacePage })));
 
 export function App() {
   const [route, setRoute] = useState<Route>(() => routeFromSearch(window.location.search));
@@ -175,7 +176,7 @@ export function App() {
         {route === "herdr" && <HerdrPage />}
         {route === "quinjet" && <QuinjetPage />}
         {route === "services" && <ServicesPage />}
-        {route === "workspace" && <WorkspacePage />}
+        {route === "workspace" && <Suspense fallback={<div className="page" role="status">Opening Developer Workspace…</div>}><WorkspacePage /></Suspense>}
         {route === "system" && <SystemPage />}
         {route === "machines" && <MachinesPage />}
         {route === "maintenance" && <MaintenancePage />}
