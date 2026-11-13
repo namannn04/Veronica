@@ -55,6 +55,9 @@ jobs:
         working-directory: extension
         run: npm test
 
+      - name: Test Graftcode receiver access boundaries
+        run: node --test integrations/graftcode/test.cjs
+
       - name: Test interface behavior
         working-directory: apps/desktop
         run: bun test

@@ -183,12 +183,16 @@ impl Session {
             tools.len() <= 64,
             "Gateway exposes more than 64 tools; narrow its methods first"
         );
+        let mut names = std::collections::HashSet::new();
         for tool in tools {
             let name = tool
                 .get("name")
                 .and_then(Value::as_str)
                 .context("Tool has no name")?;
-            ensure!(name.len() <= 256 && !name.is_empty(), "Invalid tool name");
+            ensure!(
+                name.len() <= 256 && !name.is_empty() && names.insert(name),
+                "Invalid or duplicate tool name"
+            );
         }
         Ok(tools.clone())
     }
@@ -280,14 +284,14 @@ pub async fn discover(connection: Connection) -> Result<Discovery> {
         })
     })
     .await
-    .context("Gateway discovery timed out")?;
+    .unwrap_or_else(|_| Err(anyhow::anyhow!("Gateway discovery timed out")));
     session.close().await;
     result
 }
 pub async fn call(
     connection: Connection,
     name: String,
-    arguments: Value,
+    mut arguments: Value,
     confirmed: bool,
 ) -> Result<Value> {
     ensure!(confirmed, "Confirm this method call before running it");
@@ -307,14 +311,25 @@ pub async fn call(
             tools.iter().any(|t| t["name"].as_str() == Some(&name)),
             "This tool is no longer advertised by the Gateway"
         );
+        if !connection.token.is_empty()
+            && tools
+                .iter()
+                .find(|t| t["name"].as_str() == Some(&name))
+                .and_then(|t| t["inputSchema"]["properties"].as_object())
+                .is_some_and(|p| p.contains_key("sessionToken"))
+        {
+            if let Some(args) = arguments.as_object_mut() {
+                args.entry("sessionToken")
+                    .or_insert_with(|| json!(connection.token));
+            }
+        }
+        ensure!(serde_json::to_vec(&arguments)?.len()<=16*1024,"Arguments including the access token exceed 16 KiB");
         session
             .request("tools/call", json!({"name":name,"arguments":arguments}))
             .await
     })
     .await
-    .context(
-        "Gateway method timed out; it may still be running in the Gateway. Verify before retrying.",
-    )?;
+    .unwrap_or_else(|_| Err(anyhow::anyhow!("Gateway method timed out; it may still be running in the Gateway. Verify before retrying.")));
     session.close().await;
     result
 }

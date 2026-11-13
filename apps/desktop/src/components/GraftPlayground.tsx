@@ -38,7 +38,7 @@ export function GraftPlayground() {
   return <>
     <section className="card workspace-form"><h2>Graftcode Playground</h2><p className="muted">Connect a trusted local Graftcode Gateway to browse and call its methods. Veronica does not install packages, start a Gateway or execute project files automatically.</p>
       <label>Gateway MCP endpoint<input value={endpoint} onChange={e => { setEndpoint(e.target.value); reset(); }} disabled={busy} spellCheck={false} maxLength={512} /></label>
-      <label>Session bearer token <span className="muted">if required; kept only in this page</span><input type="password" autoComplete="off" value={token} onChange={e => { setToken(e.target.value); reset(); }} disabled={busy} maxLength={2048} /></label>
+      <label>Session access token <span className="muted">if required; sent as bearer header and declared sessionToken argument; kept only here</span><input type="password" autoComplete="off" value={token} onChange={e => { setToken(e.target.value); reset(); }} disabled={busy} maxLength={2048} /></label>
       <div className="button-row"><button className="button" disabled={busy || !endpoint.trim()} onClick={() => void execute(false)}>{busy ? "Waiting for Gateway…" : "Connect & discover"}</button><button className="button" disabled={busy} onClick={() => { reset(); setToken(""); }}>Clear session</button></div>
       <small className="muted">Loopback only · no polling · up to 64 tools · 256 KiB response limit. Calls can change your project; inspect the method before confirming.</small>
     </section>
