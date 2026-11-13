@@ -32,6 +32,9 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.23" date="2026-11-14">
+      <description><p>Add Developer Workspace with read-only Project Doctor checks and an optional Graftcode Playground for discovering, reviewing and calling local service methods. Bound requests and session data without adding a background Gateway.</p></description>
+    </release>
     <release version="0.1.22" date="2026-11-10">
       <description>
         <p>Image conversion and QR generation have separate inline notch tabs and separate native helper pages. Tab and Settings names expand on hover or keyboard focus with reduced-motion support. Translucent material and refined reveal timing unify the notch and GNOME's native actionable notification banners. Hidden desktop pages stop polling, closed notch panels cancel reads, utility queues and caches are bounded, QR generation avoids font discovery, and usage collection yields CPU priority to interactive work.</p>
