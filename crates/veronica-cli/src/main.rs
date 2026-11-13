@@ -33,6 +33,7 @@ mod system_cmd;
 mod tools_cmd;
 mod usage_cmd;
 mod utility_cmd;
+mod workspace_cmd;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -66,6 +67,9 @@ enum Command {
     /// Local notch image conversion and QR generation.
     #[command(subcommand)]
     Utility(utility_cmd::UtilityCommand),
+    /// On-demand, read-only developer project checks.
+    #[command(subcommand)]
+    Workspace(workspace_cmd::WorkspaceCommand),
     /// Inspect local TCP/UDP ports and gracefully stop owned processes.
     #[command(subcommand)]
     Ports(services_cmd::PortsCommand),
@@ -244,6 +248,7 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Media(command) => media_cmd::run(command, output).await,
+        Command::Workspace(command) => workspace_cmd::run(command, output).await,
         Command::Utility(command) => utility_cmd::run(&directories, command, output),
         Command::Ports(command) => services_cmd::ports(command, output).await,
         Command::Docker(command) => services_cmd::docker(command, output).await,

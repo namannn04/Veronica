@@ -221,6 +221,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
+            commands::workspace_doctor,
             commands::diagnostics,
             commands::capabilities,
             commands::usage_view,
