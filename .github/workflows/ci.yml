@@ -79,6 +79,10 @@ jobs:
           dpkg-deb -x "$package" "$audit_dir"
           "$audit_dir/usr/bin/vr" extensions --help | grep -q enable
           dpkg-deb -f "$package" Depends | grep -q curl
+          "$audit_dir/usr/bin/vr" workspace graft --help | grep -q discover
+          test -f "$audit_dir/usr/share/veronica/graftcode/index.cjs"
+          test -f "$audit_dir/usr/share/veronica/graftcode/start.cjs"
+          test -f "$audit_dir/usr/share/doc/veronica/GRAFTCODE.md"
 
       - name: Keep the installable package
         uses: actions/upload-artifact@v6

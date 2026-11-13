@@ -2929,15 +2929,20 @@ html:has(.emoji-popover), body:has(.emoji-popover), #root:has(.emoji-popover) {
 .workspace-form { display: grid; gap: 16px; }
 .workspace-form h2, .workspace-form p { margin: 0; }
 .workspace-form label { display: grid; gap: 7px; font-size: 13px; }
-.workspace-form input, .workspace-form textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
+.workspace-form input, .workspace-form textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--plane); color: var(--ink); font: inherit; }
 .workspace-form textarea { min-height: 120px; font-family: monospace; resize: vertical; }
 .workspace-path { overflow-wrap: anywhere; }
 .workspace-checks { display: grid; gap: 16px; margin-top: 18px; }
 .workspace-checks article { display: flex; gap: 14px; align-items: flex-start; }
 .workspace-checks p { margin: 6px 0 0; overflow-wrap: anywhere; }
-.workspace-page pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; padding: 14px; border-radius: 10px; background: var(--bg); font-size: 12px; }
+.workspace-page pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; padding: 14px; border-radius: 10px; background: var(--plane); font-size: 12px; }
 .workspace-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
 
-.workspace-form select { padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); max-width: 100%; }
+.workspace-form select { padding: 10px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--plane); color: var(--ink); max-width: 100%; }
 .workspace-tabs .button[aria-pressed="true"] { border-color: var(--accent); }
-.workspace-confirm { border: 1px solid var(--border); padding: 16px; border-radius: 12px; }
+.workspace-confirm { border: 1px solid var(--hairline); padding: 16px; border-radius: 12px; }
+
+.workspace-page > .card { margin-bottom: 18px; }
+.workspace-page .button-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.workspace-form label > .muted { font-size: 12px; }
+.workspace-form :is(input,textarea,select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

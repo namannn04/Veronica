@@ -26,7 +26,7 @@ const preflight = spawnSync(vr,['workspace','doctor','--root',root,...(env.VERON
 if (preflight.status !== 0) throw new Error('Project preflight failed: '+(preflight.stderr || preflight.error?.message || 'unknown error').slice(0,512));
 const directory = mkdtempSync(join(tmpdir(),'veronica-graft-'));
 console.log(`Gateway endpoint: http://127.0.0.1:${httpPort}/mcp\nSession access token (keep private): ${env.VERONICA_GRAFT_TOKEN}\nKeep this terminal open. Ctrl+C stops the Gateway. Metadata upload is disabled.\nGateway may bind all interfaces; exposed doctor methods require the sessionToken argument. Use trusted local projects only.`);
-const child = spawn(gg,['--runtime','nodejs','--modules',resolve(__dirname,'package.json'),'--types','ProjectDoctor','--methods','inspect,attention','--port',String(port),'--httpPort',String(httpPort),'--GSMU=0','--noVersioning'], { env, cwd: directory, stdio: 'inherit', detached: true });
+const child = spawn('/usr/bin/nice',['-n','10',gg,'--runtime','nodejs','--modules',resolve(__dirname,'package.json'),'--types','ProjectDoctor','--methods','inspect,attention','--port',String(port),'--httpPort',String(httpPort),'--GSMU=0','--noVersioning'], { env, cwd: directory, stdio: 'inherit', detached: true });
 let stopping=false;
 const stop=()=>{ if(stopping)return; stopping=true; try{process.kill(-child.pid,'SIGTERM');}catch{}; const timer=setTimeout(()=>{try{process.kill(-child.pid,'SIGKILL');}catch{}},2000);timer.unref(); };
 process.on('SIGINT',stop);process.on('SIGTERM',stop);

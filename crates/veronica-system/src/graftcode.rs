@@ -375,3 +375,133 @@ mod tests {
             .contains("16 KiB"));
     }
 }
+
+#[cfg(test)]
+mod transport_tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    async fn fixture(mode: &'static str) -> (Connection, tokio::task::JoinHandle<Vec<String>>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let connection = Connection {
+            endpoint: format!("http://{}/mcp", listener.local_addr().unwrap()),
+            token: "a".repeat(64),
+        };
+        let task = tokio::spawn(async move {
+            let mut seen = Vec::new();
+            loop {
+                let Ok(Ok((mut stream, _))) =
+                    tokio::time::timeout(Duration::from_secs(3), listener.accept()).await
+                else {
+                    break;
+                };
+                let mut bytes = Vec::new();
+                let mut chunk = [0; 4096];
+                loop {
+                    let n = stream.read(&mut chunk).await.unwrap();
+                    if n == 0 {
+                        break;
+                    }
+                    bytes.extend_from_slice(&chunk[..n]);
+                    if let Some(end) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
+                        let headers = String::from_utf8_lossy(&bytes[..end]);
+                        let length = headers
+                            .lines()
+                            .find_map(|line| {
+                                line.to_ascii_lowercase()
+                                    .strip_prefix("content-length: ")
+                                    .and_then(|v| v.parse::<usize>().ok())
+                            })
+                            .unwrap_or(0);
+                        if bytes.len() >= end + 4 + length {
+                            break;
+                        }
+                    }
+                }
+                let request = String::from_utf8(bytes).unwrap();
+                let end = request.find("\r\n\r\n").unwrap();
+                let body =
+                    serde_json::from_str::<Value>(&request[end + 4..]).unwrap_or(Value::Null);
+                let method = body["method"].as_str().unwrap_or("");
+                if request.starts_with("DELETE") {
+                    seen.push("closed".into());
+                    let _ = stream
+                        .write_all(
+                            b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                        )
+                        .await;
+                    break;
+                }
+                if mode == "redirect" {
+                    let _=stream.write_all(b"HTTP/1.1 302 Found\r\nLocation: http://169.254.169.254/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").await;
+                    break;
+                }
+                seen.push(method.to_string());
+                let id = body["id"].clone();
+                let result = match method {
+                    "initialize" => {
+                        json!({"protocolVersion":"2025-06-18","serverInfo":{"name":"graftcode-gateway"}})
+                    }
+                    "tools/list" => {
+                        json!({"tools":[{"name":"inspect","inputSchema":{"type":"object","properties":{"sessionToken":{"type":"string"}}}}]})
+                    }
+                    "tools/call" => {
+                        assert_eq!(body["params"]["arguments"]["sessionToken"], "a".repeat(64));
+                        json!({"content":[{"type":"text","text":"checked"}]})
+                    }
+                    _ => json!({"modules":[]}),
+                };
+                let payload = if mode == "oversized" {
+                    "x".repeat(MAX_RESPONSE + 1)
+                } else {
+                    serde_json::to_string(&json!({"jsonrpc":"2.0","id":id,"result":result}))
+                        .unwrap()
+                };
+                let response = if method == "notifications/initialized" {
+                    "HTTP/1.1 202 Accepted\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".into()
+                } else {
+                    format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nMcp-Session-Id: fixture\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",payload.len(),payload)
+                };
+                let _ = stream.write_all(response.as_bytes()).await;
+                if mode == "oversized" {
+                    break;
+                }
+            }
+            seen
+        });
+        (connection, task)
+    }
+    #[tokio::test]
+    async fn real_http_negotiates_calls_with_token_and_closes() {
+        let (connection, task) = fixture("normal").await;
+        let response = call(connection, "inspect".into(), json!({}), true)
+            .await
+            .unwrap();
+        assert_eq!(response["content"][0]["text"], "checked");
+        assert_eq!(
+            task.await.unwrap(),
+            vec![
+                "initialize",
+                "notifications/initialized",
+                "tools/list",
+                "tools/call",
+                "closed"
+            ]
+        );
+    }
+    #[tokio::test]
+    async fn refuses_http_redirect_and_oversized_body() {
+        for mode in ["redirect", "oversized"] {
+            let (connection, task) = fixture(mode).await;
+            let error = discover(connection).await.unwrap_err().to_string();
+            assert!(
+                error.contains(if mode == "redirect" {
+                    "HTTP 302"
+                } else {
+                    "256 KiB"
+                }),
+                "{error}"
+            );
+            task.await.unwrap();
+        }
+    }
+}
