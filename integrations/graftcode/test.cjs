@@ -15,7 +15,7 @@ process.env.VERONICA_GRAFT_TOKEN = 'a'.repeat(64);
 process.env.VERONICA_CLI = '/trusted/vr';
 process.env.VERONICA_PROJECT_ROOT = '/private/project';
 test('unauthorized calls never invoke the CLI or expose paths', () => {
-  for (const token of [undefined, null, {}, 'wrong', 'b'.repeat(64)]) {
+  for (const token of [undefined, null, {}, 'wrong', 'b'.repeat(64), 'x'.repeat(100000)]) {
     const result = ProjectDoctor.inspect(token);
     assert.ok(JSON.parse(result).error);
     assert.ok(!result.includes('/private'));

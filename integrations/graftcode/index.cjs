@@ -3,7 +3,8 @@ const { execFileSync } = require('node:child_process');
 const { timingSafeEqual } = require('node:crypto');
 function authorize(sessionToken) {
   const expected = process.env.VERONICA_GRAFT_TOKEN || '';
-  const actual = Buffer.from(typeof sessionToken === 'string' ? sessionToken : ''), wanted = Buffer.from(expected);
+  if (expected.length < 32 || expected.length > 128 || typeof sessionToken !== 'string' || sessionToken.length !== expected.length) throw new Error('Project Doctor requires its session access token.');
+  const actual = Buffer.from(sessionToken), wanted = Buffer.from(expected);
   if (expected.length < 32 || actual.length !== wanted.length || !timingSafeEqual(actual, wanted)) throw new Error('Project Doctor requires its session bearer token.');
 }
 function report(sessionToken) {
