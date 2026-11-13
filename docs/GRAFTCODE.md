@@ -110,8 +110,9 @@ Do not put source secrets, tokens or project paths into public method signatures
 
 Verification used a separate, non-sensitive fixture with metadata upload enabled:
 Gateway analysis -> actual registry-generated npm Graft -> installed temporary
-client -> successful remote method invocation. The real bundled Doctor was also
-called through Gateway MCP with authorized/unauthorized tokens. No registry
+client -> successful remote Project Doctor invocation. Both generated-Graft and
+Gateway MCP paths rejected unauthorized tokens and returned real read-only CLI
+checks for an authorized caller. No registry
 package generation is performed during ordinary Veronica use or offline CI.
 
 ## Validation and resource bounds

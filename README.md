@@ -37,7 +37,7 @@ See screenshots, shortcuts and download choices on the
 To install a package you downloaded yourself instead:
 
 ```bash
-sudo apt install ./Veronica_0.1.22_amd64.deb
+sudo apt install ./Veronica_0.1.23_amd64.deb
 ```
 
 That installs the app, the `vr` command line tool, the desktop entry, the
@@ -47,8 +47,8 @@ collector needs, plus `curl` for the on-demand update check.
 An AppImage is also published for other distributions:
 
 ```
-chmod +x Veronica_0.1.22_amd64.AppImage
-./Veronica_0.1.22_amd64.AppImage
+chmod +x Veronica_0.1.23_amd64.AppImage
+./Veronica_0.1.23_amd64.AppImage
 ```
 
 Ubuntu 24.04 and later no longer ship the FUSE 2 runtime an AppImage needs to
@@ -56,7 +56,7 @@ mount itself. Either install it once with `sudo apt install libfuse2t64`, or run
 the image without it:
 
 ```
-./Veronica_0.1.22_amd64.AppImage --appimage-extract
+./Veronica_0.1.23_amd64.AppImage --appimage-extract
 ./squashfs-root/AppRun
 ```
 
@@ -77,7 +77,7 @@ flatpak run io.github.namannn04.Veronica
 
 `flatpak update` picks up new releases from then on. Each release also attaches
 `Veronica_<version>_x86_64.flatpak` for offline installs
-(`flatpak install --user ./Veronica_0.1.22_x86_64.flatpak`).
+(`flatpak install --user ./Veronica_0.1.23_x86_64.flatpak`).
 
 Veronica controls the computer it runs on, so the Flatpak is not a confined
 app: it has access to your home directory and runs PipeWire, GNOME Shell, apt,
@@ -525,3 +525,5 @@ capability model, and why this is a reimplementation rather than a Swift port.
 
 Veronica is free software licensed under the GNU General Public License v3.0,
 matching Edith, from which its models are derived.
+
+Developer Workspace adds on-demand Project Doctor checks and an optional local Graftcode Playground. See [Graftcode setup and limits](docs/GRAFTCODE.md). Graftcode Gateway is optional and is never started automatically.
