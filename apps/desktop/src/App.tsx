@@ -14,6 +14,7 @@ import { MachinesPage } from "./pages/MachinesPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
 import { MediaPage } from "./pages/MediaPage";
 import { LocalPlayerProvider } from "./lib/localPlayer";
+import { WorkspacePage } from "./pages/WorkspacePage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SystemPage } from "./pages/SystemPage";
 import { UsagePage } from "./pages/UsagePage";
@@ -174,6 +175,7 @@ export function App() {
         {route === "herdr" && <HerdrPage />}
         {route === "quinjet" && <QuinjetPage />}
         {route === "services" && <ServicesPage />}
+        {route === "workspace" && <WorkspacePage />}
         {route === "system" && <SystemPage />}
         {route === "machines" && <MachinesPage />}
         {route === "maintenance" && <MaintenancePage />}

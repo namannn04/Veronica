@@ -5857,6 +5857,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "image",
+ "libc",
  "qrcode",
  "resvg",
  "serde",

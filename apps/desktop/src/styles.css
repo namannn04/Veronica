@@ -2924,3 +2924,16 @@ html:has(.emoji-popover), body:has(.emoji-popover), #root:has(.emoji-popover) {
 .services-page .muted { color: var(--ink-muted); font-size: 13px; line-height: 1.5; }
 .services-page .eyebrow { color: var(--ink-muted); font-size: 12px; }
 .services-search input { font: inherit; color: var(--ink); background: var(--raised); border: 1px solid var(--hairline); border-radius: var(--radius-sm); }
+
+/* Workspace uses the shared card/button materials, with bounded scroll regions. */
+.workspace-form { display: grid; gap: 16px; }
+.workspace-form h2, .workspace-form p { margin: 0; }
+.workspace-form label { display: grid; gap: 7px; font-size: 13px; }
+.workspace-form input, .workspace-form textarea { width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; }
+.workspace-form textarea { min-height: 120px; font-family: monospace; resize: vertical; }
+.workspace-path { overflow-wrap: anywhere; }
+.workspace-checks { display: grid; gap: 16px; margin-top: 18px; }
+.workspace-checks article { display: flex; gap: 14px; align-items: flex-start; }
+.workspace-checks p { margin: 6px 0 0; overflow-wrap: anywhere; }
+.workspace-page pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; padding: 14px; border-radius: 10px; background: var(--bg); font-size: 12px; }
+.workspace-tabs { display: flex; gap: 8px; margin-bottom: 20px; }

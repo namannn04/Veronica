@@ -54,3 +54,5 @@ async fn probe_portal() -> Result<PortalSupport> {
     let connection = zbus::Connection::session().await?;
     portal::probe(&connection).await
 }
+
+pub mod workspace;

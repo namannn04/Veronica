@@ -3370,3 +3370,13 @@ pub async fn docker_action(endpoint: String, id: String, action: String) -> Comm
         .await
         .map_err(fail)
 }
+
+/// Project work is bounded and runs only after the user requests a check.
+#[tauri::command]
+pub async fn workspace_doctor(
+    request: veronica_system::workspace::DoctorRequest,
+) -> CommandResult<veronica_system::workspace::DoctorReport> {
+    veronica_system::workspace::doctor(request)
+        .await
+        .map_err(fail)
+}

@@ -118,6 +118,7 @@ import type {
 } from "./types";
 
 export const ipc = {
+  workspaceDoctor: (request: { root: string; ports: number[]; containers: string[] }) => invoke<import("../pages/WorkspacePage").DoctorReport>("workspace_doctor", { request }),
   diagnostics: () => invoke<Diagnostics>("diagnostics"),
 
   /** `days` of null means the whole history; empty `sources` means all. */
