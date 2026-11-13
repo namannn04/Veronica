@@ -19,7 +19,8 @@ function report(sessionToken) {
   try { value = JSON.parse(execFileSync(binary, args, { encoding: 'utf8', timeout: 12000, maxBuffer: 128 * 1024, stdio: ['ignore', 'pipe', 'pipe'], env: process.env })); }
   catch { throw new Error('Project check failed or timed out. Run Project Doctor locally for details.'); }
   // Absolute paths never leave the receiver. Only the selected project's checks.
-  return { project: value.project, checks: value.checks };
+  const checks = value.checks.slice(0, 64).map(check => ({ name: check.name, status: check.status, detail: check.name === 'Docker checks' ? 'Local Docker checks are unavailable. Open Project Doctor in Veronica for local diagnostics.' : check.detail }));
+  return { project: value.project, checks };
 }
 class ProjectDoctor {
   /** Read-only checks for the one project selected when the Gateway was started. */
