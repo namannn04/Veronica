@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ipc } from "../lib/ipc";
-import { methodArguments, type GraftDiscovery } from "../lib/workspace";
+import { methodArguments, methodResult, type GraftDiscovery } from "../lib/workspace";
 
 export function GraftPlayground() {
   const [endpoint, setEndpoint] = useState("http://127.0.0.1:18772/mcp"), [token, setToken] = useState("");
@@ -36,6 +36,7 @@ export function GraftPlayground() {
     try { setPending(methodArguments(argumentsText)); } catch (e) { setError(String(e)); }
   };
   const tool = discovery?.tools.find(t => t.name === name);
+  const displayResult = useMemo(() => methodResult(result), [result]);
   const keepDraft = () => {
     try {
       const value = methodArguments(argumentsText);
@@ -62,7 +63,7 @@ export function GraftPlayground() {
       </>}
       {pending && <div className="workspace-confirm" role="region" aria-label="Confirm method call"><h3>Run {name}?</h3><p className="muted">This invokes code in {endpoint}. A timeout does not guarantee that the method stopped. Calls are never retried automatically.</p><pre>{JSON.stringify(pending,null,2)}</pre><div className="button-row"><button className="button" disabled={busy} onClick={() => setPending(null)}>Cancel</button><button className="button danger" disabled={busy} onClick={() => void execute(true)}>Confirm & run</button></div></div>}
     </section>}
-    {result !== undefined && <section className="card" aria-live="polite"><h2>{(result as { isError?: boolean } | null)?.isError ? "Method returned an error" : "Method result"}</h2><pre>{JSON.stringify(result,null,2)}</pre><button className="button" onClick={() => { void navigator.clipboard.writeText(JSON.stringify(result,null,2)).then(() => setCopied(true)).catch(() => setError("Clipboard unavailable. Select and copy the result manually.")); }}>{copied ? "Copied" : "Copy result"}</button></section>}
+    {result !== undefined && <section className="card" aria-live="polite"><h2>{((result as { isError?: boolean } | null)?.isError || (displayResult as { error?: unknown } | null)?.error) ? "Method returned an error" : "Method result"}</h2><pre>{JSON.stringify(displayResult,null,2)}</pre><details><summary>Protocol response</summary><pre>{JSON.stringify(result,null,2)}</pre></details><button className="button" onClick={() => { void navigator.clipboard.writeText(JSON.stringify(displayResult,null,2)).then(() => setCopied(true)).catch(() => setError("Clipboard unavailable. Select and copy the result manually.")); }}>{copied ? "Copied" : "Copy result"}</button></section>}
     {discovery && <section className="card"><h2>Generated Graft packages</h2><p className="muted">Gateway-advertised install commands, shown as text only. Review their registry and package before using them in your own project. Metadata upload may be required for package generation; the private Doctor launcher disables it by default.</p><details><summary>Show install commands</summary><pre>{JSON.stringify(discovery.installCommands,null,2)}</pre></details></section>}
     <section className="card"><h2>Connect your project</h2><p className="muted">Use Graftcode Gateway with your supported Node.js, Python, .NET, Java, PHP or Ruby module. The optional Veronica Project Doctor receiver exposes only read-only checks for one chosen workspace. Setup instructions are in docs/GRAFTCODE.md in the repository.</p><p className="muted">Gateway ownership stays with you: clearing this page does not stop a separately started Gateway. No methods run during discovery.</p></section>
   </>;
