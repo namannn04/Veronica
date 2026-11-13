@@ -8,7 +8,7 @@ childProcess.execFileSync = (binary, args, options) => {
   assert.equal(binary, '/trusted/vr');
   assert.equal(args[0], 'workspace');
   assert.ok(!options.shell);
-  return JSON.stringify({ project: 'fixture', root: '/private/project', checks: [{ name: 'Port 3000', status: 'warning', detail: 'not listening' }] });
+  return JSON.stringify({ project: 'fixture', root: '/private/project', checks: [{ name: 'Port 3000', status: 'warning', detail: 'not listening' }, { name: 'Docker checks', status: 'warning', detail: '/private/docker-config: sensitive local diagnostic' }] });
 };
 const { ProjectDoctor } = require('./index.cjs');
 process.env.VERONICA_GRAFT_TOKEN = 'a'.repeat(64);
@@ -26,8 +26,10 @@ test('authorized methods project only checks and never return absolute paths', (
   const report = JSON.parse(ProjectDoctor.inspect('a'.repeat(64)));
   assert.equal(report.project, 'fixture');
   assert.equal(report.root, undefined);
+  assert.ok(!JSON.stringify(report).includes('/private'));
+  assert.ok(!JSON.stringify(report).includes('sensitive local diagnostic'));
   const attention = JSON.parse(ProjectDoctor.attention('a'.repeat(64)));
-  assert.equal(attention.length, 1);
+  assert.equal(attention.length, 2);
   assert.equal(calls, 2);
   childProcess.execFileSync = original;
 });
