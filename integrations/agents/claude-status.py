@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Opt-in Claude status only: never persist prompts, tool arguments or transcripts."""
-import json, os, pathlib, time
+import json, os, pathlib, time, itertools, re
 try:
     data=json.loads(__import__('sys').stdin.read(32769))
     status={'SessionStart':'idle','UserPromptSubmit':'working','PreToolUse':'working','PostToolUse':'working','PermissionRequest':'blocked','Stop':'done','SessionEnd':'idle'}.get(data.get('hook_event_name'))
@@ -15,6 +15,7 @@ try:
         if pid<=1:raise ValueError('no Claude ancestor')
     else:raise ValueError('no Claude ancestor')
     root=pathlib.Path(__file__).parent/'events'
+    if root.is_symlink(): raise ValueError('event directory must not be a symlink')
     root.mkdir(mode=0o700,exist_ok=True)
     target=root/(str(pid)+'-'+fields[19]+'.json')
     temporary=root/('.'+str(os.getpid())+'.tmp')
@@ -22,7 +23,7 @@ try:
     with os.fdopen(fd,'w') as out:json.dump({'status':status,'updated':int(time.time())},out)
     os.replace(temporary,target)
     # Bound stale event documents; no traversal outside this private directory.
-    for item in list(root.iterdir())[:256]:
-        if item!=target and item.is_file() and time.time()-item.stat().st_mtime>86400:item.unlink()
+    for item in itertools.islice(root.iterdir(),256):
+        if re.fullmatch(r'\d+-\d+\.json',item.name) and item!=target and not item.is_symlink() and item.is_file() and time.time()-item.stat().st_mtime>86400:item.unlink()
 except Exception:
     pass  # Tracking must never block or fail a coding-agent turn.
