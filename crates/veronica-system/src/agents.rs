@@ -271,29 +271,12 @@ impl Drop for AgentManager {
     }
 }
 fn terminate(t: &mut Terminal) {
-    // Job control can put foreground commands in separate process groups within
-    // our PTY session. Stop those groups too, never another user's session.
-    if let Ok(entries) = std::fs::read_dir("/proc") {
-        for entry in entries.take(8192).flatten() {
-            if let Ok(stat) = std::fs::read_to_string(entry.path().join("stat")) {
-                if let Some((_, tail)) = stat.rsplit_once(") ") {
-                    let fields = tail.split_whitespace().collect::<Vec<_>>();
-                    if fields.get(3).and_then(|v| v.parse::<u32>().ok()) == Some(t.view.pid) {
-                        if let Some(group) = fields.get(2).and_then(|v| v.parse::<i32>().ok()) {
-                            if group > 1 {
-                                unsafe {
-                                    libc::kill(-group, libc::SIGKILL);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    crate::owned_processes::stop("VERONICA_AGENT_ID", &t.view.id);
+    // The child is unreaped while live; its process group cannot belong to a reused PID.
+    if matches!(t.child.try_wait(), Ok(None)) {
+        unsafe {
+            libc::kill(-(t.view.pid as i32), libc::SIGKILL);
         }
-    }
-    // portable-pty creates a new session/process group for each child; never accept arbitrary PIDs.
-    unsafe {
-        libc::kill(-(t.view.pid as i32), libc::SIGKILL);
     }
     let _ = t.child.kill();
     let _ = t.child.wait();
@@ -309,6 +292,9 @@ pub(crate) fn resolve(value: &str) -> Option<PathBuf> {
     if value.contains('/') {
         return None;
     }
+    if let Some(path) = veronica_core::tools::spec(value).and_then(|spec| spec.locate()) {
+        return Some(path);
+    }
     let mut dirs =
         std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()).collect::<Vec<_>>();
     if let Some(home) = std::env::var_os("HOME") {
@@ -316,6 +302,7 @@ pub(crate) fn resolve(value: &str) -> Option<PathBuf> {
             dirs.push(PathBuf::from(&home).join(d))
         }
     }
+    dirs.extend(["/usr/local/bin", "/usr/bin", "/usr/lib/chatgpt/resources"].map(PathBuf::from));
     dirs.into_iter()
         .map(|d| d.join(value))
         .find(|p| p.is_file())

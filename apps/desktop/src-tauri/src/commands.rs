@@ -3608,3 +3608,11 @@ pub async fn chat_clear(app: AppHandle, memory: bool) -> CommandResult<()> {
 pub async fn chat_export(app: AppHandle) -> CommandResult<String> {
     app.state::<AppState>().chat.export().map_err(fail)
 }
+
+#[tauri::command]
+pub async fn chat_journal(
+    app: AppHandle,
+    text: String,
+) -> CommandResult<veronica_system::companion_ai::Message> {
+    app.state::<AppState>().chat.journal(text).map_err(fail)
+}

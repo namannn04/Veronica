@@ -118,6 +118,7 @@ import type {
 } from "./types";
 
 export const ipc = {
+  chatJournal:(text:string)=>invoke<import("./companionChat").ChatMessage>("chat_journal",{text}),
   chatView:()=>invoke<import("./companionChat").ChatView>("chat_view"),
   chatConfigure:(config:import("./companionChat").ModelConfig,memory:string)=>invoke<void>("chat_configure",{config,memory}),
   chatEnable:(enabled:boolean)=>invoke<import("./companionChat").ChatView>("chat_enable",{enabled}),

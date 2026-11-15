@@ -11,6 +11,7 @@ use std::{
     time::Duration,
 };
 use tokio::sync::watch;
+const LOCAL_SUPERVISOR: &str = include_str!("../../../integrations/companion/local-runtime.py");
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ModelConfig {
@@ -162,9 +163,18 @@ impl ChatRuntime {
         }
         if let Ok(mut local) = self.local.lock() {
             if let Some((mut child, _, owner)) = local.take() {
+                drop(child.stdin.take());
+                for _ in 0..10 {
+                    if matches!(child.try_wait(), Ok(Some(_))) {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_millis(10));
+                }
                 stop_runners(&owner);
-                unsafe {
-                    libc::kill(-(child.id() as i32), libc::SIGKILL);
+                if matches!(child.try_wait(), Ok(None)) {
+                    unsafe {
+                        libc::kill(-(child.id() as i32), libc::SIGKILL);
+                    }
                 }
                 let _ = child.kill();
                 let _ = child.wait();
@@ -184,6 +194,33 @@ impl ChatRuntime {
             doc.messages.clear()
         }
         crate::private_store::save(&self.path(), &doc)
+    }
+    pub fn journal(&self, text: String) -> Result<Message> {
+        ensure!(
+            !self.pending.load(Ordering::SeqCst),
+            "Wait for or stop the current response before journaling"
+        );
+        ensure!(
+            self.enabled.load(Ordering::SeqCst) && self.window_open.load(Ordering::SeqCst),
+            "Enable Companion before saving a journal entry"
+        );
+        ensure!(
+            !text.trim().is_empty() && text.len() <= 12000,
+            "Entry must contain 1–12000 bytes"
+        );
+        let _guard = self
+            .document
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Chat storage is busy"))?;
+        let mut doc: ChatDocument = crate::private_store::load(&self.path())?;
+        ensure!(
+            doc.messages.len() < 1000,
+            "History is full; export and clear messages"
+        );
+        let entry = message("user", text);
+        doc.messages.push(entry.clone());
+        crate::private_store::save(&self.path(), &doc)?;
+        Ok(entry)
     }
     pub fn export(&self) -> Result<String> {
         let _guard = self
@@ -219,6 +256,9 @@ impl ChatRuntime {
                 if child.try_wait()?.is_none() {
                     url.clone()
                 } else {
+                    if let Some((_, _, owner)) = local.as_ref() {
+                        stop_runners(owner);
+                    }
                     *local = None;
                     String::new()
                 }
@@ -236,12 +276,16 @@ impl ChatRuntime {
         drop(listener);
         let endpoint = format!("http://{address}");
         use std::os::unix::process::CommandExt;
+        let python = crate::agents::resolve("python3")
+            .context("Python 3 is required for the owned local runtime")?;
         let owner = uuid::Uuid::new_v4().to_string();
         let mut command = std::process::Command::new("/usr/bin/nice");
         command
             .args(["-n", "10"])
+            .arg(python)
+            .arg("-c")
+            .arg(LOCAL_SUPERVISOR)
             .arg(binary)
-            .arg("serve")
             .env("OLLAMA_HOST", address.to_string())
             .env("OLLAMA_NO_CLOUD", "1")
             .env("VERONICA_OWNED_LOCAL_RUNTIME", &owner)
@@ -249,7 +293,7 @@ impl ChatRuntime {
             .env("OLLAMA_MAX_LOADED_MODELS", "1")
             .env("OLLAMA_NUM_PARALLEL", "1")
             .env_remove("OLLAMA_API_KEY")
-            .stdin(std::process::Stdio::null())
+            .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .process_group(0);
@@ -393,7 +437,7 @@ impl ChatRuntime {
             let mut doc: ChatDocument = crate::private_store::load(&self.path())?;
             validate(&doc.config)?;
             ensure!(
-                doc.messages.len() < 1000,
+                doc.messages.len() <= 998,
                 "History is full; export and clear messages before continuing"
             );
             let messages = context(&doc, &text, include_history, include_memory);
@@ -433,35 +477,7 @@ impl ChatRuntime {
     }
 }
 fn stop_runners(owner: &str) {
-    use std::io::Read;
-    use std::os::unix::fs::MetadataExt;
-    let Ok(entries) = std::fs::read_dir("/proc") else {
-        return;
-    };
-    let expected = format!("VERONICA_OWNED_LOCAL_RUNTIME={owner}");
-    for entry in entries.take(8192).flatten() {
-        if entry
-            .metadata()
-            .map(|m| m.uid() != unsafe { libc::geteuid() })
-            .unwrap_or(true)
-        {
-            continue;
-        }
-        let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() else {
-            continue;
-        };
-        let Ok(file) = std::fs::File::open(entry.path().join("environ")) else {
-            continue;
-        };
-        let mut bytes = Vec::new();
-        if file.take(128 * 1024).read_to_end(&mut bytes).is_ok()
-            && bytes.split(|b| *b == 0).any(|v| v == expected.as_bytes())
-        {
-            unsafe {
-                libc::kill(pid, libc::SIGKILL);
-            }
-        }
-    }
+    crate::owned_processes::stop("VERONICA_OWNED_LOCAL_RUNTIME", owner);
 }
 struct Pending<'a>(&'a AtomicBool);
 impl Drop for Pending<'_> {

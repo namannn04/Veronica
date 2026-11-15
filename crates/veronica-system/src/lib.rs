@@ -66,3 +66,5 @@ pub mod private_store;
 pub mod agent_tracking;
 
 pub mod companion_ai;
+
+mod owned_processes;

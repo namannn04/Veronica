@@ -72,6 +72,7 @@ async fn dispatch(state: &Controls, r: &Value) -> anyhow::Result<Value> {
             state.agents.stop(&text("id"))?;
             Value::Null
         }
+        "chat_journal" => serde_json::to_value(state.chat.journal(text("text"))?)?,
         "chat_view" => serde_json::to_value(state.chat.view()?)?,
         "chat_configure" => {
             state
