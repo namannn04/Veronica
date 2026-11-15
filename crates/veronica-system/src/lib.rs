@@ -58,3 +58,7 @@ async fn probe_portal() -> Result<PortalSupport> {
 pub mod workspace;
 
 pub mod graftcode;
+
+pub mod agents;
+
+pub mod private_store;

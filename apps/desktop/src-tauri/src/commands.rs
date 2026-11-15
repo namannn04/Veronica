@@ -3400,3 +3400,89 @@ pub async fn graft_call(
         .await
         .map_err(fail)
 }
+
+#[tauri::command]
+pub fn agent_profiles(
+    state: State<'_, AppState>,
+) -> CommandResult<Vec<veronica_system::agents::AgentProfile>> {
+    let path = state.directories.data.join("agents/profiles.json");
+    let mut profiles: Vec<veronica_system::agents::AgentProfile> =
+        veronica_system::private_store::load(&path).map_err(fail)?;
+    if profiles.is_empty() {
+        profiles = veronica_system::agents::defaults();
+    }
+    Ok(profiles)
+}
+#[tauri::command]
+pub fn agent_profiles_save(
+    state: State<'_, AppState>,
+    profiles: Vec<veronica_system::agents::AgentProfile>,
+) -> CommandResult<()> {
+    if profiles.len() > 16
+        || profiles.iter().any(|p| {
+            p.id.is_empty()
+                || p.id.len() > 80
+                || p.name.len() > 80
+                || p.executable.len() > 4096
+                || p.arguments.len() > 32
+                || p.arguments.iter().any(|a| a.len() > 2048)
+        })
+    {
+        return Err("Use at most 16 bounded provider profiles".into());
+    }
+    veronica_system::private_store::save(
+        &state.directories.data.join("agents/profiles.json"),
+        &profiles,
+    )
+    .map_err(fail)
+}
+#[tauri::command]
+pub async fn agent_start(
+    app: AppHandle,
+    profile: veronica_system::agents::AgentProfile,
+    cwd: String,
+) -> CommandResult<veronica_system::agents::AgentView> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<AppState>()
+            .agents
+            .start(profile, cwd)
+            .map_err(fail)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+pub fn agent_list(state: State<'_, AppState>) -> Vec<veronica_system::agents::AgentView> {
+    state.agents.list()
+}
+#[tauri::command]
+pub async fn agent_external() -> CommandResult<Vec<veronica_system::agents::AgentView>> {
+    tauri::async_runtime::spawn_blocking(veronica_system::agents::external)
+        .await
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+pub fn agent_output(
+    state: State<'_, AppState>,
+    id: String,
+    cursor: u64,
+) -> CommandResult<veronica_system::agents::TerminalOutput> {
+    state.agents.output(&id, cursor).map_err(fail)
+}
+#[tauri::command]
+pub fn agent_input(state: State<'_, AppState>, id: String, bytes: String) -> CommandResult<()> {
+    state.agents.input(&id, bytes).map_err(fail)
+}
+#[tauri::command]
+pub fn agent_resize(
+    state: State<'_, AppState>,
+    id: String,
+    cols: u16,
+    rows: u16,
+) -> CommandResult<()> {
+    state.agents.resize(&id, cols, rows).map_err(fail)
+}
+#[tauri::command]
+pub fn agent_stop(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+    state.agents.stop(&id).map_err(fail)
+}
