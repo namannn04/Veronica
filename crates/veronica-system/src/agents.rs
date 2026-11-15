@@ -141,6 +141,9 @@ impl AgentManager {
                 while out.bytes.len() > OUTPUT_LIMIT {
                     out.bytes.pop_front();
                 }
+                drop(out);
+                // Kernel backpressure bounds a noisy child instead of burning a CPU core.
+                std::thread::sleep(std::time::Duration::from_millis(2));
             }
         });
         let (input, receive) = mpsc::sync_channel::<Vec<u8>>(16);
@@ -321,6 +324,7 @@ pub fn defaults() -> Vec<AgentProfile> {
     [
         ("claude", "Claude Code", "claude"),
         ("codex", "Codex", "codex"),
+        ("codex-shared", "Codex shared agent center", "codex"),
     ]
     .into_iter()
     .map(|(id, name, exe)| AgentProfile {
@@ -331,6 +335,8 @@ pub fn defaults() -> Vec<AgentProfile> {
             .unwrap_or(exe.into()),
         arguments: if id == "codex" {
             vec!["--no-daemon".into()]
+        } else if id == "codex-shared" {
+            vec!["agents".into()]
         } else {
             Vec::new()
         },

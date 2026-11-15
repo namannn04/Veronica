@@ -1,9 +1,10 @@
-import { AgentControls } from "../components/AgentControls";
 import { startVisiblePolling } from "../lib/polling";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { ipc } from "../lib/ipc";
 import type { HerdrAgent, HerdrBoard } from "../lib/types";
+
+const AgentControls=lazy(()=>import("../components/AgentControls").then(m=>({default:m.AgentControls})));
 
 const STATUSES: HerdrAgent["status"][] = ["blocked", "working", "unknown", "done", "idle"];
 const STATUS_LABEL: Record<HerdrAgent["status"], string> = { blocked: "Blocked", working: "Working", unknown: "Unknown", done: "Done", idle: "Idle" };
@@ -44,7 +45,7 @@ export function HerdrPage() {
   return <div className="herdr-page">
     <div className="page-head edith-head"><div><div className="herdr-title"><span>H</span><h1>Agents &amp; Herdr</h1></div><div className="page-sub">Live coding-agent sessions across persistent terminal workspaces</div></div><div className="head-actions"><button className="button" onClick={() => void load()}>Refresh</button>{board?.sessions[0] && <button className="button primary" onClick={() => open(board.sessions[0].name)}>Open Herdr</button>}</div></div>
 
-    <AgentControls />
+    <Suspense fallback={<p>Opening agent controls…</p>}><AgentControls /></Suspense>
     {error && <div className="banner error">{error}</div>}
     {!error && board?.installed && board.error && <div className="banner warn">{board.error}</div>}
     {!board && !error && <HerdrSkeleton />}

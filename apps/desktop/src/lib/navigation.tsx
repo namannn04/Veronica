@@ -75,7 +75,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "home", label: "Home", icon: <HomeIcon />, hint: "The dashboard", keywords: "dashboard start overview clocks" },
       { id: "usage", label: "Agent Usage", icon: <UsageIcon />, extensionId: "usage", hint: "Spend, tokens and rate limits", keywords: "claude codex cursor cost spend tokens limits rings" },
-      { id: "herdr", label: "Herdr", icon: <HerdrIcon />, extensionId: "herdr", hint: "Agent sessions and panes", keywords: "sessions panes tmux" },
+      { id: "herdr", label: "Agents & Herdr", icon: <HerdrIcon />, extensionId: "herdr", hint: "Agent sessions and panes", keywords: "sessions panes tmux" },
       { id: "quinjet", label: "Quinjet", icon: <QuinjetIcon />, extensionId: "quinjet", hint: "Review workspaces", keywords: "review worktree git projects" },
       { id: "attention", label: "Attention", icon: <AttentionIcon />, extensionId: "attention", hint: "Focus sessions", keywords: "focus pomodoro timer deep work" },
     ],
