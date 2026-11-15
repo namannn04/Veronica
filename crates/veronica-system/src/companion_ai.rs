@@ -32,7 +32,20 @@ impl Default for ModelConfig {
             model: "llama3.2:latest".into(),
             managed_local: true,
             allow_remote: false,
-            model_directory: String::new(),
+            model_directory: std::env::var("OLLAMA_MODELS").unwrap_or_else(|_| {
+                let home = std::env::var_os("HOME")
+                    .map(PathBuf::from)
+                    .map(|p| p.join(".ollama/models"));
+                if let Some(path) = home.filter(|p| p.is_dir()) {
+                    return path.display().to_string();
+                }
+                let system = PathBuf::from("/usr/share/ollama/.ollama/models");
+                if system.is_dir() {
+                    system.display().to_string()
+                } else {
+                    String::new()
+                }
+            }),
         }
     }
 }
