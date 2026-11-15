@@ -61,6 +61,9 @@ jobs:
       - name: Test status hook privacy
         run: python3 integrations/agents/test_status.py
 
+      - name: Test private model runtime cleanup
+        run: python3 integrations/companion/test_runtime.py
+
       - name: Test interface behavior
         working-directory: apps/desktop
         run: bun test
