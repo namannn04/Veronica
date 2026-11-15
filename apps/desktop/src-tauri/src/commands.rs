@@ -3462,7 +3462,7 @@ pub fn agent_list(state: State<'_, AppState>) -> Vec<veronica_system::agents::Ag
         .map(|mut a| {
             if a.status == "running" {
                 if let Some(status) = veronica_system::agent_tracking::status(&root, a.pid) {
-                    a.status = status;
+                    a.status = format!("{status} · Claude hook (last reported)");
                 }
             }
             a
@@ -3479,7 +3479,7 @@ pub async fn agent_external(
             .into_iter()
             .map(|mut a| {
                 if let Some(status) = veronica_system::agent_tracking::status(&root, a.pid) {
-                    a.status = status;
+                    a.status = format!("{status} · Claude hook (last reported)");
                 }
                 a
             })
@@ -3523,6 +3523,50 @@ pub async fn agent_tracking(app: AppHandle, enabled: bool, confirmed: bool) -> C
     let root = app.state::<AppState>().directories.data.join("agents");
     tauri::async_runtime::spawn_blocking(move || {
         veronica_system::agent_tracking::configure(&home, &root, enabled).map_err(fail)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn agent_herdr_attach(
+    app: AppHandle,
+    session: String,
+    pane: String,
+    confirmed: bool,
+) -> CommandResult<veronica_system::agents::AgentView> {
+    if !confirmed {
+        return Err("Confirm taking over the existing Herdr frontend".into());
+    }
+    if session.len() > 128 || pane.len() > 128 {
+        return Err("Invalid Herdr session/pane".into());
+    }
+    let epoch = app.state::<AppState>().agents.epoch();
+    let board = tokio::time::timeout(
+        std::time::Duration::from_secs(8),
+        veronica_system::herdr::board(),
+    )
+    .await
+    .map_err(|_| "Herdr did not respond within eight seconds".to_owned())?
+    .map_err(fail)?;
+    let agent = board
+        .agents
+        .iter()
+        .find(|a| a.session == session && a.pane_id == pane)
+        .ok_or("This Herdr agent is no longer available")?;
+    let cwd = agent.cwd.clone();
+    let executable = veronica_system::herdr::executable().ok_or("Herdr is not installed")?;
+    let profile = veronica_system::agents::AgentProfile {
+        id: "herdr-attach".into(),
+        name: "Herdr attached agent".into(),
+        executable: executable.display().to_string(),
+        arguments: veronica_system::herdr::attach_args(&session, Some(&pane)),
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<AppState>()
+            .agents
+            .start(profile, cwd, epoch)
+            .map_err(fail)
     })
     .await
     .map_err(|e| e.to_string())?
