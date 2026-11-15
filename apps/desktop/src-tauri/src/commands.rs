@@ -3527,3 +3527,84 @@ pub async fn agent_tracking(app: AppHandle, enabled: bool, confirmed: bool) -> C
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn chat_view(app: AppHandle) -> CommandResult<veronica_system::companion_ai::ChatView> {
+    app.state::<AppState>().chat.view().map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_configure(
+    app: AppHandle,
+    config: veronica_system::companion_ai::ModelConfig,
+    memory: String,
+) -> CommandResult<()> {
+    app.state::<AppState>()
+        .chat
+        .configure(config, memory)
+        .map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_enable(
+    app: AppHandle,
+    enabled: bool,
+) -> CommandResult<veronica_system::companion_ai::ChatView> {
+    app.state::<AppState>().chat.enable(enabled);
+    app.state::<AppState>().chat.view().map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_send(
+    app: AppHandle,
+    text: String,
+    key: String,
+    include_history: bool,
+    include_memory: bool,
+) -> CommandResult<veronica_system::companion_ai::Message> {
+    app.state::<AppState>()
+        .chat
+        .send(text, key, include_history, include_memory)
+        .await
+        .map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_preview(
+    app: AppHandle,
+    text: String,
+    include_history: bool,
+    include_memory: bool,
+) -> CommandResult<Vec<serde_json::Value>> {
+    app.state::<AppState>()
+        .chat
+        .preview(&text, include_history, include_memory)
+        .map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_models(
+    app: AppHandle,
+    config: veronica_system::companion_ai::ModelConfig,
+) -> CommandResult<Vec<String>> {
+    app.state::<AppState>()
+        .chat
+        .models(config)
+        .await
+        .map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_pull(
+    app: AppHandle,
+    config: veronica_system::companion_ai::ModelConfig,
+    confirmed: bool,
+) -> CommandResult<()> {
+    app.state::<AppState>()
+        .chat
+        .pull(config, confirmed)
+        .await
+        .map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_clear(app: AppHandle, memory: bool) -> CommandResult<()> {
+    app.state::<AppState>().chat.clear(memory).map_err(fail)
+}
+#[tauri::command]
+pub async fn chat_export(app: AppHandle) -> CommandResult<String> {
+    app.state::<AppState>().chat.export().map_err(fail)
+}
