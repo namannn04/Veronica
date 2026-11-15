@@ -222,6 +222,9 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         )
         .invoke_handler(tauri::generate_handler![
             commands::workspace_doctor,
+            commands::agent_herdr_attach,
+            commands::agent_tracking,
+            commands::agent_profiles, commands::agent_profiles_save, commands::agent_start, commands::agent_list, commands::agent_external, commands::agent_output, commands::agent_input, commands::agent_resize, commands::agent_stop,
             commands::graft_discover,
             commands::graft_call,
             commands::diagnostics,
@@ -509,6 +512,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested {..} | WindowEvent::Destroyed) { window.app_handle().state::<AppState>().agents.stop_all(); }
             if let WindowEvent::CloseRequested { api, .. } = event {
                 // Veronica lives in the tray, so release the expensive webview
                 // without quitting or losing the collector schedule.
@@ -528,7 +532,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             RunEvent::ExitRequested {
                 code: None, api, ..
             } => api.prevent_exit(),
-            RunEvent::Exit => commands::finish_companion_recording_on_exit(app),
+            RunEvent::Exit => { app.state::<AppState>().agents.stop_all(); commands::finish_companion_recording_on_exit(app); },
             _ => {}
         });
 

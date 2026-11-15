@@ -118,6 +118,17 @@ import type {
 } from "./types";
 
 export const ipc = {
+  agentHerdrAttach:(session:string,pane:string,confirmed:boolean)=>invoke<import("./agents").AgentView>("agent_herdr_attach",{session,pane,confirmed}),
+  agentTracking:(enabled:boolean,confirmed:boolean)=>invoke<void>("agent_tracking",{enabled,confirmed}),
+  agentProfiles:()=>invoke<import("./agents").AgentProfile[]>("agent_profiles"),
+  agentProfilesSave:(profiles:import("./agents").AgentProfile[])=>invoke<void>("agent_profiles_save",{profiles}),
+  agentList:()=>invoke<import("./agents").AgentView[]>("agent_list"),
+  agentExternal:()=>invoke<import("./agents").AgentView[]>("agent_external"),
+  agentStart:(profile:import("./agents").AgentProfile,cwd:string)=>invoke<import("./agents").AgentView>("agent_start",{profile,cwd}),
+  agentOutput:(id:string,cursor:number)=>invoke<import("./agents").TerminalOutput>("agent_output",{id,cursor}),
+  agentInput:(id:string,bytes:string)=>invoke<void>("agent_input",{id,bytes}),
+  agentResize:(id:string,cols:number,rows:number)=>invoke<void>("agent_resize",{id,cols,rows}),
+  agentStop:(id:string)=>invoke<void>("agent_stop",{id}),
   graftDiscover: (connection: import("./workspace").GraftConnection) => invoke<import("./workspace").GraftDiscovery>("graft_discover", { connection }),
   graftCall: (connection: import("./workspace").GraftConnection, name: string, argumentsValue: Record<string, unknown>, confirmed: boolean) => invoke<unknown>("graft_call", { connection, name, arguments: argumentsValue, confirmed }),
   workspaceDoctor: (request: { root: string; ports: number[]; containers: string[] }) => invoke<import("./workspace").DoctorReport>("workspace_doctor", { request }),

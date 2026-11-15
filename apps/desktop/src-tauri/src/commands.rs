@@ -3400,3 +3400,174 @@ pub async fn graft_call(
         .await
         .map_err(fail)
 }
+
+#[tauri::command]
+pub fn agent_profiles(
+    state: State<'_, AppState>,
+) -> CommandResult<Vec<veronica_system::agents::AgentProfile>> {
+    let path = state.directories.data.join("agents/profiles.json");
+    let mut profiles: Vec<veronica_system::agents::AgentProfile> =
+        veronica_system::private_store::load(&path).map_err(fail)?;
+    if profiles.is_empty() {
+        profiles = veronica_system::agents::defaults();
+    }
+    Ok(profiles)
+}
+#[tauri::command]
+pub fn agent_profiles_save(
+    state: State<'_, AppState>,
+    profiles: Vec<veronica_system::agents::AgentProfile>,
+) -> CommandResult<()> {
+    if profiles.len() > 16
+        || profiles.iter().any(|p| {
+            p.id.is_empty()
+                || p.id.len() > 80
+                || p.name.len() > 80
+                || p.executable.len() > 4096
+                || p.arguments.len() > 32
+                || p.arguments.iter().any(|a| a.len() > 2048)
+        })
+    {
+        return Err("Use at most 16 bounded provider profiles".into());
+    }
+    veronica_system::private_store::save(
+        &state.directories.data.join("agents/profiles.json"),
+        &profiles,
+    )
+    .map_err(fail)
+}
+#[tauri::command]
+pub async fn agent_start(
+    app: AppHandle,
+    profile: veronica_system::agents::AgentProfile,
+    cwd: String,
+) -> CommandResult<veronica_system::agents::AgentView> {
+    let epoch = app.state::<AppState>().agents.epoch();
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<AppState>()
+            .agents
+            .start(profile, cwd, epoch)
+            .map_err(fail)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+pub fn agent_list(state: State<'_, AppState>) -> Vec<veronica_system::agents::AgentView> {
+    let root = state.directories.data.join("agents");
+    state
+        .agents
+        .list()
+        .into_iter()
+        .map(|mut a| {
+            if a.status == "running" {
+                if let Some(status) = veronica_system::agent_tracking::status(&root, a.pid) {
+                    a.status = format!("{status} · Claude hook (last reported)");
+                }
+            }
+            a
+        })
+        .collect()
+}
+#[tauri::command]
+pub async fn agent_external(
+    app: AppHandle,
+) -> CommandResult<Vec<veronica_system::agents::AgentView>> {
+    let root = app.state::<AppState>().directories.data.join("agents");
+    tauri::async_runtime::spawn_blocking(move || {
+        veronica_system::agents::external()
+            .into_iter()
+            .map(|mut a| {
+                if let Some(status) = veronica_system::agent_tracking::status(&root, a.pid) {
+                    a.status = format!("{status} · Claude hook (last reported)");
+                }
+                a
+            })
+            .collect()
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+#[tauri::command]
+pub fn agent_output(
+    state: State<'_, AppState>,
+    id: String,
+    cursor: u64,
+) -> CommandResult<veronica_system::agents::TerminalOutput> {
+    state.agents.output(&id, cursor).map_err(fail)
+}
+#[tauri::command]
+pub fn agent_input(state: State<'_, AppState>, id: String, bytes: String) -> CommandResult<()> {
+    state.agents.input(&id, bytes).map_err(fail)
+}
+#[tauri::command]
+pub fn agent_resize(
+    state: State<'_, AppState>,
+    id: String,
+    cols: u16,
+    rows: u16,
+) -> CommandResult<()> {
+    state.agents.resize(&id, cols, rows).map_err(fail)
+}
+#[tauri::command]
+pub fn agent_stop(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+    state.agents.stop(&id).map_err(fail)
+}
+
+#[tauri::command]
+pub async fn agent_tracking(app: AppHandle, enabled: bool, confirmed: bool) -> CommandResult<()> {
+    if !confirmed {
+        return Err("Confirm changes to Claude's hook settings".into());
+    }
+    let home = veronica_core::paths::home_dir().ok_or("Cannot locate home directory")?;
+    let root = app.state::<AppState>().directories.data.join("agents");
+    tauri::async_runtime::spawn_blocking(move || {
+        veronica_system::agent_tracking::configure(&home, &root, enabled).map_err(fail)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn agent_herdr_attach(
+    app: AppHandle,
+    session: String,
+    pane: String,
+    confirmed: bool,
+) -> CommandResult<veronica_system::agents::AgentView> {
+    if !confirmed {
+        return Err("Confirm taking over the existing Herdr frontend".into());
+    }
+    if session.len() > 128 || pane.len() > 128 {
+        return Err("Invalid Herdr session/pane".into());
+    }
+    let epoch = app.state::<AppState>().agents.epoch();
+    let board = tokio::time::timeout(
+        std::time::Duration::from_secs(8),
+        veronica_system::herdr::board(),
+    )
+    .await
+    .map_err(|_| "Herdr did not respond within eight seconds".to_owned())?
+    .map_err(fail)?;
+    let agent = board
+        .agents
+        .iter()
+        .find(|a| a.session == session && a.pane_id == pane)
+        .ok_or("This Herdr agent is no longer available")?;
+    let cwd = agent.cwd.clone();
+    let executable = veronica_system::herdr::executable().ok_or("Herdr is not installed")?;
+    let profile = veronica_system::agents::AgentProfile {
+        id: "herdr-attach".into(),
+        name: "Herdr attached agent".into(),
+        executable: executable.display().to_string(),
+        arguments: veronica_system::herdr::attach_args(&session, Some(&pane)),
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        app.state::<AppState>()
+            .agents
+            .start(profile, cwd, epoch)
+            .map_err(fail)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
