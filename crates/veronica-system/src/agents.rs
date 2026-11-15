@@ -6,7 +6,10 @@ use std::{
     collections::{HashMap, VecDeque},
     io::{Read, Write},
     path::PathBuf,
-    sync::{mpsc, Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        mpsc, Arc, Mutex,
+    },
     time::Instant,
 };
 const OUTPUT_LIMIT: usize = 256 * 1024;
@@ -52,9 +55,19 @@ struct Terminal {
 #[derive(Default)]
 pub struct AgentManager {
     terminals: Mutex<HashMap<String, Terminal>>,
+    accepting: AtomicBool,
+    epoch: AtomicU64,
 }
 impl AgentManager {
-    pub fn start(&self, profile: AgentProfile, cwd: String) -> Result<AgentView> {
+    pub fn open(&self) {
+        if !self.accepting.swap(true, Ordering::SeqCst) {
+            self.epoch.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    pub fn epoch(&self) -> u64 {
+        self.epoch.load(Ordering::SeqCst)
+    }
+    pub fn start(&self, profile: AgentProfile, cwd: String, epoch: u64) -> Result<AgentView> {
         ensure!(
             profile.name.len() <= 80 && !profile.name.is_empty(),
             "Choose a provider name"
@@ -79,6 +92,11 @@ impl AgentManager {
             .lock()
             .map_err(|_| anyhow::anyhow!("Terminal lock failed"))?;
         ensure!(
+            self.accepting.load(Ordering::SeqCst) && self.epoch() == epoch,
+            "Agent window has closed; reopen it before starting a terminal"
+        );
+        ensure!(std::env::var_os("FLATPAK_ID").is_none(),"Managed host terminals require the Debian or AppImage installation; external Herdr viewing remains available in Flatpak");
+        ensure!(
             terminals.len() < 4,
             "Close an existing terminal first (maximum four)"
         );
@@ -94,6 +112,8 @@ impl AgentManager {
         command.cwd(&cwd);
         command.env("TERM", "xterm-256color");
         command.env("VERONICA_AGENT_ID", &id);
+        let mut reader = pair.master.try_clone_reader()?;
+        let mut writer = pair.master.take_writer()?;
         let child = pair.slave.spawn_command(command)?;
         drop(pair.slave);
         let pid = child
@@ -109,7 +129,6 @@ impl AgentManager {
         };
         let output = Arc::new(Mutex::new(Output::default()));
         let target = output.clone();
-        let mut reader = pair.master.try_clone_reader()?;
         std::thread::spawn(move || {
             let mut bytes = [0u8; 8192];
             while let Ok(n) = reader.read(&mut bytes) {
@@ -124,7 +143,6 @@ impl AgentManager {
                 }
             }
         });
-        let mut writer = pair.master.take_writer()?;
         let (input, receive) = mpsc::sync_channel::<Vec<u8>>(16);
         std::thread::spawn(move || {
             while let Ok(bytes) = receive.recv() {
@@ -235,6 +253,8 @@ impl AgentManager {
         Ok(())
     }
     pub fn stop_all(&self) {
+        self.accepting.store(false, Ordering::SeqCst);
+        self.epoch.fetch_add(1, Ordering::SeqCst);
         if let Ok(mut all) = self.terminals.lock() {
             for (_, mut t) in all.drain() {
                 terminate(&mut t)
@@ -248,6 +268,26 @@ impl Drop for AgentManager {
     }
 }
 fn terminate(t: &mut Terminal) {
+    // Job control can put foreground commands in separate process groups within
+    // our PTY session. Stop those groups too, never another user's session.
+    if let Ok(entries) = std::fs::read_dir("/proc") {
+        for entry in entries.take(8192).flatten() {
+            if let Ok(stat) = std::fs::read_to_string(entry.path().join("stat")) {
+                if let Some((_, tail)) = stat.rsplit_once(") ") {
+                    let fields = tail.split_whitespace().collect::<Vec<_>>();
+                    if fields.get(3).and_then(|v| v.parse::<u32>().ok()) == Some(t.view.pid) {
+                        if let Some(group) = fields.get(2).and_then(|v| v.parse::<i32>().ok()) {
+                            if group > 1 {
+                                unsafe {
+                                    libc::kill(-group, libc::SIGKILL);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     // portable-pty creates a new session/process group for each child; never accept arbitrary PIDs.
     unsafe {
         libc::kill(-(t.view.pid as i32), libc::SIGKILL);
@@ -289,7 +329,11 @@ pub fn defaults() -> Vec<AgentProfile> {
         executable: resolve(exe)
             .map(|p| p.display().to_string())
             .unwrap_or(exe.into()),
-        arguments: Vec::new(),
+        arguments: if id == "codex" {
+            vec!["--no-daemon".into()]
+        } else {
+            Vec::new()
+        },
     })
     .collect()
 }
@@ -348,7 +392,14 @@ mod tests {
             executable: "/bin/sh".into(),
             arguments: vec!["-i".into()],
         };
-        let view = manager.start(p, root.path().display().to_string()).unwrap();
+        manager.open();
+        let view = manager
+            .start(
+                p.clone(),
+                root.path().display().to_string(),
+                manager.epoch(),
+            )
+            .unwrap();
         manager
             .input(&view.id, "printf 'PTY_OK\\n'\r".into())
             .unwrap();
@@ -362,6 +413,9 @@ mod tests {
         manager.resize(&view.id, 80, 24).unwrap();
         manager.stop_all();
         assert!(manager.list().is_empty());
+        assert!(manager
+            .start(p, root.path().display().to_string(), 0)
+            .is_err());
         assert!(manager.input(&view.id, "bad".into()).is_err());
         assert!(!PathBuf::from(format!("/proc/{}", view.pid)).exists());
     }

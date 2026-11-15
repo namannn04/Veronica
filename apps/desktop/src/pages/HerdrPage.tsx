@@ -1,3 +1,4 @@
+import { AgentControls } from "../components/AgentControls";
 import { startVisiblePolling } from "../lib/polling";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -41,8 +42,9 @@ export function HerdrPage() {
   };
 
   return <div className="herdr-page">
-    <div className="page-head edith-head"><div><div className="herdr-title"><span>H</span><h1>Herdr</h1></div><div className="page-sub">Live coding-agent sessions across persistent terminal workspaces</div></div><div className="head-actions"><button className="button" onClick={() => void load()}>Refresh</button>{board?.sessions[0] && <button className="button primary" onClick={() => open(board.sessions[0].name)}>Open Herdr</button>}</div></div>
+    <div className="page-head edith-head"><div><div className="herdr-title"><span>H</span><h1>Agents &amp; Herdr</h1></div><div className="page-sub">Live coding-agent sessions across persistent terminal workspaces</div></div><div className="head-actions"><button className="button" onClick={() => void load()}>Refresh</button>{board?.sessions[0] && <button className="button primary" onClick={() => open(board.sessions[0].name)}>Open Herdr</button>}</div></div>
 
+    <AgentControls />
     {error && <div className="banner error">{error}</div>}
     {!error && board?.installed && board.error && <div className="banner warn">{board.error}</div>}
     {!board && !error && <HerdrSkeleton />}

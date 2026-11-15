@@ -3442,10 +3442,11 @@ pub async fn agent_start(
     profile: veronica_system::agents::AgentProfile,
     cwd: String,
 ) -> CommandResult<veronica_system::agents::AgentView> {
+    let epoch = app.state::<AppState>().agents.epoch();
     tauri::async_runtime::spawn_blocking(move || {
         app.state::<AppState>()
             .agents
-            .start(profile, cwd)
+            .start(profile, cwd, epoch)
             .map_err(fail)
     })
     .await
@@ -3453,13 +3454,39 @@ pub async fn agent_start(
 }
 #[tauri::command]
 pub fn agent_list(state: State<'_, AppState>) -> Vec<veronica_system::agents::AgentView> {
-    state.agents.list()
+    let root = state.directories.data.join("agents");
+    state
+        .agents
+        .list()
+        .into_iter()
+        .map(|mut a| {
+            if a.status == "running" {
+                if let Some(status) = veronica_system::agent_tracking::status(&root, a.pid) {
+                    a.status = status;
+                }
+            }
+            a
+        })
+        .collect()
 }
 #[tauri::command]
-pub async fn agent_external() -> CommandResult<Vec<veronica_system::agents::AgentView>> {
-    tauri::async_runtime::spawn_blocking(veronica_system::agents::external)
-        .await
-        .map_err(|e| e.to_string())
+pub async fn agent_external(
+    app: AppHandle,
+) -> CommandResult<Vec<veronica_system::agents::AgentView>> {
+    let root = app.state::<AppState>().directories.data.join("agents");
+    tauri::async_runtime::spawn_blocking(move || {
+        veronica_system::agents::external()
+            .into_iter()
+            .map(|mut a| {
+                if let Some(status) = veronica_system::agent_tracking::status(&root, a.pid) {
+                    a.status = status;
+                }
+                a
+            })
+            .collect()
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 #[tauri::command]
 pub fn agent_output(
@@ -3485,4 +3512,18 @@ pub fn agent_resize(
 #[tauri::command]
 pub fn agent_stop(state: State<'_, AppState>, id: String) -> CommandResult<()> {
     state.agents.stop(&id).map_err(fail)
+}
+
+#[tauri::command]
+pub async fn agent_tracking(app: AppHandle, enabled: bool, confirmed: bool) -> CommandResult<()> {
+    if !confirmed {
+        return Err("Confirm changes to Claude's hook settings".into());
+    }
+    let home = veronica_core::paths::home_dir().ok_or("Cannot locate home directory")?;
+    let root = app.state::<AppState>().directories.data.join("agents");
+    tauri::async_runtime::spawn_blocking(move || {
+        veronica_system::agent_tracking::configure(&home, &root, enabled).map_err(fail)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }

@@ -40,6 +40,7 @@ pub(crate) fn show(app: &tauri::AppHandle, route: Option<&str>) -> Result<()> {
         config.url = WebviewUrl::App(format!("index.html?route={route}").into());
     }
 
+    app.state::<crate::state::AppState>().agents.open();
     let window = WebviewWindowBuilder::from_config(app, &config)
         .context("cannot prepare the main window")?
         .build()
