@@ -13,6 +13,7 @@ use veronica_usage::UsageDocument;
 /// Everything the Tauri commands need. Each field is independently locked so a
 /// slow collector run cannot block a metrics tick.
 pub struct AppState {
+    pub chat: veronica_system::companion_ai::ChatRuntime,
     pub agents: veronica_system::agents::AgentManager,
     pub directories: AppDirectories,
     pub session: Mutex<DesktopSession>,
@@ -60,6 +61,9 @@ impl AppState {
         };
 
         Ok(Self {
+            chat: veronica_system::companion_ai::ChatRuntime::new(
+                directories.data.join("companion/chat"),
+            ),
             agents: Default::default(),
             emoji: veronica_core::EmojiCatalog::bundled(),
             directories,

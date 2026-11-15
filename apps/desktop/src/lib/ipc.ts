@@ -118,6 +118,16 @@ import type {
 } from "./types";
 
 export const ipc = {
+  chatJournal:(text:string)=>invoke<import("./companionChat").ChatMessage>("chat_journal",{text}),
+  chatView:()=>invoke<import("./companionChat").ChatView>("chat_view"),
+  chatConfigure:(config:import("./companionChat").ModelConfig,memory:string)=>invoke<void>("chat_configure",{config,memory}),
+  chatEnable:(enabled:boolean)=>invoke<import("./companionChat").ChatView>("chat_enable",{enabled}),
+  chatSend:(text:string,key:string,includeHistory:boolean,includeMemory:boolean)=>invoke<import("./companionChat").ChatMessage>("chat_send",{text,key,includeHistory,includeMemory}),
+  chatPreview:(text:string,includeHistory:boolean,includeMemory:boolean)=>invoke<unknown>("chat_preview",{text,includeHistory,includeMemory}),
+  chatModels:(config:import("./companionChat").ModelConfig)=>invoke<string[]>("chat_models",{config}),
+  chatPull:(config:import("./companionChat").ModelConfig,confirmed:boolean)=>invoke<void>("chat_pull",{config,confirmed}),
+  chatClear:(memory:boolean)=>invoke<void>("chat_clear",{memory}),
+  chatExport:()=>invoke<string>("chat_export"),
   agentHerdrAttach:(session:string,pane:string,confirmed:boolean)=>invoke<import("./agents").AgentView>("agent_herdr_attach",{session,pane,confirmed}),
   agentTracking:(enabled:boolean,confirmed:boolean)=>invoke<void>("agent_tracking",{enabled,confirmed}),
   agentProfiles:()=>invoke<import("./agents").AgentProfile[]>("agent_profiles"),

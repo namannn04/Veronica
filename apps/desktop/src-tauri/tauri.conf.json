@@ -107,6 +107,7 @@
           "/usr/share/veronica/graftcode/start.cjs": "../../../integrations/graftcode/start.cjs",
           "/usr/share/veronica/graftcode/package.json": "../../../integrations/graftcode/package.json",
           "/usr/share/veronica/graftcode/package-lock.json": "../../../integrations/graftcode/package-lock.json",
+          "/usr/share/doc/veronica/AI_FEATURES.md": "../../../docs/AI_FEATURES.md",
           "/usr/share/doc/veronica/GRAFTCODE.md": "../../../docs/GRAFTCODE.md"
         }
       },

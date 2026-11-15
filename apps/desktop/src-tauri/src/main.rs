@@ -222,6 +222,8 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         )
         .invoke_handler(tauri::generate_handler![
             commands::workspace_doctor,
+            commands::chat_journal,
+            commands::chat_view,commands::chat_configure,commands::chat_enable,commands::chat_send,commands::chat_preview,commands::chat_models,commands::chat_pull,commands::chat_clear,commands::chat_export,
             commands::agent_herdr_attach,
             commands::agent_tracking,
             commands::agent_profiles, commands::agent_profiles_save, commands::agent_start, commands::agent_list, commands::agent_external, commands::agent_output, commands::agent_input, commands::agent_resize, commands::agent_stop,
@@ -512,7 +514,8 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested {..} | WindowEvent::Destroyed) { window.app_handle().state::<AppState>().agents.stop_all(); }
+            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested {..} | WindowEvent::Destroyed) { window.app_handle().state::<AppState>().agents.stop_all();
+                window.app_handle().state::<AppState>().chat.close_window(); }
             if let WindowEvent::CloseRequested { api, .. } = event {
                 // Veronica lives in the tray, so release the expensive webview
                 // without quitting or losing the collector schedule.
@@ -532,7 +535,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             RunEvent::ExitRequested {
                 code: None, api, ..
             } => api.prevent_exit(),
-            RunEvent::Exit => { app.state::<AppState>().agents.stop_all(); commands::finish_companion_recording_on_exit(app); },
+            RunEvent::Exit => { app.state::<AppState>().chat.close_window(); app.state::<AppState>().agents.stop_all(); commands::finish_companion_recording_on_exit(app); },
             _ => {}
         });
 
