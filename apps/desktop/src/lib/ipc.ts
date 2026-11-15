@@ -128,6 +128,7 @@ export const ipc = {
   chatPull:(config:import("./companionChat").ModelConfig,confirmed:boolean)=>invoke<void>("chat_pull",{config,confirmed}),
   chatClear:(memory:boolean)=>invoke<void>("chat_clear",{memory}),
   chatExport:()=>invoke<string>("chat_export"),
+  agentHerdrAttach:(session:string,pane:string,confirmed:boolean)=>invoke<import("./agents").AgentView>("agent_herdr_attach",{session,pane,confirmed}),
   agentTracking:(enabled:boolean,confirmed:boolean)=>invoke<void>("agent_tracking",{enabled,confirmed}),
   agentProfiles:()=>invoke<import("./agents").AgentProfile[]>("agent_profiles"),
   agentProfilesSave:(profiles:import("./agents").AgentProfile[])=>invoke<void>("agent_profiles_save",{profiles}),
