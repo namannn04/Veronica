@@ -605,7 +605,7 @@ async fn read_response(mut response: reqwest::Response) -> Result<Value> {
         );
         bytes.extend_from_slice(&chunk);
     }
-    Ok(serde_json::from_slice(&bytes).context("Provider returned invalid JSON")?)
+    serde_json::from_slice(&bytes).context("Provider returned invalid JSON")
 }
 async fn generate(
     config: &ModelConfig,
@@ -690,8 +690,10 @@ mod tests {
     }
     #[test]
     fn rejects_unsafe_endpoints_and_remote_without_consent() {
-        let mut config = ModelConfig::default();
-        config.endpoint = "http://example.com".into();
+        let mut config = ModelConfig {
+            endpoint: "http://example.com".into(),
+            ..Default::default()
+        };
         assert!(validate(&config).is_err());
         config.provider = "compatible".into();
         config.endpoint = "https://example.com/v1".into();
@@ -752,10 +754,12 @@ mod provider_tests {
         let (url, task) = fake_provider(false).await;
         let temp = tempfile::tempdir().unwrap();
         let runtime = ChatRuntime::new(temp.path().join("chat"));
-        let mut config = ModelConfig::default();
-        config.provider = "openai".into();
-        config.endpoint = url;
-        config.managed_local = false;
+        let config = ModelConfig {
+            provider: "openai".into(),
+            endpoint: url,
+            managed_local: false,
+            ..Default::default()
+        };
         runtime
             .configure(config, "Use short Hinglish replies".into())
             .unwrap();
@@ -784,10 +788,12 @@ mod provider_tests {
         let (url, task) = fake_provider(true).await;
         let temp = tempfile::tempdir().unwrap();
         let runtime = std::sync::Arc::new(ChatRuntime::new(temp.path().join("chat")));
-        let mut config = ModelConfig::default();
-        config.provider = "openai".into();
-        config.endpoint = url;
-        config.managed_local = false;
+        let config = ModelConfig {
+            provider: "openai".into(),
+            endpoint: url,
+            managed_local: false,
+            ..Default::default()
+        };
         runtime.configure(config, String::new()).unwrap();
         runtime.open_window();
         runtime.enable(true);
@@ -818,8 +824,10 @@ mod provider_tests {
     async fn real_private_ollama_response_and_close_cleanup() {
         let temp = tempfile::tempdir().unwrap();
         let runtime = ChatRuntime::new(temp.path().join("chat"));
-        let mut config = ModelConfig::default();
-        config.model_directory = std::env::var("VERONICA_TEST_OLLAMA_MODELS").unwrap_or_default();
+        let config = ModelConfig {
+            model_directory: std::env::var("VERONICA_TEST_OLLAMA_MODELS").unwrap_or_default(),
+            ..Default::default()
+        };
         runtime.configure(config, String::new()).unwrap();
         runtime.open_window();
         runtime.enable(true);
