@@ -44,6 +44,7 @@ pub struct TerminalOutput {
 struct Output {
     bytes: VecDeque<u8>,
     end: u64,
+    finished: bool,
 }
 struct Terminal {
     view: AgentView,
@@ -145,6 +146,9 @@ impl AgentManager {
                 // Kernel backpressure bounds a noisy child instead of burning a CPU core.
                 std::thread::sleep(std::time::Duration::from_millis(2));
             }
+            if let Ok(mut out) = target.lock() {
+                out.finished = true;
+            }
         });
         let (input, receive) = mpsc::sync_channel::<Vec<u8>>(16);
         std::thread::spawn(move || {
@@ -188,7 +192,7 @@ impl AgentManager {
             .lock()
             .map_err(|_| anyhow::anyhow!("Terminal lock failed"))?;
         let t = all.get_mut(id).context("Terminal has closed")?;
-        let status = if let Some(status) = t.child.try_wait()? {
+        let mut status = if let Some(status) = t.child.try_wait()? {
             format!("exited ({})", status.exit_code())
         } else {
             "running".into()
@@ -197,6 +201,11 @@ impl AgentManager {
             .output
             .lock()
             .map_err(|_| anyhow::anyhow!("Output lock failed"))?;
+        // An exited child may still have unread bytes in the PTY. The UI stops
+        // polling on completion, so do not publish exit until the reader reaches EOF.
+        if !out.finished {
+            status = "running".into();
+        }
         let base = out.end - out.bytes.len() as u64;
         let start = cursor.max(base).min(out.end);
         let bytes: Vec<u8> = out
@@ -415,6 +424,78 @@ mod tests {
             .is_err());
         assert!(manager.input(&view.id, "bad".into()).is_err());
         assert!(!PathBuf::from(format!("/proc/{}", view.pid)).exists());
+    }
+    #[test]
+    fn fast_terminal_drains_final_output_before_completion() {
+        let manager = AgentManager::default();
+        manager.open();
+        let view = manager
+            .start(
+                AgentProfile {
+                    id: "drain".into(),
+                    name: "Drain test".into(),
+                    executable: "/usr/bin/python3".into(),
+                    arguments: vec![
+                        "-c".into(),
+                        "import os;os.write(1,b'x'*120000+b'FINAL_MARKER')".into(),
+                    ],
+                },
+                "/tmp".into(),
+                manager.epoch(),
+            )
+            .unwrap();
+        let deadline = Instant::now() + std::time::Duration::from_secs(5);
+        let mut bytes = Vec::new();
+        let mut cursor = 0;
+        loop {
+            let out = manager.output(&view.id, cursor).unwrap();
+            use base64::Engine;
+            bytes.extend(
+                base64::engine::general_purpose::STANDARD
+                    .decode(out.bytes)
+                    .unwrap(),
+            );
+            cursor = out.cursor;
+            if out.status != "running" {
+                break;
+            }
+            assert!(Instant::now() < deadline, "terminal failed to finish");
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(bytes.ends_with(b"FINAL_MARKER"));
+        assert_eq!(bytes.len(), 120012);
+        // Deterministically exercise the interval between child exit and reader EOF.
+        {
+            manager
+                .terminals
+                .lock()
+                .unwrap()
+                .get(&view.id)
+                .unwrap()
+                .output
+                .lock()
+                .unwrap()
+                .finished = false;
+        }
+        assert_eq!(manager.output(&view.id, cursor).unwrap().status, "running");
+        {
+            manager
+                .terminals
+                .lock()
+                .unwrap()
+                .get(&view.id)
+                .unwrap()
+                .output
+                .lock()
+                .unwrap()
+                .finished = true;
+        }
+        assert!(manager
+            .output(&view.id, cursor)
+            .unwrap()
+            .status
+            .starts_with("exited"));
+        manager.stop_all();
     }
     #[test]
     fn already_reaped_terminal_never_receives_another_signal() {
