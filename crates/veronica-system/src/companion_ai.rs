@@ -202,14 +202,7 @@ impl ChatRuntime {
         crate::private_store::save(&self.path(), &doc)
     }
     pub fn journal(&self, text: String) -> Result<Message> {
-        ensure!(
-            !self.pending.load(Ordering::SeqCst),
-            "Wait for or stop the current response before journaling"
-        );
-        ensure!(
-            self.enabled.load(Ordering::SeqCst) && self.window_open.load(Ordering::SeqCst),
-            "Enable Companion before saving a journal entry"
-        );
+        let operation = self.begin_operation()?;
         ensure!(
             !text.trim().is_empty() && text.len() <= 12000,
             "Entry must contain 1–12000 bytes"
@@ -218,6 +211,7 @@ impl ChatRuntime {
             .document
             .lock()
             .map_err(|_| anyhow::anyhow!("Chat storage is busy"))?;
+        operation.check_current()?;
         let mut doc: ChatDocument = crate::private_store::load(&self.path())?;
         ensure!(
             doc.messages.len() < 1000,
@@ -508,17 +502,21 @@ struct Operation<'a> {
     _pending: Pending<'a>,
 }
 impl Operation<'_> {
-    async fn wait<T>(&mut self, work: impl std::future::Future<Output = Result<T>>) -> Result<T> {
-        let result = tokio::select! {biased;
-            _ = self.cancel.changed() => anyhow::bail!("Operation stopped"),
-            result = work => result?,
-        };
+    fn check_current(&self) -> Result<()> {
         ensure!(
             self.runtime.enabled.load(Ordering::SeqCst)
                 && self.runtime.window_open.load(Ordering::SeqCst)
                 && self.runtime.epoch.load(Ordering::SeqCst) == self.epoch,
             "Operation stopped"
         );
+        Ok(())
+    }
+    async fn wait<T>(&mut self, work: impl std::future::Future<Output = Result<T>>) -> Result<T> {
+        let result = tokio::select! {biased;
+            _ = self.cancel.changed() => anyhow::bail!("Operation stopped"),
+            result = work => result?,
+        };
+        self.check_current()?;
         Ok(result)
     }
 }
@@ -943,6 +941,33 @@ mod provider_tests {
             assert!(runtime.begin_operation().is_ok());
             runtime.close_window();
         }
+    }
+    #[test]
+    fn queued_journal_reserves_operation_and_cannot_save_after_close() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = std::sync::Arc::new(ChatRuntime::new(temp.path().join("chat")));
+        runtime.open_window();
+        runtime.enable(true);
+        let storage = runtime.document.lock().unwrap();
+        let worker = runtime.clone();
+        let journal = std::thread::spawn(move || worker.journal("queued entry".into()));
+        for _ in 0..100 {
+            if runtime.pending.load(Ordering::SeqCst) {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(runtime.pending.load(Ordering::SeqCst));
+        assert!(runtime.begin_operation().is_err());
+        runtime.close_window();
+        drop(storage);
+        assert!(journal.join().unwrap().is_err());
+        assert_eq!(runtime.view().unwrap().total_messages, 0);
+        assert!(!runtime.view().unwrap().pending);
+        runtime.open_window();
+        runtime.enable(true);
+        runtime.journal("explicit new entry".into()).unwrap();
+        assert_eq!(runtime.view().unwrap().total_messages, 1);
     }
     #[test]
     fn stale_startup_cleanup_preserves_new_session_runtime() {
