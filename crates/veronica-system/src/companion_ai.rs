@@ -161,7 +161,13 @@ impl ChatRuntime {
                 let _ = tx.send(true);
             }
         }
+        self.stop_local(None);
+    }
+    fn stop_local(&self, expected_epoch: Option<u64>) {
         if let Ok(mut local) = self.local.lock() {
+            if expected_epoch.is_some_and(|epoch| self.epoch.load(Ordering::SeqCst) != epoch) {
+                return;
+            }
             if let Some((mut child, _, owner)) = local.take() {
                 drop(child.stdin.take());
                 for _ in 0..10 {
@@ -327,7 +333,7 @@ impl ChatRuntime {
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        self.stop();
+        self.stop_local(Some(epoch));
         anyhow::bail!("Private Ollama runtime did not start within eight seconds")
     }
     pub async fn models(&self, config: ModelConfig) -> Result<Vec<String>> {
@@ -336,20 +342,20 @@ impl ChatRuntime {
             config.provider == "ollama",
             "Enter the model identifier provided by your API provider"
         );
-        ensure!(
-            self.enabled.load(Ordering::SeqCst),
-            "Enable Companion to connect a local runtime"
-        );
-        let epoch = self.epoch.load(Ordering::SeqCst);
-        let endpoint = self.endpoint(&config, epoch).await?;
-        let client = client()?;
-        let response = read_response(
-            client
-                .get(format!("{}/api/tags", endpoint.trim_end_matches('/')))
-                .send()
-                .await?,
-        )
-        .await?;
+        let mut operation = self.begin_operation()?;
+        let epoch = operation.epoch;
+        let response = operation
+            .wait(async {
+                let endpoint = self.endpoint(&config, epoch).await?;
+                read_response(
+                    client()?
+                        .get(format!("{}/api/tags", endpoint.trim_end_matches('/')))
+                        .send()
+                        .await?,
+                )
+                .await
+            })
+            .await?;
         Ok(response["models"]
             .as_array()
             .map(|m| {
@@ -367,15 +373,21 @@ impl ChatRuntime {
             config.provider == "ollama" && config.managed_local,
             "Model downloads require an owned local Ollama runtime"
         );
-        let epoch = self.epoch.load(Ordering::SeqCst);
-        let endpoint = self.endpoint(&config, epoch).await?;
-        let response = client()?
-            .post(format!("{endpoint}/api/pull"))
-            .timeout(Duration::from_secs(600))
-            .json(&json!({"model":config.model,"stream":false}))
-            .send()
+        let mut operation = self.begin_operation()?;
+        let epoch = operation.epoch;
+        operation
+            .wait(async {
+                let endpoint = self.endpoint(&config, epoch).await?;
+                let response = client()?
+                    .post(format!("{endpoint}/api/pull"))
+                    .timeout(Duration::from_secs(600))
+                    .json(&json!({"model":config.model,"stream":false}))
+                    .send()
+                    .await?;
+                read_response(response).await?;
+                Ok(())
+            })
             .await?;
-        read_response(response).await?;
         Ok(())
     }
     pub fn preview(
@@ -395,6 +407,37 @@ impl ChatRuntime {
         let doc: ChatDocument = crate::private_store::load(&self.path())?;
         Ok(context(&doc, text, include_history, include_memory))
     }
+    fn begin_operation(&self) -> Result<Operation<'_>> {
+        ensure!(self.enabled.load(Ordering::SeqCst), "Companion is off");
+        ensure!(
+            self.pending
+                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok(),
+            "Wait for or stop the current operation"
+        );
+        let pending = Pending(&self.pending);
+        let epoch = self.epoch.load(Ordering::SeqCst);
+        let (tx, cancel) = watch::channel(false);
+        {
+            let mut slot = self
+                .cancel
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Cancellation lock failed"))?;
+            ensure!(
+                self.enabled.load(Ordering::SeqCst)
+                    && self.window_open.load(Ordering::SeqCst)
+                    && self.epoch.load(Ordering::SeqCst) == epoch,
+                "Companion switched off"
+            );
+            *slot = Some(tx);
+        }
+        Ok(Operation {
+            runtime: self,
+            epoch,
+            cancel,
+            _pending: pending,
+        })
+    }
     pub async fn send(
         &self,
         text: String,
@@ -402,33 +445,12 @@ impl ChatRuntime {
         include_history: bool,
         include_memory: bool,
     ) -> Result<Message> {
-        ensure!(self.enabled.load(Ordering::SeqCst), "Companion is off");
-        ensure!(
-            self.pending
-                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-                .is_ok(),
-            "Wait for or stop the current response"
-        );
-        let _pending = Pending(&self.pending);
-        let epoch = self.epoch.load(Ordering::SeqCst);
+        let mut operation = self.begin_operation()?;
+        let epoch = operation.epoch;
         ensure!(
             key.len() <= 4096 && !key.contains(['\r', '\n']),
             "Invalid API key"
         );
-        let (tx, mut cancel) = watch::channel(false);
-        {
-            let mut signal = self
-                .cancel
-                .lock()
-                .map_err(|_| anyhow::anyhow!("Cancellation lock failed"))?;
-            ensure!(
-                self.window_open.load(Ordering::SeqCst)
-                    && self.enabled.load(Ordering::SeqCst)
-                    && self.epoch.load(Ordering::SeqCst) == epoch,
-                "Companion switched off"
-            );
-            *signal = Some(tx);
-        }
         let (config, messages) = {
             let _guard = self
                 .document
@@ -454,7 +476,7 @@ impl ChatRuntime {
             let endpoint = self.endpoint(&config, epoch).await?;
             generate(&config, &endpoint, &key, messages).await
         };
-        let response = tokio::select! {biased; _=cancel.changed()=>anyhow::bail!("Response stopped"), result=work=>result?};
+        let response = operation.wait(work).await?;
         ensure!(
             self.enabled.load(Ordering::SeqCst) && self.epoch.load(Ordering::SeqCst) == epoch,
             "Response stopped"
@@ -478,6 +500,27 @@ impl ChatRuntime {
 }
 fn stop_runners(owner: &str) {
     crate::owned_processes::stop("VERONICA_OWNED_LOCAL_RUNTIME", owner);
+}
+struct Operation<'a> {
+    runtime: &'a ChatRuntime,
+    epoch: u64,
+    cancel: watch::Receiver<bool>,
+    _pending: Pending<'a>,
+}
+impl Operation<'_> {
+    async fn wait<T>(&mut self, work: impl std::future::Future<Output = Result<T>>) -> Result<T> {
+        let result = tokio::select! {biased;
+            _ = self.cancel.changed() => anyhow::bail!("Operation stopped"),
+            result = work => result?,
+        };
+        ensure!(
+            self.runtime.enabled.load(Ordering::SeqCst)
+                && self.runtime.window_open.load(Ordering::SeqCst)
+                && self.runtime.epoch.load(Ordering::SeqCst) == self.epoch,
+            "Operation stopped"
+        );
+        Ok(result)
+    }
 }
 struct Pending<'a>(&'a AtomicBool);
 impl Drop for Pending<'_> {
@@ -834,6 +877,105 @@ mod provider_tests {
             .iter()
             .all(|m| m.role != "assistant"));
         task.abort();
+    }
+    #[tokio::test]
+    async fn off_cancels_model_operations_and_rejects_overlap() {
+        use std::os::unix::process::CommandExt;
+        for download in [false, true] {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let temp = tempfile::tempdir().unwrap();
+            let runtime = std::sync::Arc::new(ChatRuntime::new(temp.path().join("chat")));
+            let config = ModelConfig {
+                endpoint: endpoint.clone(),
+                managed_local: download,
+                ..Default::default()
+            };
+            runtime.open_window();
+            runtime.enable(true);
+            // A fixture-owned child stands in for the private server; no real model is started.
+            let owned_pid = if download {
+                let child = std::process::Command::new("/bin/sleep")
+                    .arg("60")
+                    .process_group(0)
+                    .spawn()
+                    .unwrap();
+                let pid = child.id();
+                *runtime.local.lock().unwrap() =
+                    Some((child, endpoint, uuid::Uuid::new_v4().to_string()));
+                Some(pid)
+            } else {
+                None
+            };
+            let worker = runtime.clone();
+            let task = tokio::spawn(async move {
+                if download {
+                    worker.pull(config, true).await.map(|_| ())
+                } else {
+                    worker.models(config).await.map(|_| ())
+                }
+            });
+            let (mut stream, _) = tokio::time::timeout(Duration::from_secs(2), listener.accept())
+                .await
+                .unwrap()
+                .unwrap();
+            let mut request = [0; 4096];
+            assert!(stream.read(&mut request).await.unwrap() > 0);
+            assert!(runtime.view().unwrap().pending);
+            assert!(runtime
+                .send("overlap".into(), String::new(), false, false)
+                .await
+                .is_err());
+            assert!(runtime.journal("overlap".into()).is_err());
+            runtime.close_window();
+            assert!(tokio::time::timeout(Duration::from_secs(1), task)
+                .await
+                .unwrap()
+                .unwrap()
+                .is_err());
+            assert!(!runtime.view().unwrap().pending);
+            assert_eq!(runtime.view().unwrap().total_messages, 0);
+            if let Some(pid) = owned_pid {
+                assert!(!PathBuf::from(format!("/proc/{pid}")).exists());
+            }
+            runtime.open_window();
+            runtime.enable(true);
+            assert!(runtime.begin_operation().is_ok());
+            runtime.close_window();
+        }
+    }
+    #[test]
+    fn stale_startup_cleanup_preserves_new_session_runtime() {
+        use std::os::unix::process::CommandExt;
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = ChatRuntime::new(temp.path().join("chat"));
+        runtime.open_window();
+        runtime.enable(true);
+        let old_epoch = runtime.epoch.load(Ordering::SeqCst);
+        runtime.enable(false);
+        runtime.enable(true);
+        let child = std::process::Command::new("/bin/sleep")
+            .arg("60")
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let pid = child.id();
+        *runtime.local.lock().unwrap() =
+            Some((child, "fixture".into(), uuid::Uuid::new_v4().to_string()));
+        runtime.stop_local(Some(old_epoch));
+        assert!(runtime.enabled.load(Ordering::SeqCst));
+        assert!(runtime
+            .local
+            .lock()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .0
+            .try_wait()
+            .unwrap()
+            .is_none());
+        runtime.close_window();
+        assert!(!PathBuf::from(format!("/proc/{pid}")).exists());
     }
     #[tokio::test]
     #[ignore = "requires locally installed Ollama and a readable existing model cache"]
