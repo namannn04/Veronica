@@ -272,14 +272,18 @@ impl Drop for AgentManager {
 }
 fn terminate(t: &mut Terminal) {
     crate::owned_processes::stop("VERONICA_AGENT_ID", &t.view.id);
-    // The child is unreaped while live; its process group cannot belong to a reused PID.
-    if matches!(t.child.try_wait(), Ok(None)) {
+    terminate_child(&mut *t.child, t.view.pid);
+}
+fn terminate_child(child: &mut dyn portable_pty::Child, pid: u32) {
+    // Both group kill and portable-pty kill use numeric PIDs. Signal only while
+    // the child is live and unreaped; after try_wait returns Some its PID may be reused.
+    if matches!(child.try_wait(), Ok(None)) {
         unsafe {
-            libc::kill(-(t.view.pid as i32), libc::SIGKILL);
+            libc::kill(-(pid as i32), libc::SIGKILL);
         }
+        let _ = child.kill();
     }
-    let _ = t.child.kill();
-    let _ = t.child.wait();
+    let _ = child.wait();
 }
 pub(crate) fn resolve(value: &str) -> Option<PathBuf> {
     if value.is_empty() || value.len() > 4096 || value.starts_with('-') {
@@ -411,6 +415,31 @@ mod tests {
             .is_err());
         assert!(manager.input(&view.id, "bad".into()).is_err());
         assert!(!PathBuf::from(format!("/proc/{}", view.pid)).exists());
+    }
+    #[test]
+    fn already_reaped_terminal_never_receives_another_signal() {
+        #[derive(Debug)]
+        struct ExitedChild;
+        impl portable_pty::ChildKiller for ExitedChild {
+            fn kill(&mut self) -> std::io::Result<()> {
+                panic!("A reaped PID must never be signalled")
+            }
+            fn clone_killer(&self) -> Box<dyn portable_pty::ChildKiller + Send + Sync> {
+                Box::new(ExitedChild)
+            }
+        }
+        impl portable_pty::Child for ExitedChild {
+            fn try_wait(&mut self) -> std::io::Result<Option<portable_pty::ExitStatus>> {
+                Ok(Some(portable_pty::ExitStatus::with_exit_code(0)))
+            }
+            fn wait(&mut self) -> std::io::Result<portable_pty::ExitStatus> {
+                Ok(portable_pty::ExitStatus::with_exit_code(0))
+            }
+            fn process_id(&self) -> Option<u32> {
+                Some(i32::MAX as u32)
+            }
+        }
+        terminate_child(&mut ExitedChild, i32::MAX as u32);
     }
     #[test]
     fn no_external_pid_control_or_shell_interpolation() {
