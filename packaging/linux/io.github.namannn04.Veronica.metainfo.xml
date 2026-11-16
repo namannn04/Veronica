@@ -32,6 +32,9 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.25" date="2026-11-16">
+      <description><p>Cancel Companion model listing and downloads on off or close, serialize model operations, and isolate stale startup cleanup from newer sessions. Avoid signalling already-reaped coding-agent terminal PIDs.</p></description>
+    </release>
     <release version="0.1.24" date="2026-11-15">
       <description><p>Add managed coding-agent terminals, external agent discovery and opt-in Claude status to Agents and Herdr. Add opt-in Companion conversations with user-connected cloud or local models, private local history, editable memory and explicit runtime shutdown.</p></description>
     </release>
