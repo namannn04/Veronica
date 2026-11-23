@@ -1,9 +1,10 @@
 import { ipc } from "../lib/ipc";
 import type { Diagnostics } from "../lib/types";
+import veronicaLogo from "../assets/veronica-logo.png";
 
 export function AboutPage({ diagnostics }: { diagnostics: Diagnostics | null }) {
   return <div className="about-page">
-    <div className="about-mark">V</div>
+    <img className="about-mark" src={veronicaLogo} alt="Veronica logo" />
     <h1>Veronica</h1>
     <div className="about-version">Version {diagnostics?.version ?? "—"} · Ubuntu</div>
     <p className="about-tagline">Your intelligent desktop companion.</p>

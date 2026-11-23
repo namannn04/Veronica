@@ -19,7 +19,7 @@ function harness() {
     // be silently supplied by the mock (the old native-shelf handler did that).
     const names = source.match(/import \{([^}]+)\} from '\.\/lib.js';/)[1].split(',').map(n=>n.trim());
     const helpers = {
-        vbox: props=>new Actor(props), launchApp() {}, launchFileShelf: ()=>{ launched++; },
+        vbox: props=>new Actor(props), brandIcon: ()=>null, launchApp() {}, launchFileShelf: ()=>{ launched++; },
         launchServices: ()=>{ services++; },
         launchNotchTools: ()=>{ tools++; },
         runJson: async args=>{ calls.push(args); return {entries:[{id:'123-456',name:'saved.txt',path:'/private/shelf/saved.txt'}]}; },

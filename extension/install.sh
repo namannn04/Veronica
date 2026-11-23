@@ -21,7 +21,7 @@ DEV_ONLY=("package.json")
 
 shopt -s nullglob
 files=()
-for candidate in "$SOURCE"/*.js "$SOURCE"/*.json "$SOURCE"/*.css; do
+for candidate in "$SOURCE"/*.js "$SOURCE"/*.json "$SOURCE"/*.css "$SOURCE"/*.png; do
   name="$(basename "$candidate")"
   skip=""
   for dev in "${DEV_ONLY[@]}"; do
@@ -37,7 +37,7 @@ install -m 644 "${files[@]}" "$DEST/"
 
 # A file removed from the source tree must not linger in an old install, where
 # it would keep being imported by a stale sibling.
-for installed in "$DEST"/*.js "$DEST"/*.json "$DEST"/*.css; do
+for installed in "$DEST"/*.js "$DEST"/*.json "$DEST"/*.css "$DEST"/*.png; do
   [ -e "$installed" ] || continue
   name="$(basename "$installed")"
   keep=""

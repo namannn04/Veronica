@@ -18,7 +18,7 @@ import { installCapsule } from './capsuleMotion.js';
 import { CameraPreview } from './cameraPreview.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
-import { launchApp, launchFileShelf, launchNotchTools, launchServices, runJson, vbox } from './lib.js';
+import { brandIcon, launchApp, launchFileShelf, launchNotchTools, launchServices, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { presenterClick, presenterState } from './presenterGate.js';
@@ -130,7 +130,11 @@ export class NotchPanel {
                 accessible_name: title,
             });
             const content = new St.BoxLayout({ style_class: 'veronica-shelf-tab-content' });
-            content.add_child(new St.Icon({ icon_name: icon, style_class: 'veronica-shelf-tab-icon' }));
+            // Home carries the Veronica logo; the other tabs keep themed symbolic icons.
+            const logo = id === 'home' ? brandIcon() : null;
+            content.add_child(new St.Icon(logo
+                ? { gicon: logo, style_class: 'veronica-shelf-tab-icon' }
+                : { icon_name: icon, style_class: 'veronica-shelf-tab-icon' }));
             const label = new St.Label({
                 text: title,
                 style_class: 'veronica-shelf-tab-label',
