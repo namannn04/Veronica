@@ -27,6 +27,7 @@ import { ipc, listenEvent } from "./lib/ipc";
 import { isRoute, routeFromSearch, routeIsVisible, visibleNavGroups, type Route } from "./lib/navigation";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
+import veronicaLogo from "./assets/veronica-logo.png";
 
 const WorkspacePage = lazy(() => import("./pages/WorkspacePage").then(module => ({ default: module.WorkspacePage })));
 
@@ -134,9 +135,7 @@ export function App() {
     <div className="shell">
       <nav className="sidebar" aria-label="Sections">
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true">
-            V
-          </div>
+          <img className="brand-mark" src={veronicaLogo} alt="" aria-hidden="true" />
           <div>
             <div className="brand-name">Veronica</div>
             <div className="brand-version">{diagnostics?.version ?? ""}</div>

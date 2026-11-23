@@ -43,7 +43,7 @@ fn every_extension_file_is_listed_in_the_debian_package() {
         }
         let shipped = matches!(
             path.extension().and_then(|e| e.to_str()),
-            Some("js") | Some("css") | Some("json")
+            Some("js") | Some("css") | Some("json") | Some("png")
         );
         if shipped && !manifest.contains(&format!("extension/{name}")) {
             missing.push(name.to_string());

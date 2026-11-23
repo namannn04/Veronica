@@ -48,6 +48,21 @@ const CLI_FALLBACKS = [
 ];
 
 /**
+ * The Veronica logo shipped next to this module, as an icon for St.Icon, or
+ * null when the file is missing (a partial install), so callers can fall back
+ * to a themed icon instead of showing nothing.
+ */
+export function brandIcon() {
+    const path = GLib.build_filenamev([
+        GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]),
+        'veronica-logo.png',
+    ]);
+    if (!GLib.file_test(path, GLib.FileTest.EXISTS))
+        return null;
+    return Gio.FileIcon.new(Gio.File.new_for_path(path));
+}
+
+/**
  * Locate the `vr` binary once.
  *
  * A shell extension does not inherit a login shell's PATH reliably, so an
