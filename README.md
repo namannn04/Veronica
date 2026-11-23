@@ -136,6 +136,20 @@ it from Veronica. The process list only shows processes inside the sandbox.
   `vr quinjet open` prints the exact command for a terminal you already have.
   Quinjet stays the owner of the review.
 
+**Project Doctor and Graftcode**
+
+- **Project Doctor** runs on-demand, read-only checks of project manifests,
+  expected local TCP ports and named Docker containers, without running project
+  scripts or changing services.
+- **Graftcode Gateway** exposes the bundled Node.js receiver's `inspect` and
+  `attention` methods through its built-in MCP endpoint. Veronica's Playground
+  and compatible AI clients can discover and call these checks without a
+  separate handwritten MCP server. The Gateway is optional and never starts
+  automatically.
+
+See the [Project Doctor and Graftcode setup guide](docs/GRAFTCODE.md) for setup,
+authentication and limits.
+
 **Site Audit**
 
 - **Edith's rules, exactly** — the same eleven checks and the same thresholds,
@@ -525,5 +539,3 @@ capability model, and why this is a reimplementation rather than a Swift port.
 
 Veronica is free software licensed under the GNU General Public License v3.0,
 matching Edith, from which its models are derived.
-
-Developer Workspace adds on-demand Project Doctor checks and an optional local Graftcode Playground. See [Graftcode setup and limits](docs/GRAFTCODE.md). Graftcode Gateway is optional and is never started automatically.
