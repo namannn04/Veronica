@@ -16,6 +16,7 @@ import {
   Notice,
   Page,
   PageHeader,
+  ProgressBar,
   Segmented,
   Skeleton,
   SkeletonText,
@@ -77,11 +78,35 @@ export function UsagePage() {
     const updated = listenEvent("usage-updated", () => {
       void load();
     });
+    const started = listenEvent("usage-refresh-started", () => {
+      setRefreshing(true);
+      setError(null);
+      setProgress("Starting the collector…");
+    });
+    const finished = listenEvent("usage-refresh-finished", () => {
+      setRefreshing(false);
+      setProgress("");
+      void load();
+    });
     return () => {
       void phases.then((un) => un());
       void updated.then((un) => un());
+      void started.then((un) => un());
+      void finished.then((un) => un());
     };
   }, [load]);
+
+  useEffect(() => {
+    void ipc
+      .usageRefreshing()
+      .then((running) => {
+        if (running) {
+          setRefreshing(true);
+          setProgress("Collecting usage in the background…");
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -202,7 +227,9 @@ export function UsagePage() {
           {error}
         </Notice>
       )}
-      {refreshing && progress && <Notice title="Collecting usage…">{progress}</Notice>}
+      {refreshing && progress && view?.hasData && (
+        <Notice title="Collecting usage…">{progress}</Notice>
+      )}
       {exported && (
         <Notice
           tone={exported.tone}
@@ -238,18 +265,33 @@ export function UsagePage() {
       <Page header={header}>
         {messages}
         <Card>
-          <EmptyState
-            icon={<BarChart3 />}
-            title="No usage collected yet"
-            action={
-              <Button variant="primary" onClick={() => void refresh()} busy={refreshing}>
-                {refreshing ? "Collecting…" : "Collect usage"}
-              </Button>
-            }
-          >
-            Veronica reads your local Claude, Codex, Cursor and Command Code history. Nothing is
-            sent anywhere.
-          </EmptyState>
+          {refreshing ? (
+            <EmptyState
+              icon={<BarChart3 />}
+              title="Collecting your usage…"
+              action={
+                <div className="usage-collecting">
+                  <ProgressBar value={null} label="Collecting usage" />
+                </div>
+              }
+            >
+              {progress ||
+                "Reading your local agent history. The first collection can take a minute."}
+            </EmptyState>
+          ) : (
+            <EmptyState
+              icon={<BarChart3 />}
+              title="No usage collected yet"
+              action={
+                <Button variant="primary" onClick={() => void refresh()}>
+                  Collect usage
+                </Button>
+              }
+            >
+              Veronica reads your local Claude, Codex, Cursor and Command Code history. Nothing is
+              sent anywhere.
+            </EmptyState>
+          )}
         </Card>
       </Page>
     );
