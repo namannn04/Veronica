@@ -1,43 +1,15 @@
 use std::fmt::Write as _;
-
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::Serialize;
 use veronica_core::{
-    AppDirectories, Capabilities, Capability, CapabilityState, DesktopSession,
-    ExtensionAvailability, ExtensionEntry, ExtensionGroup, Settings,
+    Capabilities, Capability, CapabilityState, ExtensionAvailability, ExtensionEntry,
+    ExtensionGroup, Settings,
 };
 use veronica_system::tools::Report as ToolReport;
 
 use crate::format::{self, Output};
-
-#[derive(clap::Subcommand)]
-pub(crate) enum ExtensionCommand {
-    #[command(
-        alias = "list",
-        about = "Every extension, its group, switch and availability"
-    )]
-    Ls,
-    #[command(about = "Turn one extension on, even when setup still remains")]
-    Enable { id: String },
-    #[command(about = "Turn one extension off")]
-    Disable { id: String },
-    #[command(about = "Describe one extension and everything it needs")]
-    Info { id: String },
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Row {
-    id: &'static str,
-    title: &'static str,
-    subtitle: &'static str,
-    group: ExtensionGroup,
-    enabled: bool,
-    #[serde(flatten)]
-    availability: ExtensionAvailability,
-}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,6 +27,7 @@ struct Info {
     id: &'static str,
     title: &'static str,
     subtitle: &'static str,
+    origin: &'static str,
     settings_key: &'static str,
     group: ExtensionGroup,
     enabled: bool,
@@ -69,81 +42,21 @@ struct Info {
 #[serde(rename_all = "camelCase")]
 struct Mutation {
     id: &'static str,
+    origin: &'static str,
     enabled: bool,
     #[serde(flatten)]
     availability: ExtensionAvailability,
     missing_tools: Vec<&'static str>,
 }
 
-pub(crate) async fn run(
-    directories: &AppDirectories,
-    session: DesktopSession,
-    command: &ExtensionCommand,
-    query: &str,
-    output: Output,
-) -> Result<()> {
-    let capabilities = Capabilities::resolve(&session);
-    match command {
-        ExtensionCommand::Ls => list(directories, &capabilities, query, output),
-        ExtensionCommand::Enable { id } => {
-            mutate(directories, &capabilities, id, true, output).await
-        }
-        ExtensionCommand::Disable { id } => {
-            mutate(directories, &capabilities, id, false, output).await
-        }
-        ExtensionCommand::Info { id } => info(directories, &capabilities, id, output).await,
-    }
-}
-
-fn list(
-    directories: &AppDirectories,
+pub(super) async fn switch(
+    settings_file: &Path,
     capabilities: &Capabilities,
-    query: &str,
-    output: Output,
-) -> Result<()> {
-    let settings = Settings::load(&directories.settings_file())?;
-    let rows: Vec<Row> = veronica_core::extensions::filter(query, None)
-        .into_iter()
-        .map(|entry| Row {
-            id: entry.id,
-            title: entry.title,
-            subtitle: entry.subtitle,
-            group: entry.group,
-            enabled: settings.extension_enabled(entry),
-            availability: entry.availability(capabilities),
-        })
-        .collect();
-
-    output.emit(&rows, || {
-        let table_rows: Vec<Vec<String>> = rows
-            .iter()
-            .map(|row| {
-                vec![
-                    row.id.to_string(),
-                    row.title.to_string(),
-                    row.group.title().to_string(),
-                    if row.enabled { "on" } else { "off" }.to_string(),
-                    crate::availability_label(&row.availability),
-                ]
-            })
-            .collect();
-        format::table(
-            &["id", "title", "group", "enabled", "availability"],
-            &table_rows,
-        )
-    })
-}
-
-async fn mutate(
-    directories: &AppDirectories,
-    capabilities: &Capabilities,
-    id: &str,
+    entry: &'static ExtensionEntry,
     enabled: bool,
     output: Output,
 ) -> Result<()> {
-    let entry = find(id)?;
-    write_switch(&directories.settings_file(), entry, enabled)?;
-
+    write_switch(settings_file, entry, enabled)?;
     let availability = entry.availability(capabilities);
     let missing_tools: Vec<&'static str> = if enabled && !entry.required_tools.is_empty() {
         let reports = veronica_system::tools::catalogue().await;
@@ -154,13 +67,12 @@ async fn mutate(
     } else {
         Vec::new()
     };
-
     if enabled {
         warn_shortfalls(&availability, &missing_tools);
     }
-
     let result = Mutation {
         id: entry.id,
+        origin: "builtin",
         enabled,
         availability,
         missing_tools,
@@ -174,14 +86,12 @@ async fn mutate(
     })
 }
 
-async fn info(
-    directories: &AppDirectories,
+pub(super) async fn info(
+    settings: &Settings,
     capabilities: &Capabilities,
-    id: &str,
+    entry: &'static ExtensionEntry,
     output: Output,
 ) -> Result<()> {
-    let entry = find(id)?;
-    let settings = Settings::load(&directories.settings_file())?;
     let tools = veronica_system::tools::catalogue().await;
     let required_tools = entry
         .required_tools
@@ -192,6 +102,7 @@ async fn info(
         id: entry.id,
         title: entry.title,
         subtitle: entry.subtitle,
+        origin: "builtin",
         settings_key: entry.defaults_key,
         group: entry.group,
         enabled: settings.extension_enabled(entry),
@@ -200,7 +111,6 @@ async fn info(
         optional_capabilities: capability_reports(entry.optional_capabilities, capabilities),
         required_tools,
     };
-
     output.emit(&report, || render_info(&report))
 }
 
@@ -221,7 +131,7 @@ fn capability_reports(
 
 fn render_info(report: &Info) -> String {
     let mut out = format!(
-        "{} ({})\n{}\n\nsetting       {}\ngroup         {}\nenabled       {}\navailability  {}",
+        "{} ({})\n{}\n\norigin        built in\nsetting       {}\ngroup         {}\nenabled       {}\navailability  {}",
         report.title,
         report.id,
         report.subtitle,
@@ -268,17 +178,6 @@ fn render_info(report: &Info) -> String {
     out
 }
 
-fn find(id: &str) -> Result<&'static ExtensionEntry> {
-    veronica_core::extensions::entry(id).with_context(|| {
-        let known = veronica_core::extensions::ENTRIES
-            .iter()
-            .map(|entry| entry.id)
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!("no extension called '{id}'; try one of {known}")
-    })
-}
-
 fn write_switch(path: &Path, entry: &ExtensionEntry, enabled: bool) -> Result<()> {
     let mut settings = Settings::load(path)?;
     settings.set(entry.defaults_key, serde_json::Value::Bool(enabled));
@@ -308,33 +207,21 @@ fn warn_shortfalls(availability: &ExtensionAvailability, missing_tools: &[&str])
 
 #[cfg(test)]
 mod tests {
+    use veronica_core::DesktopSession;
+
     use super::*;
 
     #[test]
-    fn an_unknown_id_names_the_real_choices() {
-        let error = find("not-real").unwrap_err().to_string();
-        assert!(error.contains("no extension called 'not-real'"));
-        assert!(error.contains("attention, usage, herdr"));
-        assert!(error.contains("colorPicker"));
-    }
-
-    #[test]
     fn enable_and_disable_write_the_catalogues_shared_key() {
-        let directory = std::env::temp_dir().join(format!(
-            "veronica-extension-switch-{}-{}",
-            std::process::id(),
-            std::thread::current().name().unwrap_or("test")
-        ));
-        std::fs::create_dir_all(&directory).unwrap();
-        let path = directory.join("settings.json");
-        let entry = find("herdr").unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("settings.json");
+        let entry = veronica_core::extensions::entry("herdr").unwrap();
 
         write_switch(&path, entry, true).unwrap();
         assert!(Settings::load(&path).unwrap().extension_enabled(entry));
 
         write_switch(&path, entry, false).unwrap();
         assert!(!Settings::load(&path).unwrap().extension_enabled(entry));
-        std::fs::remove_dir_all(directory).ok();
     }
 
     #[test]

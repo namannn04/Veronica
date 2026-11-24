@@ -56,9 +56,8 @@ impl Home {
         }
     }
 
-    fn with_fixture() -> Self {
-        let home = Self::new();
-        let source = home.root.path().join("fixture-source");
+    fn source(&self) -> PathBuf {
+        let source = self.root.path().join("fixture-source");
         fs::create_dir_all(source.join("bin")).unwrap();
         let manifest =
             Path::new(env!("CARGO_MANIFEST_DIR")).join("../../extensions/fixture/manifest.json");
@@ -66,10 +65,20 @@ impl Home {
         let backend = source.join("bin/backend");
         fs::copy(fixture_backend(), &backend).unwrap();
         fs::set_permissions(&backend, fs::Permissions::from_mode(0o755)).unwrap();
+        source
+    }
+
+    fn with_fixture() -> Self {
+        let home = Self::new();
         Installer::new(home.layout(), HostIdentity::current())
-            .install_sideload(&source)
+            .install_sideload(&home.source())
             .unwrap();
         home
+    }
+
+    fn settings(&self) -> Value {
+        let path = self.root.path().join(".config/veronica/settings.json");
+        serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap()
     }
 
     fn layout(&self) -> Layout {
@@ -353,4 +362,171 @@ fn every_host_command_still_prints_help() {
     assert!(extensions.contains("enable"));
     let graft = stdout(&home.vr(&["workspace", "graft", "--help"]));
     assert!(graft.contains("discover"));
+}
+
+fn ids(listing: &Value) -> Vec<String> {
+    listing
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["id"].as_str().unwrap().to_string())
+        .collect()
+}
+
+#[test]
+fn sideloads_install_and_remove_only_when_confirmed() {
+    let home = Home::new();
+    let source = home.source();
+    let source = source.to_str().unwrap();
+    let preview = home.vr(&["--json", "extensions", "install", source]);
+    assert_eq!(code(&preview), 5, "{}", stderr(&preview));
+    let preview = document(&preview);
+    assert_eq!(preview["confirmationRequired"], true);
+    assert_eq!(preview["preview"]["id"], "fixture");
+    assert_eq!(preview["preview"]["origin"], "sideload");
+    assert!(!home.layout().current_link("fixture").exists());
+
+    let installed = home.vr(&["--json", "--yes", "extensions", "install", source]);
+    assert_eq!(code(&installed), 0, "{}", stderr(&installed));
+    assert_eq!(document(&installed)["origin"], "sideload");
+    let listed = document(&home.vr(&["--json", "extensions", "ls"]));
+    assert!(ids(&listed).contains(&"fixture".to_string()));
+    assert!(ids(&listed).contains(&"herdr".to_string()));
+    assert_eq!(code(&home.vr(&["fixture", "echo", "hi"])), 0);
+
+    let kept = home.vr(&["--json", "extensions", "remove", "fixture", "--purge"]);
+    assert_eq!(code(&kept), 5);
+    assert_eq!(document(&kept)["preview"]["purge"], true);
+    assert!(home.layout().current_link("fixture").exists());
+    let removed = home.vr(&["--json", "extensions", "remove", "fixture", "--yes"]);
+    assert_eq!(code(&removed), 0, "{}", stderr(&removed));
+    assert_eq!(
+        document(&removed),
+        json!({ "removed": "fixture", "purged": false })
+    );
+    let listed = document(&home.vr(&["--json", "extensions", "ls"]));
+    assert!(!ids(&listed).contains(&"fixture".to_string()));
+    let builtin = home.vr(&["--json", "-y", "extensions", "remove", "herdr"]);
+    assert_eq!(code(&builtin), 2);
+}
+
+#[test]
+fn enable_and_disable_reach_installed_and_built_in_extensions() {
+    let home = Home::with_fixture();
+    let off = home.vr(&["--json", "extensions", "disable", "fixture"]);
+    assert_eq!(code(&off), 0, "{}", stderr(&off));
+    assert_eq!(
+        document(&off),
+        json!({ "id": "fixture", "origin": "sideload", "enabled": false })
+    );
+    assert_eq!(code(&home.vr(&["fixture", "echo", "hi"])), 4);
+    assert_eq!(code(&home.vr(&["extensions", "enable", "fixture"])), 0);
+    assert_eq!(code(&home.vr(&["fixture", "echo", "hi"])), 0);
+
+    let builtin = home.vr(&["--json", "extensions", "enable", "herdr"]);
+    assert_eq!(code(&builtin), 0, "{}", stderr(&builtin));
+    assert_eq!(document(&builtin)["origin"], "builtin");
+    let key = veronica_core::extensions::entry("herdr")
+        .unwrap()
+        .defaults_key;
+    assert_eq!(home.settings()[key], true);
+    let missing = home.vr(&["--json", "extensions", "enable", "lantern"]);
+    assert_eq!(code(&missing), 3);
+    assert_eq!(document(&missing)["error"]["code"], 3);
+}
+
+#[test]
+fn verify_rehashes_installed_trees() {
+    let home = Home::with_fixture();
+    let clean = home.vr(&["--json", "extensions", "verify"]);
+    assert_eq!(code(&clean), 0, "{}", stderr(&clean));
+    assert_eq!(document(&clean)[0]["ok"], true);
+    let backend = fs::canonicalize(home.layout().current_link("fixture"))
+        .unwrap()
+        .join("bin/backend");
+    let mut bytes = fs::read(&backend).unwrap();
+    bytes.push(0);
+    fs::write(&backend, bytes).unwrap();
+    let tampered = home.vr(&["--json", "extensions", "verify", "fixture"]);
+    assert_eq!(code(&tampered), 8);
+    let tampered = document(&tampered);
+    assert_eq!(tampered[0]["ok"], false);
+    assert!(tampered[0]["problem"]
+        .as_str()
+        .unwrap()
+        .contains("bin/backend"));
+    assert_eq!(code(&home.vr(&["extensions", "verify", "herdr"])), 2);
+}
+
+#[test]
+fn doctor_checks_backends_and_the_catalog() {
+    let home = Home::with_fixture();
+    let report = home.vr(&["--json", "extensions", "doctor"]);
+    assert_eq!(code(&report), 0, "{}", stderr(&report));
+    let checks = document(&report);
+    let level = |name: &str| {
+        checks
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|check| check["name"] == name)
+            .map(|check| check["level"].clone())
+    };
+    assert_eq!(level("exec permission"), Some(json!("ok")));
+    assert_eq!(level("fixture: backend"), Some(json!("ok")));
+    assert_eq!(level("catalog"), Some(json!("warn")));
+    assert_eq!(level("leftovers"), Some(json!("ok")));
+}
+
+#[test]
+fn auto_update_preferences_use_the_shared_settings() {
+    let home = Home::new();
+    let shown = document(&home.vr(&["--json", "extensions", "auto-update"]));
+    assert_eq!(
+        shown,
+        json!({ "enabled": true, "intervalHours": 6, "excluded": [] })
+    );
+    for change in [&["off"][..], &["hours", "3"], &["exclude", "media"]] {
+        let mut args = vec!["--json", "extensions", "auto-update"];
+        args.extend_from_slice(change);
+        assert_eq!(code(&home.vr(&args)), 0);
+    }
+    let settings = home.settings();
+    assert_eq!(settings["extensionsAutoUpdate"], false);
+    assert_eq!(settings["extensionsUpdateHours"], 3);
+    assert_eq!(settings["extensionsAutoUpdateOff"], json!(["media"]));
+    assert_eq!(
+        code(&home.vr(&["extensions", "auto-update", "hours", "0"])),
+        2
+    );
+    let setup = home.vr(&["--json", "extensions", "setup", "--profile", "developer"]);
+    assert_eq!(code(&setup), 0, "{}", stderr(&setup));
+    assert_eq!(document(&setup)["profile"], "developer");
+}
+
+#[test]
+fn catalog_commands_work_offline_from_the_cached_catalog() {
+    let home = Home::with_fixture();
+    write_catalog(&home.layout());
+    let found = document(&home.vr(&["--json", "extensions", "search", "LAMP"]));
+    assert_eq!(ids(&found), ["lantern"]);
+    let status = document(&home.vr(&["--json", "extensions", "status"]));
+    assert_eq!(status["catalog"]["source"], "cache");
+    assert_eq!(status["extensions"][0]["id"], "fixture");
+    let info = document(&home.vr(&["--json", "extensions", "info", "fixture"]));
+    assert_eq!(info["installed"]["origin"], "sideload");
+    assert!(info["commands"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("fixture wipe")));
+    let listed = document(&home.vr(&["--json", "extensions", "info", "lantern"]));
+    assert_eq!(listed["latest"], "1.0.0");
+    assert!(listed.get("installed").is_none());
+    assert_eq!(code(&home.vr(&["extensions", "info", "nothing"])), 3);
+    assert_eq!(code(&home.vr(&["extensions", "install", "nothing"])), 3);
+    assert_eq!(code(&home.vr(&["extensions", "install", "lantern"])), 4);
+    let updates = document(&home.vr(&["--json", "extensions", "update"]));
+    assert_eq!(updates, json!({ "updated": [] }));
+    assert_eq!(code(&home.vr(&["extensions", "update", "fixture"])), 1);
+    assert_eq!(code(&home.vr(&["extensions", "setup", "--dry-run"])), 3);
 }

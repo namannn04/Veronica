@@ -207,18 +207,11 @@ enum Command {
     #[command(
         name = "extensions",
         alias = "ext",
-        about = "List, inspect, enable or disable Veronica's extensions"
+        about = "Install, update, inspect and switch Veronica's extensions"
     )]
     Extensions {
         #[command(subcommand)]
         command: Option<extensions_cmd::ExtensionCommand>,
-        #[arg(
-            long,
-            default_value = "",
-            global = true,
-            help = "Filter by title or subtitle"
-        )]
-        query: String,
     },
 }
 
@@ -297,16 +290,14 @@ async fn run(cli: &Cli) -> Result<()> {
             let session = veronica_system::detect_session().await;
             diagnose(&directories, session, output)
         }
-        Command::Extensions { command, query } => {
-            let session = veronica_system::detect_session().await;
+        Command::Extensions { command } => {
             extensions_cmd::run(
-                &directories,
-                session,
+                directories.clone(),
                 command
                     .as_ref()
                     .unwrap_or(&extensions_cmd::ExtensionCommand::Ls),
-                query,
                 output,
+                cli.yes,
             )
             .await
         }
