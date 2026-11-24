@@ -5,4 +5,5 @@ mod common;
 mod install;
 mod launcher;
 mod mcp;
+mod packaged;
 mod update;
