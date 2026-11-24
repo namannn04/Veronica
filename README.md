@@ -28,15 +28,7 @@ Shell extension. Log out and back in once to see the notch.
 Other ways to install:
 
 ```bash
-sudo snap install veronica --classic
-```
-
-```bash
 flatpak install --user https://veronica.namandadhich.in/flatpak/veronica.flatpakref
-```
-
-```bash
-sudo add-apt-repository ppa:namannn04/veronica && sudo apt install veronica
 ```
 
 To get updates through `apt upgrade` from the signed apt repository instead:
@@ -49,8 +41,15 @@ sudo apt update && sudo apt install veronica
 
 An AppImage, `Veronica_0.1.26_amd64.AppImage`, is on the
 [latest release](https://github.com/namannn04/Veronica/releases/latest). It is
-the desktop app only, without the `vr` command or the shell extension. The Snap
-installs `vr` as `veronica.vr`.
+the desktop app only, without the `vr` command or the shell extension.
+
+Releases also attach a classic snap, `Veronica_<version>_amd64.snap`. Until it
+is listed in the Snap Store, install the downloaded file directly; it installs
+`vr` as `veronica.vr`:
+
+```bash
+sudo snap install --classic --dangerous ./Veronica_<version>_amd64.snap
+```
 
 ## Features
 
