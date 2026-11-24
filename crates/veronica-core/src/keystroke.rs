@@ -277,7 +277,7 @@ mod tests {
     }
 
     #[test]
-    fn a_stored_duration_out_of_range_cannot_extend_an_entrys_life() {
+    fn a_stored_duration_out_of_range_cannot_extend_an_entry_lifetime() {
         let mut queue = Queue::default();
         queue.append(keys(&["A"]), 0, 600.0);
         assert_eq!(queue.entries()[0].expires_at_ms, 3_000);

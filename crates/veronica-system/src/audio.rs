@@ -33,7 +33,7 @@ pub fn parse_volume(output: &str) -> Result<VolumeState> {
 
     let volume: f32 = raw
         .parse()
-        .with_context(|| format!("wpctl printed an unparseable volume: {raw:?}"))?;
+        .with_context(|| format!("wpctl printed an unparsable volume: {raw:?}"))?;
 
     Ok(VolumeState {
         volume,
@@ -315,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_or_unparseable_output_is_an_error_not_a_silent_zero() {
+    fn missing_or_unparsable_output_is_an_error_not_a_silent_zero() {
         assert!(parse_volume("").is_err());
         assert!(parse_volume("Sink 51. Built-in Audio\n").is_err());
         assert!(parse_volume("Volume: loud\n").is_err());
