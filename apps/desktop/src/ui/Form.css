@@ -121,6 +121,7 @@
 
 .ui-field-input:focus-visible {
   outline: none;
+  box-shadow: none;
 }
 
 .ui-field-input::placeholder {
