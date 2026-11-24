@@ -22,8 +22,7 @@ try:
     fd=os.open(temporary,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
     with os.fdopen(fd,'w') as out:json.dump({'status':status,'updated':int(time.time())},out)
     os.replace(temporary,target)
-    # Bound stale event documents; no traversal outside this private directory.
     for item in itertools.islice(root.iterdir(),256):
         if re.fullmatch(r'\d+-\d+\.json',item.name) and item!=target and not item.is_symlink() and item.is_file() and time.time()-item.stat().st_mtime>86400:item.unlink()
 except Exception:
-    pass  # Tracking must never block or fail a coding-agent turn.
+    pass

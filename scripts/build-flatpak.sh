@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# Build the Flatpak bundle from a Debian package the release build produced.
-#
-# Usage: scripts/build-flatpak.sh path/to/Veronica_<version>_amd64.deb
-#
-# Writes target/flatpak/Veronica_<version>_x86_64.flatpak. The GNOME 50 SDK and
-# runtime come from Flathub, so the first build downloads them.
 set -euo pipefail
 
 repository="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -19,7 +13,6 @@ if [ ! -f "$repository/packaging/flatpak/shared-modules/libayatana-appindicator/
   exit 1
 fi
 
-# Prefer a native flatpak-builder (CI installs one); the Flathub app works too.
 if command -v flatpak-builder >/dev/null 2>&1; then
   builder=(flatpak-builder)
 else

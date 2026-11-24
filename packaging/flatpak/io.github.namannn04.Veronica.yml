@@ -1,13 +1,3 @@
-# Flatpak build of Veronica.
-#
-# Veronica is a control center for the computer it runs on, so it is not a
-# confined app: it reads coding-agent history in the home directory and runs
-# PipeWire, GNOME Shell, apt, ssh and the user's terminals on the host through
-# `flatpak-spawn --host` (see crates/veronica-core/src/host.rs).
-#
-# The application itself is repackaged from the Debian package the release
-# workflow builds on Ubuntu 24.04; scripts/build-flatpak.sh puts it where the
-# `veronica` module below expects it.
 id: io.github.namannn04.Veronica
 runtime: org.gnome.Platform
 runtime-version: '50'
@@ -21,13 +11,9 @@ finish-args:
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=dri
-  # Agent history, music, backups and the shell extension's install directory.
   - --filesystem=home
-  # Host executables are looked up under /run/host before running them there.
   - --filesystem=host-os:ro
-  # The IPC socket `vr` uses to reach the running app.
   - --filesystem=xdg-run/veronica:create
-  # GNOME Shell, MPRIS players, notifications and flatpak-spawn --host.
   - --socket=session-bus
   - --socket=system-bus
 

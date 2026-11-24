@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
-# Build both Linux distributions, smoke-test the Debian payload and checksum it.
 set -euo pipefail
 
 repository="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repository"
 
-# Desktop-launched terminals do not always inherit rustup's shell profile.
-# Tauri invokes `cargo` by name, so make the standard rustup install visible
-# before doing any release work and fail in words when Rust is truly absent.
 if ! command -v cargo >/dev/null 2>&1; then
   rustup_bin="${CARGO_HOME:-$HOME/.cargo}/bin"
   if [ -x "$rustup_bin/cargo" ]; then

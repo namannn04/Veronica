@@ -1,11 +1,4 @@
 #!/usr/bin/env bash
-# Turn a Flatpak bundle into the signed repository GitHub Pages serves.
-#
-# Usage: scripts/build-flatpak-repo.sh Veronica.flatpak destination GPG_KEY_ID
-#
-# Writes destination/flatpak/repo plus the .flatpakref and .flatpakrepo files
-# that `flatpak install` reads. The signing key must already be in the GnuPG
-# keyring ($GNUPGHOME); its public half is packaging/flatpak/veronica-repo.gpg.
 set -euo pipefail
 
 repository="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
