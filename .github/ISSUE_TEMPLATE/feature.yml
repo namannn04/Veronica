@@ -1,0 +1,20 @@
+name: Feature request
+description: Propose an improvement
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    attributes:
+      label: Problem
+      description: What is difficult or missing today?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed behavior
+      description: Describe what Veronica should do and where it should appear.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Alternatives
