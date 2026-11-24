@@ -8,8 +8,6 @@ publish.workspace = true
 [dependencies]
 serde = { workspace = true }
 anyhow = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }
 zbus = { workspace = true }
 walkdir = "2"
 

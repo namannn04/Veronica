@@ -5726,9 +5726,7 @@ dependencies = [
  "regex",
  "reqwest 0.12.28",
  "serde",
- "serde_json",
  "tokio",
- "tracing",
  "url",
 ]
 
@@ -5809,7 +5807,6 @@ dependencies = [
  "tokio-postgres",
  "tracing",
  "uuid",
- "veronica-core",
  "zbus",
 ]
 
@@ -5850,10 +5847,8 @@ dependencies = [
  "chrono",
  "futures-util",
  "serde",
- "serde_json",
  "tempfile",
  "tokio",
- "tracing",
  "veronica-core",
 ]
 
@@ -5863,8 +5858,6 @@ version = "0.1.26"
 dependencies = [
  "anyhow",
  "serde",
- "tokio",
- "tracing",
  "walkdir",
  "zbus",
 ]
