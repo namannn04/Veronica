@@ -57,10 +57,6 @@
           "arrowParentheses": "asNeeded"
         }
       }
-    },
-    {
-      "includes": ["extension/stylesheet.css"],
-      "formatter": { "enabled": false }
     }
   ]
 }
