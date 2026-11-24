@@ -1,5 +1,7 @@
+mod audit;
 mod legacy;
 
+pub(crate) use audit::*;
 pub(crate) use legacy::*;
 
 type CommandResult<T> = Result<T, String>;
