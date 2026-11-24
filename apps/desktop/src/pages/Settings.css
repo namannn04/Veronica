@@ -41,18 +41,8 @@
   gap: var(--space-1);
 }
 
-.settings-value {
-  color: var(--text-2);
-  font-size: var(--text-callout);
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.settings-path {
-  max-width: 360px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.settings-kv {
+  padding: var(--space-3) var(--card-padding);
 }
 
 .settings-code {
@@ -108,16 +98,6 @@
   background: var(--fill-control);
   color: var(--text-2);
   font-size: 0.95em;
-}
-
-@container main (max-width: 560px) {
-  .settings-value {
-    text-align: left;
-  }
-
-  .settings-path {
-    max-width: 100%;
-  }
 }
 
 .ui-form-group-body > .ui-skeleton-rows {

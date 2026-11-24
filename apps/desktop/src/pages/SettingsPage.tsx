@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 
 import { ProviderSelector } from "../components/ProviderSelector";
@@ -65,7 +65,9 @@ function usageRefreshMinutes(value: unknown): number {
   return USAGE_REFRESH_CHOICES.some(([choice]) => choice === minutes) ? minutes : 15;
 }
 
-type Feedback = { tone: "neutral" | "critical"; text: string } | null;
+type Feedback = { tone: "neutral" | "critical"; text: string; load?: boolean } | null;
+
+const TABS_USING_VALUES: Tab[] = ["general", "desktop", "shortcuts"];
 
 export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null }) {
   const [tab, setTab] = useState<Tab>("general");
@@ -78,12 +80,25 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
   const [launchAtLogin, setLaunchAtLogin] = useState<LaunchAtLoginStatus | null>(null);
   const [shellExtension, setShellExtension] = useState<ShellExtensionStatus | null>(null);
 
-  useEffect(() => {
-    const refresh = () =>
+  const refresh = useCallback(
+    () =>
       void ipc
         .settingsAll()
-        .then(setValues)
-        .catch(() => setFeedback({ tone: "neutral", text: "Settings connect when Veronica runs as the desktop app." }));
+        .then((stored) => {
+          setValues(stored);
+          setFeedback((current) => (current?.load ? null : current));
+        })
+        .catch((reason) =>
+          setFeedback(
+            isDesktopApp()
+              ? { tone: "critical", text: String(reason), load: true }
+              : { tone: "neutral", text: "Settings connect when Veronica runs as the desktop app.", load: true },
+          ),
+        ),
+    [],
+  );
+
+  useEffect(() => {
     refresh();
     void ipc.powerStatus().then(setPower).catch(() => {});
     void ipc.launchAtLoginStatus().then(setLaunchAtLogin).catch(() => {});
@@ -95,7 +110,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       void changed.then((unlisten) => unlisten());
       void session.then((unlisten) => unlisten());
     };
-  }, []);
+  }, [refresh]);
 
   useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
@@ -182,13 +197,20 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
         />
       }
     >
-      {feedback && (
+      {feedback && (!feedback.load || TABS_USING_VALUES.includes(tab)) && (
         <Notice
           tone={feedback.tone}
+          title={feedback.load && feedback.tone === "critical" ? "Settings did not load" : undefined}
           actions={
-            <Button size="small" variant="plain" onClick={() => setFeedback(null)}>
-              Dismiss
-            </Button>
+            feedback.load && feedback.tone === "critical" ? (
+              <Button size="small" onClick={refresh}>
+                Retry
+              </Button>
+            ) : (
+              <Button size="small" variant="plain" onClick={() => setFeedback(null)}>
+                Dismiss
+              </Button>
+            )
           }
         >
           {feedback.text}

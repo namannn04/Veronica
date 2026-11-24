@@ -1,5 +1,5 @@
 import type { CapabilityState, Diagnostics } from "../lib/types";
-import { Badge, FormGroup, FormRow, SkeletonRows, Stack, type Tone } from "../ui";
+import { Badge, FormGroup, FormRow, KeyValueList, SkeletonRows, Stack, type Tone } from "../ui";
 
 const STATE_BADGES: Record<string, { tone: Tone; label: string }> = {
   available: { tone: "good", label: "Available" },
@@ -52,28 +52,16 @@ export function DiagnosticsPage({ diagnostics }: { diagnostics: Diagnostics | nu
     <Stack>
       <FormGroup title="Capabilities" description={`${available} of ${entries.length} available in this session. Each feature talks to one of these.`}>
         {entries.map(([id, state]) => (
-          <FormRow key={id} label={capabilityLabel(id)} description={"reason" in state ? state.reason : "Ready to use."} control={<StateBadge state={state} />} />
+          <FormRow key={id} label={capabilityLabel(id)} description={"reason" in state ? state.reason : undefined} control={<StateBadge state={state} />} />
         ))}
       </FormGroup>
 
       <FormGroup title="Session" description="Which session is running decides whether a feature can work at all.">
-        {sessionRows.map(([label, value]) => (
-          <FormRow key={label} label={label} control={<span className="settings-value ui-selectable">{value}</span>} />
-        ))}
+        <KeyValueList className="settings-kv" items={sessionRows.map(([label, value]) => ({ label, value }))} />
       </FormGroup>
 
       <FormGroup title="Directories" description="Where Veronica keeps its configuration and data.">
-        {directoryRows.map(([label, value]) => (
-          <FormRow
-            key={label}
-            label={label}
-            control={
-              <span className="settings-value settings-path ui-mono ui-selectable" title={value}>
-                {value}
-              </span>
-            }
-          />
-        ))}
+        <KeyValueList className="settings-kv" items={directoryRows.map(([label, value]) => ({ label, value, mono: true }))} />
       </FormGroup>
     </Stack>
   );
