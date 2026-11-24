@@ -52,3 +52,36 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[workspace.lints.rust]
+rust_2018_idioms = { level = "deny", priority = -1 }
+unsafe_op_in_unsafe_fn = "deny"
+unused_lifetimes = "deny"
+unused_qualifications = "deny"
+unreachable_pub = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+use_self = "deny"
+or_fun_call = "deny"
+redundant_clone = "deny"
+needless_collect = "deny"
+derive_partial_eq_without_eq = "deny"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+doc_markdown = "allow"
+too_long_first_doc_paragraph = "allow"
+must_use_candidate = "allow"
+module_name_repetitions = "allow"
+too_many_lines = "allow"
+cast_precision_loss = "allow"
+float_cmp = "allow"
+struct_excessive_bools = "allow"
+fn_params_excessive_bools = "allow"
+similar_names = "allow"
