@@ -2,6 +2,7 @@ mod alerts;
 mod art;
 mod commands;
 mod emoji_picker;
+mod extensions;
 mod file_shelf;
 mod image_tools;
 mod main_window;
@@ -189,7 +190,12 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         tracing::warn!("cannot install the bundled shell extension: {error:#}");
     }
 
+    let bundles = extensions::protocol::Bundles::discover();
+
     tauri::Builder::default()
+        .register_uri_scheme_protocol(extensions::protocol::SCHEME, move |_context, request| {
+            bundles.respond(&request)
+        })
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
