@@ -273,7 +273,7 @@ export function CompanionPage() {
         </Suspense>
       ) : view === "activity" ? (
         <ActivityPanel overview={activity} />
-      ) : (
+      ) : error && items.length === 0 ? null : (
         <div className="comp-panes">
           <Card padding="none" className="comp-list-pane">
             <div className="comp-search">
@@ -303,24 +303,20 @@ export function CompanionPage() {
                     />
                   ))}
                 </List>
-              ) : (
+              ) : query ? (
                 <EmptyState
                   size="compact"
-                  title={query ? "Nothing matches" : view === "voice" ? "No voice memos" : "No notes yet"}
+                  title="Nothing matches"
                   action={
-                    query ? (
-                      <Button size="small" onClick={() => setQuery("")}>
-                        Clear search
-                      </Button>
-                    ) : view === "voice" ? undefined : (
-                      <Button size="small" onClick={() => void createNote()}>
-                        New note
-                      </Button>
-                    )
+                    <Button size="small" onClick={() => setQuery("")}>
+                      Clear search
+                    </Button>
                   }
                 >
-                  {query ? "Try different words." : view === "voice" ? "Record a memo and it appears here." : "Write a note or record a voice memo."}
+                  Try different words.
                 </EmptyState>
+              ) : (
+                <p className="comp-list-empty">{view === "voice" ? "No voice memos yet" : view === "notes" ? "No notes yet" : "Nothing saved yet"}</p>
               )}
             </div>
           </Card>

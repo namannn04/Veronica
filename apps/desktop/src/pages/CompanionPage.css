@@ -147,3 +147,11 @@
     min-height: 460px;
   }
 }
+
+.comp-list-empty {
+  margin: 0;
+  padding: var(--space-8) var(--space-4);
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  text-align: center;
+}
