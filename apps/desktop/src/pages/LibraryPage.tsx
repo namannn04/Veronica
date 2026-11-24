@@ -488,6 +488,7 @@ function EntryBadges({ entry, unmet }: { entry: LibraryEntry; unmet: boolean }) 
   return (
     <>
       {row?.origin === "sideload" && <Badge tone="accent">Development</Badge>}
+      {row?.origin === "bundled" && <Badge>Bundled</Badge>}
       {(entry.feature !== undefined || row?.origin === "builtin") && <Badge>Built in</Badge>}
       {row !== undefined && row.origin !== "builtin" && <Badge>{row.version}</Badge>}
       {row?.update && <Badge tone="good">Update {row.update}</Badge>}
