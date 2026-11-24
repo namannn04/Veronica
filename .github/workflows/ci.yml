@@ -5,77 +5,134 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  quality-and-package:
+  hygiene:
+    name: Hygiene
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v6
-
-      - name: Install Linux build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y \
-            build-essential curl file libayatana-appindicator3-dev \
-            libgtk-3-dev libjavascriptcoregtk-4.1-dev libssl-dev \
-            libsoup-3.0-dev libwebkit2gtk-4.1-dev libxdo-dev \
-            librsvg2-dev patchelf pkg-config
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          components: clippy,rustfmt
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d
+        with:
+          enable-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Check text, comments, scripts, configuration and workflows
+        run: >-
+          scripts/check.sh em_dash comments typos_check python_check shell_check
+          yaml_check markdown_check workflows_check
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
+  rust-lint:
+    name: Rust lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/linux-build-deps
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: lint
+      - uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c
+        with:
+          tool: cargo-deny,cargo-machete
+      - name: Build the interface the desktop crate embeds
+        run: mkdir -p apps/desktop/dist
+      - name: Check formatting, lints and dependencies
+        run: scripts/check.sh rust deps_check
 
+  rust-test:
+    name: Rust tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/linux-build-deps
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: test
+      - name: Build the interface the desktop crate embeds
+        run: mkdir -p apps/desktop/dist
+      - name: Test the Rust workspace
+        run: cargo test --workspace --locked
+
+  web:
+    name: Interface and shell extension
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
       - name: Install interface dependencies exactly
         working-directory: apps/desktop
         run: bun install --frozen-lockfile
-
-      - name: Check Rust formatting
-        run: cargo fmt --all -- --check
-
-      - name: Lint every Rust target
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Test the Rust workspace
-        run: cargo test --workspace
-
-      - name: Test GNOME extension logic
-        working-directory: extension
-        run: npm test
-
-      - name: Test Graftcode receiver access boundaries
-        run: node --test integrations/graftcode/test.cjs
-
-      - name: Test status hook privacy
-        run: python3 integrations/agents/test_status.py
-
-      - name: Test private model runtime cleanup
-        run: python3 integrations/companion/test_runtime.py
-
+      - name: Lint, format and type-check
+        run: scripts/check.sh web
       - name: Test interface behavior
         working-directory: apps/desktop
         run: bun test
-
-      - name: Type-check and build the interface
+      - name: Build the interface
         working-directory: apps/desktop
         run: bun run build
+      - name: Test GNOME extension logic
+        working-directory: extension
+        run: npm test
+      - name: Test integrations
+        run: |
+          node --test integrations/graftcode/test.cjs
+          python3 integrations/agents/test_status.py
+          python3 integrations/companion/test_runtime.py
 
+  package:
+    name: Debian package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/linux-build-deps
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: package
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Install interface dependencies exactly
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
       - name: Build the Debian package
         working-directory: apps/desktop
         run: bunx tauri build --bundles deb --ci
-
       - name: Smoke-test the packaged CLI
         run: |
           audit_dir="$(mktemp -d)"
@@ -89,37 +146,34 @@ jobs:
           test -f "$audit_dir/usr/share/veronica/graftcode/index.cjs"
           test -f "$audit_dir/usr/share/veronica/graftcode/start.cjs"
           test -f "$audit_dir/usr/share/doc/veronica/GRAFTCODE.md"
-
-      - name: Keep the installable package
-        uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: Veronica-amd64-deb
           path: target/release/bundle/deb/Veronica_*_amd64.deb
           if-no-files-found: error
 
   snap:
-    needs: quality-and-package
+    name: Snap package
+    needs: package
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v6
-
-      - name: Fetch the installable package
-        uses: actions/download-artifact@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: Veronica-amd64-deb
           path: target/ci-deb
-
       - name: Install Snapcraft and the desktop libraries Ubuntu ships
         run: |
           sudo snap install snapcraft --classic
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libgtk-3-0t64 libwebkit2gtk-4.1-0
-
       - name: Build the snap
         run: sudo ./scripts/build-snap.sh target/ci-deb/Veronica_*_amd64.deb
-
       - name: Install and smoke-test the snap
         run: |
           sudo snap install --classic --dangerous target/snap/Veronica_*_amd64.snap
@@ -132,10 +186,27 @@ jobs:
           grep -q '^Icon=/snap/veronica/' /var/lib/snapd/desktop/applications/veronica_veronica.desktop
           missing="$(ldd /snap/veronica/current/usr/bin/veronica /snap/veronica/current/usr/lib/x86_64-linux-gnu/libayatana-appindicator3.so.1 /snap/veronica/current/usr/bin/jq | grep 'not found' || true)"
           test -z "$missing" || { echo "$missing"; exit 1; }
-
-      - name: Keep the snap
-        uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: Veronica-amd64-snap
           path: target/snap/Veronica_*_amd64.snap
           if-no-files-found: error
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [hygiene, rust-lint, rust-test, web, package, snap]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every job to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            if [ "$result" != success ]; then
+              echo "a required job finished with: $result" >&2
+              exit 1
+            fi
+          done

@@ -13,6 +13,8 @@ extend-ignore-re = ["nd-ubuntu-fixes1"]
 
 [default.extend-words]
 gir = "gir"
+caf = "caf"
+abd = "abd"
 
 [default.extend-identifiers]
 PNGs = "PNGs"

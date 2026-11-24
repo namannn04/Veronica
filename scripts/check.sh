@@ -20,8 +20,13 @@ rust() {
   cargo clippy --workspace --all-targets --locked -- -D warnings
 }
 
+deps_check() {
+  cargo deny --log-level error check
+  cargo machete
+}
+
 web() {
-  bunx --bun @biomejs/biome@2.6.6 ci .
+  bunx --bun @biomejs/biome@2.6.6 ci --error-on-warnings .
   (cd apps/desktop && bunx tsc --noEmit)
 }
 
@@ -44,7 +49,7 @@ workflows_check() {
   uvx --quiet zizmor@1.18.0 --persona=pedantic --min-severity=low .github/workflows
 }
 
-all_checks=(em_dash comments typos_check rust web python_check shell_check yaml_check markdown_check workflows_check)
+all_checks=(em_dash comments typos_check rust deps_check web python_check shell_check yaml_check markdown_check workflows_check)
 
 if [ "$#" -eq 0 ]; then
   set -- "${all_checks[@]}"
