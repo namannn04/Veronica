@@ -4,7 +4,7 @@
 //! catalogue the picker reads, in the shell extension's list and in
 //! [`veronica_core::appearance`]. Miss one and nothing fails to build:
 //!
-//! - missing from `styles.css`'s family list, and the theme inherits the other
+//! - missing from `themes.css`'s family list, and the theme inherits the other
 //!   family's chart palette - light series on a dark page;
 //! - missing from `preferences.ts`, and it cannot be chosen at all;
 //! - missing from `extension/themes.js`, and the notch silently falls back to
@@ -90,7 +90,7 @@ fn css_family(source: &str, anchor: &str) -> BTreeSet<String> {
             return ids;
         }
     }
-    panic!("no family selector list in styles.css contains {needle}");
+    panic!("no family selector list in themes.css contains {needle}");
 }
 
 /// The ids the appearance picker offers, by family, excluding `system` - which
@@ -114,16 +114,16 @@ fn catalogue(family: &str) -> BTreeSet<String> {
 
 #[test]
 fn the_stylesheet_and_the_catalogue_offer_the_same_themes() {
-    let styles = read("apps/desktop/src/styles.css");
+    let styles = read("apps/desktop/src/ui/themes.css");
     assert_eq!(
         css_family(&styles, "dark"),
         catalogue("dark"),
-        "the dark family list in styles.css and the catalogue disagree"
+        "the dark family list in themes.css and the catalogue disagree"
     );
     assert_eq!(
         css_family(&styles, "light"),
         catalogue("light"),
-        "the light family list in styles.css and the catalogue disagree"
+        "the light family list in themes.css and the catalogue disagree"
     );
 }
 
