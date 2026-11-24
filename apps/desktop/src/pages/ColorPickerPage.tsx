@@ -67,7 +67,7 @@ export function ColorPickerPage() {
       setNotice(
         result.copiedVia
           ? `${result.value} copied via ${result.copiedVia}`
-          : `${result.value} recorded — ${result.copyError ?? "not copied"}`,
+          : `${result.value} recorded: ${result.copyError ?? "not copied"}`,
       );
       if (result.copyError) setError(result.copyError);
     } catch (reason) {
@@ -135,7 +135,7 @@ export function ColorPickerPage() {
       {notice && !error && <div className="banner">{notice}</div>}
       {picking && (
         <div className="banner">
-          The eyedropper is open — click any pixel, or press Escape to cancel.
+          The eyedropper is open. Click any pixel, or press Escape to cancel.
         </div>
       )}
 

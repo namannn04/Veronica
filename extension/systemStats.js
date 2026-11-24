@@ -69,8 +69,8 @@ export class SystemStatsIndicator {
         if (this._tickId)
             return;
         this._previous = this._readCpu();
-        this._cpu.text = 'CPU —';
-        this._memory.text = 'MEM —';
+        this._cpu.text = 'CPU –';
+        this._memory.text = 'MEM –';
         this.actor.visible = true;
         this._tickId = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT_IDLE,

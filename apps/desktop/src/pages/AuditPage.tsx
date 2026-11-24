@@ -61,7 +61,7 @@ export function AuditPage() {
         </button>
       </div>
       <p className="card-note">
-        Veronica fetches the pages being audited and nothing else — four at a time, so an audit
+        Veronica fetches the pages being audited and nothing else, four at a time, so an audit
         does not read as a load test against someone else&apos;s server.
       </p>
     </section>
@@ -106,7 +106,7 @@ export function AuditPage() {
                     <button className="list-row audit-page-row" onClick={() => setOpen(open === page.url ? null : page.url)}>
                       <div>
                         <strong>{page.url}</strong>
-                        <small>{page.error ?? `HTTP ${page.statusCode ?? "—"} · ${page.responseMillis ?? 0} ms · ${page.metadata.wordCount} words`}</small>
+                        <small>{page.error ?? `HTTP ${page.statusCode ?? "–"} · ${page.responseMillis ?? 0} ms · ${page.metadata.wordCount} words`}</small>
                       </div>
                       <span className={`pill ${page.issues.some((issue) => issue.severity === "error") ? "critical" : page.issues.length ? "warn" : "good"}`}>
                         {page.issues.length === 0 ? "Clean" : `${page.issues.length} issue${page.issues.length === 1 ? "" : "s"}`}
@@ -120,12 +120,12 @@ export function AuditPage() {
                         </div>
                       ))}
                       <dl className="hardware-list">
-                        <div><dt>Title</dt><dd>{page.metadata.title ?? "—"}</dd></div>
-                        <div><dt>Description</dt><dd>{page.metadata.description ?? "—"}</dd></div>
-                        <div><dt>Canonical</dt><dd>{page.metadata.canonicalUrl ?? "—"}</dd></div>
-                        <div><dt>Language</dt><dd>{page.metadata.language ?? "—"}</dd></div>
-                        <div><dt>H1</dt><dd>{page.metadata.heading ?? "—"}</dd></div>
-                        <div><dt>og:image</dt><dd>{page.metadata.openGraphImageUrl ?? "—"}</dd></div>
+                        <div><dt>Title</dt><dd>{page.metadata.title ?? "–"}</dd></div>
+                        <div><dt>Description</dt><dd>{page.metadata.description ?? "–"}</dd></div>
+                        <div><dt>Canonical</dt><dd>{page.metadata.canonicalUrl ?? "–"}</dd></div>
+                        <div><dt>Language</dt><dd>{page.metadata.language ?? "–"}</dd></div>
+                        <div><dt>H1</dt><dd>{page.metadata.heading ?? "–"}</dd></div>
+                        <div><dt>og:image</dt><dd>{page.metadata.openGraphImageUrl ?? "–"}</dd></div>
                       </dl>
                     </div>}
                   </div>

@@ -745,7 +745,7 @@ export class NotchPanel {
         if (picked.copiedVia)
             Main.notify('Color copied', value);
         else
-            Main.notify('Color picked, not copied', `${value} — saved in Color Picker's history`);
+            Main.notify('Color picked, not copied', `${value}, saved in Color Picker's history`);
     }
 
     async _refreshClipboard() {
