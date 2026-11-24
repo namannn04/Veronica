@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 
 import { IconButton } from "./Button";
 import "./Dialog.css";
@@ -29,20 +29,28 @@ export function Dialog({
   const restore = useRef<Element | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     restore.current = document.activeElement;
     const frame = requestAnimationFrame(() => {
-      const target = panel.current?.querySelector<HTMLElement>("[data-autofocus], input, textarea, select, button:not(.ui-dialog-close)");
+      const target = panel.current?.querySelector<HTMLElement>(
+        "[data-autofocus], input, textarea, select, button:not(.ui-dialog-close)",
+      );
       (target ?? panel.current)?.focus();
     });
     return () => {
       cancelAnimationFrame(frame);
-      if (restore.current instanceof HTMLElement) restore.current.focus();
+      if (restore.current instanceof HTMLElement) {
+        restore.current.focus();
+      }
     };
   }, [open]);
 
   useEffect(() => {
-    if (!open || locked) return;
+    if (!open || locked) {
+      return;
+    }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -53,9 +61,12 @@ export function Dialog({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [locked, onClose, open]);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   return createPortal(
+    // biome-ignore lint/a11y/noStaticElementInteractions: pointer dismissal on the backdrop; Escape is the keyboard path
     <div className="ui-dialog-scrim" onMouseDown={locked ? undefined : onClose}>
       <div
         ref={panel}
@@ -69,10 +80,20 @@ export function Dialog({
       >
         <div className="ui-dialog-head">
           <div className="ui-dialog-titles">
-            <h2 id={titleId} className="ui-dialog-title">{title}</h2>
+            <h2 id={titleId} className="ui-dialog-title">
+              {title}
+            </h2>
             {description && <p className="ui-dialog-description">{description}</p>}
           </div>
-          {!locked && <IconButton className="ui-dialog-close" size="small" label="Close" icon={<X />} onClick={onClose} />}
+          {!locked && (
+            <IconButton
+              className="ui-dialog-close"
+              size="small"
+              label="Close"
+              icon={<X />}
+              onClick={onClose}
+            />
+          )}
         </div>
         {children && <div className="ui-dialog-body">{children}</div>}
         {footer && <div className="ui-dialog-footer">{footer}</div>}
@@ -113,7 +134,12 @@ export function ConfirmDialog({
       locked={busy}
       footer={
         <>
-          <button type="button" className="ui-button ui-button-secondary ui-button-regular" onClick={onClose} disabled={busy}>
+          <button
+            type="button"
+            className="ui-button ui-button-secondary ui-button-regular"
+            onClick={onClose}
+            disabled={busy}
+          >
             <span className="ui-button-label">Cancel</span>
           </button>
           <button

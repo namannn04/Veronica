@@ -59,7 +59,9 @@
   color: var(--text-3);
   font-size: var(--text-callout);
   text-align: left;
-  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    color var(--motion-feedback);
 }
 
 .shell-search:hover {
@@ -110,7 +112,9 @@
   font-size: var(--text-body);
   font-weight: var(--weight-medium);
   text-align: left;
-  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    color var(--motion-feedback);
 }
 
 .shell-nav-item:hover {
@@ -158,7 +162,6 @@
   overflow-y: auto;
   background: var(--bg-content);
 }
-
 
 .shell-loading {
   display: grid;

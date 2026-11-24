@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
-
-import { Table } from "../ui";
-import { money, modelLabel, tokens } from "../lib/format";
-import type { ColorScale } from "./charts";
+import { useMemo, useState } from "react";
+import { modelLabel, money, tokens } from "../lib/format";
 import type { NamedAmount } from "../lib/types";
+import { Table } from "../ui";
+import type { ColorScale } from "./charts";
 import "./charts.css";
 import "./ModelTable.css";
 
@@ -21,8 +20,18 @@ const COLUMNS: Column[] = [
   { key: "tokens", label: "Tokens", numeric: true, render: (r) => tokens(r.tokens) },
   { key: "inputTokens", label: "Input", numeric: true, render: (r) => tokens(r.inputTokens) },
   { key: "outputTokens", label: "Output", numeric: true, render: (r) => tokens(r.outputTokens) },
-  { key: "cacheCreationTokens", label: "Cache write", numeric: true, render: (r) => tokens(r.cacheCreationTokens) },
-  { key: "cacheReadTokens", label: "Cache read", numeric: true, render: (r) => tokens(r.cacheReadTokens) },
+  {
+    key: "cacheCreationTokens",
+    label: "Cache write",
+    numeric: true,
+    render: (r) => tokens(r.cacheCreationTokens),
+  },
+  {
+    key: "cacheReadTokens",
+    label: "Cache read",
+    numeric: true,
+    render: (r) => tokens(r.cacheReadTokens),
+  },
 ];
 
 export function ModelTable({ rows, colorOf }: { rows: NamedAmount[]; colorOf: ColorScale }) {
@@ -32,7 +41,9 @@ export function ModelTable({ rows, colorOf }: { rows: NamedAmount[]; colorOf: Co
   const sorted = useMemo(() => {
     const copy = [...rows];
     copy.sort((a, b) => {
-      if (sortKey === "name") return a.name.localeCompare(b.name);
+      if (sortKey === "name") {
+        return a.name.localeCompare(b.name);
+      }
       return (a[sortKey] as number) - (b[sortKey] as number);
     });
     return ascending ? copy : copy.reverse();
@@ -47,7 +58,9 @@ export function ModelTable({ rows, colorOf }: { rows: NamedAmount[]; colorOf: Co
     }
   };
 
-  if (rows.length === 0) return <p className="models-empty">No models in this window.</p>;
+  if (rows.length === 0) {
+    return <p className="models-empty">No models in this window.</p>;
+  }
 
   return (
     <Table label="Usage by model" className="models-table">
@@ -56,8 +69,17 @@ export function ModelTable({ rows, colorOf }: { rows: NamedAmount[]; colorOf: Co
           {COLUMNS.map((column) => {
             const active = sortKey === column.key;
             return (
-              <th key={column.key} className={column.numeric ? "num" : undefined} aria-sort={active ? (ascending ? "ascending" : "descending") : "none"}>
-                <button type="button" className="models-sort" data-active={active || undefined} onClick={() => toggle(column.key)}>
+              <th
+                key={column.key}
+                className={column.numeric ? "num" : undefined}
+                aria-sort={active ? (ascending ? "ascending" : "descending") : "none"}
+              >
+                <button
+                  type="button"
+                  className="models-sort"
+                  data-active={active || undefined}
+                  onClick={() => toggle(column.key)}
+                >
                   {column.label}
                   <span className="models-sort-icon" aria-hidden="true">
                     {active ? ascending ? <ArrowUp /> : <ArrowDown /> : null}
@@ -75,7 +97,11 @@ export function ModelTable({ rows, colorOf }: { rows: NamedAmount[]; colorOf: Co
               <td key={column.key} className={column.numeric ? "num" : undefined}>
                 {column.key === "name" ? (
                   <span className="models-name" title={row.name}>
-                    <span className="chart-swatch" style={{ background: colorOf(row.name) }} aria-hidden="true" />
+                    <span
+                      className="chart-swatch"
+                      style={{ background: colorOf(row.name) }}
+                      aria-hidden="true"
+                    />
                     <span>{column.render(row)}</span>
                   </span>
                 ) : (

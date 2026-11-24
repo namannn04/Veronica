@@ -19,7 +19,11 @@
   font-weight: var(--weight-medium);
   line-height: 1;
   white-space: nowrap;
-  transition: background-color var(--motion-feedback), border-color var(--motion-feedback), color var(--motion-feedback), opacity var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    border-color var(--motion-feedback),
+    color var(--motion-feedback),
+    opacity var(--motion-feedback);
 }
 
 .ui-button:hover:not(:disabled) {
@@ -98,11 +102,6 @@
   height: 15px;
 }
 
-.ui-button-small .ui-button-icon svg {
-  width: 14px;
-  height: 14px;
-}
-
 .ui-button-spinner {
   width: 13px;
   height: 13px;
@@ -124,7 +123,9 @@
   border-radius: var(--radius-m);
   background: transparent;
   color: var(--text-2);
-  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    color var(--motion-feedback);
 }
 
 .ui-icon-button svg {
@@ -139,6 +140,11 @@
 }
 
 .ui-icon-button-small svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ui-button-small .ui-button-icon svg {
   width: 14px;
   height: 14px;
 }

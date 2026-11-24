@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
-
-import { startVisiblePolling } from "../lib/polling";
-import { ipc } from "../lib/ipc";
+import { useCallback, useEffect, useState } from "react";
 import { trackTimeline } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
 import type { MediaAction, NowPlaying as NowPlayingState } from "../lib/types";
 import { Badge, IconButton, ProgressBar } from "../ui";
 import "./NowPlaying.css";
@@ -27,7 +26,9 @@ export function useNowPlaying(active = true) {
   }, []);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
     return startVisiblePolling(refresh, POLL_MS);
   }, [active, refresh]);
 
@@ -64,8 +65,14 @@ export function Transport({
   onNext: () => void;
 }) {
   return (
-    <div className="np-transport" role="group" aria-label="Playback">
-      <IconButton label="Previous track" tooltip="Play previous track" icon={<SkipBack />} disabled={!canGoPrevious} onClick={onPrevious} />
+    <fieldset className="np-transport" aria-label="Playback">
+      <IconButton
+        label="Previous track"
+        tooltip="Play previous track"
+        icon={<SkipBack />}
+        disabled={!canGoPrevious}
+        onClick={onPrevious}
+      />
       <IconButton
         className="np-toggle"
         variant="secondary"
@@ -75,8 +82,14 @@ export function Transport({
         disabled={!canPlay}
         onClick={onToggle}
       />
-      <IconButton label="Next track" tooltip="Play next track" icon={<SkipForward />} disabled={!canGoNext} onClick={onNext} />
-    </div>
+      <IconButton
+        label="Next track"
+        tooltip="Play next track"
+        icon={<SkipForward />}
+        disabled={!canGoNext}
+        onClick={onNext}
+      />
+    </fieldset>
   );
 }
 
@@ -108,7 +121,9 @@ export function TrackProgress({ playing }: { playing: NowPlayingState }) {
   const timeline = trackTimeline(positionUs, lengthUs);
   const live = fraction === null && lengthUs === null && positionUs !== null;
 
-  if (fraction === null && !timeline) return null;
+  if (fraction === null && !timeline) {
+    return null;
+  }
 
   return (
     <div className="np-progress">

@@ -1,9 +1,8 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Pencil, Play, Plus, Trash2, X } from "lucide-react";
-
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import type { AgentProfile, AgentView } from "../lib/agents";
 import { ipc } from "../lib/ipc";
 import { startVisiblePolling } from "../lib/polling";
-import type { AgentProfile, AgentView } from "../lib/agents";
 import {
   Badge,
   Button,
@@ -28,7 +27,9 @@ import {
 } from "../ui";
 import "./AgentControls.css";
 
-const AgentTerminal = lazy(() => import("./AgentTerminal").then((m) => ({ default: m.AgentTerminal })));
+const AgentTerminal = lazy(() =>
+  import("./AgentTerminal").then((m) => ({ default: m.AgentTerminal })),
+);
 
 const ICON = { strokeWidth: 1.75 };
 const MAX_OWNED = 4;
@@ -100,33 +101,52 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
   }, [requestedId, refresh]);
 
   const launch = async (profile: AgentProfile) => {
-    if (running.current) return;
+    if (running.current) {
+      return;
+    }
     running.current = true;
     setBusy(true);
     setError("");
     try {
-      const resumeArguments = resume && profile.id === "claude" ? ["--resume"] : resume && profile.id === "codex" ? ["resume"] : [];
-      const view = await ipc.agentStart({ ...profile, arguments: [...profile.arguments, ...resumeArguments] }, cwd.trim());
+      const resumeArguments =
+        resume && profile.id === "claude"
+          ? ["--resume"]
+          : resume && profile.id === "codex"
+            ? ["resume"]
+            : [];
+      const view = await ipc.agentStart(
+        { ...profile, arguments: [...profile.arguments, ...resumeArguments] },
+        cwd.trim(),
+      );
       if (live.current) {
         setSelected(view.id);
         await refresh();
       }
     } catch (e) {
-      if (live.current) setError(String(e));
+      if (live.current) {
+        setError(String(e));
+      }
     } finally {
       running.current = false;
-      if (live.current) setBusy(false);
+      if (live.current) {
+        setBusy(false);
+      }
     }
   };
 
   const start = () => {
-    if (running.current) return;
+    if (running.current) {
+      return;
+    }
     const profile = profiles.find((p) => p.id === provider);
-    if (!profile) return;
+    if (!profile) {
+      return;
+    }
     if (profile.id === "codex-shared") {
       setConfirmation({
         title: "Open the Codex shared agent center?",
-        message: "Its backend owns the tasks, which can continue after this window closes. Veronica only owns this terminal frontend.",
+        message:
+          "Its backend owns the tasks, which can continue after this window closes. Veronica only owns this terminal frontend.",
         confirmLabel: "Open agent center",
         run: () => void launch(profile),
       });
@@ -139,10 +159,21 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
     setFormError("");
     try {
       const argumentsValue: unknown = JSON.parse(args);
-      if (!Array.isArray(argumentsValue) || argumentsValue.some((v) => typeof v !== "string")) throw new Error("Arguments must be a JSON array of strings.");
-      const profile = { id: editingId || crypto.randomUUID(), name: name.trim(), executable: exe.trim(), arguments: argumentsValue as string[] };
-      if (!profile.name || !profile.executable) throw new Error("Enter a provider name and executable.");
-      const next = editingId ? profiles.map((p) => (p.id === editingId ? profile : p)) : [...profiles, profile];
+      if (!Array.isArray(argumentsValue) || argumentsValue.some((v) => typeof v !== "string")) {
+        throw new Error("Arguments must be a JSON array of strings.");
+      }
+      const profile = {
+        id: editingId || crypto.randomUUID(),
+        name: name.trim(),
+        executable: exe.trim(),
+        arguments: argumentsValue as string[],
+      };
+      if (!profile.name || !profile.executable) {
+        throw new Error("Enter a provider name and executable.");
+      }
+      const next = editingId
+        ? profiles.map((p) => (p.id === editingId ? profile : p))
+        : [...profiles, profile];
       await ipc.agentProfilesSave(next);
       setProfiles(next);
       setProvider(profile.id);
@@ -155,7 +186,9 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
   const stop = async (id: string) => {
     try {
       await ipc.agentStop(id);
-      if (selected === id) setSelected("");
+      if (selected === id) {
+        setSelected("");
+      }
       await refresh();
     } catch (e) {
       setError(String(e));
@@ -173,7 +206,9 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
 
   const editProvider = () => {
     const p = profiles.find((item) => item.id === provider);
-    if (!p) return;
+    if (!p) {
+      return;
+    }
     setEditingId(p.id);
     setName(p.name);
     setExe(p.executable);
@@ -208,18 +243,26 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
       message: "External backends keep running.",
       confirmLabel: "Stop all",
       destructive: true,
-      run: () => void Promise.all(owned.map((a) => ipc.agentStop(a.id))).then(refresh).catch((e) => setError(String(e))),
+      run: () =>
+        void Promise.all(owned.map((a) => ipc.agentStop(a.id)))
+          .then(refresh)
+          .catch((e) => setError(String(e))),
     });
 
   const connectTracking = () =>
     setConfirmation({
       title: "Connect Claude status hooks?",
-      message: "Veronica adds status-only hooks to ~/.claude/settings.json. Existing hooks are kept. New Claude Code sessions use them.",
+      message:
+        "Veronica adds status-only hooks to ~/.claude/settings.json. Existing hooks are kept. New Claude Code sessions use them.",
       confirmLabel: "Connect",
       run: () =>
         void ipc
           .agentTracking(true, true)
-          .then(() => setNotice("Claude tracking connected. New sessions report activity; existing sessions may need a restart."))
+          .then(() =>
+            setNotice(
+              "Claude tracking connected. New sessions report activity; existing sessions may need a restart.",
+            ),
+          )
           .catch((e) => setError(String(e))),
     });
 
@@ -243,12 +286,32 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
         description="Run Claude Code, Codex or another installed CLI inside Veronica. Permissions and login prompts stay in its terminal."
       >
         {error && (
-          <Notice tone="critical" actions={<IconButton size="small" label="Dismiss" icon={<X {...ICON} />} onClick={() => setError("")} />}>
+          <Notice
+            tone="critical"
+            actions={
+              <IconButton
+                size="small"
+                label="Dismiss"
+                icon={<X {...ICON} />}
+                onClick={() => setError("")}
+              />
+            }
+          >
             {error}
           </Notice>
         )}
         {notice && (
-          <Notice tone="good" actions={<IconButton size="small" label="Dismiss" icon={<X {...ICON} />} onClick={() => setNotice("")} />}>
+          <Notice
+            tone="good"
+            actions={
+              <IconButton
+                size="small"
+                label="Dismiss"
+                icon={<X {...ICON} />}
+                onClick={() => setNotice("")}
+              />
+            }
+          >
             {notice}
           </Notice>
         )}
@@ -258,7 +321,12 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
             <Field label="Provider">
               {(id) => (
                 <div className="agent-provider">
-                  <Select id={id} value={provider} onChange={(e) => setProvider(e.target.value)} disabled={busy}>
+                  <Select
+                    id={id}
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                    disabled={busy}
+                  >
                     {profiles.map((p) => (
                       <option value={p.id} key={p.id}>
                         {p.name}
@@ -266,15 +334,51 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
                     ))}
                   </Select>
                   <ButtonGroup>
-                    <IconButton variant="secondary" label="Edit provider" tooltip="Edit the selected provider" icon={<Pencil {...ICON} />} disabled={!provider} onClick={editProvider} />
-                    <IconButton variant="secondary" label="Add provider" tooltip="Add a provider profile" icon={<Plus {...ICON} />} onClick={addProvider} />
-                    <IconButton variant="secondary" label="Remove provider" tooltip="Remove the selected provider" icon={<Trash2 {...ICON} />} disabled={profiles.length <= 1} onClick={removeProvider} />
+                    <IconButton
+                      variant="secondary"
+                      label="Edit provider"
+                      tooltip="Edit the selected provider"
+                      icon={<Pencil {...ICON} />}
+                      disabled={!provider}
+                      onClick={editProvider}
+                    />
+                    <IconButton
+                      variant="secondary"
+                      label="Add provider"
+                      tooltip="Add a provider profile"
+                      icon={<Plus {...ICON} />}
+                      onClick={addProvider}
+                    />
+                    <IconButton
+                      variant="secondary"
+                      label="Remove provider"
+                      tooltip="Remove the selected provider"
+                      icon={<Trash2 {...ICON} />}
+                      disabled={profiles.length <= 1}
+                      onClick={removeProvider}
+                    />
                   </ButtonGroup>
                 </div>
               )}
             </Field>
-            <Field label="Project directory" hint={atLimit ? "Close a terminal to start another. Up to four can run at once." : undefined}>
-              {(id) => <TextField id={id} mono value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="/home/you/projects/my-app" disabled={busy} />}
+            <Field
+              label="Project directory"
+              hint={
+                atLimit
+                  ? "Close a terminal to start another. Up to four can run at once."
+                  : undefined
+              }
+            >
+              {(id) => (
+                <TextField
+                  id={id}
+                  mono
+                  value={cwd}
+                  onChange={(e) => setCwd(e.target.value)}
+                  placeholder="/home/you/projects/my-app"
+                  disabled={busy}
+                />
+              )}
             </Field>
           </div>
           <div className="agent-launch-footer">
@@ -285,7 +389,13 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
               checked={resume}
               onChange={setResume}
             />
-            <Button variant="primary" icon={<Play {...ICON} />} busy={busy} disabled={!cwd.trim() || !provider || atLimit} onClick={start}>
+            <Button
+              variant="primary"
+              icon={<Play {...ICON} />}
+              busy={busy}
+              disabled={!cwd.trim() || !provider || atLimit}
+              onClick={start}
+            >
               {busy ? "Starting…" : "Start agent"}
             </Button>
           </div>
@@ -305,14 +415,23 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
               {owned.map((a) => (
                 <ListRow
                   key={a.id}
-                  leading={<StatusDot tone={a.status === "running" ? "good" : "neutral"} label={a.status} />}
+                  leading={
+                    <StatusDot
+                      tone={a.status === "running" ? "good" : "neutral"}
+                      label={a.status}
+                    />
+                  }
                   title={a.name}
                   subtitle={<span className="ui-mono">{a.cwd || "Directory unavailable"}</span>}
                   meta={<span className="ui-num">PID {a.pid}</span>}
                   selected={selected === a.id}
                   onClick={() => setSelected(a.id)}
                   trailing={
-                    <Button size="small" variant="destructive-plain" onClick={() => void stop(a.id)}>
+                    <Button
+                      size="small"
+                      variant="destructive-plain"
+                      onClick={() => void stop(a.id)}
+                    >
                       Close terminal
                     </Button>
                   }
@@ -330,16 +449,24 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
               </Card>
             }
           >
-            <AgentTerminal key={selectedOwned} id={selectedOwned} title={owned.find((a) => a.id === selectedOwned)?.name ?? "Terminal"} />
+            <AgentTerminal
+              key={selectedOwned}
+              id={selectedOwned}
+              title={owned.find((a) => a.id === selectedOwned)?.name ?? "Terminal"}
+            />
           </Suspense>
         )}
 
         <p className="agent-footnote">
-          Up to four owned terminals. Closing the main window stops them; external agents are never stopped by Veronica. Managed host terminals need the Debian or AppImage installation.
+          Up to four owned terminals. Closing the main window stops them; external agents are never
+          stopped by Veronica. Managed host terminals need the Debian or AppImage installation.
         </p>
       </Section>
 
-      <FormGroup title="Status tracking" description="Working and blocked states come from Herdr or from explicit Claude status hooks, never from guessing at process activity.">
+      <FormGroup
+        title="Status tracking"
+        description="Working and blocked states come from Herdr or from explicit Claude status hooks, never from guessing at process activity."
+      >
         <FormRow
           label="Claude status hooks"
           description="Status-only hooks in ~/.claude/settings.json. Hook states are the last reported event."
@@ -365,7 +492,18 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
             {external.map((a) => (
               <ListRow
                 key={a.id}
-                leading={<StatusDot tone={a.status === "working" ? "accent" : a.status === "blocked" ? "warning" : "neutral"} label={a.status} />}
+                leading={
+                  <StatusDot
+                    tone={
+                      a.status === "working"
+                        ? "accent"
+                        : a.status === "blocked"
+                          ? "warning"
+                          : "neutral"
+                    }
+                    label={a.status}
+                  />
+                }
                 title={a.name}
                 subtitle={<span className="ui-mono">{a.cwd || "Directory unavailable"}</span>}
                 meta={
@@ -401,13 +539,46 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
         }
       >
         <div className="agent-profile-form">
-          {formError && <Notice tone="critical" compact>{formError}</Notice>}
-          <Field label="Name">{(id) => <TextField id={id} value={name} onChange={(e) => setName(e.target.value)} maxLength={80} data-autofocus />}</Field>
-          <Field label="Executable path or command">
-            {(id) => <TextField id={id} mono value={exe} onChange={(e) => setExe(e.target.value)} placeholder="/path/to/agent" />}
+          {formError && (
+            <Notice tone="critical" compact>
+              {formError}
+            </Notice>
+          )}
+          <Field label="Name">
+            {(id) => (
+              <TextField
+                id={id}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={80}
+                data-autofocus
+              />
+            )}
           </Field>
-          <Field label="Arguments" hint="A JSON array of strings. To resume a CLI chat, add its documented resume arguments to a new profile.">
-            {(id) => <TextField id={id} mono value={args} onChange={(e) => setArgs(e.target.value)} maxLength={16000} />}
+          <Field label="Executable path or command">
+            {(id) => (
+              <TextField
+                id={id}
+                mono
+                value={exe}
+                onChange={(e) => setExe(e.target.value)}
+                placeholder="/path/to/agent"
+              />
+            )}
+          </Field>
+          <Field
+            label="Arguments"
+            hint="A JSON array of strings. To resume a CLI chat, add its documented resume arguments to a new profile."
+          >
+            {(id) => (
+              <TextField
+                id={id}
+                mono
+                value={args}
+                onChange={(e) => setArgs(e.target.value)}
+                maxLength={16000}
+              />
+            )}
           </Field>
         </div>
       </Dialog>

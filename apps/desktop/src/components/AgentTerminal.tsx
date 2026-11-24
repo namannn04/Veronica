@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { type ITheme, Terminal } from "@xterm/xterm";
+import { useEffect, useRef, useState } from "react";
 import "@xterm/xterm/css/xterm.css";
 
 import { ipc } from "../lib/ipc";
@@ -21,7 +21,9 @@ function resolveColor(token: string, property: "color" | "backgroundColor") {
   canvas.width = 1;
   canvas.height = 1;
   const context = canvas.getContext("2d");
-  if (!context) return value;
+  if (!context) {
+    return value;
+  }
   context.fillStyle = value;
   context.fillRect(0, 0, 1, 1);
   const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
@@ -46,7 +48,9 @@ export function AgentTerminal({ id, title }: { id: string; title: string }) {
   const [status, setStatus] = useState("running");
 
   useEffect(() => {
-    if (!host.current) return;
+    if (!host.current) {
+      return;
+    }
     const mono = getComputedStyle(document.documentElement).getPropertyValue("--mono").trim();
     const terminal = new Terminal({
       scrollback: 1500,
@@ -68,11 +72,15 @@ export function AgentTerminal({ id, title }: { id: string; title: string }) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const input = terminal.onData((bytes) => {
       void ipc.agentInput(id, bytes).catch((e) => {
-        if (live) setError(String(e));
+        if (live) {
+          setError(String(e));
+        }
       });
     });
     const resize = () => {
-      if (!live) return;
+      if (!live) {
+        return;
+      }
       try {
         fit.fit();
         void ipc.agentResize(id, terminal.cols, terminal.rows).catch(() => {});
@@ -85,29 +93,49 @@ export function AgentTerminal({ id, title }: { id: string; title: string }) {
     const themeObserver = new MutationObserver(() => {
       terminal.options.theme = terminalTheme();
     });
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class", "style"] });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme", "class", "style"],
+    });
     const poll = async () => {
-      if (!live) return;
+      if (!live) {
+        return;
+      }
       if (document.hidden) {
         timer = setTimeout(() => void poll(), 1000);
         return;
       }
       try {
         const out = await ipc.agentOutput(id, cursor);
-        if (!live) return;
-        if (cursor < out.base) terminal.write("\r\n[Older output trimmed]\r\n");
+        if (!live) {
+          return;
+        }
+        if (cursor < out.base) {
+          terminal.write("\r\n[Older output trimmed]\r\n");
+        }
         cursor = out.cursor;
-        if (out.bytes) await new Promise<void>((resolve) => terminal.write(Uint8Array.from(atob(out.bytes), (c) => c.charCodeAt(0)), resolve));
+        if (out.bytes) {
+          await new Promise<void>((resolve) =>
+            terminal.write(
+              Uint8Array.from(atob(out.bytes), (c) => c.charCodeAt(0)),
+              resolve,
+            ),
+          );
+        }
         if (out.status !== "running") {
           terminal.write(`\r\n[${out.status}]\r\n`);
           setStatus(out.status);
           return;
         }
       } catch (e) {
-        if (live) setError(String(e));
+        if (live) {
+          setError(String(e));
+        }
         return;
       }
-      if (live) timer = setTimeout(() => void poll(), 150);
+      if (live) {
+        timer = setTimeout(() => void poll(), 150);
+      }
     };
     void poll();
     const paste = (event: ClipboardEvent) => {
@@ -143,7 +171,9 @@ export function AgentTerminal({ id, title }: { id: string; title: string }) {
     <section className="agent-terminal-card" aria-label={`${title} terminal`}>
       <header className="agent-terminal-head">
         <span className="agent-terminal-title">{title}</span>
-        <span className="agent-terminal-status">{status === "running" ? "Interactive" : status}</span>
+        <span className="agent-terminal-status">
+          {status === "running" ? "Interactive" : status}
+        </span>
       </header>
       {error && (
         <div className="agent-terminal-notice">
@@ -163,7 +193,9 @@ export function AgentTerminal({ id, title }: { id: string; title: string }) {
         open={pendingPaste !== null}
         onClose={() => setPendingPaste(null)}
         onConfirm={() => {
-          if (pendingPaste !== null) terminalRef.current?.paste(pendingPaste);
+          if (pendingPaste !== null) {
+            terminalRef.current?.paste(pendingPaste);
+          }
           setPendingPaste(null);
           terminalRef.current?.focus();
         }}

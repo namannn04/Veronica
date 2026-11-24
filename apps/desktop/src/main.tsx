@@ -7,7 +7,9 @@ import { isEmojiPickerSurface } from "./lib/surfaces";
 import "./ui";
 
 const root = document.getElementById("root");
-if (!root) throw new Error("missing #root");
+if (!root) {
+  throw new Error("missing #root");
+}
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>

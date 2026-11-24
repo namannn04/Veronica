@@ -8,10 +8,24 @@ type CardProps = HTMLAttributes<HTMLDivElement> & {
   as?: "div" | "section" | "article";
 };
 
-export function Card({ padding = "regular", tone = "default", as: Tag = "div", className, children, ...rest }: CardProps) {
+export function Card({
+  padding = "regular",
+  tone = "default",
+  as: Tag = "div",
+  className,
+  children,
+  ...rest
+}: CardProps) {
   return (
     <Tag
-      className={["ui-card", `ui-card-pad-${padding}`, tone !== "default" && `ui-card-${tone}`, className].filter(Boolean).join(" ")}
+      className={[
+        "ui-card",
+        `ui-card-pad-${padding}`,
+        tone !== "default" && `ui-card-${tone}`,
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       {...rest}
     >
       {children}

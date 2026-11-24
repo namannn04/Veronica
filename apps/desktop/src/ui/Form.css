@@ -25,7 +25,9 @@
   height: calc(var(--switch-h) - 4px);
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
   transition: transform var(--motion-snap);
 }
 
@@ -88,7 +90,9 @@
   border-radius: var(--radius-m);
   background: var(--bg-card);
   box-shadow: inset 0 1px 1px color-mix(in srgb, #000 3%, transparent);
-  transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
+  transition:
+    border-color var(--motion-feedback),
+    box-shadow var(--motion-feedback);
 }
 
 .ui-field-small {
@@ -192,7 +196,9 @@
   color: var(--text-1);
   font-size: var(--text-body);
   text-overflow: ellipsis;
-  transition: border-color var(--motion-feedback), background-color var(--motion-feedback);
+  transition:
+    border-color var(--motion-feedback),
+    background-color var(--motion-feedback);
 }
 
 .ui-select select:hover {
@@ -248,7 +254,9 @@
   font-size: var(--text-body);
   line-height: 1.5;
   resize: vertical;
-  transition: border-color var(--motion-feedback), box-shadow var(--motion-feedback);
+  transition:
+    border-color var(--motion-feedback),
+    box-shadow var(--motion-feedback);
 }
 
 .ui-textarea::placeholder {

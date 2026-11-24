@@ -1,8 +1,7 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-
-import { Badge } from "../ui";
+import { type MouseEvent, type ReactNode, useLayoutEffect, useMemo, useState } from "react";
 import { dayLabel, dayLabelLong, hourLabel, money, moneyCompact, tokens } from "../lib/format";
 import type { DayPoint, HeatmapCell, HourPoint, NamedAmount } from "../lib/types";
+import { Badge } from "../ui";
 import { TipRow, TipTitle, useTooltip } from "./Tooltip";
 import "./charts.css";
 
@@ -15,7 +14,9 @@ export type ColorScale = (name: string) => string;
 
 export function colorScale(stableOrder: string[]): ColorScale {
   const slots = new Map<string, string>();
-  stableOrder.forEach((name, index) => slots.set(name, seriesColor(index)));
+  for (const [index, name] of stableOrder.entries()) {
+    slots.set(name, seriesColor(index));
+  }
   return (name: string) => slots.get(name) ?? "var(--axis)";
 }
 
@@ -23,7 +24,9 @@ const MAX_SERIES = 8;
 const PLOT = 100;
 
 function niceMax(value: number): number {
-  if (value <= 0) return 1;
+  if (value <= 0) {
+    return 1;
+  }
   const magnitude = 10 ** Math.floor(Math.log10(value));
   const normalised = value / magnitude;
   const step = normalised <= 1 ? 1 : normalised <= 2 ? 2 : normalised <= 5 ? 5 : 10;
@@ -31,7 +34,9 @@ function niceMax(value: number): number {
 }
 
 function barPath(x: number, y: number, w: number, h: number, rx: number, ry: number): string {
-  if (h <= 0.2) return "";
+  if (h <= 0.2) {
+    return "";
+  }
   const radiusX = Math.min(rx, w / 2);
   const radiusY = Math.min(ry, h);
   return [
@@ -45,18 +50,29 @@ function barPath(x: number, y: number, w: number, h: number, rx: number, ry: num
   ].join(" ");
 }
 
+function datumOf(event: MouseEvent<SVGSVGElement>): string | null {
+  const target = event.target instanceof Element ? event.target.closest("[data-datum]") : null;
+  return target?.getAttribute("data-datum") ?? null;
+}
+
+type AxisLabel = { key: string; text: string };
+
 function ColumnPlot({
   max,
   height,
   label,
   children,
   xLabels,
+  onPointerOver,
+  onPointerOut,
 }: {
   max: number;
   height: number;
   label: string;
   children: ReactNode;
-  xLabels: string[];
+  xLabels: AxisLabel[];
+  onPointerOver: (event: MouseEvent<SVGSVGElement>) => void;
+  onPointerOut: () => void;
 }) {
   const ticks = [max, max / 2, 0];
   return (
@@ -66,16 +82,40 @@ function ColumnPlot({
           <span key={tick}>{moneyCompact(tick)}</span>
         ))}
       </div>
-      <svg className="chart-svg" viewBox={`0 0 ${PLOT} ${PLOT}`} preserveAspectRatio="none" style={{ height }} role="img" aria-label={label}>
+      <svg
+        className="chart-svg"
+        viewBox={`0 0 ${PLOT} ${PLOT}`}
+        preserveAspectRatio="none"
+        style={{ height }}
+        role="img"
+        aria-label={label}
+        onMouseMove={onPointerOver}
+        onMouseLeave={onPointerOut}
+      >
         {[0, PLOT / 2].map((y) => (
-          <line key={y} className="chart-grid" x1={0} y1={y} x2={PLOT} y2={y} vectorEffect="non-scaling-stroke" />
+          <line
+            key={y}
+            className="chart-grid"
+            x1={0}
+            y1={y}
+            x2={PLOT}
+            y2={y}
+            vectorEffect="non-scaling-stroke"
+          />
         ))}
         {children}
-        <line className="chart-baseline" x1={0} y1={PLOT} x2={PLOT} y2={PLOT} vectorEffect="non-scaling-stroke" />
+        <line
+          className="chart-baseline"
+          x1={0}
+          y1={PLOT}
+          x2={PLOT}
+          y2={PLOT}
+          vectorEffect="non-scaling-stroke"
+        />
       </svg>
       <div className="chart-x" aria-hidden="true">
-        {xLabels.map((text, index) => (
-          <span key={`${text}-${index}`}>{text}</span>
+        {xLabels.map((axis) => (
+          <span key={axis.key}>{axis.text}</span>
         ))}
       </div>
     </div>
@@ -87,17 +127,44 @@ export function DayBars({ days }: { days: DayPoint[] }) {
   const peak = useMemo(() => Math.max(...days.map((d) => d.cost), 0), [days]);
   const max = useMemo(() => niceMax(peak), [peak]);
 
-  if (days.length === 0) return <p className="chart-empty">No days in this window.</p>;
+  if (days.length === 0) {
+    return <p className="chart-empty">No days in this window.</p>;
+  }
 
   const slot = PLOT / days.length;
   const gap = Math.min(slot * 0.28, 0.5);
   const barW = Math.max(slot - gap, 0.35);
   const labelEvery = Math.max(1, Math.ceil(days.length / 7));
-  const xLabels = days.filter((_, i) => i % labelEvery === 0 || i === days.length - 1).map((d) => dayLabel(d.period));
+  const xLabels = days
+    .filter((_, i) => i % labelEvery === 0 || i === days.length - 1)
+    .map((d) => ({ key: d.period, text: dayLabel(d.period) }));
+  const byPeriod = new Map(days.map((day) => [day.period, day]));
+  const showDay = (event: MouseEvent<SVGSVGElement>) => {
+    const day = byPeriod.get(datumOf(event) ?? "");
+    if (!day) {
+      tip.hide();
+      return;
+    }
+    tip.show(
+      event,
+      <>
+        <TipTitle>{dayLabelLong(day.period)}</TipTitle>
+        <TipRow label="Spend" value={money(day.cost)} color="var(--series-1)" />
+        <TipRow label="Tokens" value={tokens(day.tokens)} />
+      </>,
+    );
+  };
 
   return (
     <div className="chart">
-      <ColumnPlot max={max} height={168} label={`Daily spend across ${days.length} days, peaking at ${money(peak)}`} xLabels={xLabels}>
+      <ColumnPlot
+        max={max}
+        height={168}
+        label={`Daily spend across ${days.length} days, peaking at ${money(peak)}`}
+        xLabels={xLabels}
+        onPointerOver={showDay}
+        onPointerOut={tip.hide}
+      >
         {days.map((day, index) => {
           const h = max > 0 ? (day.cost / max) * PLOT : 0;
           return (
@@ -106,17 +173,7 @@ export function DayBars({ days }: { days: DayPoint[] }) {
               className="chart-bar"
               d={barPath(index * slot + gap / 2, PLOT - h, barW, h, 0.35, 2)}
               fill="var(--series-1)"
-              onMouseMove={(e) =>
-                tip.show(
-                  e,
-                  <>
-                    <TipTitle>{dayLabelLong(day.period)}</TipTitle>
-                    <TipRow label="Spend" value={money(day.cost)} color="var(--series-1)" />
-                    <TipRow label="Tokens" value={tokens(day.tokens)} />
-                  </>,
-                )
-              }
-              onMouseLeave={tip.hide}
+              data-datum={day.period}
             />
           );
         })}
@@ -132,16 +189,43 @@ export function DayBars({ days }: { days: DayPoint[] }) {
 export function HourBars({ hours }: { hours: HourPoint[] }) {
   const tip = useTooltip();
   const max = useMemo(() => niceMax(Math.max(...hours.map((h) => h.cost), 0)), [hours]);
-  const busiest = useMemo(() => hours.reduce((best, h) => (h.cost > best.cost ? h : best), hours[0]), [hours]);
+  const busiest = useMemo(
+    () => hours.reduce((best, h) => (h.cost > best.cost ? h : best), hours[0]),
+    [hours],
+  );
 
-  if (!busiest || hours.every((h) => h.cost <= 0)) return <p className="chart-empty">No hourly detail in this window.</p>;
+  if (!busiest || hours.every((h) => h.cost <= 0)) {
+    return <p className="chart-empty">No hourly detail in this window.</p>;
+  }
 
   const slot = PLOT / 24;
   const barW = slot - 0.45;
+  const showHour = (event: MouseEvent<SVGSVGElement>) => {
+    const hour = hours.find((entry) => String(entry.hour) === datumOf(event));
+    if (!hour) {
+      tip.hide();
+      return;
+    }
+    tip.show(
+      event,
+      <>
+        <TipTitle>{hourLabel(hour.hour)}</TipTitle>
+        <TipRow label="Spend" value={money(hour.cost)} color="var(--series-1)" />
+        <TipRow label="Tokens" value={tokens(hour.tokens)} />
+      </>,
+    );
+  };
 
   return (
     <div className="chart">
-      <ColumnPlot max={max} height={132} label={`Spend by hour of day, busiest at ${hourLabel(busiest.hour)}`} xLabels={[0, 6, 12, 18, 23].map(hourLabel)}>
+      <ColumnPlot
+        max={max}
+        height={132}
+        label={`Spend by hour of day, busiest at ${hourLabel(busiest.hour)}`}
+        xLabels={[0, 6, 12, 18, 23].map((hour) => ({ key: String(hour), text: hourLabel(hour) }))}
+        onPointerOver={showHour}
+        onPointerOut={tip.hide}
+      >
         {hours.map((hour) => {
           const h = (hour.cost / max) * PLOT;
           return (
@@ -150,23 +234,14 @@ export function HourBars({ hours }: { hours: HourPoint[] }) {
               className="chart-bar"
               d={barPath(hour.hour * slot + 0.22, PLOT - h, barW, h, 0.6, 2.5)}
               fill="var(--series-1)"
-              onMouseMove={(e) =>
-                tip.show(
-                  e,
-                  <>
-                    <TipTitle>{hourLabel(hour.hour)}</TipTitle>
-                    <TipRow label="Spend" value={money(hour.cost)} color="var(--series-1)" />
-                    <TipRow label="Tokens" value={tokens(hour.tokens)} />
-                  </>,
-                )
-              }
-              onMouseLeave={tip.hide}
+              data-datum={hour.hour}
             />
           );
         })}
       </ColumnPlot>
       <p className="chart-caption">
-        Busiest hour {hourLabel(busiest.hour)}, <span className="ui-num">{money(busiest.cost)}</span>
+        Busiest hour {hourLabel(busiest.hour)},{" "}
+        <span className="ui-num">{money(busiest.cost)}</span>
       </p>
       {tip.node}
     </div>
@@ -185,22 +260,30 @@ export function RankedBars({
   max?: number;
 }) {
   const tip = useTooltip();
-  if (rows.length === 0) return <p className="chart-empty">Nothing recorded yet.</p>;
+  if (rows.length === 0) {
+    return <p className="chart-empty">Nothing recorded yet.</p>;
+  }
 
   const shown = rows.slice(0, MAX_SERIES);
   const folded = rows.slice(MAX_SERIES);
-  const other: NamedAmount = folded.reduce(
-    (sum, r) => ({
-      ...sum,
-      cost: sum.cost + r.cost,
-      tokens: sum.tokens + r.tokens,
-      inputTokens: sum.inputTokens + r.inputTokens,
-      outputTokens: sum.outputTokens + r.outputTokens,
-      cacheCreationTokens: sum.cacheCreationTokens + r.cacheCreationTokens,
-      cacheReadTokens: sum.cacheReadTokens + r.cacheReadTokens,
-    }),
-    { name: "other", label: `Other (${folded.length})`, cost: 0, tokens: 0, inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0 },
-  );
+  const other: NamedAmount = {
+    name: "other",
+    label: `Other (${folded.length})`,
+    cost: 0,
+    tokens: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheCreationTokens: 0,
+    cacheReadTokens: 0,
+  };
+  for (const r of folded) {
+    other.cost += r.cost;
+    other.tokens += r.tokens;
+    other.inputTokens += r.inputTokens;
+    other.outputTokens += r.outputTokens;
+    other.cacheCreationTokens += r.cacheCreationTokens;
+    other.cacheReadTokens += r.cacheReadTokens;
+  }
 
   const entries = [
     ...shown.map((row) => ({ row, color: colorOf(row.name) })),
@@ -209,12 +292,12 @@ export function RankedBars({
   const max = explicitMax ?? Math.max(...entries.map(({ row }) => row.cost), 0);
 
   return (
-    <div className="chart-ranked">
+    <ul className="chart-ranked">
       {entries.map(({ row, color }) => {
         const share = max > 0 ? Math.min(100, (row.cost / max) * 100) : 0;
         const name = labelOf ? labelOf(row) : row.label || row.name;
         return (
-          <div
+          <li
             key={row.name}
             className="chart-ranked-row"
             onMouseMove={(e) =>
@@ -237,13 +320,16 @@ export function RankedBars({
               <span className="chart-ranked-value ui-num">{money(row.cost)}</span>
             </div>
             <div className="chart-track">
-              <div className="chart-fill" style={{ width: `${Math.max(share, 1.5)}%`, background: color }} />
+              <div
+                className="chart-fill"
+                style={{ width: `${Math.max(share, 1.5)}%`, background: color }}
+              />
             </div>
-          </div>
+          </li>
         );
       })}
       {tip.node}
-    </div>
+    </ul>
   );
 }
 
@@ -255,68 +341,102 @@ const MONTH_LABEL_H = 16;
 
 export function SpendCalendar({ cells }: { cells: HeatmapCell[] }) {
   const tip = useTooltip();
-  const scroller = useRef<HTMLDivElement>(null);
+  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const [available, setAvailable] = useState(0);
 
   useLayoutEffect(() => {
-    const node = scroller.current;
-    if (!node) return;
-    const update = () => setAvailable(node.clientWidth);
+    if (!scroller) {
+      return;
+    }
+    const update = () => setAvailable(scroller.clientWidth);
     update();
     const observer = new ResizeObserver(update);
-    observer.observe(node);
+    observer.observe(scroller);
     return () => observer.disconnect();
-  }, [cells.length > 0]);
+  }, [scroller]);
 
   const weeks = useMemo(() => {
-    if (cells.length === 0) return [];
+    if (cells.length === 0) {
+      return [];
+    }
     const byDay = new Map(cells.map((c) => [c.period, c]));
-    const first = new Date(cells[0].period + "T00:00:00");
-    const last = new Date(cells[cells.length - 1].period + "T00:00:00");
+    const first = new Date(`${cells[0].period}T00:00:00`);
+    const last = new Date(`${cells[cells.length - 1].period}T00:00:00`);
     const start = new Date(first);
     start.setDate(start.getDate() - start.getDay());
+    const end = new Date(last);
+    end.setDate(end.getDate() + 6 - end.getDay());
 
-    const columns: { start: Date; days: (HeatmapCell | null)[] }[] = [];
-    let column: (HeatmapCell | null)[] = [];
+    type CalendarDay = { period: string; cell: HeatmapCell | null };
+    const columns: { start: Date; days: CalendarDay[] }[] = [];
+    let column: CalendarDay[] = [];
     let columnStart = new Date(start);
-    for (const cursor = new Date(start); cursor <= last; cursor.setDate(cursor.getDate() + 1)) {
-      if (column.length === 0) columnStart = new Date(cursor);
-      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-      column.push(byDay.get(key) ?? null);
+    for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+      if (column.length === 0) {
+        columnStart = new Date(cursor);
+      }
+      const period = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+      column.push({ period, cell: byDay.get(period) ?? null });
       if (column.length === 7) {
         columns.push({ start: columnStart, days: column });
         column = [];
       }
     }
-    if (column.length > 0) {
-      while (column.length < 7) column.push(null);
-      columns.push({ start: columnStart, days: column });
-    }
     return columns;
   }, [cells]);
+  const cellsByPeriod = useMemo(() => new Map(cells.map((cell) => [cell.period, cell])), [cells]);
 
-  const fitted = weeks.length > 0 && available > 0 ? Math.floor((available - DAY_LABEL_W + CELL_GAP) / weeks.length) - CELL_GAP : CELL_MIN;
+  const fitted =
+    weeks.length > 0 && available > 0
+      ? Math.floor((available - DAY_LABEL_W + CELL_GAP) / weeks.length) - CELL_GAP
+      : CELL_MIN;
   const cellSize = Math.max(CELL_MIN, Math.min(CELL_MAX, fitted));
-
-  useLayoutEffect(() => {
-    const node = scroller.current;
-    if (node) node.scrollLeft = node.scrollWidth;
-  }, [cellSize, weeks.length]);
-
-  if (weeks.length === 0) return <p className="chart-empty">No history yet.</p>;
-
   const step = cellSize + CELL_GAP;
   const width = DAY_LABEL_W + weeks.length * step - CELL_GAP;
+
+  useLayoutEffect(() => {
+    if (scroller) {
+      scroller.scrollLeft = width;
+    }
+  }, [scroller, width]);
+
+  if (weeks.length === 0) {
+    return <p className="chart-empty">No history yet.</p>;
+  }
+
   const height = MONTH_LABEL_H + 7 * step - CELL_GAP;
   const months = weeks
     .map((week, index) => ({ index, month: week.start.getMonth(), date: week.start }))
     .filter((week, index, all) => index === 0 || week.month !== all[index - 1].month)
     .filter((week, index, all) => index !== 0 || all.length < 2 || all[1].index - week.index >= 3);
+  const showCell = (event: MouseEvent<SVGSVGElement>) => {
+    const cell = cellsByPeriod.get(datumOf(event) ?? "");
+    if (!cell) {
+      tip.hide();
+      return;
+    }
+    tip.show(
+      event,
+      <>
+        <TipTitle>{dayLabelLong(cell.period)}</TipTitle>
+        <TipRow label="Spend" value={money(cell.cost)} color={`var(--seq-${cell.level})`} />
+        <TipRow label="Tokens" value={tokens(cell.tokens)} />
+      </>,
+    );
+  };
 
   return (
     <div className="chart">
-      <div className="chart-heatmap-scroll" ref={scroller}>
-        <svg className="chart-heatmap" width={width} height={height} role="img" aria-label={`Daily spend calendar across ${cells.length} days`}>
+      <div className="chart-heatmap-scroll" ref={setScroller}>
+        <svg
+          className="chart-heatmap"
+          width={width}
+          height={height}
+          role="img"
+          aria-label={`Daily spend calendar across ${cells.length} days`}
+          onMouseMove={showCell}
+          onMouseLeave={tip.hide}
+        >
           {months.map((month) => (
             <text key={month.index} x={DAY_LABEL_W + month.index * step} y={10}>
               {month.date.toLocaleDateString(undefined, { month: "short" })}
@@ -328,15 +448,27 @@ export function SpendCalendar({ cells }: { cells: HeatmapCell[] }) {
             </text>
           ))}
           {weeks.map((week, weekIndex) =>
-            week.days.map((cell, dayIndex) => {
+            week.days.map(({ period, cell }, dayIndex) => {
               const x = DAY_LABEL_W + weekIndex * step;
               const y = MONTH_LABEL_H + dayIndex * step;
               if (!cell) {
-                return <rect key={`${weekIndex}-${dayIndex}`} className="chart-heat-cell" x={x} y={y} width={cellSize} height={cellSize} rx={Math.round(cellSize / 4)} fill="var(--seq-0)" opacity={0.45} />;
+                return (
+                  <rect
+                    key={period}
+                    className="chart-heat-cell"
+                    x={x}
+                    y={y}
+                    width={cellSize}
+                    height={cellSize}
+                    rx={Math.round(cellSize / 4)}
+                    fill="var(--seq-0)"
+                    opacity={0.45}
+                  />
+                );
               }
               return (
                 <rect
-                  key={cell.period}
+                  key={period}
                   className="chart-heat-cell"
                   x={x}
                   y={y}
@@ -344,17 +476,7 @@ export function SpendCalendar({ cells }: { cells: HeatmapCell[] }) {
                   height={cellSize}
                   rx={Math.round(cellSize / 4)}
                   fill={`var(--seq-${cell.level})`}
-                  onMouseMove={(e) =>
-                    tip.show(
-                      e,
-                      <>
-                        <TipTitle>{dayLabelLong(cell.period)}</TipTitle>
-                        <TipRow label="Spend" value={money(cell.cost)} color={`var(--seq-${cell.level})`} />
-                        <TipRow label="Tokens" value={tokens(cell.tokens)} />
-                      </>,
-                    )
-                  }
-                  onMouseLeave={tip.hide}
+                  data-datum={cell.period}
                 />
               );
             }),
@@ -364,7 +486,12 @@ export function SpendCalendar({ cells }: { cells: HeatmapCell[] }) {
       <div className="chart-heat-legend">
         <span>Quieter</span>
         {[0, 1, 2, 3, 4].map((level) => (
-          <span key={level} className="chart-heat-step" style={{ background: `var(--seq-${level})` }} aria-hidden="true" />
+          <span
+            key={level}
+            className="chart-heat-step"
+            style={{ background: `var(--seq-${level})` }}
+            aria-hidden="true"
+          />
         ))}
         <span>Busier</span>
       </div>
@@ -376,8 +503,12 @@ export function SpendCalendar({ cells }: { cells: HeatmapCell[] }) {
 export type RingStatus = "good" | "warning" | "serious" | "critical";
 
 export function ringStatus(percent: number, warn = 60, critical = 85): RingStatus {
-  if (percent >= critical) return "critical";
-  if (percent >= warn) return "warning";
+  if (percent >= critical) {
+    return "critical";
+  }
+  if (percent >= warn) {
+    return "warning";
+  }
   return "good";
 }
 
@@ -416,8 +547,20 @@ export function LimitRing({
   return (
     <div className="chart-ring">
       <div className="chart-ring-dial" style={{ width: size, height: size }}>
-        <svg width={size} height={size} role="img" aria-label={`${title} at ${clamped.toFixed(0)} percent, ${STATUS_WORD[status].toLowerCase()}`}>
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--fill-pressed)" strokeWidth={stroke} />
+        <svg
+          width={size}
+          height={size}
+          role="img"
+          aria-label={`${title} at ${clamped.toFixed(0)} percent, ${STATUS_WORD[status].toLowerCase()}`}
+        >
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="var(--fill-pressed)"
+            strokeWidth={stroke}
+          />
           <circle
             cx={size / 2}
             cy={size / 2}

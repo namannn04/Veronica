@@ -1,10 +1,20 @@
-import { useCallback, useEffect, useState } from "react";
 import { Bell, BellOff, CheckCheck, X } from "lucide-react";
-
-import { Badge, Button, Card, CardHeader, EmptyState, IconButton, List, ListRow, Notice, SkeletonRows } from "../ui";
-import { ipc, listenEvent } from "../lib/ipc";
+import { useCallback, useEffect, useState } from "react";
 import { timeAgo } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
 import type { DesktopNotification } from "../lib/types";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  IconButton,
+  List,
+  ListRow,
+  Notice,
+  SkeletonRows,
+} from "../ui";
 import "./NotificationList.css";
 
 export function NotificationList({ limit, className }: { limit?: number; className?: string }) {
@@ -29,7 +39,10 @@ export function NotificationList({ limit, className }: { limit?: number; classNa
 
   useEffect(() => {
     const received = listenEvent<DesktopNotification>("notifications-received", (event) => {
-      setRows((current) => [event.payload, ...current.filter((row) => row.id !== event.payload.id)]);
+      setRows((current) => [
+        event.payload,
+        ...current.filter((row) => row.id !== event.payload.id),
+      ]);
     });
     return () => {
       void received.then((un) => un());
@@ -67,14 +80,29 @@ export function NotificationList({ limit, className }: { limit?: number; classNa
           rows.length > 0 ? (
             <>
               {hidden > 0 && <span className="notes-more ui-num">{hidden} more</span>}
-              <IconButton size="small" label="Clear notifications" tooltip="Clear the list in Veronica" icon={<CheckCheck />} onClick={() => void clear()} />
+              <IconButton
+                size="small"
+                label="Clear notifications"
+                tooltip="Clear the list in Veronica"
+                icon={<CheckCheck />}
+                onClick={() => void clear()}
+              />
             </>
           ) : undefined
         }
       />
 
       {error && (
-        <Notice tone="critical" compact title="Notifications could not be read" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+        <Notice
+          tone="critical"
+          compact
+          title="Notifications could not be read"
+          actions={
+            <Button size="small" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Notice>
       )}

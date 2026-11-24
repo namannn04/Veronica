@@ -28,9 +28,10 @@ export function Segmented<T extends string>({
   stretch?: boolean;
 }) {
   return (
-    <div
-      className={["ui-segmented", `ui-segmented-${size}`, stretch && "ui-segmented-stretch"].filter(Boolean).join(" ")}
-      role="radiogroup"
+    <fieldset
+      className={["ui-segmented", `ui-segmented-${size}`, stretch && "ui-segmented-stretch"]
+        .filter(Boolean)
+        .join(" ")}
       aria-label={label}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
@@ -39,8 +40,7 @@ export function Segmented<T extends string>({
           <button
             key={option.value}
             type="button"
-            role="radio"
-            aria-checked={option.value === value}
+            aria-pressed={option.value === value}
             aria-label={iconOnly ? option.label : undefined}
             disabled={option.disabled}
             className="ui-segment"
@@ -58,6 +58,6 @@ export function Segmented<T extends string>({
           segment
         );
       })}
-    </div>
+    </fieldset>
   );
 }

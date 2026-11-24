@@ -1,16 +1,17 @@
-import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
-
-import { Badge, Button, List, ListRow, Table } from "../ui";
-import { ipc } from "../lib/ipc";
+import { Fragment, useState } from "react";
 import { money, timeAgo, tokens } from "../lib/format";
+import { ipc } from "../lib/ipc";
 import type { ProjectRollup } from "../lib/types";
+import { Badge, Button, List, ListRow, Table } from "../ui";
 import "./ProjectList.css";
 
 export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
   const [open, setOpen] = useState<string | null>(null);
 
-  if (projects.length === 0) return <p className="projects-empty">No project spend in this window.</p>;
+  if (projects.length === 0) {
+    return <p className="projects-empty">No project spend in this window.</p>;
+  }
 
   const max = Math.max(...projects.map((p) => p.cost), 0);
 
@@ -20,6 +21,7 @@ export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
         const key = project.repositoryId ?? project.path;
         const expanded = open === key;
         const share = max > 0 ? (project.cost / max) * 100 : 0;
+        const repositoryUrl = project.repositoryUrl;
         return (
           <Fragment key={key}>
             <ListRow
@@ -49,10 +51,14 @@ export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
               }
             />
             {expanded && (
-              <div className="projects-detail">
-                {project.repositoryUrl && (
+              <li className="projects-detail">
+                {repositoryUrl && (
                   <div>
-                    <Button size="small" icon={<ExternalLink />} onClick={() => void ipc.openExternal(project.repositoryUrl!)}>
+                    <Button
+                      size="small"
+                      icon={<ExternalLink />}
+                      onClick={() => void ipc.openExternal(repositoryUrl)}
+                    >
                       Open repository
                     </Button>
                   </div>
@@ -78,12 +84,14 @@ export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
                         <td className="ui-mono">{chat.source}</td>
                         <td className="num">{money(chat.cost)}</td>
                         <td className="num">{tokens(chat.tokens)}</td>
-                        <td className="num muted">{chat.lastTs ? timeAgo(new Date(chat.lastTs).toISOString()) : "Never"}</td>
+                        <td className="num muted">
+                          {chat.lastTs ? timeAgo(new Date(chat.lastTs).toISOString()) : "Never"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </Table>
-              </div>
+              </li>
             )}
           </Fragment>
         );

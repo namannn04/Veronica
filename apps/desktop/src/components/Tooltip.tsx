@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 
 import "./charts.css";
@@ -53,7 +53,9 @@ export function TipRow({ label, value, color }: { label: string; value: string; 
   return (
     <div className="chart-tip-row">
       <span className="chart-tip-label">
-        {color && <span className="chart-swatch" style={{ background: color }} aria-hidden="true" />}
+        {color && (
+          <span className="chart-swatch" style={{ background: color }} aria-hidden="true" />
+        )}
         {label}
       </span>
       <span className="chart-tip-value">{value}</span>

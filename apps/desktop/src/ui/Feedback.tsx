@@ -1,11 +1,19 @@
-import type { CSSProperties, ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Info, OctagonAlert } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
 
 import "./Feedback.css";
 
 export type Tone = "neutral" | "accent" | "good" | "warning" | "critical";
 
-export function Badge({ tone = "neutral", children, dot = false }: { tone?: Tone; children: ReactNode; dot?: boolean }) {
+export function Badge({
+  tone = "neutral",
+  children,
+  dot = false,
+}: {
+  tone?: Tone;
+  children: ReactNode;
+  dot?: boolean;
+}) {
   return (
     <span className={`ui-badge ui-badge-${tone}`}>
       {dot && <span className="ui-badge-dot" aria-hidden="true" />}
@@ -15,7 +23,12 @@ export function Badge({ tone = "neutral", children, dot = false }: { tone?: Tone
 }
 
 export function StatusDot({ tone = "neutral", label }: { tone?: Tone; label?: string }) {
-  return <span className={`ui-status-dot ui-status-dot-${tone}`} role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} />;
+  const className = `ui-status-dot ui-status-dot-${tone}`;
+  return label ? (
+    <span className={className} role="img" aria-label={label} />
+  ) : (
+    <span className={className} aria-hidden="true" />
+  );
 }
 
 const NOTICE_ICONS: Record<Exclude<Tone, "accent">, ReactNode> = {
@@ -39,8 +52,15 @@ export function Notice({
   compact?: boolean;
 }) {
   return (
-    <div className={["ui-notice", `ui-notice-${tone}`, compact && "ui-notice-compact"].filter(Boolean).join(" ")} role={tone === "critical" ? "alert" : "status"}>
-      <span className="ui-notice-icon" aria-hidden="true">{NOTICE_ICONS[tone]}</span>
+    <div
+      className={["ui-notice", `ui-notice-${tone}`, compact && "ui-notice-compact"]
+        .filter(Boolean)
+        .join(" ")}
+      role={tone === "critical" ? "alert" : "status"}
+    >
+      <span className="ui-notice-icon" aria-hidden="true">
+        {NOTICE_ICONS[tone]}
+      </span>
       <div className="ui-notice-body">
         {title && <p className="ui-notice-title">{title}</p>}
         {children && <div className="ui-notice-message">{children}</div>}
@@ -65,7 +85,11 @@ export function EmptyState({
 }) {
   return (
     <div className={`ui-empty ui-empty-${size}`}>
-      {icon && <span className="ui-empty-icon" aria-hidden="true">{icon}</span>}
+      {icon && (
+        <span className="ui-empty-icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <p className="ui-empty-title">{title}</p>
       {children && <p className="ui-empty-message">{children}</p>}
       {action && <div className="ui-empty-action">{action}</div>}
@@ -73,15 +97,31 @@ export function EmptyState({
   );
 }
 
-export function Skeleton({ width, height = 12, radius, className }: { width?: number | string; height?: number | string; radius?: number; className?: string }) {
+export function Skeleton({
+  width,
+  height = 12,
+  radius,
+  className,
+}: {
+  width?: number | string;
+  height?: number | string;
+  radius?: number;
+  className?: string;
+}) {
   const style: CSSProperties = { width, height, borderRadius: radius };
-  return <span className={["ui-skeleton", className].filter(Boolean).join(" ")} style={style} aria-hidden="true" />;
+  return (
+    <span
+      className={["ui-skeleton", className].filter(Boolean).join(" ")}
+      style={style}
+      aria-hidden="true"
+    />
+  );
 }
 
 export function SkeletonRows({ rows = 4, label = "Loading" }: { rows?: number; label?: string }) {
   return (
     <div className="ui-skeleton-rows" role="status" aria-label={label}>
-      {Array.from({ length: rows }, (_, index) => (
+      {Array.from({ length: rows }, (_, index) => index).map((index) => (
         <div className="ui-skeleton-row" key={index}>
           <Skeleton width={28} height={28} radius={8} />
           <div className="ui-skeleton-lines">
@@ -95,14 +135,11 @@ export function SkeletonRows({ rows = 4, label = "Loading" }: { rows?: number; l
 }
 
 export function Spinner({ size = 16, label }: { size?: number; label?: string }) {
-  return (
-    <span
-      className="ui-spinner"
-      style={{ width: size, height: size }}
-      role={label ? "status" : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-    />
+  const style = { width: size, height: size };
+  return label ? (
+    <span className="ui-spinner" style={style} role="status" aria-label={label} />
+  ) : (
+    <span className="ui-spinner" style={style} aria-hidden="true" />
   );
 }
 
@@ -128,7 +165,10 @@ export function ProgressBar({
       aria-valuenow={clamped === null ? undefined : Math.round(clamped * 100)}
       data-indeterminate={clamped === null || undefined}
     >
-      <span className="ui-progress-fill" style={clamped === null ? undefined : { width: `${clamped * 100}%` }} />
+      <span
+        className="ui-progress-fill"
+        style={clamped === null ? undefined : { width: `${clamped * 100}%` }}
+      />
     </div>
   );
 }

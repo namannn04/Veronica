@@ -1,12 +1,12 @@
+import { ChevronDown, Search, X } from "lucide-react";
 import {
   forwardRef,
-  useId,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  useId,
 } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
 
 import "./Form.css";
 
@@ -53,7 +53,12 @@ export function Checkbox({
 }) {
   return (
     <label className="ui-checkbox" aria-disabled={disabled || undefined}>
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
       <span className="ui-checkbox-text">
         <span className="ui-checkbox-label">{label}</span>
         {description && <span className="ui-checkbox-description">{description}</span>}
@@ -69,14 +74,23 @@ type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   size?: "regular" | "small";
 };
 
-export const TextField = forwardRef<HTMLInputElement, Omit<TextFieldProps, "size"> & { size?: "regular" | "small" }>(function TextField(
+export const TextField = forwardRef<
+  HTMLInputElement,
+  Omit<TextFieldProps, "size"> & { size?: "regular" | "small" }
+>(function TextField(
   { leading, trailing, mono = false, size = "regular", className, ...rest },
   ref,
 ) {
   return (
     <span className={["ui-field", `ui-field-${size}`, className].filter(Boolean).join(" ")}>
       {leading && <span className="ui-field-leading">{leading}</span>}
-      <input ref={ref} className={mono ? "ui-field-input ui-mono" : "ui-field-input"} spellCheck={false} autoComplete="off" {...rest} />
+      <input
+        ref={ref}
+        className={mono ? "ui-field-input ui-mono" : "ui-field-input"}
+        spellCheck={false}
+        autoComplete="off"
+        {...rest}
+      />
       {trailing && <span className="ui-field-trailing">{trailing}</span>}
     </span>
   );
@@ -89,7 +103,10 @@ export const SearchField = forwardRef<
     onChange: (value: string) => void;
     size?: "regular" | "small";
   }
->(function SearchField({ value, onChange, placeholder = "Search", size = "regular", className, onKeyDown, ...rest }, ref) {
+>(function SearchField(
+  { value, onChange, placeholder = "Search", size = "regular", className, onKeyDown, ...rest },
+  ref,
+) {
   return (
     <TextField
       ref={ref}
@@ -102,7 +119,12 @@ export const SearchField = forwardRef<
       leading={<Search aria-hidden="true" />}
       trailing={
         value ? (
-          <button type="button" className="ui-field-clear" aria-label="Clear search" onClick={() => onChange("")}>
+          <button
+            type="button"
+            className="ui-field-clear"
+            aria-label="Clear search"
+            onClick={() => onChange("")}
+          >
             <X aria-hidden="true" />
           </button>
         ) : undefined
@@ -125,10 +147,17 @@ export const SearchField = forwardRef<
 
 export const Select = forwardRef<
   HTMLSelectElement,
-  Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> & { size?: "regular" | "small"; variant?: "field" | "chip" }
+  Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> & {
+    size?: "regular" | "small";
+    variant?: "field" | "chip";
+  }
 >(function Select({ size = "regular", variant = "field", className, children, ...rest }, ref) {
   return (
-    <span className={["ui-select", `ui-select-${size}`, `ui-select-${variant}`, className].filter(Boolean).join(" ")}>
+    <span
+      className={["ui-select", `ui-select-${size}`, `ui-select-${variant}`, className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <select ref={ref} {...rest}>
         {children}
       </select>
@@ -137,11 +166,17 @@ export const Select = forwardRef<
   );
 });
 
-export const TextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement> & { mono?: boolean }>(function TextArea(
-  { mono = false, className, ...rest },
-  ref,
-) {
-  return <textarea ref={ref} className={["ui-textarea", mono && "ui-mono", className].filter(Boolean).join(" ")} {...rest} />;
+export const TextArea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement> & { mono?: boolean }
+>(function TextArea({ mono = false, className, ...rest }, ref) {
+  return (
+    <textarea
+      ref={ref}
+      className={["ui-textarea", mono && "ui-mono", className].filter(Boolean).join(" ")}
+      {...rest}
+    />
+  );
 });
 
 export function Field({
@@ -162,7 +197,11 @@ export function Field({
         {label}
       </label>
       {children(id)}
-      {error ? <p className="ui-labeled-field-error">{error}</p> : hint && <p className="ui-labeled-field-hint">{hint}</p>}
+      {error ? (
+        <p className="ui-labeled-field-error">{error}</p>
+      ) : (
+        hint && <p className="ui-labeled-field-hint">{hint}</p>
+      )}
     </div>
   );
 }

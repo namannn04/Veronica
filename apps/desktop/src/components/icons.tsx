@@ -8,21 +8,21 @@ import {
   Gauge,
   House,
   Info,
+  type LucideIcon,
+  type LucideProps,
   Music2,
+  Network,
   NotebookPen,
   Palette,
   PanelsTopLeft,
   Plane,
   ScanSearch,
-  Network,
   Search,
   Server,
   Settings,
   Smile,
   Target,
   Wrench,
-  type LucideIcon,
-  type LucideProps,
 } from "lucide-react";
 
 const ICON_SIZE = 16;
@@ -30,7 +30,15 @@ const ICON_STROKE = 1.75;
 
 function icon(Glyph: LucideIcon) {
   return function Icon(props: LucideProps) {
-    return <Glyph size={ICON_SIZE} strokeWidth={ICON_STROKE} aria-hidden="true" focusable="false" {...props} />;
+    return (
+      <Glyph
+        size={ICON_SIZE}
+        strokeWidth={ICON_STROKE}
+        aria-hidden="true"
+        focusable="false"
+        {...props}
+      />
+    );
   };
 }
 

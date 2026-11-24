@@ -1,4 +1,6 @@
-import type { KeyboardEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
+
+import { occurrenceKeys } from "./keys";
 
 import "./List.css";
 
@@ -14,9 +16,12 @@ export function List({
   className?: string;
 }) {
   return (
-    <div role="list" aria-label={label} className={["ui-list", inset && "ui-list-inset", className].filter(Boolean).join(" ")}>
+    <ul
+      aria-label={label}
+      className={["ui-list", inset && "ui-list-inset", className].filter(Boolean).join(" ")}
+    >
       {children}
-    </div>
+    </ul>
   );
 }
 
@@ -44,46 +49,56 @@ export function ListRow({
   className?: string;
 }) {
   const interactive = onClick !== undefined && !disabled;
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!interactive) return;
-    if (event.target !== event.currentTarget) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onClick?.();
-    }
-  };
+  const content = (
+    <>
+      {leading && <span className="ui-list-row-leading">{leading}</span>}
+      <span className="ui-list-row-text">
+        <span className={["ui-list-row-title", mono && "ui-mono"].filter(Boolean).join(" ")}>
+          {title}
+        </span>
+        {subtitle && <span className="ui-list-row-subtitle">{subtitle}</span>}
+      </span>
+      {meta && <span className="ui-list-row-meta">{meta}</span>}
+    </>
+  );
   return (
-    <div
-      role="listitem"
-      className={["ui-list-row", interactive && "ui-list-row-interactive", className].filter(Boolean).join(" ")}
+    <li
+      className={["ui-list-row", interactive && "ui-list-row-interactive", className]
+        .filter(Boolean)
+        .join(" ")}
       data-selected={selected || undefined}
       aria-disabled={disabled || undefined}
     >
-      <div
-        className="ui-list-row-main"
-        role={interactive ? "button" : undefined}
-        tabIndex={interactive ? 0 : undefined}
-        aria-pressed={interactive && selected !== undefined ? selected : undefined}
-        onClick={interactive ? onClick : undefined}
-        onKeyDown={onKeyDown}
-      >
-        {leading && <span className="ui-list-row-leading">{leading}</span>}
-        <span className="ui-list-row-text">
-          <span className={["ui-list-row-title", mono && "ui-mono"].filter(Boolean).join(" ")}>{title}</span>
-          {subtitle && <span className="ui-list-row-subtitle">{subtitle}</span>}
-        </span>
-        {meta && <span className="ui-list-row-meta">{meta}</span>}
-      </div>
+      {interactive ? (
+        <button
+          type="button"
+          className="ui-list-row-main"
+          aria-pressed={selected}
+          onClick={onClick}
+        >
+          {content}
+        </button>
+      ) : (
+        <div className="ui-list-row-main">{content}</div>
+      )}
       {trailing && <div className="ui-list-row-trailing">{trailing}</div>}
-    </div>
+    </li>
   );
 }
 
-export function KeyValueList({ items, className }: { items: { label: ReactNode; value: ReactNode; mono?: boolean }[]; className?: string }) {
+export function KeyValueList({
+  items,
+  className,
+}: {
+  items: { label: string; value: ReactNode; mono?: boolean }[];
+  className?: string;
+}) {
+  const keys = occurrenceKeys(items.map((item) => item.label));
+  const rows = items.map((item, position) => ({ ...item, key: keys[position] }));
   return (
     <dl className={["ui-kv", className].filter(Boolean).join(" ")}>
-      {items.map((item, index) => (
-        <div className="ui-kv-row" key={index}>
+      {rows.map((item) => (
+        <div className="ui-kv-row" key={item.key}>
           <dt>{item.label}</dt>
           <dd className={item.mono ? "ui-mono ui-selectable" : "ui-selectable"}>{item.value}</dd>
         </div>

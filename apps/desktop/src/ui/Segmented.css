@@ -25,6 +25,7 @@
   justify-content: center;
   gap: var(--space-1-5);
   min-width: 0;
+  height: calc(var(--control-height) - 4px);
   padding: 0 var(--space-3);
   border: 0;
   border-radius: calc(var(--radius-m) - 2px);
@@ -33,10 +34,14 @@
   font-size: var(--text-callout);
   font-weight: var(--weight-medium);
   white-space: nowrap;
-  transition: background-color var(--motion-feedback), color var(--motion-feedback), box-shadow var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    color var(--motion-feedback),
+    box-shadow var(--motion-feedback);
 }
 
 .ui-segmented-small .ui-segment {
+  height: calc(var(--control-height-small) - 4px);
   padding: 0 var(--space-2);
   border-radius: calc(var(--radius-s) - 2px);
   font-size: var(--text-caption);
@@ -53,16 +58,18 @@
   flex: none;
 }
 
-.ui-segment:hover:not(:disabled):not([aria-checked="true"]) {
+.ui-segment:hover:not(:disabled):not([aria-pressed="true"]) {
   color: var(--text-1);
   background: var(--fill-hover);
 }
 
-.ui-segment[aria-checked="true"] {
+.ui-segment[aria-pressed="true"] {
   background: var(--bg-card);
   color: var(--text-1);
   font-weight: var(--weight-semibold);
-  box-shadow: 0 0 0 1px var(--separator), 0 1px 2px color-mix(in srgb, #000 10%, transparent);
+  box-shadow:
+    0 0 0 1px var(--separator),
+    0 1px 2px color-mix(in srgb, #000 10%, transparent);
 }
 
 .ui-segment:disabled {
