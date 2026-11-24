@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Serialize;
-use serde_json::Value;
 use veronica_host::catalog::{CatalogStore, LoadedCatalog, Provenance};
 use veronica_host::fetch::HttpTransport;
 use veronica_host::registry::Origin;

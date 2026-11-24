@@ -186,7 +186,7 @@ pub(crate) struct Host {
     storage: Mutex<()>,
     confirmations: Mutex<HashMap<u64, oneshot::Sender<bool>>>,
     next_confirmation: AtomicU64,
-    host_topics: Arc<HostTopics>,
+    topic_cache: Arc<HostTopics>,
     routing: Routing,
 }
 
@@ -201,8 +201,8 @@ impl Host {
         );
         let supervisor = Supervisor::new(Arc::clone(&services));
         let router = Router::supervised(supervisor.clone());
-        let host_topics = Arc::new(HostTopics::default());
-        let routing = Routing::new(layout, router.clone(), Arc::clone(&host_topics));
+        let topic_cache = Arc::new(HostTopics::default());
+        let routing = Routing::new(layout, router.clone(), Arc::clone(&topic_cache));
         services.set_contract_router(Arc::new(routing.clone()));
         let _ = desk.services.set(Arc::downgrade(&services));
         let _ = desk.supervisor.set(supervisor.clone());
@@ -210,7 +210,7 @@ impl Host {
             desk,
             router,
             supervisor,
-            host_topics,
+            topic_cache,
             routing,
             files: Arc::default(),
             jobs,
@@ -357,7 +357,7 @@ impl Host {
     }
 
     pub(crate) fn publish_host_topic(&self, contract: &ContractId, payload: &Value) {
-        if self.host_topics.set(contract, payload) {
+        if self.topic_cache.set(contract, payload) {
             self.desk.deliver(contract, payload);
         }
     }
