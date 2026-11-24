@@ -1,5 +1,10 @@
+.about-page {
+  display: flex;
+  flex-direction: column;
+}
+
 .about-page > .ui-page-body {
-  min-height: calc(100vh - var(--page-top) - var(--space-10));
+  flex: 1;
   justify-content: center;
 }
 
