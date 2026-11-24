@@ -1,9 +1,3 @@
-//! Output formatting.
-//!
-//! Every read command supports `--json`, and Edith's contract is that stdout
-//! carries exactly one JSON document while logs go to stderr. Honouring that
-//! keeps `vr` drivable by scripts and agents.
-
 use anyhow::Result;
 use serde::Serialize;
 
@@ -22,7 +16,6 @@ impl Output {
         }
     }
 
-    /// Emit one JSON document, or fall back to the supplied text renderer.
     pub fn emit<T: Serialize>(self, value: &T, text: impl FnOnce() -> String) -> Result<()> {
         match self {
             Output::Json => {
@@ -39,19 +32,14 @@ impl Output {
     }
 }
 
-/// Money, always two decimals with a leading dollar.
 pub fn money(value: f64) -> String {
     format!("${value:.2}")
 }
 
-/// Large token counts, abbreviated the way the dashboard shows them.
 pub fn tokens(value: u64) -> String {
-    // One definition, so the CLI and the share cards cannot disagree.
     veronica_usage::cards::tokens(value)
 }
 
-/// A duration as a compact countdown, e.g. "2h 14m" or "5d 3h".
-///
 pub fn countdown(seconds: i64) -> String {
     if seconds <= 0 {
         return "now".to_string();
@@ -70,8 +58,6 @@ pub fn countdown(seconds: i64) -> String {
     }
 }
 
-/// Render a simple aligned table. Columns are sized to their widest cell so
-/// text output stays readable without a formatting dependency.
 pub fn table(headers: &[&str], rows: &[Vec<String>]) -> String {
     if rows.is_empty() {
         return String::new();
@@ -92,7 +78,6 @@ pub fn table(headers: &[&str], rows: &[Vec<String>]) -> String {
             .enumerate()
             .map(|(i, cell)| {
                 let width = widths.get(i).copied().unwrap_or(0);
-                // The last column needs no trailing padding.
                 if i + 1 == cells.len() {
                     cell.clone()
                 } else {

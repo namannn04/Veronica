@@ -1,11 +1,3 @@
-//! `vr system` — what this computer is doing right now.
-//!
-//! Edith's `ed system` has `stats` and `disks`; Veronica keeps both names and
-//! adds the reads Linux makes cheap and Edith gets from separate places: the
-//! running processes, the per-application audio mixer and Bluetooth. Every
-//! subcommand reads the machine directly, so none of them needs the app to be
-//! running.
-
 use anyhow::Result;
 use clap::Subcommand;
 use veronica_system::audio::StreamDirection;
@@ -80,8 +72,6 @@ pub enum ProcessSort {
     Name,
 }
 
-/// Accept `40`, `40%` and `0.4` as the same volume, since all three are what
-/// somebody types, and a bare `40` meaning 4000% would be a nasty surprise.
 fn parse_level(raw: &str) -> Result<f32> {
     let trimmed = raw.trim();
     let (number, percent) = match trimmed.strip_suffix('%') {
@@ -94,7 +84,6 @@ fn parse_level(raw: &str) -> Result<f32> {
     if value < 0.0 {
         anyhow::bail!("a volume cannot be negative: {raw:?}");
     }
-    // Without a `%`, anything above 1 was meant as a percentage.
     Ok(if percent || value > 1.0 {
         value / 100.0
     } else {
@@ -325,8 +314,6 @@ async fn set_muted(id: Option<u32>, all: bool, muted: bool, output: Output) -> R
     }
 }
 
-/// Re-read one stream after changing it, so the command reports what actually
-/// happened rather than what was asked for.
 async fn report_one(id: u32, output: Output) -> Result<()> {
     let stream = veronica_system::audio::streams()
         .await?

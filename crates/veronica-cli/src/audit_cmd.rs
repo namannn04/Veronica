@@ -1,13 +1,3 @@
-//! `vr audit` — Site Audit.
-//!
-//! Edith's Site Audit on the command line: crawl a site's sitemap, read each
-//! page's metadata, and report what search engines and link previews would make
-//! of it. The rules are Edith's exactly.
-//!
-//! Every run stays local. Veronica fetches the pages being audited and nothing
-//! else — no result leaves this computer and no third-party service is
-//! consulted.
-
 use anyhow::Result;
 use serde_json::json;
 use veronica_audit::{Severity, DEFAULT_CONCURRENCY};
@@ -49,9 +39,6 @@ fn severity(raw: &str) -> Result<Severity> {
     }
 }
 
-/// The same reading of an address as `vr audit site` and the app use, so
-/// `localhost:3000` is a local server here too rather than the scheme
-/// "localhost".
 fn parse_site(raw: &str) -> Result<url::Url> {
     veronica_audit::site_url(raw)
 }
@@ -64,8 +51,6 @@ pub async fn run(command: &AuditCommand, output: Output) -> Result<()> {
             concurrency,
             severity: filter,
         } => {
-            // Severity is validated before the crawl, so a typo does not cost
-            // fifty requests to somebody's server first.
             let floor = filter.as_deref().map(severity).transpose()?;
             let report = veronica_audit::audit(site, *limit, *concurrency).await?;
 
@@ -84,9 +69,6 @@ pub async fn run(command: &AuditCommand, output: Output) -> Result<()> {
                     if report.notices == 1 { "" } else { "s" },
                 );
 
-                // The site-wide counts first: one missing og:image is a page's
-                // problem, forty is the template's, and that is the finding
-                // worth acting on.
                 let rows: Vec<Vec<String>> = report
                     .by_code
                     .iter()

@@ -1,5 +1,3 @@
-//! `vr usage` — the numbers the dashboard rings and charts show.
-
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use serde_json::json;
@@ -103,8 +101,6 @@ pub enum UsageCommand {
     },
 }
 
-/// Load the document the collector last wrote, with a clear error when the
-/// user has never refreshed.
 fn load(directories: &AppDirectories) -> Result<veronica_usage::UsageDocument> {
     let path = directories.usage_file();
     collector::read_document(&path)?.with_context(|| {
@@ -297,8 +293,6 @@ pub async fn run(
             let range = range(*days);
             let cells = aggregate::heatmap(&document, &range, &SourceSelection::All);
             output.emit(&cells, || {
-                // Five shades, quietest to busiest, so the calendar reads in a
-                // terminal the same way it does in the app.
                 const BLOCKS: [&str; 5] = ["·", "░", "▒", "▓", "█"];
                 let mut out = String::new();
                 for cell in &cells {
@@ -323,8 +317,6 @@ pub async fn run(
             let notify = NotifySettings::from_settings(&stored);
             let now = chrono::Utc::now();
 
-            // A copy of the persisted state, so the dry run cannot consume the
-            // edge a real poll would fire on.
             let mut state = NotifierState::load(&directories.alerts_state_file());
             let (session, week, note) = match veronica_usage::claude::limits_for_user(now).await {
                 Ok(Some(limits)) => (limits.session, limits.week, None),
@@ -532,8 +524,6 @@ pub async fn run(
             let extension = if *svg { "svg" } else { "png" };
             let stamp = chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string();
 
-            // A destination that names a file is only meaningful for one card;
-            // four cards written to one path would leave one file and lose three.
             let target = destination.as_deref().map(std::path::Path::new);
             let single_file = match target {
                 Some(path) if chosen.len() == 1 && !path.is_dir() => path.extension().is_some(),
@@ -566,7 +556,6 @@ pub async fn run(
 
                 std::fs::write(&path, &bytes)
                     .with_context(|| format!("cannot write {}", path.display()))?;
-                // Absolute, so the path is usable from wherever the caller is.
                 written.push(
                     std::fs::canonicalize(&path)
                         .unwrap_or(path)
@@ -588,7 +577,6 @@ pub async fn run(
 
             let outcome = collector::refresh(&script, &out_dir, &directories.cache, |event| {
                 if show {
-                    // Progress goes to stderr so stdout stays one document.
                     match event {
                         veronica_usage::CollectorEvent::Phase {
                             name,
@@ -646,7 +634,6 @@ pub async fn run(
     }
 }
 
-/// A ten-cell bar for a percentage, so a terminal reading is scannable.
 fn bar(percent: f64) -> String {
     let filled = ((percent / 10.0).round() as usize).min(10);
     format!("[{}{}]", "#".repeat(filled), "·".repeat(10 - filled))
@@ -661,7 +648,6 @@ mod tests {
         assert_eq!(bar(0.0), "[··········]");
         assert_eq!(bar(50.0), "[#####·····]");
         assert_eq!(bar(100.0), "[##########]");
-        // Over the limit still renders, rather than overflowing the cell count.
         assert_eq!(bar(140.0), "[##########]");
     }
 }

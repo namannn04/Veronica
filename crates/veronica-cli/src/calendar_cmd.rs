@@ -1,5 +1,3 @@
-//! `vr calendar` — the agenda, from every configured calendar.
-
 use anyhow::{Context, Result};
 use chrono::Local;
 use clap::Subcommand;
@@ -20,7 +18,6 @@ pub enum CalendarCommand {
     Next,
 }
 
-/// A time, or "all day" for an event with no time slot.
 fn slot(event: &veronica_calendar::Event) -> String {
     if event.all_day {
         return "all day".to_string();

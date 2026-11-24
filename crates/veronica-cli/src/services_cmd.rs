@@ -1,4 +1,3 @@
-//! Local developer services, shared with the Ports & Docker page.
 use crate::format::Output;
 use anyhow::{ensure, Result};
 use veronica_system::{docker, ports};

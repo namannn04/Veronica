@@ -1,5 +1,3 @@
-//! `vr backup` — explicit local export/import, with no chosen cloud provider.
-
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};

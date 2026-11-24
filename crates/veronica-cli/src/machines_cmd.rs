@@ -1,5 +1,3 @@
-//! `vr machines` — the computers Veronica can reach.
-
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::{AppDirectories, Settings};
@@ -8,7 +6,6 @@ use veronica_machines::{Machine, DEFAULT_TIMEOUT};
 
 use crate::format::{self, countdown, Output};
 
-/// Settings key holding the stored fleet.
 const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
@@ -109,7 +106,6 @@ fn save_machines(
     Ok(())
 }
 
-/// Resolve a machine by id, including the always-present local entry.
 fn find(settings: &Settings, id: &str) -> Result<Machine> {
     host::fleet(load_machines(settings))
         .into_iter()
@@ -221,8 +217,6 @@ pub async fn run(
                     target: target.clone(),
                     port: *port,
                 },
-                // Validated at the point it is given, so a typo is caught now
-                // rather than the first time somebody needs the machine awake.
                 mac: match mac {
                     Some(raw) => {
                         veronica_machines::manage::parse_mac(raw)?;
@@ -447,8 +441,6 @@ pub async fn run(
                 )
             })?;
             veronica_machines::manage::wake(&mac)?;
-            // The machine is not answering yet, so there is nothing to confirm
-            // against — saying the packet went out is the honest report.
             output.emit(&json!({ "machine": machine.id, "mac": mac }), || {
                 format!("sent a wake packet to {} ({mac})", machine.name)
             })
@@ -491,7 +483,6 @@ mod tests {
     fn bytes_scales_like_the_rest_of_the_interface() {
         assert_eq!(bytes(0), "0 B");
         assert_eq!(bytes(1024), "1.0 KB");
-        // 15078116 KiB is 14.4 GiB, which is what `free -h` reports too.
         assert_eq!(bytes(15_078_116 * 1024), "14.4 GB");
         assert_eq!(bytes(512 * 1024 * 1024 * 1024), "512 GB");
     }

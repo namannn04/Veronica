@@ -1,10 +1,3 @@
-//! `vr` — Veronica's command line interface.
-//!
-//! The Ubuntu counterpart to Edith's `ed`. It reaches the same domain
-//! operations as the UI, every read command takes `--json`, stdout carries
-//! exactly one document, logs go to stderr, and exit codes are meaningful, so
-//! an agent can drive Veronica headlessly.
-
 mod alerts_cmd;
 mod attention_cmd;
 mod audit_cmd;
@@ -227,7 +220,6 @@ fn main() {
     init_logging(cli.verbose);
 
     if let Err(error) = run(&cli) {
-        // Diagnostics belong on stderr so stdout stays one clean document.
         eprintln!("vr: {error:#}");
         std::process::exit(1);
     }
@@ -255,8 +247,6 @@ async fn run(cli: &Cli) -> Result<()> {
     directories.prepare()?;
 
     match &cli.command {
-        // Probing the desktop portal needs a D-Bus round trip, so these two
-        // resolve the session asynchronously rather than assuming.
         Command::Diagnose => {
             let session = veronica_system::detect_session().await;
             diagnose(&directories, session, output)
@@ -275,7 +265,6 @@ async fn run(cli: &Cli) -> Result<()> {
             .await
         }
         Command::Tools { command } => {
-            // `vr tools` on its own is `vr tools ls`, as Edith's is.
             tools_cmd::run(
                 command.as_ref().unwrap_or(&tools_cmd::ToolCommand::Ls),
                 output,
@@ -301,8 +290,6 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Herdr(command) => herdr_cmd::run(command, output).await,
         Command::Companion(command) => companion_cmd::run(&directories, command, output),
         Command::Emoji(command) => {
-            // The picker honours the configured skin tone, so the CLI and the
-            // app agree on what a pick produces.
             let settings = Settings::load(&directories.settings_file())?;
             emoji_cmd::run(&directories, &settings, command, output).await
         }
@@ -315,8 +302,6 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
         Command::Quinjet(command) => quinjet_cmd::run(&directories, command, output).await,
         Command::Color(command) => {
-            // The picker honours the configured format and profile, so the CLI
-            // and the app agree on what a pick produces.
             let settings = Settings::load(&directories.settings_file())?;
             color_cmd::run(&directories, &settings, command, output).await
         }

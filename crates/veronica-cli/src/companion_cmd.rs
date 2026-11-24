@@ -1,14 +1,3 @@
-//! `vr companion` — your private notes and voice-memo metadata.
-//!
-//! Edith's Companion deploys a multi-container backend and reaches it through a
-//! tunnel. Veronica's is local-first: the notes and the searchable metadata are
-//! plain files under the XDG data directory, included in `vr backup export`,
-//! and reachable without an account or a service.
-//!
-//! Recording is the one thing this cannot do, because a voice memo needs a
-//! PipeWire capture held open across a start and a stop; the app owns that. The
-//! recordings it produces are listed and searched here like anything else.
-
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
@@ -100,8 +89,6 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
         }
 
         CompanionCommand::Show { id } => {
-            // Listing with an empty query is the whole set, which is how the
-            // repository exposes a lookup by id.
             let item = repository
                 .list("")?
                 .into_iter()
@@ -136,8 +123,6 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
             let text = match body {
                 Some(body) => body.clone(),
                 None => {
-                    // Reading stdin is what makes `… | vr companion add "Notes"`
-                    // work, which is the whole point of having this on the CLI.
                     let mut buffer = String::new();
                     std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)
                         .context("cannot read the note body from stdin")?;
@@ -146,8 +131,6 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
             };
             let now = Utc::now();
             let item = repository.create_note(title, text.trim_end(), now)?;
-            // `create_note` has no pinned argument, so pinning is a second step
-            // rather than a duplicated constructor.
             let item = if *pinned {
                 repository.update(item.id, &item.title, &item.body, true, now)?
             } else {

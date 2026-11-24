@@ -1,5 +1,3 @@
-//! `vr media` — control whatever is playing, through MPRIS.
-
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use veronica_media::{mpris, Transport};
@@ -32,7 +30,6 @@ pub enum MediaCommand {
     Stop,
 }
 
-/// Track position as `m:ss / m:ss`, from the microseconds MPRIS reports.
 fn timeline(position_us: Option<i64>, length_us: Option<i64>) -> String {
     let clock = |us: i64| {
         let seconds = us / 1_000_000;
@@ -46,8 +43,6 @@ fn timeline(position_us: Option<i64>, length_us: Option<i64>) -> String {
     }
 }
 
-/// The library folder Veronica indexes. The same one the app scans, so the two
-/// never disagree about what is in it.
 fn music_root() -> Result<std::path::PathBuf> {
     let home = veronica_core::paths::home_dir()
         .ok_or_else(|| anyhow::anyhow!("cannot resolve the home directory"))?;
@@ -55,9 +50,6 @@ fn music_root() -> Result<std::path::PathBuf> {
 }
 
 pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
-    // The library is files on disk, not a player on the bus, so it answers
-    // before any D-Bus connection is attempted — and works with no session bus
-    // at all, over SSH.
     if let MediaCommand::Library { query, limit } = command {
         let root = music_root()?;
         if !root.is_dir() {
@@ -161,13 +153,11 @@ pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
                 MediaCommand::Next => Transport::Next,
                 MediaCommand::Previous => Transport::Previous,
                 MediaCommand::Stop => Transport::Stop,
-                // Status, Players and Library are all handled above.
                 MediaCommand::Status | MediaCommand::Players | MediaCommand::Library { .. } => {
                     unreachable!()
                 }
             };
             mpris::control(&connection, transport).await?;
-            // Report the resulting state so a script does not have to poll.
             let playing = mpris::now_playing(&connection).await?;
             output.emit(&playing, || {
                 playing

@@ -1,17 +1,3 @@
-//! `vr database` — saved connections, bounded reads, and guarded changes.
-//!
-//! Edith's `ed database`. The safety boundary is the same and is worth
-//! restating, because it is the whole point of the command group:
-//!
-//! - `query` only runs statements that read. A write is refused there, whatever
-//!   it is spelled as.
-//! - A change goes `mutations preview` → read what it says → `mutations apply`
-//!   with the token and the exact confirmation text. The token is signed,
-//!   expires, works once, and stops matching the moment anything about the plan
-//!   changes.
-//! - No credential is ever printed, stored in a definition, or put in a shell
-//!   history. Passwords live in the desktop keyring.
-
 use anyhow::{Context, Result};
 use serde_json::json;
 use uuid::Uuid;
@@ -208,11 +194,6 @@ fn secret_store(directories: &AppDirectories) -> SecretStore {
     SecretStore::new(directories.database_secrets_fallback())
 }
 
-/// Split a dotted path into components.
-///
-/// Deliberately naive, and the only place a path is parsed: an object with a
-/// dot in its name has to be named by its components, which the interface does
-/// and the CLI cannot.
 fn path_components(path: &str) -> Vec<String> {
     path.split('.')
         .filter(|part| !part.is_empty())
@@ -248,7 +229,6 @@ fn render_page(page: &veronica_database::paging::Page) -> String {
     )
 }
 
-/// Read a password without it appearing in a shell history or the process list.
 fn read_stdin() -> Result<String> {
     use std::io::Read;
     let mut buffer = String::new();
@@ -406,8 +386,6 @@ pub async fn run(
 
         DatabaseCommand::Mcp => {
             let store = directories_store(directories)?;
-            // Blocking on stdin for the process's life, so it goes to the
-            // blocking pool rather than stalling the runtime.
             tokio::task::spawn_blocking(move || veronica_database::mcp::serve(&store))
                 .await
                 .context("the MCP server stopped unexpectedly")?
@@ -481,8 +459,6 @@ async fn connections(
 
         ConnectionCommand::Get { connection } => {
             let definition = store.resolve(connection)?;
-            // The definition holds no secret, so printing it whole is safe —
-            // which is the reason it is shaped the way it is.
             output.emit(&definition, || {
                 use std::fmt::Write;
                 let mut out = format!("{}\n", definition.display_name);
@@ -630,8 +606,6 @@ async fn connections(
                 } else {
                     ReadOnlyPolicy::Disabled
                 },
-                // A connection marked production gets the strongest
-                // confirmation on every change, without anyone opting in.
                 production_policy: if environment_kind == EnvironmentKind::Production {
                     ProductionPolicy::RequireMutationPreview
                 } else {
@@ -720,8 +694,6 @@ async fn connections(
                     definition.display_name
                 );
             }
-            // The password goes too. Leaving it in the keyring would be an
-            // orphan nobody can find and nobody can remove.
             let secrets = secret_store(directories);
             for reference in &definition.authentication.secret_references {
                 let _ = secrets
@@ -807,8 +779,6 @@ fn saved_queries(
     }
 }
 
-/// Build a plan from the flags. Shared by preview and apply, so the two cannot
-/// build subtly different plans and confuse the digest check for tampering.
 fn build_plan(
     definition: &ConnectionDefinition,
     sql: Option<&String>,
@@ -828,8 +798,6 @@ fn build_plan(
         .enumerate()
         .map(|(index, raw)| {
             let json: serde_json::Value = serde_json::from_str(raw)
-                // A bare word is a string, which is what somebody typing
-                // `--param hello` means.
                 .unwrap_or_else(|_| serde_json::Value::String(raw.clone()));
             Ok(Parameter {
                 name: format!("{}", index + 1),
@@ -856,7 +824,6 @@ fn build_plan(
         payload,
         action,
         scope,
-        // Measured by the session against the server, not asserted here.
         impact: Impact::unknown(),
         transaction_behavior: match definition.product_hint.family() {
             veronica_database::product::Family::Relational => TransactionBehavior::Transactional,

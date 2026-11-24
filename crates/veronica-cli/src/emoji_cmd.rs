@@ -1,12 +1,3 @@
-//! `vr emoji` — the emoji picker from the terminal.
-//!
-//! Edith's `ed emoji` searches the same catalogue and copies the result. The
-//! ranking, the skin tones and the recents ledger are shared verbatim, so a
-//! search here returns what the picker would show.
-//!
-//! `copy` records the pick in the same ledger the picker ranks by, so reaching
-//! for an emoji from a script and reaching for it from the panel both count.
-
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
@@ -65,8 +56,6 @@ pub enum EmojiCommand {
 
 fn parse_tone(raw: &str) -> Result<SkinTone> {
     let parsed = SkinTone::parse(raw);
-    // `parse` falls back to the default, which is right for a stored setting
-    // but wrong for an explicit flag: a typo should be reported.
     if parsed == SkinTone::Standard && !raw.eq_ignore_ascii_case("standard") {
         let known: Vec<&str> = SkinTone::ALL.iter().map(|tone| tone.key()).collect();
         anyhow::bail!("unknown skin tone '{raw}'; try one of {}", known.join(", "));
@@ -111,8 +100,6 @@ pub async fn run(
                 None => None,
             };
 
-            // Search first, then narrow: filtering by group before ranking
-            // would change which results win, and the ranking is the point.
             let matches: Vec<_> = catalog
                 .search(query, usize::MAX)
                 .into_iter()
@@ -177,8 +164,6 @@ pub async fn run(
                 None => configured,
             };
 
-            // An exact character wins over a search, so copying an emoji you
-            // already have in hand never resolves to something else.
             let emoji = catalog
                 .find(query)
                 .or_else(|| catalog.search(query, 1).into_iter().next())
@@ -195,8 +180,6 @@ pub async fn run(
                 match veronica_system::selection::write(&value).await {
                     Ok(writer) => Some(writer.title()),
                     Err(error) => {
-                        // The pick is already recorded; a clipboard failure must
-                        // not make the command look like it did nothing.
                         tracing::warn!(target: "veronica", "cannot copy the emoji: {error:#}");
                         None
                     }

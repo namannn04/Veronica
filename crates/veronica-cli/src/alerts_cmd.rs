@@ -1,13 +1,3 @@
-//! `vr alerts` — the notifier's own state and a delivery check.
-//!
-//! Veronica's contract is that the CLI reaches everything the UI does. The
-//! alerts pane can send a test banner and forget the remembered levels, so both
-//! are here too — and `state` prints what the notifier is comparing against,
-//! which is the thing to look at when an alert did not fire when expected.
-//!
-//! The dry run of *what would fire* lives on `vr usage alerts`, next to the
-//! limits it reads.
-
 use anyhow::Result;
 use serde_json::json;
 use veronica_core::AppDirectories;

@@ -1,5 +1,3 @@
-//! `vr attention` — durable focus timers, usable with the desktop app closed.
-
 use anyhow::{Context, Result};
 use chrono::Utc;
 use veronica_core::{AppDirectories, AttentionPrivacy, AttentionRepository, Settings};
@@ -174,8 +172,6 @@ pub fn run(directories: &AppDirectories, command: &AttentionCommand, output: Out
             }
             repository.save_settings(&settings)?;
             let mut shared = Settings::load(&directories.settings_file())?;
-            // Tracking has its own key. Mirroring it into the page's switch,
-            // tabAttentionEnabled, made pausing tracking remove the page.
             shared.set(
                 "attentionTrackingEnabled",
                 serde_json::json!(settings.enabled),

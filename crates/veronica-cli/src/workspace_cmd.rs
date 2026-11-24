@@ -1,4 +1,3 @@
-//! Read-only local project checks, also used by the optional Graftcode module.
 use crate::format::Output;
 use anyhow::Result;
 use clap::Subcommand;

@@ -1,4 +1,3 @@
-//! Bounded, short-lived image work for the shell; no resident converter service.
 use crate::format::Output;
 use anyhow::{ensure, Result};
 use std::{
@@ -49,7 +48,6 @@ pub fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> R
     std::fs::create_dir_all(&root)?;
     use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))?;
-    // Bound retained results; only our UUID-named files in this private cache.
     let mut files: Vec<_> = std::fs::read_dir(&root)?
         .flatten()
         .filter(|e| {

@@ -1,11 +1,3 @@
-//! `vr cleaner` — the disk cleaner.
-//!
-//! Edith's `ed cleaner`, with Ubuntu's paths. Two things carry over exactly and
-//! are worth repeating on every screen that shows this: `clean` has no notion
-//! of a selection, so it moves everything the same scan found rather than the
-//! subset an interface would have ticked; and moving to the Trash does not free
-//! the space until the Trash is emptied.
-
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::cleaner::{self, Family};
@@ -52,8 +44,6 @@ fn home() -> Result<std::path::PathBuf> {
     veronica_core::paths::home_dir().context("cannot resolve the home directory")
 }
 
-/// Validate the ids, and split them into the two families, because a project
-/// category cannot turn up without a `--root` and saying so beats an empty scan.
 fn check_categories(categories: &[String], root: Option<&String>) -> Result<Option<Vec<String>>> {
     if categories.is_empty() {
         return Ok(None);
@@ -70,7 +60,6 @@ fn check_categories(categories: &[String], root: Option<&String>) -> Result<Opti
     Ok(Some(categories.to_vec()))
 }
 
-/// Both families in one scan, so a command with `--root` reports one total.
 fn scan(
     root: Option<&String>,
     selected: Option<&Vec<String>>,

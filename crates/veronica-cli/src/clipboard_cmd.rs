@@ -1,9 +1,3 @@
-//! `vr clipboard` — the clipboard history.
-//!
-//! `record` is what the GNOME Shell extension calls: only the compositor can
-//! watch the selection on Wayland, so the extension does the watching and pipes
-//! each new entry here on stdin.
-
 use std::io::Read;
 
 use anyhow::{Context, Result};
@@ -59,9 +53,6 @@ pub async fn run(
                 .read_to_string(&mut text)
                 .context("cannot read the clipboard text from stdin")?;
 
-            // From a shell a trailing newline is an artefact of piping, not
-            // part of the copy. From the extension it is the copy: a whole line
-            // copied in an editor ends with one, and must paste back with it.
             let text = if *exact {
                 text.as_str()
             } else {
@@ -73,7 +64,6 @@ pub async fn run(
                     history.save(&path)?;
                     output.emit(&json!({ "recorded": id }), String::new)
                 }
-                // Blank or oversized: not an error, just nothing to keep.
                 None => output.emit(&json!({ "recorded": null }), String::new),
             }
         }
@@ -131,7 +121,6 @@ pub async fn run(
             let entry = history
                 .get(*id)
                 .with_context(|| format!("no clipboard entry {id}"))?;
-            // Printed raw so it can be piped; no trailing formatting.
             match output {
                 Output::Json => {
                     println!("{}", serde_json::to_string_pretty(entry)?);

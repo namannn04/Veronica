@@ -1,10 +1,3 @@
-//! `vr extensions` — the catalogue in front of each feature's shared switch.
-//!
-//! These are separate from `vr config` because the catalogue can explain what
-//! a key controls and what setup remains. Enabling is deliberately
-//! noninteractive: the switch is written even when a capability or tool is not
-//! ready, and the shortfall is reported afterwards.
-
 use std::path::Path;
 
 use anyhow::{Context, Result};
