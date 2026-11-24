@@ -1,5 +1,5 @@
 import { Download, RefreshCw, RotateCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import type { UpdateInfo } from "../lib/types";
@@ -14,7 +14,7 @@ export function UpdatePane({ current }: { current: string }) {
   const [installed, setInstalled] = useState(false);
   const [error, setError] = useState("");
 
-  const check = async () => {
+  const check = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
@@ -24,11 +24,11 @@ export function UpdatePane({ current }: { current: string }) {
     } finally {
       setBusy(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void check();
-  }, []);
+  }, [check]);
 
   const install = async () => {
     if (!update) {
