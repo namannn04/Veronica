@@ -205,7 +205,7 @@ export function ServicesPage() {
         title="Containers"
         description={
           docker?.status === "ready"
-            ? `${running} of ${docker.containers.length} running${docker.version ? ` · Docker ${docker.version}` : ""}`
+            ? `${docker.containers.length === 0 ? "Docker is available" : `${running} of ${docker.containers.length} running`}${docker.version ? ` · Docker ${docker.version}` : ""}`
             : "Local Docker daemon and its published ports"
         }
         actions={docker?.endpoint ? <span className="svc-endpoint ui-mono ui-selectable" title={docker.detail}>{docker.endpoint}</span> : undefined}

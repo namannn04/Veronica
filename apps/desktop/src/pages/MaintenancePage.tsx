@@ -36,6 +36,7 @@ function packages(count: number) {
 export function MaintenancePage() {
   const [tab, setTab] = useState<Tab>("updates");
   const [sources, setSources] = useState<PackageSource[]>([]);
+  const [sourcesError, setSourcesError] = useState("");
   const [updates, setUpdates] = useState<PackageUpdate[] | null>(null);
   const [updatesError, setUpdatesError] = useState("");
   const [installed, setInstalled] = useState<PackageInstalled[] | null>(null);
@@ -55,7 +56,7 @@ export function MaintenancePage() {
   }, []);
 
   useEffect(() => {
-    void ipc.packagesSources().then(setSources).catch((reason) => setError(String(reason)));
+    void ipc.packagesSources().then(setSources).catch((reason) => setSourcesError(String(reason)));
     void loadUpdates();
   }, [loadUpdates]);
 
@@ -194,6 +195,10 @@ export function MaintenancePage() {
               ))}
               <span className="mnt-sources-note">Checking never installs anything.</span>
             </div>
+          )}
+
+          {sourcesError && !updatesError && (
+            <Notice tone="warning" compact title="Package sources could not be read">{sourcesError}</Notice>
           )}
 
           {updatesError ? (

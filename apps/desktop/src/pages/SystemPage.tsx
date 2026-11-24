@@ -86,7 +86,7 @@ export function SystemPage() {
   }, [attempt]);
 
   useEffect(() => {
-    void ipc.microphoneState().then(setMic).catch((reason) => setError(String(reason)));
+    void ipc.microphoneState().then(setMic).catch(() => setMic(null));
     const toggled = listenEvent<VolumeState>("microphone-updated", (event) => setMic(event.payload));
     return () => { void toggled.then((unlisten) => unlisten()); };
   }, []);
