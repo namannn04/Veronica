@@ -153,6 +153,8 @@ fn main() {
         "ext_page_closed",
         "ext_confirm_answer",
         "ext_bridge",
+        "ext_auto_update",
+        "ext_auto_update_set",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(commands))
         .expect("cannot prepare the desktop build");

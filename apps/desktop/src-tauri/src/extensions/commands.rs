@@ -8,6 +8,7 @@ use super::bridge::{dispatch, Failure};
 use super::host::Host;
 use super::jobs::{submit, Action, Job, Kind};
 use super::library::{self, Offer, Row, Shelf};
+use super::updates::Preferences;
 use crate::state::AppState;
 
 type CommandResult<T> = Result<T, String>;
@@ -167,4 +168,22 @@ pub(crate) async fn ext_bridge(
         params.unwrap_or(Value::Null),
     )
     .await
+}
+
+#[tauri::command]
+pub(crate) async fn ext_auto_update(state: State<'_, AppState>) -> CommandResult<Preferences> {
+    Ok(Preferences::read(&state.settings_snapshot()))
+}
+
+#[tauri::command]
+pub(crate) async fn ext_auto_update_set(
+    state: State<'_, AppState>,
+    preferences: Preferences,
+) -> CommandResult<Preferences> {
+    state
+        .update_settings(|settings| {
+            preferences.write(settings);
+            Ok(Preferences::read(settings))
+        })
+        .map_err(fail)
 }

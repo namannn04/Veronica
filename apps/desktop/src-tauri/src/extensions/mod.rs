@@ -10,3 +10,4 @@ pub(crate) mod shell;
 pub(crate) mod storage;
 #[cfg(test)]
 mod tests;
+pub(crate) mod updates;

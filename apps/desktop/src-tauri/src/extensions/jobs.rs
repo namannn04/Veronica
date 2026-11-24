@@ -125,6 +125,12 @@ impl Jobs {
             .clone()
     }
 
+    pub(crate) fn is_busy(&self, extension: &str) -> bool {
+        self.list().iter().any(|job| {
+            job.extension == extension && matches!(job.phase, Phase::Queued | Phase::Running)
+        })
+    }
+
     fn change(&self, change: impl FnOnce(&mut Vec<Job>) -> Job) -> Job {
         let mut list = self.list.lock().unwrap_or_else(PoisonError::into_inner);
         let job = change(&mut list);

@@ -345,6 +345,8 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             extensions::commands::ext_page_closed,
             extensions::commands::ext_confirm_answer,
             extensions::commands::ext_bridge,
+            extensions::commands::ext_auto_update,
+            extensions::commands::ext_auto_update_set,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -364,7 +366,11 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
 
             app.manage(state);
             host.attach(std::sync::Arc::new(extensions::shell::AppShell::new(handle.clone())));
-            tauri::async_runtime::spawn(async move { host.start().await });
+            let settings_file = directories.settings_file();
+            tauri::async_runtime::spawn(async move {
+                host.start().await;
+                extensions::updates::run(host, settings_file).await;
+            });
 
             if let Some(guard) = instance {
                 guard.attach(&handle);
