@@ -6,7 +6,11 @@ export function UnavailablePage({ title, description }: { title: string; descrip
   return (
     <Page header={<PageHeader title={title} subtitle="Not available yet" />}>
       <Card>
-        <EmptyState icon={<Construction />} title={`${title} is tracked, not simulated`} action={<Badge tone="warning">Not implemented yet</Badge>}>
+        <EmptyState
+          icon={<Construction />}
+          title={`${title} is tracked, not simulated`}
+          action={<Badge tone="warning">Not implemented yet</Badge>}
+        >
           {description}
         </EmptyState>
       </Card>

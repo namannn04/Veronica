@@ -247,7 +247,10 @@
   background: var(--bg-inset);
   color: var(--text-1);
   text-align: left;
-  transition: background-color var(--motion-feedback), border-color var(--motion-feedback), color var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    border-color var(--motion-feedback),
+    color var(--motion-feedback);
 }
 
 .home-action:hover:not(:disabled) {
@@ -287,7 +290,9 @@
   border-radius: var(--radius-m);
   background: var(--fill-control);
   color: var(--text-2);
-  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    color var(--motion-feedback);
 }
 
 .home-action-icon svg {
@@ -462,7 +467,10 @@
   place-items: center;
   border: 1px dashed var(--separator-strong);
   color: var(--text-3);
-  transition: background-color var(--motion-feedback), color var(--motion-feedback), border-color var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    color var(--motion-feedback),
+    border-color var(--motion-feedback);
 }
 
 .home-clock-add-face svg {
