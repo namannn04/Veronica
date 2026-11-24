@@ -312,7 +312,11 @@ effect and whether it prints JSON:
 Run commands with --json and read the exit code. A destructive command run
 without --yes exits 5 and prints what it would do, which is the preview to show
 the person. Commands that need the desktop session exit 4 when there is none.
-`vr database mcp` serves read-only database tools over stdin and stdout.";
+
+`vr mcp` serves the same commands as MCP tools over stdin and stdout, one tool
+per command, named veronica_<area>_<action>. A destructive tool changes nothing
+until it is called with confirm set, and veronica_catalog finds and installs
+extensions. `vr database mcp` serves read-only database tools.";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
