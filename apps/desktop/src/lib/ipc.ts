@@ -6,7 +6,7 @@ import {
   type UnlistenFn,
 } from "@tauri-apps/api/event";
 
-function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+export function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   return tauriInvoke<T>(command, args).catch((reason: unknown) => {
     throw describe(reason);
   });
