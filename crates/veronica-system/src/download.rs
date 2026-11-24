@@ -68,7 +68,7 @@ fn download_with(
             .create_new(true)
             .open(&partial)?;
         let started = std::time::Instant::now();
-        let budget = std::time::Duration::from_secs(900);
+        let budget = std::time::Duration::from_mins(15);
         let mut detail = String::new();
         for attempt in 0..attempts {
             let remaining = budget.saturating_sub(started.elapsed());

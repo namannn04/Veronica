@@ -22,15 +22,15 @@ pub enum InhibitWhat {
 
 impl InhibitWhat {
     pub fn covers_idle(self) -> bool {
-        matches!(self, InhibitWhat::Idle | InhibitWhat::IdleAndLidSwitch)
+        matches!(self, Self::Idle | Self::IdleAndLidSwitch)
     }
 
     pub fn as_str(self) -> &'static str {
         match self {
-            InhibitWhat::Idle => "idle",
-            InhibitWhat::LidSwitch => "handle-lid-switch",
-            InhibitWhat::IdleAndLidSwitch => "idle:handle-lid-switch",
-            InhibitWhat::Sleep => "sleep",
+            Self::Idle => "idle",
+            Self::LidSwitch => "handle-lid-switch",
+            Self::IdleAndLidSwitch => "idle:handle-lid-switch",
+            Self::Sleep => "sleep",
         }
     }
 }
@@ -44,8 +44,8 @@ pub enum InhibitMode {
 impl InhibitMode {
     pub fn as_str(self) -> &'static str {
         match self {
-            InhibitMode::Block => "block",
-            InhibitMode::Delay => "delay",
+            Self::Block => "block",
+            Self::Delay => "delay",
         }
     }
 }
@@ -77,7 +77,7 @@ impl std::fmt::Debug for InhibitorLock {
             .field("what", &self.what.as_str())
             .field("reason", &self.reason)
             .field("session", &self.gnome_session_lock.is_some())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -148,9 +148,7 @@ async fn inhibit_session(reason: &str) -> Result<Connection> {
 }
 
 pub fn has_lid() -> bool {
-    std::fs::read_dir("/proc/acpi/button/lid")
-        .map(|mut entries| entries.next().is_some())
-        .unwrap_or(false)
+    std::fs::read_dir("/proc/acpi/button/lid").is_ok_and(|mut entries| entries.next().is_some())
 }
 
 #[cfg(test)]

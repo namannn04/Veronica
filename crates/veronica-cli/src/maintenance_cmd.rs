@@ -61,7 +61,7 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
             let mut rows = Vec::new();
             let mut document = Vec::new();
             for entry in Source::ALL {
-                let present = packages::available(entry).await;
+                let present = packages::available(entry);
                 document.push(json!({
                     "source": entry.title(),
                     "available": present,
@@ -162,7 +162,7 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
             yes,
         } => {
             let source = source(raw)?;
-            if !packages::available(source).await {
+            if !packages::available(source) {
                 anyhow::bail!("{} is not installed on this computer", source.title());
             }
             let argv =

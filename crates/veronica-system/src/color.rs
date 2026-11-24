@@ -10,7 +10,7 @@ pub const SHELL_SCREENSHOT_PATH: &str = "/org/gnome/Shell/Screenshot";
 pub const PORTAL_BUS: &str = "org.freedesktop.portal.Desktop";
 pub const PORTAL_PATH: &str = "/org/freedesktop/portal/desktop";
 
-pub const PICK_TIMEOUT: Duration = Duration::from_secs(300);
+pub const PICK_TIMEOUT: Duration = Duration::from_mins(5);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PickedColor {
@@ -29,8 +29,8 @@ pub enum PickSource {
 impl PickSource {
     pub fn title(self) -> &'static str {
         match self {
-            PickSource::GnomeShell => "GNOME Shell",
-            PickSource::Portal => "Desktop portal",
+            Self::GnomeShell => "GNOME Shell",
+            Self::Portal => "Desktop portal",
         }
     }
 }
@@ -96,7 +96,7 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
         .context("the bus refused a match rule for the portal's reply")?;
     let mut stream = MessageStream::from(connection.clone());
 
-    let mut options: HashMap<&str, Value> = HashMap::new();
+    let mut options: HashMap<&str, Value<'_>> = HashMap::new();
     options.insert("handle_token", Value::from(token.as_str()));
     let reply = connection
         .call_method(
@@ -122,7 +122,7 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
             .context("the session bus reported an error while waiting for the colour")?;
 
         let header = message.header();
-        if header.path().map(|p| p.as_str()) != Some(handle.as_str()) {
+        if header.path().map(zbus::zvariant::ObjectPath::as_str) != Some(handle.as_str()) {
             continue;
         }
 

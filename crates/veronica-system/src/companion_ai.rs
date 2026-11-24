@@ -1,6 +1,7 @@
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::os::unix::process::CommandExt as _;
 use std::{
     path::PathBuf,
     sync::{
@@ -177,8 +178,10 @@ impl ChatRuntime {
                 }
                 stop_runners(&owner);
                 if matches!(child.try_wait(), Ok(None)) {
-                    unsafe {
-                        libc::kill(-(child.id() as i32), libc::SIGKILL);
+                    if let Ok(pid) = libc::pid_t::try_from(child.id()) {
+                        unsafe {
+                            libc::kill(-pid, libc::SIGKILL);
+                        }
                     }
                 }
                 let _ = child.kill();
@@ -194,9 +197,9 @@ impl ChatRuntime {
             .map_err(|_| anyhow::anyhow!("Chat storage is busy"))?;
         let mut doc: ChatDocument = crate::private_store::load(&self.path())?;
         if memory {
-            doc.memory.clear()
+            doc.memory.clear();
         } else {
-            doc.messages.clear()
+            doc.messages.clear();
         }
         crate::private_store::save(&self.path(), &doc)
     }
@@ -274,7 +277,6 @@ impl ChatRuntime {
         let address = listener.local_addr()?;
         drop(listener);
         let endpoint = format!("http://{address}");
-        use std::os::unix::process::CommandExt;
         let python = crate::agents::resolve("python3")
             .context("Python 3 is required for the owned local runtime")?;
         let owner = uuid::Uuid::new_v4().to_string();
@@ -373,7 +375,7 @@ impl ChatRuntime {
                 let endpoint = self.endpoint(&config, epoch).await?;
                 let response = client()?
                     .post(format!("{endpoint}/api/pull"))
-                    .timeout(Duration::from_secs(600))
+                    .timeout(Duration::from_mins(10))
                     .json(&json!({"model":config.model,"stream":false}))
                     .send()
                     .await?;
@@ -644,7 +646,7 @@ fn client() -> Result<reqwest::Client> {
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(5))
-        .timeout(Duration::from_secs(120))
+        .timeout(Duration::from_mins(2))
         .build()?)
 }
 async fn read_response(mut response: reqwest::Response) -> Result<Value> {
@@ -713,6 +715,7 @@ async fn generate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::PermissionsExt as _;
     #[test]
     fn defaults_off_private_and_context_bounded() {
         let temp = tempfile::tempdir().unwrap();
@@ -730,7 +733,6 @@ mod tests {
             doc.messages.push(message("user", "x".repeat(1000)));
         }
         assert!(super::context(&doc, "hi", true, false).len() <= 22);
-        use std::os::unix::fs::PermissionsExt;
         assert_eq!(
             std::fs::metadata(runtime.path())
                 .unwrap()
@@ -906,7 +908,7 @@ mod provider_tests {
             let worker = runtime.clone();
             let task = tokio::spawn(async move {
                 if download {
-                    worker.pull(config, true).await.map(|_| ())
+                    worker.pull(config, true).await
                 } else {
                     worker.models(config).await.map(|_| ())
                 }

@@ -18,14 +18,14 @@ pub enum Readiness {
 
 impl Readiness {
     pub fn is_installed(&self) -> bool {
-        matches!(self, Readiness::Installed { .. })
+        matches!(self, Self::Installed { .. })
     }
 
     pub fn summary(&self) -> String {
         match self {
-            Readiness::Installed { version, .. } => version.clone(),
-            Readiness::Uninstalled => "not installed".to_string(),
-            Readiness::Error { .. } => "will not run".to_string(),
+            Self::Installed { version, .. } => version.clone(),
+            Self::Uninstalled => "not installed".to_string(),
+            Self::Error { .. } => "will not run".to_string(),
         }
     }
 }
@@ -269,14 +269,8 @@ async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
     let mut tail: Vec<String> = Vec::new();
     while !out_done || !err_done {
         let line = tokio::select! {
-            line = out.next_line(), if !out_done => match line? {
-                Some(line) => Some(line),
-                None => { out_done = true; None }
-            },
-            line = err.next_line(), if !err_done => match line? {
-                Some(line) => Some(line),
-                None => { err_done = true; None }
-            },
+            line = out.next_line(), if !out_done => if let Some(line) = line? { Some(line) } else { out_done = true; None },
+            line = err.next_line(), if !err_done => if let Some(line) = line? { Some(line) } else { err_done = true; None },
         };
         if let Some(line) = line {
             eprintln!("{line}");

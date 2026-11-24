@@ -48,7 +48,7 @@ fn shell_quote(value: &str) -> Result<String> {
 
 fn directory_script(path: Option<&str>) -> Result<String> {
     let path = match path {
-        None | Some("") | Some("~") => "$HOME".to_string(),
+        None | Some("" | "~") => "$HOME".to_string(),
         Some(path) if path.starts_with('/') => shell_quote(path)?,
         Some(_) => bail!("machine paths must be absolute"),
     };
@@ -225,33 +225,33 @@ pub enum PowerAction {
 impl PowerAction {
     pub fn title(self) -> &'static str {
         match self {
-            PowerAction::Restart => "restart",
-            PowerAction::Shutdown => "shut down",
+            Self::Restart => "restart",
+            Self::Shutdown => "shut down",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            PowerAction::Restart => "restart",
-            PowerAction::Shutdown => "shutdown",
+            Self::Restart => "restart",
+            Self::Shutdown => "shutdown",
         }
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
         match raw.to_lowercase().as_str() {
-            "restart" | "reboot" => Some(PowerAction::Restart),
-            "shutdown" | "poweroff" | "off" => Some(PowerAction::Shutdown),
+            "restart" | "reboot" => Some(Self::Restart),
+            "shutdown" | "poweroff" | "off" => Some(Self::Shutdown),
             _ => None,
         }
     }
 
     fn command(self) -> &'static str {
         match self {
-            PowerAction::Restart => {
+            Self::Restart => {
                 "systemctl reboot 2>/dev/null || shutdown -r now 2>/dev/null || \
                  sudo -n systemctl reboot"
             }
-            PowerAction::Shutdown => {
+            Self::Shutdown => {
                 "systemctl poweroff 2>/dev/null || shutdown -h now 2>/dev/null || \
                  sudo -n systemctl poweroff"
             }
@@ -411,7 +411,7 @@ fn available_destination(directory: &Path, name: &str) -> PathBuf {
     directory.join(format!("{stem}-{}", chrono::Utc::now().timestamp_millis()))
 }
 
-pub const TRANSFER_TIMEOUT: Duration = Duration::from_secs(2 * 60 * 60);
+pub const TRANSFER_TIMEOUT: Duration = Duration::from_hours(2);
 
 pub async fn download_file(
     machine: &Machine,
@@ -466,17 +466,17 @@ pub async fn download_file(
                 );
                 stdin.write_all(batch.as_bytes()).await?;
             }
-            let output =
-                match tokio::time::timeout(TRANSFER_TIMEOUT, child.wait_with_output()).await {
-                    Ok(output) => output?,
-                    Err(_) => {
-                        let _ = std::fs::remove_file(&destination);
-                        bail!(
-                            "the transfer did not finish within {} minutes",
-                            TRANSFER_TIMEOUT.as_secs() / 60
-                        );
-                    }
-                };
+            let output = if let Ok(output) =
+                tokio::time::timeout(TRANSFER_TIMEOUT, child.wait_with_output()).await
+            {
+                output?
+            } else {
+                let _ = std::fs::remove_file(&destination);
+                bail!(
+                    "the transfer did not finish within {} minutes",
+                    TRANSFER_TIMEOUT.as_secs() / 60
+                );
+            };
             if !output.status.success() {
                 bail!(
                     "sftp failed: {}",

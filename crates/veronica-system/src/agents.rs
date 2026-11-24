@@ -1,4 +1,5 @@
 use anyhow::{ensure, Context, Result};
+use base64::Engine as _;
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -176,7 +177,7 @@ impl AgentManager {
                     .map(|t| {
                         let mut v = t.view.clone();
                         if let Ok(Some(status)) = t.child.try_wait() {
-                            v.status = format!("exited ({})", status.exit_code())
+                            v.status = format!("exited ({})", status.exit_code());
                         }
                         v
                     })
@@ -207,10 +208,9 @@ impl AgentManager {
         let bytes: Vec<u8> = out
             .bytes
             .iter()
-            .skip((start - base) as usize)
+            .skip(usize::try_from(start - base).unwrap_or(usize::MAX))
             .copied()
             .collect();
-        use base64::Engine;
         Ok(TerminalOutput {
             base,
             cursor: out.end,
@@ -256,7 +256,7 @@ impl AgentManager {
             .map_err(|_| anyhow::anyhow!("Terminal lock failed"))?
             .remove(id)
         {
-            terminate(&mut t)
+            terminate(&mut t);
         }
         Ok(())
     }
@@ -265,14 +265,14 @@ impl AgentManager {
         self.epoch.fetch_add(1, Ordering::SeqCst);
         if let Ok(mut all) = self.terminals.lock() {
             for (_, mut t) in all.drain() {
-                terminate(&mut t)
+                terminate(&mut t);
             }
         }
     }
 }
 impl Drop for AgentManager {
     fn drop(&mut self) {
-        self.stop_all()
+        self.stop_all();
     }
 }
 fn terminate(t: &mut Terminal) {
@@ -281,8 +281,10 @@ fn terminate(t: &mut Terminal) {
 }
 fn terminate_child(child: &mut dyn portable_pty::Child, pid: u32) {
     if matches!(child.try_wait(), Ok(None)) {
-        unsafe {
-            libc::kill(-(pid as i32), libc::SIGKILL);
+        if let Ok(pid) = libc::pid_t::try_from(pid) {
+            unsafe {
+                libc::kill(-pid, libc::SIGKILL);
+            }
         }
         let _ = child.kill();
     }
@@ -299,18 +301,17 @@ pub(crate) fn resolve(value: &str) -> Option<PathBuf> {
     if value.contains('/') {
         return None;
     }
-    if let Some(path) = veronica_core::tools::spec(value).and_then(|spec| spec.locate()) {
+    if let Some(path) = veronica_core::tools::spec(value).and_then(veronica_core::ToolSpec::locate)
+    {
         return Some(path);
     }
-    let mut dirs =
-        std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()).collect::<Vec<_>>();
-    if let Some(home) = std::env::var_os("HOME") {
-        for d in [".local/bin", ".cargo/bin"] {
-            dirs.push(PathBuf::from(&home).join(d))
-        }
-    }
-    dirs.extend(["/usr/local/bin", "/usr/bin", "/usr/lib/chatgpt/resources"].map(PathBuf::from));
-    dirs.into_iter()
+    let home_dirs = std::env::var_os("HOME")
+        .map(|home| [".local/bin", ".cargo/bin"].map(|d| PathBuf::from(&home).join(d)))
+        .into_iter()
+        .flatten();
+    std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+        .chain(home_dirs)
+        .chain(["/usr/local/bin", "/usr/bin", "/usr/lib/chatgpt/resources"].map(PathBuf::from))
         .map(|d| d.join(value))
         .find(|p| p.is_file())
 }
@@ -324,9 +325,7 @@ pub fn defaults() -> Vec<AgentProfile> {
     .map(|(id, name, exe)| AgentProfile {
         id: id.into(),
         name: name.into(),
-        executable: resolve(exe)
-            .map(|p| p.display().to_string())
-            .unwrap_or(exe.into()),
+        executable: resolve(exe).map_or_else(|| exe.into(), |p| p.display().to_string()),
         arguments: if id == "codex" {
             vec!["--no-daemon".into()]
         } else if id == "codex-shared" {
@@ -352,7 +351,7 @@ pub fn external() -> Vec<AgentView> {
         let Ok(pid) = entry.file_name().to_string_lossy().parse::<u32>() else {
             continue;
         };
-        if entry.metadata().map(|m| m.uid() != uid).unwrap_or(true) {
+        if entry.metadata().map_or(true, |m| m.uid() != uid) {
             continue;
         }
         let Ok(comm) = std::fs::read_to_string(entry.path().join("comm")) else {
@@ -405,7 +404,6 @@ mod tests {
             .unwrap();
         std::thread::sleep(std::time::Duration::from_millis(100));
         let out = manager.output(&view.id, 0).unwrap();
-        use base64::Engine;
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(out.bytes)
             .unwrap();
@@ -443,7 +441,6 @@ mod tests {
         let mut cursor = 0;
         loop {
             let out = manager.output(&view.id, cursor).unwrap();
-            use base64::Engine;
             bytes.extend(
                 base64::engine::general_purpose::STANDARD
                     .decode(out.bytes)
@@ -457,7 +454,7 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
         assert!(bytes.ends_with(b"FINAL_MARKER"));
-        assert_eq!(bytes.len(), 120012);
+        assert_eq!(bytes.len(), 120_012);
         {
             manager
                 .terminals
@@ -499,7 +496,7 @@ mod tests {
                 panic!("A reaped PID must never be signalled")
             }
             fn clone_killer(&self) -> Box<dyn portable_pty::ChildKiller + Send + Sync> {
-                Box::new(ExitedChild)
+                Box::new(Self)
             }
         }
         impl portable_pty::Child for ExitedChild {

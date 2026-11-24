@@ -11,32 +11,32 @@ pub enum Source {
 }
 
 impl Source {
-    pub const ALL: [Source; 3] = [Source::Apt, Source::Snap, Source::Flatpak];
+    pub const ALL: [Self; 3] = [Self::Apt, Self::Snap, Self::Flatpak];
 
     pub fn title(self) -> &'static str {
         match self {
-            Source::Apt => "apt",
-            Source::Snap => "snap",
-            Source::Flatpak => "flatpak",
+            Self::Apt => "apt",
+            Self::Snap => "snap",
+            Self::Flatpak => "flatpak",
         }
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
-        Source::ALL
+        Self::ALL
             .into_iter()
             .find(|source| source.title().eq_ignore_ascii_case(raw))
     }
 
     fn program(self) -> &'static str {
         match self {
-            Source::Apt => "apt",
-            Source::Snap => "snap",
-            Source::Flatpak => "flatpak",
+            Self::Apt => "apt",
+            Self::Snap => "snap",
+            Self::Flatpak => "flatpak",
         }
     }
 
     pub fn needs_root(self) -> bool {
-        !matches!(self, Source::Flatpak)
+        !matches!(self, Self::Flatpak)
     }
 }
 
@@ -97,7 +97,7 @@ async fn run(program: &str, args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-pub async fn available(source: Source) -> bool {
+pub fn available(source: Source) -> bool {
     which(source.program()).is_some()
 }
 
@@ -190,19 +190,19 @@ pub fn parse_flatpak_updates(output: &str) -> Vec<Update> {
 pub async fn updates() -> Vec<Update> {
     let mut all = Vec::new();
 
-    if available(Source::Apt).await {
+    if available(Source::Apt) {
         match run("apt", &["list", "--upgradable"]).await {
             Ok(output) => all.extend(parse_apt_updates(&output)),
             Err(error) => tracing::debug!("apt updates unavailable: {error:#}"),
         }
     }
-    if available(Source::Snap).await {
+    if available(Source::Snap) {
         match run("snap", &["refresh", "--list"]).await {
             Ok(output) => all.extend(parse_snap_updates(&output)),
             Err(error) => tracing::debug!("snap updates unavailable: {error:#}"),
         }
     }
-    if available(Source::Flatpak).await {
+    if available(Source::Flatpak) {
         match run(
             "flatpak",
             &[
@@ -290,7 +290,7 @@ pub fn parse_flatpak_installed(output: &str) -> Vec<Installed> {
 pub async fn inventory() -> Vec<Installed> {
     let mut all = Vec::new();
 
-    if available(Source::Apt).await {
+    if available(Source::Apt) {
         let manual: Vec<String> = run("apt-mark", &["showmanual"])
             .await
             .unwrap_or_default()
@@ -310,12 +310,12 @@ pub async fn inventory() -> Vec<Installed> {
             }
         }
     }
-    if available(Source::Snap).await {
+    if available(Source::Snap) {
         if let Ok(output) = run("snap", &["list"]).await {
             all.extend(parse_snap_installed(&output));
         }
     }
-    if available(Source::Flatpak).await {
+    if available(Source::Flatpak) {
         if let Ok(output) = run(
             "flatpak",
             &["list", "--app", "--columns=application,version"],
@@ -467,8 +467,7 @@ fn is_root() -> bool {
                 .parse::<u32>()
                 .ok()
         })
-        .map(|euid| euid == 0)
-        .unwrap_or(false)
+        .is_some_and(|euid| euid == 0)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -482,7 +481,7 @@ pub struct UpdateResult {
 }
 
 pub async fn apply_update(source: Source, names: &[String]) -> Result<UpdateResult> {
-    if !available(source).await {
+    if !available(source) {
         bail!("{} is not installed on this computer", source.title());
     }
     let argv = privileged_command(source, &update_command(source, names)?);

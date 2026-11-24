@@ -14,7 +14,7 @@ pub struct VolumeState {
 
 impl VolumeState {
     pub fn percent(&self) -> u8 {
-        (self.volume * 100.0).round().clamp(0.0, 255.0) as u8
+        volume_percent(self.volume)
     }
 }
 
@@ -107,7 +107,7 @@ pub enum StreamDirection {
 
 impl AudioStream {
     pub fn percent(&self) -> u8 {
-        (self.volume * 100.0).round().clamp(0.0, 255.0) as u8
+        volume_percent(self.volume)
     }
 
     pub fn label(&self) -> String {
@@ -124,6 +124,15 @@ impl AudioStream {
     }
 }
 
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the value is rounded and clamped to the u8 range before the cast"
+)]
+fn volume_percent(volume: f32) -> u8 {
+    (volume * 100.0).round().clamp(0.0, 255.0) as u8
+}
+
 fn display_volume(channel_volumes: &[f64]) -> f32 {
     if channel_volumes.is_empty() {
         return 0.0;
@@ -132,12 +141,17 @@ fn display_volume(channel_volumes: &[f64]) -> f32 {
         .iter()
         .copied()
         .fold(0.0_f64, |peak, value| peak.max(value.max(0.0)));
-    peak.cbrt() as f32
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the cube root of a clamped volume fits f32 and display precision is the intent"
+    )]
+    let display = peak.cbrt() as f32;
+    display
 }
 
 #[cfg(test)]
 fn storage_volume(display: f32) -> f64 {
-    let clamped = display.clamp(0.0, 1.0) as f64;
+    let clamped = f64::from(display.clamp(0.0, 1.0));
     clamped * clamped * clamped
 }
 
@@ -154,9 +168,8 @@ pub fn parse_streams(dump: &str) -> Result<Vec<AudioStream>> {
         {
             continue;
         }
-        let info = match object.get("info") {
-            Some(info) => info,
-            None => continue,
+        let Some(info) = object.get("info") else {
+            continue;
         };
         let props = info.get("props").unwrap_or(&serde_json::Value::Null);
         let class = props
@@ -180,9 +193,12 @@ pub fn parse_streams(dump: &str) -> Result<Vec<AudioStream>> {
             continue;
         }
 
-        let id = match object.get("id").and_then(serde_json::Value::as_u64) {
-            Some(id) => id as u32,
-            None => continue,
+        let Some(id) = object
+            .get("id")
+            .and_then(serde_json::Value::as_u64)
+            .and_then(|id| u32::try_from(id).ok())
+        else {
+            continue;
         };
 
         let params = info
@@ -262,8 +278,7 @@ pub async fn toggle_stream_muted(id: u32) -> Result<bool> {
         .await?
         .into_iter()
         .find(|stream| stream.id == id)
-        .map(|stream| stream.muted)
-        .unwrap_or(false))
+        .is_some_and(|stream| stream.muted))
 }
 
 #[cfg(test)]
