@@ -1,20 +1,3 @@
-//! The extension catalogue.
-//!
-//! Ported from Edith's `ExtensionRegistry`: same ids, same groups, same defaults
-//! keys. The user-visible wording changes where Edith's copy says "Mac" and
-//! "menu bar" and Ubuntu says "computer" and "top bar".
-//!
-//! One entry's capabilities differ deliberately. Edith's Music plays a local
-//! folder, so it *requires* local playback; on Ubuntu the same page drives every
-//! player through MPRIS, so that is what it requires, with local playback
-//! optional. Requiring a capability Veronica has not built would report the
-//! working feature as unavailable, which is the opposite of honest.
-//!
-//! Availability is derived, never stored: an extension is available when every
-//! required capability is supported, degraded when only optional ones are
-//! missing, and unavailable otherwise. That is what lets the same catalogue
-//! describe both platforms honestly.
-
 use serde::{Deserialize, Serialize};
 
 use crate::capabilities::{Capabilities, Capability};
@@ -45,14 +28,12 @@ pub struct ExtensionEntry {
     pub id: &'static str,
     pub title: &'static str,
     pub subtitle: &'static str,
-    /// Lucide icon name, the web equivalent of Edith's SF Symbol.
     pub icon: &'static str,
     pub group: ExtensionGroup,
     pub featured: bool,
     pub defaults_key: &'static str,
     pub required_capabilities: &'static [Capability],
     pub optional_capabilities: &'static [Capability],
-    /// External binaries the extension needs; Veronica offers to install them.
     pub required_tools: &'static [&'static str],
 }
 
@@ -60,14 +41,8 @@ pub struct ExtensionEntry {
 #[serde(tag = "availability", rename_all = "camelCase")]
 pub enum ExtensionAvailability {
     Available,
-    /// Works, but some optional capability is missing, so part of it is off.
-    Degraded {
-        missing: Vec<Capability>,
-    },
-    /// A required capability is missing, so the extension cannot run.
-    Unavailable {
-        missing: Vec<Capability>,
-    },
+    Degraded { missing: Vec<Capability> },
+    Unavailable { missing: Vec<Capability> },
 }
 
 impl ExtensionEntry {
@@ -114,11 +89,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         group: G::Utilities,
         featured: true,
         defaults_key: "tabAttentionEnabled",
-        // Edith requires running applications, which macOS hands any app. On
-        // Wayland only the compositor knows which window has focus, so the
-        // shell extension is what makes the timeline real; without it the focus
-        // timer and the history still work, which is why it is optional rather
-        // than required.
         required_capabilities: &[RunningApplications],
         optional_capabilities: &[ShellIntegration],
         required_tools: &[],
@@ -270,10 +240,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
     ExtensionEntry {
         id: "music",
         title: "Music",
-        // Edith's Music plays a local folder; on Ubuntu the same page drives
-        // every player through MPRIS, which is the thing that actually exists
-        // here. Local playback is listed as optional rather than required, so
-        // the extension reports as working-but-partial instead of unavailable.
         subtitle: "Controls every player through MPRIS: Spotify, a browser tab, VLC.",
         icon: "music",
         group: G::Media,
@@ -363,8 +329,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         group: G::Utilities,
         featured: false,
         defaults_key: "emojiEnabled",
-        // The picker itself only needs a clipboard, which always works, so
-        // requiring insertion would report a working feature as unavailable.
         required_capabilities: &[],
         optional_capabilities: &[EmojiInsertion, GlobalShortcuts],
         required_tools: &[],
@@ -387,9 +351,6 @@ pub fn entry(id: &str) -> Option<&'static ExtensionEntry> {
     ENTRIES.iter().find(|e| e.id == id)
 }
 
-/// Search and category filter, matching Edith's marketplace behaviour: an
-/// empty query matches everything and matching is case-insensitive across
-/// title and subtitle.
 pub fn filter(query: &str, group: Option<ExtensionGroup>) -> Vec<&'static ExtensionEntry> {
     let needle = query.trim().to_lowercase();
     ENTRIES
@@ -422,9 +383,6 @@ mod tests {
         })
     }
 
-    /// Edith's catalogue, id for id. Listing them rather than counting them
-    /// means a port that lands shows up here as a line, and the entries Veronica
-    /// has not ported stay visible as the gap they are.
     #[test]
     fn the_catalogue_carries_ediths_ids() {
         let ported = [
@@ -455,8 +413,6 @@ mod tests {
         assert_eq!(ids, ported, "the catalogue drifted from Edith's order");
     }
 
-    /// Every entry in Edith's catalogue now has an Ubuntu counterpart. This
-    /// test is what would catch one being dropped rather than ported.
     #[test]
     fn nothing_edith_lists_is_missing_here() {
         assert_eq!(
@@ -490,9 +446,6 @@ mod tests {
 
     #[test]
     fn focus_dim_follows_the_shell_rather_than_the_display_protocol() {
-        // The dimming is drawn inside GNOME Shell, so it is available on Wayland
-        // — where no client could do it — and unavailable on a non-GNOME
-        // desktop, whichever protocol that desktop runs.
         let entry = entry("focusDim").unwrap();
         for kind in [SessionKind::Wayland, SessionKind::X11] {
             assert_eq!(

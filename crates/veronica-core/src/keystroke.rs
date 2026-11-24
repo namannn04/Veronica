@@ -1,43 +1,13 @@
-//! Keystroke Highlight.
-//!
-//! Shows each key press on screen as a keycap, for demos and screen recordings
-//! where the viewer has to follow the keyboard without watching the presenter's
-//! hands.
-//!
-//! Ported from Edith's `KeystrokeHighlightSettings` and `KeystrokeHighlightQueue`:
-//! the same duration range and default, the same six-keycap ceiling, the same
-//! two positions, the same settings keys.
-//!
-//! What differs is where the keys come from. Edith installs a listen-only
-//! `CGEventTap`, which macOS grants after the user approves Input Monitoring.
-//! Wayland has no such grant to give: a client cannot observe key presses meant
-//! for another window, by design and with no permission that changes it. The
-//! compositor can, so on Ubuntu the overlay is drawn — and the presses are read
-//! — inside Veronica's GNOME Shell extension. It stays listen-only there too:
-//! the extension watches events on their way past and never consumes one, so
-//! typing is unaffected whether the overlay is running or not.
-//!
-//! This module is the part both sides agree on: what a valid duration is, what
-//! the positions mean, which keys hold them, and how the queue of visible caps
-//! behaves. The extension re-clamps on read, because a settings file can be
-//! edited by hand.
-
 use serde::{Deserialize, Serialize};
 
 use crate::Settings;
 
-/// How long one keycap stays on screen. Edith's range exactly: below half a
-/// second a cap is gone before a viewer's eye reaches it, and past three the
-/// row is still showing keys from the previous sentence.
 pub const MIN_DURATION_SECS: f64 = 0.5;
 pub const MAX_DURATION_SECS: f64 = 3.0;
 pub const DEFAULT_DURATION_SECS: f64 = 1.5;
 
-/// How many caps may be visible at once. More than this and the row is wider
-/// than the content it is meant to annotate.
 pub const MAXIMUM_VISIBLE: usize = 6;
 
-/// Where the row of keycaps sits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Position {
@@ -63,8 +33,6 @@ impl Position {
         }
     }
 
-    /// Unknown values fall back to the default, as Edith's `init(rawValue:)`
-    /// callers do.
     pub fn parse(raw: &str) -> Self {
         Position::ALL
             .into_iter()
@@ -73,8 +41,6 @@ impl Position {
     }
 }
 
-/// A NaN is an absent value rather than a small or large one, so it falls back
-/// to the default rather than clamping to a bound.
 pub fn clamp_duration(value: f64) -> f64 {
     if value.is_nan() {
         return DEFAULT_DURATION_SECS;
@@ -85,11 +51,7 @@ pub fn clamp_duration(value: f64) -> f64 {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KeystrokeHighlightSettings {
-    /// Whether the extension is switched on at all.
     pub enabled: bool,
-    /// Whether the overlay is running. Pausing removes the key monitor and
-    /// hides visible caps without disabling the extension, so the shortcut
-    /// keeps working — Edith's distinction, kept.
     pub active: bool,
     pub duration_secs: f64,
     pub position: Position,
@@ -119,29 +81,19 @@ impl KeystrokeHighlightSettings {
         }
     }
 
-    /// Whether the overlay should actually be drawing. Being active while the
-    /// extension is off would show keycaps the user cannot turn off from the
-    /// Extensions page.
     pub fn is_running(&self) -> bool {
         self.enabled && self.active
     }
 }
 
-/// One press, as a row of labels: the modifiers, then the key.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Entry {
     pub id: u64,
     pub keys: Vec<String>,
-    /// Milliseconds since the queue's own epoch, so the model needs no clock.
     pub expires_at_ms: i64,
 }
 
-/// The visible keycaps, oldest first.
-///
-/// Edith's `KeystrokeHighlightQueue`, with the same two rules: a press with no
-/// labels is not an entry, and the queue keeps only the newest `maximum_visible`
-/// so a fast typist pushes old caps out rather than filling the screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Queue {
     entries: Vec<Entry>,
@@ -159,7 +111,6 @@ impl Queue {
     pub fn new(maximum_visible: usize) -> Self {
         Self {
             entries: Vec::new(),
-            // A queue that can hold nothing would drop every press silently.
             maximum_visible: maximum_visible.max(1),
             next_id: 1,
         }
@@ -173,8 +124,6 @@ impl Queue {
         self.maximum_visible
     }
 
-    /// Record a press. Returns the entry, or `None` when there was nothing to
-    /// show — a modifier held on its own resolves to no labels.
     pub fn append(&mut self, keys: Vec<String>, now_ms: i64, duration_secs: f64) -> Option<&Entry> {
         if keys.is_empty() {
             return None;
@@ -197,13 +146,10 @@ impl Queue {
         self.entries.retain(|entry| entry.id != id);
     }
 
-    /// Drop everything whose time is up. `<=` rather than `<` so an entry with
-    /// a zero-length life does not linger for one tick.
     pub fn remove_expired(&mut self, now_ms: i64) {
         self.entries.retain(|entry| entry.expires_at_ms > now_ms);
     }
 
-    /// Pausing hides the row without disabling anything.
     pub fn clear(&mut self) {
         self.entries.clear();
     }
@@ -279,7 +225,6 @@ mod tests {
 
     #[test]
     fn active_alone_does_not_draw_when_the_extension_is_off() {
-        // Otherwise the Extensions switch would not actually stop the overlay.
         let settings =
             KeystrokeHighlightSettings::read(&stored(&[("keystrokeHighlightActive", json!(true))]));
         assert!(settings.active);
@@ -288,7 +233,6 @@ mod tests {
 
     #[test]
     fn a_press_with_no_labels_is_not_queued() {
-        // A modifier held on its own has nothing to show.
         let mut queue = Queue::default();
         assert!(queue.append(Vec::new(), 0, 1.5).is_none());
         assert!(queue.entries().is_empty());

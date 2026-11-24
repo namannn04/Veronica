@@ -1,47 +1,26 @@
-//! Clipboard history.
-//!
-//! On Wayland only the focused window may read the clipboard, so Veronica
-//! cannot watch it from a background process. The GNOME Shell extension does the
-//! watching — it runs inside the compositor, which owns the selection — and
-//! hands each new entry here to be recorded. This module owns the history: its
-//! storage, deduplication, cap and search.
-//!
-//! Nothing leaves the machine, and the history is a plain file the user can
-//! inspect or delete.
-
 use std::path::Path;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Most entries kept. Older ones fall off the end.
 pub const DEFAULT_LIMIT: usize = 200;
 
-/// Longest text recorded. A clipboard can hold a whole file; keeping megabytes
-/// of it would bloat the history file and the interface for no benefit.
 pub const MAX_TEXT_BYTES: usize = 64 * 1024;
 
-/// Characters shown in a one-line preview.
 pub const PREVIEW_CHARS: usize = 120;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClipEntry {
-    /// Stable id, assigned when first recorded.
     pub id: u64,
     pub text: String,
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
-    /// How many times this exact text has been copied.
     pub count: u32,
 }
 
 impl ClipEntry {
-    /// A single line for a list, with whitespace collapsed and length capped.
-    ///
-    /// Newlines and runs of spaces are collapsed so a copied code block reads as
-    /// one legible line rather than blowing up the row height.
     pub fn preview(&self) -> String {
         let collapsed = self.text.split_whitespace().collect::<Vec<_>>().join(" ");
         if collapsed.chars().count() <= PREVIEW_CHARS {
@@ -51,7 +30,6 @@ impl ClipEntry {
         format!("{truncated}…")
     }
 
-    /// Rough shape of the content, for the interface to label it.
     pub fn line_count(&self) -> usize {
         self.text.lines().count().max(1)
     }
@@ -64,22 +42,18 @@ impl ClipEntry {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClipboardHistory {
-    /// Newest first.
     #[serde(default)]
     pub entries: Vec<ClipEntry>,
-    /// Next id to assign, so ids stay unique across a whole history.
     #[serde(default)]
     next_id: u64,
 }
 
 impl ClipboardHistory {
-    /// Read the history. A missing file is an empty history, not an error.
     pub fn load(path: &Path) -> Result<Self> {
         match std::fs::read(path) {
             Ok(bytes) => {
                 let mut history: Self = serde_json::from_slice(&bytes)
                     .with_context(|| format!("{} is not a clipboard history", path.display()))?;
-                // A hand-edited or older file may not have the counter.
                 let highest = history.entries.iter().map(|e| e.id).max().unwrap_or(0);
                 history.next_id = history.next_id.max(highest + 1);
                 Ok(history)
@@ -89,25 +63,14 @@ impl ClipboardHistory {
         }
     }
 
-    /// Write atomically, so an interrupted save cannot leave a truncated file
-    /// that fails to parse next launch.
     pub fn save(&self, path: &Path) -> Result<()> {
         crate::fsutil::write_atomic(path, &serde_json::to_vec(self)?)
     }
 
-    /// Whether text is worth recording.
-    ///
-    /// Blank selections arrive constantly as focus moves, and an oversized one is
-    /// almost always a file's contents rather than something to paste later.
     pub fn is_recordable(text: &str) -> bool {
         !text.trim().is_empty() && text.len() <= MAX_TEXT_BYTES
     }
 
-    /// Record a copy.
-    ///
-    /// Re-copying something already in the history moves it to the front and
-    /// bumps its count rather than adding a duplicate, which is what makes the
-    /// list useful instead of a log of every keystroke.
     pub fn record(&mut self, text: &str, now: DateTime<Utc>, limit: usize) -> Option<u64> {
         if !Self::is_recordable(text) {
             return None;
@@ -142,7 +105,6 @@ impl ClipboardHistory {
         self.entries.iter().find(|entry| entry.id == id)
     }
 
-    /// Remove one entry. Returns whether it was there.
     pub fn remove(&mut self, id: u64) -> bool {
         let before = self.entries.len();
         self.entries.retain(|entry| entry.id != id);
@@ -153,7 +115,6 @@ impl ClipboardHistory {
         self.entries.clear();
     }
 
-    /// Case-insensitive substring search, newest first.
     pub fn search(&self, query: &str) -> Vec<&ClipEntry> {
         let needle = query.trim().to_lowercase();
         self.entries
@@ -186,7 +147,6 @@ mod tests {
         let first = history.record("a", at(0), DEFAULT_LIMIT).unwrap();
         let second = history.record("b", at(1), DEFAULT_LIMIT).unwrap();
         assert_ne!(first, second);
-        // Re-copying keeps the original id.
         let again = history.record("a", at(2), DEFAULT_LIMIT).unwrap();
         assert_eq!(again, first);
     }
@@ -217,7 +177,6 @@ mod tests {
         let huge = "x".repeat(MAX_TEXT_BYTES + 1);
         assert!(history.record(&huge, at(0), DEFAULT_LIMIT).is_none());
         assert!(history.entries.is_empty());
-        // Exactly at the limit is fine.
         let at_limit = "y".repeat(MAX_TEXT_BYTES);
         assert!(history.record(&at_limit, at(0), DEFAULT_LIMIT).is_some());
     }
@@ -255,7 +214,6 @@ mod tests {
 
     #[test]
     fn preview_counts_characters_not_bytes() {
-        // Truncating by byte index would split a multi-byte character.
         let mut history = ClipboardHistory::default();
         let text = "मैं ना मानू ".repeat(40);
         history.record(&text, at(0), DEFAULT_LIMIT);
@@ -330,7 +288,6 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("veronica-clip2-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("clipboard.json");
-        // A hand-edited file, or one from an older build.
         std::fs::write(
             &path,
             br#"{"entries":[{"id":7,"text":"old","firstSeen":"2026-08-20T00:00:00Z","lastSeen":"2026-08-20T00:00:00Z","count":1}]}"#,

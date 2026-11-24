@@ -1,9 +1,3 @@
-//! Platform capabilities.
-//!
-//! A direct port of Edith's `PlatformCapability` model. The variants are
-//! identical so the extension catalogue stays shared; only the resolved state
-//! differs, because each capability reaches a different Linux service.
-
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
@@ -82,7 +76,6 @@ impl Capability {
         Capability::WindowDimming,
     ];
 
-    /// Human label, matching the wording Edith uses in its settings pane.
     pub fn title(self) -> &'static str {
         use Capability::*;
         match self {
@@ -120,8 +113,6 @@ impl Capability {
         }
     }
 
-    /// The Linux service this capability is implemented against. Shown on the
-    /// diagnostics page so a failure points at something specific.
     pub fn backend(self) -> &'static str {
         use Capability::*;
         match self {
@@ -160,19 +151,13 @@ impl Capability {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "camelCase")]
 pub enum CapabilityState {
-    /// Works now, nothing for the user to do.
     Available,
-    /// Works once the user grants a portal or system permission.
     PermissionRequired { reason: String },
-    /// Reachable on this platform but Veronica has not wired it up yet.
     IntegrationRequired { reason: String },
-    /// Cannot work in this session at all.
     Unsupported { reason: String },
 }
 
 impl CapabilityState {
-    /// Edith treats permission-gated capabilities as supported, because the
-    /// user can resolve them without a code change.
     pub fn is_supported(&self) -> bool {
         matches!(
             self,
@@ -206,8 +191,6 @@ pub struct Capabilities {
 
 impl Capabilities {
     pub fn state(&self, capability: Capability) -> &CapabilityState {
-        /// Returned for a capability the resolver did not cover, so callers
-        /// always get a state rather than an option.
         static UNKNOWN: LazyLock<CapabilityState> =
             LazyLock::new(|| CapabilityState::Unsupported {
                 reason: "Capability has no platform implementation.".to_string(),
@@ -222,12 +205,6 @@ impl Capabilities {
             .unwrap_or(false)
     }
 
-    /// Resolve every capability for the running session.
-    ///
-    /// Several capabilities differ between Wayland and X11: a Wayland
-    /// compositor deliberately withholds the global input, window list and
-    /// clipboard access that these features need, so they resolve differently
-    /// depending on which session the user logged into.
     pub fn resolve(session: &DesktopSession) -> Self {
         use Capability::*;
         let wayland = session.kind == SessionKind::Wayland;
@@ -237,20 +214,13 @@ impl Capabilities {
             states.insert(capability, state);
         };
 
-        // Portable: these read files or spawn processes and behave the same as
-        // they do on macOS.
         set(UsageCollection, CapabilityState::Available);
         set(HerdrSessions, CapabilityState::Available);
         set(FileShelf, CapabilityState::Available);
         set(SystemMetrics, CapabilityState::Available);
         set(MachineManagement, CapabilityState::Available);
-        // Edith hosts a terminal inside itself, which is what lets it give
-        // Quinjet native tabs. Veronica opens the installed terminal instead —
-        // the same decision Herdr's port made — so this is available wherever
-        // one is installed rather than requiring an embedded emulator.
         set(LocalTerminal, CapabilityState::Available);
 
-        // Standard freedesktop services, present on any modern desktop.
         set(Notifications, CapabilityState::Available);
         set(ExternalMediaControl, CapabilityState::Available);
         set(MediaControls, CapabilityState::Available);
@@ -262,19 +232,10 @@ impl Capabilities {
         set(CalendarEvents, CapabilityState::Available);
         set(RunningApplications, CapabilityState::Available);
         set(ScreenShareDetection, CapabilityState::Available);
-        // Fetching the pages being audited is the only thing this needs, and
-        // it is the only thing it does: no result leaves the computer, and no
-        // third-party service is consulted.
         set(SiteAuditing, CapabilityState::Available);
 
         set(CompanionService, CapabilityState::Available);
 
-        // Edith puts a broker process on this boundary because a sandboxed
-        // macOS app cannot hold a database socket. Veronica has no sandbox to
-        // cross, so it holds the socket itself; what it does need is somewhere
-        // to keep credentials, and the desktop keyring is that. Without one —
-        // over SSH — secrets fall back to a 0600 file, which works and is
-        // worse, so this reports as needing permission rather than as ready.
         set(
             DatabaseBroker,
             CapabilityState::permission(
@@ -283,10 +244,6 @@ impl Capabilities {
             ),
         );
 
-        // Reading what is installed and what could be updated needs nothing.
-        // Applying an apt or snap change needs root, which Veronica never takes
-        // on its own: it runs the change through `pkexec`, so the desktop's own
-        // dialog asks the user to authenticate.
         set(
             PackageManagement,
             CapabilityState::permission(
@@ -295,7 +252,6 @@ impl Capabilities {
             ),
         );
 
-        // Portal-gated: the portal exists, the user approves on first use.
         set(
             CameraPreview,
             CapabilityState::permission("Approve camera access when Veronica asks."),
@@ -323,14 +279,11 @@ impl Capabilities {
             },
         );
 
-        // Wayland deliberately restricts these.
         set(
             ClipboardHistory,
             if !wayland {
                 CapabilityState::Available
             } else if session.is_gnome {
-                // The shell extension does the watching, since the compositor is
-                // the only thing a Wayland session lets read the selection.
                 CapabilityState::permission(
                     "Enable the Veronica GNOME Shell extension, which captures copies \
                      from inside the compositor.",
@@ -342,10 +295,6 @@ impl Capabilities {
                 )
             },
         );
-        // Dimming behind another application's window is the compositor's job:
-        // no client can place something between two windows it does not own.
-        // Veronica's GNOME Shell extension draws it, which is why this does not
-        // depend on Wayland versus X11 but on whether the shell is GNOME.
         set(
             WindowDimming,
             if session.is_gnome {
@@ -376,10 +325,6 @@ impl Capabilities {
             },
         );
 
-        // The picker itself only needs a clipboard, which always works. Typing
-        // the emoji straight into the app you were in synthesises a key press
-        // through the RemoteDesktop portal, exactly as paste-in-place does, so
-        // it carries the same approval.
         set(
             EmojiInsertion,
             if session.is_gnome {
@@ -395,13 +340,6 @@ impl Capabilities {
             },
         );
 
-        // No client may observe input meant for another window, and on GNOME
-        // the shell cannot either: Mutter passes an application's key presses
-        // straight to it, past every signal and event filter an extension can
-        // reach, so the extension sees only keys typed into the shell itself.
-        // (Mutter's keyboard monitor serves only the Orca screen reader.)
-        // Reporting this as one switch away promised a feature that showed
-        // nothing while typing in any application.
         set(
             KeystrokeObservation,
             if session.is_gnome {
@@ -434,9 +372,6 @@ impl Capabilities {
             },
         );
 
-        // Without a graphical session there is no compositor, portal or tray to
-        // talk to. `vr` runs happily over SSH, so rather than reporting these as
-        // available and failing later, mark them unsupported for this session.
         if session.kind == SessionKind::Headless {
             for capability in [
                 CameraPreview,
@@ -464,7 +399,6 @@ impl Capabilities {
         Self { states }
     }
 
-    /// Everything the user could act on, so the UI can surface one list.
     pub fn needing_attention(&self) -> Vec<(Capability, &CapabilityState)> {
         self.states
             .iter()
@@ -499,9 +433,6 @@ mod tests {
 
     #[test]
     fn window_dimming_follows_the_shell_not_the_display_protocol() {
-        // The dimming is drawn by the GNOME Shell extension, so it works on
-        // Wayland — where a client could never do it — and not on a non-GNOME
-        // X11 desktop, where a client could but nothing has been written.
         for kind in [SessionKind::Wayland, SessionKind::X11] {
             let mut gnome = session(kind);
             gnome.is_gnome = true;
@@ -521,7 +452,6 @@ mod tests {
 
     #[test]
     fn keystroke_highlight_is_not_offered_as_working_on_gnome() {
-        // It sees only the shell's own key presses, which is not the feature.
         for kind in [SessionKind::Wayland, SessionKind::X11] {
             let mut gnome = session(kind);
             gnome.is_gnome = true;
@@ -545,14 +475,12 @@ mod tests {
     fn clipboard_history_is_reachable_on_gnome_wayland_via_the_extension() {
         let mut gnome = session(SessionKind::Wayland);
         gnome.is_gnome = true;
-        // Permission-gated rather than unavailable: the user can act on it.
         assert!(Capabilities::resolve(&gnome).is_supported(Capability::ClipboardHistory));
 
         let mut other = session(SessionKind::Wayland);
         other.is_gnome = false;
         assert!(!Capabilities::resolve(&other).is_supported(Capability::ClipboardHistory));
 
-        // X11 hands the clipboard to anyone who asks.
         assert_eq!(
             Capabilities::resolve(&session(SessionKind::X11)).state(Capability::ClipboardHistory),
             &CapabilityState::Available
@@ -577,7 +505,6 @@ mod tests {
 
     #[test]
     fn a_headless_session_reports_gui_capabilities_as_unsupported() {
-        // `vr` over SSH has no compositor, portal or tray.
         let caps = Capabilities::resolve(&session(SessionKind::Headless));
         for capability in [
             Capability::ScreenColorSampling,

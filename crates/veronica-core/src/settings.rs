@@ -1,10 +1,3 @@
-//! Settings, stored as one JSON document.
-//!
-//! Edith uses `UserDefaults`; Ubuntu has no equivalent that both a GUI app and
-//! a CLI can share cheaply, so Veronica keeps a single JSON file under
-//! `XDG_CONFIG_HOME`. Unknown keys survive a round trip, so a settings file
-//! written by a newer build is not destroyed by an older one.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -19,14 +12,6 @@ pub struct Settings {
 }
 
 impl Settings {
-    /// Read the settings file. A missing file is the default state, not an
-    /// error, because that is simply a first launch.
-    ///
-    /// A file that does not parse is set aside as `settings.json.corrupt-<ts>`
-    /// and the defaults are used. Failing instead stopped the app at launch
-    /// with no window and made every `vr config` command, including the ones
-    /// that would repair it, fail too. Writes are atomic, so this is a damaged
-    /// or hand-edited file, and keeping its bytes beside it loses nothing.
     pub fn load(path: &Path) -> Result<Self> {
         let bytes = match std::fs::read(path) {
             Ok(bytes) => bytes,
@@ -56,7 +41,6 @@ impl Settings {
         }
     }
 
-    /// Write atomically, through a temporary file unique to this writer.
     pub fn save(&self, path: &Path) -> Result<()> {
         crate::fsutil::write_atomic(path, &serde_json::to_vec_pretty(self)?)
     }
@@ -81,8 +65,6 @@ impl Settings {
         &self.values
     }
 
-    /// Boolean read with a default. Extensions are opt-out, so an absent key
-    /// means "use the shipped default" rather than "off".
     pub fn bool_or(&self, key: &str, default: bool) -> bool {
         self.values
             .get(key)
@@ -101,14 +83,10 @@ impl Settings {
             .unwrap_or(default)
     }
 
-    /// Whether an extension is enabled, honouring its shipped default.
     pub fn extension_enabled(&self, entry: &crate::extensions::ExtensionEntry) -> bool {
         self.bool_or(entry.defaults_key, entry.featured)
     }
 
-    /// Parse a CLI `key=value` pair into the right JSON type, so
-    /// `vr config set preventSleep true` stores a boolean rather than the
-    /// string "true".
     pub fn coerce(raw: &str) -> Value {
         let trimmed = raw.trim();
         match trimmed {
@@ -125,7 +103,6 @@ impl Settings {
                 return Value::from(n);
             }
         }
-        // Accept a JSON literal so arrays and objects are settable too.
         if trimmed.starts_with(['{', '[', '"']) {
             if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
                 return value;
@@ -159,7 +136,6 @@ mod tests {
             br#"{"appearance": "dark","#
         );
 
-        // And the next save starts a fresh, valid file.
         let mut settings = settings;
         settings.set("appearance", Value::from("light"));
         settings.save(&path).unwrap();

@@ -1,10 +1,3 @@
-//! Recovering a meeting link from an event's text.
-//!
-//! Edith offers one-tap join links. GNOME's calendar server does not pass the
-//! location or description through, so when a link is present it has to be
-//! recognised from whatever text is available.
-
-/// Hosts whose URLs are meeting links rather than ordinary web pages.
 const MEETING_HOSTS: &[&str] = &[
     "meet.google.com",
     "zoom.us",
@@ -20,7 +13,6 @@ const MEETING_HOSTS: &[&str] = &[
     "gather.town",
 ];
 
-/// Find the first meeting URL in a block of text.
 pub fn extract(text: &str) -> Option<String> {
     text.split_whitespace()
         .map(trim_punctuation)
@@ -29,16 +21,13 @@ pub fn extract(text: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-/// Whether a URL points at a known meeting service.
 pub fn is_meeting_url(url: &str) -> bool {
     let Some(host) = host_of(url) else {
         return false;
     };
-    MEETING_HOSTS.iter().any(|candidate| {
-        // Match the host or any subdomain of it, but never a host that merely
-        // ends with the same letters, so "notzoom.us" is not a match.
-        host == *candidate || host.ends_with(&format!(".{candidate}"))
-    })
+    MEETING_HOSTS
+        .iter()
+        .any(|candidate| host == *candidate || host.ends_with(&format!(".{candidate}")))
 }
 
 fn host_of(url: &str) -> Option<String> {
@@ -46,13 +35,11 @@ fn host_of(url: &str) -> Option<String> {
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))?;
     let host = rest.split(['/', '?', '#']).next()?;
-    // Drop any userinfo and port.
     let host = host.rsplit('@').next()?;
     let host = host.split(':').next()?;
     (!host.is_empty()).then(|| host.to_ascii_lowercase())
 }
 
-/// Strip trailing punctuation a URL picks up from prose, e.g. "…1234567890."
 fn trim_punctuation(token: &str) -> &str {
     token.trim_matches(|c: char| {
         matches!(

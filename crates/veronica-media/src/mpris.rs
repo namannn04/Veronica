@@ -1,10 +1,3 @@
-//! MPRIS2 media control.
-//!
-//! Edith drives Spotify and Apple Music through AppleScript. On Linux the
-//! standard is MPRIS2 over D-Bus, which every mainstream player implements, so
-//! one code path controls Spotify, Rhythmbox, VLC, a browser tab and Veronica's
-//! own player.
-
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use zbus::zvariant::{OwnedValue, Value};
@@ -15,7 +8,6 @@ const MPRIS_PATH: &str = "/org/mpris/MediaPlayer2";
 const PLAYER_INTERFACE: &str = "org.mpris.MediaPlayer2.Player";
 const PROPERTIES_INTERFACE: &str = "org.freedesktop.DBus.Properties";
 
-/// Read a D-Bus string, whatever string flavour the player used.
 fn as_text(value: &OwnedValue) -> Option<String> {
     match &**value {
         Value::Str(s) => Some(s.as_str().to_string()),
@@ -24,11 +16,6 @@ fn as_text(value: &OwnedValue) -> Option<String> {
     }
 }
 
-/// Read a D-Bus integer.
-///
-/// MPRIS declares `mpris:length` and `Position` as `x` (i64), but players ship
-/// `u64` and `i32` in practice, so all three are accepted rather than silently
-/// losing the track length.
 fn as_integer(value: &OwnedValue) -> Option<i64> {
     match &**value {
         Value::I64(v) => Some(*v),
@@ -47,20 +34,12 @@ fn as_bool(value: &OwnedValue) -> Option<bool> {
     }
 }
 
-/// Longest duration accepted as a real track length, in microseconds.
-///
-/// Players signal "unknown" or "live stream" in two ways: zero, and a huge
-/// sentinel. Chrome reports `i64::MAX` for a live video, which rendered as a
-/// 153-million-hour track. Anything past this bound is treated as unknown; it is
-/// far beyond any single track while still allowing a long audiobook file.
 pub const MAX_PLAUSIBLE_LENGTH_US: i64 = 100 * 60 * 60 * 1_000_000;
 
-/// Whether a reported length is a real duration rather than an unknown marker.
 fn is_real_length(length: &i64) -> bool {
     *length > 0 && *length < MAX_PLAUSIBLE_LENGTH_US
 }
 
-/// Read an array of strings, skipping any non-string entries.
 fn as_text_list(value: &OwnedValue) -> Vec<String> {
     match &**value {
         Value::Array(array) => array
@@ -99,16 +78,13 @@ impl PlaybackStatus {
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NowPlaying {
-    /// The player's bus name suffix, e.g. "spotify".
     pub player: String,
-    /// Friendly name from the player's Identity property.
     pub identity: String,
     pub status: Option<PlaybackStatus>,
     pub title: String,
     pub artist: String,
     pub album: String,
     pub art_url: Option<String>,
-    /// Track length in microseconds, as MPRIS reports it.
     pub length_us: Option<i64>,
     pub position_us: Option<i64>,
     pub can_go_next: bool,
@@ -116,7 +92,6 @@ pub struct NowPlaying {
 }
 
 impl NowPlaying {
-    /// Fraction played, 0.0-1.0, for a progress bar.
     pub fn progress(&self) -> Option<f64> {
         match (self.position_us, self.length_us) {
             (Some(position), Some(length)) if length > 0 => {
@@ -127,14 +102,11 @@ impl NowPlaying {
     }
 }
 
-/// The metadata keys MPRIS defines, extracted defensively: players disagree on
-/// which they populate, and several omit the album or the art entirely.
 pub fn read_metadata(
     metadata: &std::collections::HashMap<String, OwnedValue>,
 ) -> (String, String, String, Option<String>, Option<i64>) {
     let text = |key: &str| -> String { metadata.get(key).and_then(as_text).unwrap_or_default() };
 
-    // xesam:artist is a list; the first non-empty entry is the primary artist.
     let artist = metadata
         .get("xesam:artist")
         .map(as_text_list)
@@ -160,7 +132,6 @@ pub fn read_metadata(
     )
 }
 
-/// Every MPRIS player currently on the session bus.
 pub async fn players(connection: &Connection) -> Result<Vec<String>> {
     let proxy = zbus::fdo::DBusProxy::new(connection)
         .await
@@ -176,11 +147,6 @@ pub async fn players(connection: &Connection) -> Result<Vec<String>> {
     Ok(found)
 }
 
-/// The player Veronica should show and control.
-///
-/// A machine often has several registered players, most of them idle. Preferring
-/// one that is actually playing stops the island showing a paused browser tab
-/// while music comes out of Spotify.
 pub async fn active_player(connection: &Connection) -> Result<Option<String>> {
     let candidates = players(connection).await?;
     let mut first = None;
@@ -211,7 +177,6 @@ async fn property(
             &(interface, name),
         )
         .await?;
-    // The body must outlive the borrow the deserialised value holds.
     let body = reply.body();
     let value: Value = body.deserialize()?;
     Ok(OwnedValue::try_from(value)?)
@@ -222,7 +187,6 @@ async fn status_of(connection: &Connection, bus: &str) -> Result<Option<Playback
     Ok(as_text(&value).map(|raw| PlaybackStatus::parse(&raw)))
 }
 
-/// Read what is playing. Returns `None` when no player is registered at all.
 pub async fn now_playing(connection: &Connection) -> Result<Option<NowPlaying>> {
     let Some(bus) = active_player(connection).await? else {
         return Ok(None);
@@ -253,7 +217,6 @@ pub async fn now_playing(connection: &Connection) -> Result<Option<NowPlaying>> 
         }
     }
 
-    // Position is optional; several players refuse to report it.
     if let Ok(value) = property(connection, &bus, PLAYER_INTERFACE, "Position").await {
         playing.position_us = as_integer(&value);
     }
@@ -269,7 +232,6 @@ pub async fn now_playing(connection: &Connection) -> Result<Option<NowPlaying>> 
     Ok(Some(playing))
 }
 
-/// A transport command the island's buttons and the media keys both use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Transport {
     Play,
@@ -293,7 +255,6 @@ impl Transport {
     }
 }
 
-/// Send a transport command to the active player.
 pub async fn control(connection: &Connection, transport: Transport) -> Result<()> {
     let Some(bus) = active_player(connection).await? else {
         bail!("no media player is running");
@@ -321,7 +282,6 @@ mod tests {
         assert_eq!(PlaybackStatus::parse("Playing"), PlaybackStatus::Playing);
         assert_eq!(PlaybackStatus::parse("Paused"), PlaybackStatus::Paused);
         assert_eq!(PlaybackStatus::parse("Stopped"), PlaybackStatus::Stopped);
-        // Anything unexpected is treated as stopped rather than assumed playing.
         assert_eq!(PlaybackStatus::parse("garbage"), PlaybackStatus::Stopped);
     }
 
@@ -396,7 +356,6 @@ mod tests {
 
     #[test]
     fn length_is_read_from_whichever_integer_type_the_player_used() {
-        // MPRIS declares i64, but real players ship u64 and i32.
         for value in [
             Value::from(243_000_000i64),
             Value::from(243_000_000u64),
@@ -430,8 +389,6 @@ mod tests {
 
     #[test]
     fn a_sentinel_length_is_treated_as_unknown() {
-        // Chrome reports i64::MAX for a live stream; passing it through rendered
-        // a 153-million-hour track length.
         for sentinel in [i64::MAX, MAX_PLAUSIBLE_LENGTH_US, i64::MAX / 2] {
             let mut metadata = HashMap::new();
             metadata.insert(
@@ -445,7 +402,6 @@ mod tests {
 
     #[test]
     fn a_long_but_plausible_length_is_kept() {
-        // A six-hour audiobook file is real and must not be discarded.
         let mut metadata = HashMap::new();
         let six_hours = 6 * 60 * 60 * 1_000_000i64;
         metadata.insert(

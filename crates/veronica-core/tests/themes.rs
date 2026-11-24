@@ -1,20 +1,3 @@
-//! One theme, four files.
-//!
-//! An appearance has to be declared in the desktop stylesheet, in the
-//! catalogue the picker reads, in the shell extension's list and in
-//! [`veronica_core::appearance`]. Miss one and nothing fails to build:
-//!
-//! - missing from `themes.css`'s family list, and the theme inherits the other
-//!   family's chart palette - light series on a dark page;
-//! - missing from `preferences.ts`, and it cannot be chosen at all;
-//! - missing from `extension/themes.js`, and the notch silently falls back to
-//!   `system` while the app is themed, and the previous theme's style class is
-//!   left stuck on the popup;
-//! - missing from `appearance.rs`, and Quinjet opens light inside a dark
-//!   desktop.
-//!
-//! So the four lists are compared here instead.
-
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -37,7 +20,6 @@ fn set(items: impl IntoIterator<Item = impl Into<String>>) -> BTreeSet<String> {
     items.into_iter().map(Into::into).collect()
 }
 
-/// Every id inside a `[...]` array assigned to `name` in a JavaScript file.
 fn js_array(source: &str, name: &str) -> BTreeSet<String> {
     let after = source
         .split_once(&format!("{name} = ["))
@@ -53,8 +35,6 @@ fn js_array(source: &str, name: &str) -> BTreeSet<String> {
         .filter(|item| !item.is_empty()))
 }
 
-/// CSS with `/* ... */` removed, so a comment sitting immediately above a rule
-/// is not read as part of its first selector.
 fn strip_comments(source: &str) -> String {
     let mut out = String::with_capacity(source.len());
     let mut rest = source;
@@ -70,9 +50,6 @@ fn strip_comments(source: &str) -> String {
     out
 }
 
-/// The ids in the one `:root[data-theme=...]` selector list that names `anchor`
-/// alongside at least one other theme - that is, a family list rather than a
-/// theme's own block.
 fn css_family(source: &str, anchor: &str) -> BTreeSet<String> {
     let needle = format!(":root[data-theme=\"{anchor}\"]");
     let source = strip_comments(source);
@@ -93,8 +70,6 @@ fn css_family(source: &str, anchor: &str) -> BTreeSet<String> {
     panic!("no family selector list in themes.css contains {needle}");
 }
 
-/// The ids the appearance picker offers, by family, excluding `system` - which
-/// is the absence of a theme rather than one of them.
 fn catalogue(family: &str) -> BTreeSet<String> {
     let source = read("apps/desktop/src/lib/preferences.ts");
     let mut found = BTreeSet::new();
@@ -102,7 +77,6 @@ fn catalogue(family: &str) -> BTreeSet<String> {
         let Some(id) = entry.split('"').next() else {
             continue;
         };
-        // The entry ends at the next one; `family` must come from this entry.
         let entry = entry.split("id: \"").next().unwrap_or(entry);
         if entry.contains(&format!("family: \"{family}\"")) {
             found.insert(id.to_string());
@@ -142,9 +116,6 @@ fn the_core_resolves_every_theme_the_app_offers() {
 
 #[test]
 fn every_theme_has_notch_rules_of_its_own() {
-    // Without a block the popup keeps Graphite's island under a Nord app.
-    // Graphite itself is the exception, and the only one: it is what the notch
-    // already looks like, so it is styled by the rules above these.
     let stylesheet = read("extension/stylesheet.css");
     for theme in DARK_THEMES.iter().chain(LIGHT_THEMES.iter()) {
         if *theme == "dark" {
@@ -159,9 +130,6 @@ fn every_theme_has_notch_rules_of_its_own() {
 
 #[test]
 fn system_is_not_a_theme_class() {
-    // `system` means "ask the desktop", and resolves to one of the others
-    // before any class is set. A `veronica-theme-system` rule would mean
-    // somebody had modelled it as a palette of its own.
     assert!(!set(DARK_THEMES).contains("system"));
     assert!(!set(LIGHT_THEMES).contains("system"));
     assert!(!read("extension/themes.js").contains("'system'"));

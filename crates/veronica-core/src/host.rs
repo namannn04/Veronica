@@ -1,40 +1,17 @@
-//! Running the computer's own programs, from inside a Flatpak sandbox or not.
-//!
-//! Veronica is a control center for the machine it runs on: it asks PipeWire,
-//! GNOME Shell, apt, ssh and the user's coding agents for their state. In the
-//! Debian package those programs are simply on PATH. Inside the Flatpak they
-//! are not — the sandbox has the GNOME runtime's /usr, not the host's — so every
-//! such call is routed through `flatpak-spawn --host` instead, and executables
-//! are looked for where the host keeps them rather than where the sandbox does.
-//!
-//! Outside a sandbox every function here is exactly the plain std equivalent,
-//! so the Debian package and the AppImage behave as they always have.
-
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
-/// Where the host's operating system files appear inside the sandbox, given the
-/// `--filesystem=host-os` permission the Flatpak manifest grants.
 const HOST_OS_MOUNT: &str = "/run/host";
 
-/// The host prefixes that `host-os` exposes under [`HOST_OS_MOUNT`]. Anything
-/// else (the home directory, /snap) is either shared at its own path or not at
-/// all.
 const HOST_OS_PREFIXES: [&str; 5] = ["/usr", "/bin", "/sbin", "/lib", "/etc"];
 
-/// True when this process runs inside a Flatpak sandbox.
 pub fn is_sandboxed() -> bool {
     static SANDBOXED: OnceLock<bool> = OnceLock::new();
     *SANDBOXED.get_or_init(|| Path::new("/.flatpak-info").exists())
 }
 
-/// Start a program that outlives the call, without leaving a zombie.
-///
-/// A child that is spawned and dropped stays in the process table as a zombie
-/// once it exits, until Veronica itself exits: every "Open in browser",
-/// terminal and calendar launch added one. A thread waits for it instead.
 pub fn spawn_detached(command: &mut Command) -> std::io::Result<u32> {
     let mut child = command.spawn()?;
     let id = child.id();
@@ -44,16 +21,10 @@ pub fn spawn_detached(command: &mut Command) -> std::io::Result<u32> {
     Ok(id)
 }
 
-/// A command that runs `program` on the host.
 pub fn command(program: impl AsRef<OsStr>) -> Command {
     command_with_env(program, &[])
 }
 
-/// A command that runs `program` on the host with extra environment variables.
-///
-/// `flatpak-spawn` does not forward the environment of its own process, so a
-/// variable set with [`Command::env`] would never reach a host program. Every
-/// variable the host program needs is therefore named up front.
 pub fn command_with_env(program: impl AsRef<OsStr>, env: &[(&str, &OsStr)]) -> Command {
     if !is_sandboxed() {
         let mut command = Command::new(program);
@@ -71,11 +42,6 @@ pub fn command_with_env(program: impl AsRef<OsStr>, env: &[(&str, &OsStr)]) -> C
     command
 }
 
-/// Where a host path can be read from this process.
-///
-/// Inside the sandbox the host's /usr is mounted under /run/host; the home
-/// directory is shared at its own path. Outside, every path is already the
-/// host's.
 pub fn visible(path: &Path) -> PathBuf {
     if !is_sandboxed() {
         return path.to_path_buf();
@@ -94,11 +60,6 @@ fn mapped(path: &Path) -> PathBuf {
     }
 }
 
-/// The host's executable search path.
-///
-/// Inside the sandbox PATH describes the sandbox, so the host's is rebuilt from
-/// the standard system directories; callers that also search per-user
-/// directories add those themselves.
 pub fn path_directories() -> Vec<PathBuf> {
     if is_sandboxed() {
         return [
@@ -119,8 +80,6 @@ pub fn path_directories() -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
-/// The first host executable called `binary` on the host's search path, as the
-/// host names it.
 pub fn which(binary: &str) -> Option<PathBuf> {
     path_directories()
         .into_iter()
@@ -128,7 +87,6 @@ pub fn which(binary: &str) -> Option<PathBuf> {
         .find(|candidate| is_executable(candidate))
 }
 
-/// Whether the host file at `path` is an executable file.
 pub fn is_executable(path: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
     std::fs::metadata(visible(path))
@@ -145,7 +103,6 @@ mod tests {
         let id = spawn_detached(&mut Command::new("true")).unwrap();
         let stat = format!("/proc/{id}/stat");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-        // Gone from the process table, rather than lingering as a zombie.
         while std::path::Path::new(&stat).exists() {
             assert!(
                 std::time::Instant::now() < deadline,
@@ -173,7 +130,6 @@ mod tests {
             mapped(Path::new("/home/someone/.local/bin/codex")),
             PathBuf::from("/home/someone/.local/bin/codex")
         );
-        // A prefix match is by component, not by string.
         assert_eq!(
             mapped(Path::new("/usrlocal/bin/x")),
             PathBuf::from("/usrlocal/bin/x")

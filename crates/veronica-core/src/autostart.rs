@@ -1,8 +1,3 @@
-//! Per-user XDG autostart integration.
-//!
-//! The desktop app stays alive for alerts, shortcuts and tray actions, so it
-//! needs an explicit login entry rather than merely remembering a UI switch.
-
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
@@ -10,7 +5,6 @@ use anyhow::{Context, Result};
 
 use crate::APP_ID;
 
-/// Prefer the stable AppImage path over its temporary mount executable.
 pub fn preferred_executable(appimage: Option<&OsStr>, current_exe: &Path) -> PathBuf {
     appimage
         .filter(|value| !value.is_empty())
@@ -19,7 +13,6 @@ pub fn preferred_executable(appimage: Option<&OsStr>, current_exe: &Path) -> Pat
         .unwrap_or_else(|| current_exe.to_path_buf())
 }
 
-/// The complete entry GNOME starts after login.
 pub fn desktop_entry(executable: &Path) -> String {
     format!(
         "[Desktop Entry]\nType=Application\nName=Veronica\nComment=Start Veronica's alerts, shortcuts and tray\nExec={} --background\nIcon=veronica\nTerminal=false\nX-GNOME-Autostart-enabled=true\n",
@@ -27,8 +20,6 @@ pub fn desktop_entry(executable: &Path) -> String {
     )
 }
 
-/// The Exec command that starts this build. Inside a Flatpak the executable's
-/// path only exists in the sandbox, so the session starts it through flatpak.
 fn launch_command(executable: &Path) -> String {
     if crate::host::is_sandboxed() {
         format!("flatpak run --command=veronica {APP_ID}")
@@ -37,15 +28,10 @@ fn launch_command(executable: &Path) -> String {
     }
 }
 
-/// True only when the installed entry matches this executable.
-///
-/// An AppImage can move. Treating its old path as enabled would leave a switch
-/// that says On while the desktop silently fails to launch anything.
 pub fn is_enabled(path: &Path, executable: &Path) -> bool {
     std::fs::read_to_string(path).is_ok_and(|entry| entry == desktop_entry(executable))
 }
 
-/// Install or remove Veronica's one per-user autostart entry.
 pub fn set_enabled(path: &Path, executable: &Path, enabled: bool) -> Result<()> {
     if !enabled {
         match std::fs::remove_file(path) {

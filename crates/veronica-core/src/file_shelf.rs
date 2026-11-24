@@ -1,4 +1,3 @@
-//! Owned file copies. Exporting a shelf path never consumes an entry.
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 
@@ -27,7 +26,6 @@ impl FileShelf {
         Ok(())
     }
 
-    /// Upgrade the old path-only shelf to owned copies, once per source path.
     pub fn import_legacy(&self, sources: &[PathBuf]) -> Result<usize> {
         self.ensure_root()?;
         let manifest = self.root.join(".legacy-imported.json");
@@ -104,7 +102,6 @@ impl FileShelf {
         })
     }
 
-    /// Explicit deletion affects only this private copy, never its source.
     pub fn remove(&self, id: &str) -> Result<()> {
         if !valid_id(id) {
             bail!("Invalid shelf entry");

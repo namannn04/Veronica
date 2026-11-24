@@ -1,17 +1,3 @@
-//! Site Audit.
-//!
-//! Ported from Edith's `seoAudit`: crawl a site's sitemap, read each page's
-//! metadata, and report what search engines and link previews would make of
-//! it. The rules, thresholds and issue codes are Edith's exactly, so a page
-//! that passes on macOS passes here.
-//!
-//! Every run stays local. Veronica fetches the pages being audited and nothing
-//! else: no result is uploaded, no third-party service is consulted, and the
-//! report is a document the caller owns. Edith can also run Lighthouse for
-//! performance scores; that needs a headless Chrome, which Veronica does not
-//! ship and will not install behind the user's back, so the scores are absent
-//! rather than faked.
-
 pub mod issues;
 pub mod metadata;
 pub mod sitemap;
@@ -25,18 +11,12 @@ use url::Url;
 pub use issues::{Issue, Severity};
 pub use metadata::Metadata;
 
-/// Sent on every request, so a site owner reading their logs can tell what this
-/// is and that it was a person auditing their own site.
 pub const USER_AGENT: &str = concat!("Veronica Site Audit/", env!("CARGO_PKG_VERSION"));
 
-/// Edith's per-page timeout.
 pub const PAGE_TIMEOUT: Duration = Duration::from_secs(45);
 
-/// How many pages are fetched at once. Auditing someone's site should not read
-/// as a load test, so this stays low by default.
 pub const DEFAULT_CONCURRENCY: usize = 4;
 
-/// What one page turned into.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PageResult {
@@ -46,8 +26,6 @@ pub struct PageResult {
     pub bytes: usize,
     pub metadata: Metadata,
     pub issues: Vec<Issue>,
-    /// Set when the page could not be fetched at all, which is different from
-    /// a page that answered with a 500.
     pub error: Option<String>,
 }
 
@@ -60,7 +38,6 @@ impl PageResult {
     }
 }
 
-/// A whole run.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Report {
@@ -70,14 +47,9 @@ pub struct Report {
     pub errors: usize,
     pub warnings: usize,
     pub notices: usize,
-    /// How often each issue appears across the site, most common first. One
-    /// missing `og:image` is a page problem; forty is a template problem, and
-    /// that is the finding worth acting on — so it is in the document rather
-    /// than left for each caller to re-derive.
     pub by_code: Vec<CodeCount>,
 }
 
-/// One issue and how many pages have it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CodeCount(pub &'static str, pub Severity, pub usize);
 
@@ -95,7 +67,6 @@ impl Report {
         }
     }
 
-    /// Pages with at least one error, worst first. What to fix before shipping.
     pub fn worst_pages(&self) -> Vec<&PageResult> {
         let mut worst: Vec<&PageResult> = self
             .pages
@@ -112,8 +83,6 @@ impl Report {
     }
 }
 
-/// Count each issue across the pages, most common first, then by severity, then
-/// by code so the order is total and a report does not reshuffle between runs.
 fn tally(pages: &[PageResult]) -> Vec<CodeCount> {
     let mut counts: std::collections::HashMap<&'static str, (Severity, usize)> =
         std::collections::HashMap::new();
@@ -143,7 +112,6 @@ fn client() -> Result<reqwest::Client> {
         .context("cannot build an HTTP client")
 }
 
-/// Audit one page.
 pub async fn audit_page(client: &reqwest::Client, url: &Url) -> PageResult {
     let started = Instant::now();
     let response = client.get(url.clone()).send().await;
@@ -170,8 +138,6 @@ pub async fn audit_page(client: &reqwest::Client, url: &Url) -> PageResult {
             response_millis: None,
             bytes: 0,
             metadata: Metadata::default(),
-            // The failure itself is the finding; running the metadata rules
-            // over an empty page would bury it under ten more.
             issues: vec![Issue {
                 code: "request-failed",
                 severity: Severity::Error,
@@ -183,12 +149,6 @@ pub async fn audit_page(client: &reqwest::Client, url: &Url) -> PageResult {
     }
 }
 
-/// What someone typed, as a URL to audit.
-///
-/// Without a scheme, `localhost:3000` parsed as the scheme `localhost` and was
-/// refused, and every bare address got `https://`, which a local development
-/// server does not speak. A bare address now gets `http://` when it names a
-/// development host and `https://` otherwise.
 pub fn site_url(site: &str) -> Result<Url> {
     let site = site.trim();
     let candidate = if site.contains("://") {
@@ -196,7 +156,6 @@ pub fn site_url(site: &str) -> Result<Url> {
     } else {
         let authority = site.split(['/', '?', '#']).next().unwrap_or_default();
         let host = match authority.strip_prefix('[') {
-            // `[::1]:8080`: the brackets hold the host.
             Some(rest) => rest.split(']').next().unwrap_or_default(),
             None => authority
                 .rsplit_once(':')
@@ -212,8 +171,6 @@ pub fn site_url(site: &str) -> Result<Url> {
     Url::parse(&candidate).with_context(|| format!("not a URL: {site:?}"))
 }
 
-/// A machine that is not a public website: this computer, the local network,
-/// or a name reserved for development.
 pub fn is_development_host(host: &str) -> bool {
     let host = host
         .trim_start_matches('[')
@@ -229,10 +186,6 @@ pub fn is_development_host(host: &str) -> bool {
     }
 }
 
-/// Crawl and audit a site.
-///
-/// `limit` caps how many pages are fetched, which is what makes it reasonable
-/// to point this at somebody's whole site.
 pub async fn audit(site: &str, limit: usize, concurrency: usize) -> Result<Report> {
     let input = site_url(site)?;
     if !matches!(input.scheme(), "http" | "https") {
@@ -249,8 +202,6 @@ pub async fn audit(site: &str, limit: usize, concurrency: usize) -> Result<Repor
     let targets = sitemap::pages(&fetcher, &input, limit.max(1)).await?;
     let started_at = chrono::Utc::now().to_rfc3339();
 
-    // Bounded concurrency: fast enough to be usable, gentle enough not to read
-    // as a load test against someone else's server.
     let mut results = Vec::with_capacity(targets.len());
     for chunk in targets.chunks(concurrency.clamp(1, 16)) {
         let batch =
@@ -384,7 +335,6 @@ mod tests {
 
     #[test]
     fn counting_by_code_turns_a_page_problem_into_a_template_problem() {
-        // One missing og:image is a page's problem; forty is the template's.
         let pages: Vec<PageResult> = (0..40)
             .map(|index| {
                 page(
@@ -418,7 +368,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_bare_hostname_is_read_as_https() {
-        // Typing `example.com` should audit the site, not fail on a scheme.
         let error = audit("not a url at all ///", 1, 1)
             .await
             .unwrap_err()
@@ -434,7 +383,6 @@ mod tests {
 
     #[test]
     fn the_user_agent_names_the_tool_and_its_version() {
-        // A site owner reading their logs should be able to tell what this is.
         assert!(USER_AGENT.starts_with("Veronica Site Audit/"));
         assert!(USER_AGENT.len() > "Veronica Site Audit/".len());
     }

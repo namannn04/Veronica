@@ -1,10 +1,3 @@
-//! The audit rules.
-//!
-//! A direct port of Edith's `SEOIssueAnalyzer`: the same eleven checks, the
-//! same codes, the same severities, and the same thresholds — 30 to 60
-//! characters for a title, 70 to 160 for a description. Keeping the numbers
-//! identical is the point: a page that passes on macOS has to pass here.
-
 use serde::Serialize;
 use url::Url;
 
@@ -13,11 +6,8 @@ use crate::metadata::Metadata;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Severity {
-    /// Search engines will not index this, or will index the wrong thing.
     Error,
-    /// Indexed, but the result will read badly.
     Warning,
-    /// Worth knowing, not worth blocking a release for.
     Notice,
 }
 
@@ -40,9 +30,7 @@ pub struct Issue {
     pub detail: &'static str,
 }
 
-/// Edith's title window, in characters.
 pub const TITLE_RANGE: std::ops::RangeInclusive<usize> = 30..=60;
-/// And its description window.
 pub const DESCRIPTION_RANGE: std::ops::RangeInclusive<usize> = 70..=160;
 
 fn issue(code: &'static str, severity: Severity, title: String, detail: &'static str) -> Issue {
@@ -54,7 +42,6 @@ fn issue(code: &'static str, severity: Severity, title: String, detail: &'static
     }
 }
 
-/// Every issue one page has.
 pub fn issues(url: &Url, status: Option<u16>, metadata: &Metadata) -> Vec<Issue> {
     let mut found = Vec::new();
 
@@ -77,8 +64,6 @@ pub fn issues(url: &Url, status: Option<u16>, metadata: &Metadata) -> Vec<Issue>
             "Add a unique title that describes this page.",
         )),
         Some(title) => {
-            // Characters, not bytes: a title in Japanese is not four times as
-            // long as it looks.
             let length = title.chars().count();
             if !TITLE_RANGE.contains(&length) {
                 found.push(issue(
@@ -160,8 +145,6 @@ pub fn issues(url: &Url, status: Option<u16>, metadata: &Metadata) -> Vec<Issue>
         ));
     }
 
-    // A local development server is not a public page, so its lack of TLS is
-    // not a finding.
     let host = url.host_str().unwrap_or_default();
     if url.scheme() != "https" && !crate::is_development_host(host) {
         found.push(issue(
@@ -183,7 +166,6 @@ mod tests {
         Url::parse(raw).unwrap()
     }
 
-    /// A page with nothing wrong with it.
     fn clean() -> Metadata {
         Metadata {
             title: Some("A title that is comfortably inside the range".to_string()),
@@ -230,7 +212,6 @@ mod tests {
 
     #[test]
     fn ediths_thresholds_are_kept_exactly() {
-        // A page that passes on macOS has to pass here.
         assert_eq!(*TITLE_RANGE.start(), 30);
         assert_eq!(*TITLE_RANGE.end(), 60);
         assert_eq!(*DESCRIPTION_RANGE.start(), 70);
@@ -257,7 +238,6 @@ mod tests {
 
     #[test]
     fn length_is_counted_in_characters_not_bytes() {
-        // A title in Japanese is not four times as long as it looks.
         let mut meta = clean();
         meta.title = Some("あ".repeat(40));
         assert!(
@@ -270,7 +250,7 @@ mod tests {
     #[test]
     fn a_non_success_status_is_an_error_and_a_success_is_not() {
         let mut meta = clean();
-        meta.title = None; // so the list is not empty either way
+        meta.title = None;
         for status in [200u16, 204, 299] {
             assert!(
                 !codes(&issues(&url("https://example.com/"), Some(status), &meta))
@@ -286,7 +266,6 @@ mod tests {
 
     #[test]
     fn a_page_that_could_not_be_reached_reports_no_status_issue() {
-        // The caller reports the failure itself; a second one would be noise.
         let found = issues(&url("https://example.com/"), None, &clean());
         assert!(found.is_empty());
     }
@@ -314,8 +293,6 @@ mod tests {
 
     #[test]
     fn every_rule_has_a_distinct_code() {
-        // The code is what a report groups by, so two rules sharing one would
-        // silently merge.
         let bare = Metadata::default();
         let found = issues(&url("http://example.com/"), Some(500), &bare);
         let mut seen = codes(&found);

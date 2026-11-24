@@ -1,44 +1,14 @@
-//! Presenter mode.
-//!
-//! Blurs figures that should not be on a shared screen: spend, token counts,
-//! rate-limit percentages, calendar entries and track names.
-//!
-//! Ported from Edith's `PresenterState`, `PresenterRuntimeOperation` and
-//! `FeatureGates.presenterActive`, with the same keys and the same gate:
-//!
-//! ```text
-//! active = enabled && (manual || auto_active)
-//! ```
-//!
-//! Three switches rather than one, because they answer different questions.
-//! `enabled` is whether the extension exists at all; `manual` is the user
-//! flipping it; `auto_active` is Veronica noticing a screen share. Collapsing
-//! them would mean a detected share could not be dismissed without also turning
-//! the feature off.
-//!
-//! What differs from macOS is only the detection: Edith watches for a display
-//! being captured or mirrored, and on Ubuntu the equivalent signal is an active
-//! compositor screencast session. That lives in `veronica-system`; everything
-//! here is the shared model both platforms agree on.
-
 use serde::{Deserialize, Serialize};
 
 use crate::Settings;
 
-/// The categories that can be blurred independently, so a demo can show the
-/// calendar while hiding spend, or the reverse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BlurCategory {
-    /// Money: spend totals and per-day cost.
     Money,
-    /// Token counts and the usage charts.
     Usage,
-    /// Rate-limit percentages and countdowns.
     Agents,
-    /// Event titles and attendees.
     Calendar,
-    /// Track, artist and album.
     Music,
 }
 
@@ -61,7 +31,6 @@ impl BlurCategory {
         }
     }
 
-    /// The settings key, matching Edith's.
     pub fn key(self) -> &'static str {
         match self {
             BlurCategory::Money => "presenterBlurMoney",
@@ -72,7 +41,6 @@ impl BlurCategory {
         }
     }
 
-    /// The class the interface puts on an element of this category.
     pub fn css_class(self) -> &'static str {
         match self {
             BlurCategory::Money => "blur-money",
@@ -84,25 +52,15 @@ impl BlurCategory {
     }
 }
 
-/// Everything the interface needs to decide what to blur.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PresenterState {
-    /// The extension switch. Off means the feature does nothing at all, and no
-    /// detection runs.
     pub enabled: bool,
-    /// The user's own toggle.
     pub manual: bool,
-    /// Automatic detection is allowed.
     pub auto_enabled: bool,
-    /// A share is happening now.
     pub auto_active: bool,
-    /// The user dismissed the current automatic activation. Cleared when the
-    /// share stops, so the next one activates again.
     pub auto_paused: bool,
-    /// What was detected, e.g. "Screen sharing is active".
     pub auto_reason: Option<String>,
-    /// Which categories are blurred while active.
     pub categories: Vec<BlurCategory>,
 }
 
@@ -115,28 +73,20 @@ impl Default for PresenterState {
             auto_active: false,
             auto_paused: false,
             auto_reason: None,
-            // Every category on by default: someone turning presenter mode on
-            // wants everything sensitive covered, and can then reveal a category
-            // deliberately.
             categories: BlurCategory::ALL.to_vec(),
         }
     }
 }
 
 impl PresenterState {
-    /// Edith's gate, unchanged: the feature must be enabled, and either the user
-    /// or the detector must have asked for it.
     pub fn active(&self) -> bool {
         self.enabled && (self.manual || self.effective_auto())
     }
 
-    /// Whether automatic detection is currently asserting. A dismissed
-    /// activation does not count, which is what makes the dismissal useful.
     pub fn effective_auto(&self) -> bool {
         self.auto_active && self.auto_enabled && !self.auto_paused
     }
 
-    /// Whether this category is blurred right now.
     pub fn blurs(&self, category: BlurCategory) -> bool {
         self.active() && self.categories.contains(&category)
     }
@@ -144,9 +94,6 @@ impl PresenterState {
     pub fn read(settings: &Settings) -> Self {
         let default = Self::default();
         let enabled = settings.bool_or("presenterEnabled", default.enabled);
-        // Every dependent value is gated on `enabled`, as Edith's `refresh`
-        // does, so a stale manual flag cannot blur anything once the extension
-        // is switched off.
         Self {
             enabled,
             manual: enabled && settings.bool_or("presenterMode", default.manual),
@@ -188,7 +135,6 @@ mod tests {
         assert!(!state.enabled);
         assert!(!state.active());
 
-        // A manual flag left in the file must not blur anything on its own.
         let stale = PresenterState::read(&stored(&[("presenterMode", json!(true))]));
         assert!(!stale.manual, "manual is gated on enabled, as in Edith");
         assert!(!stale.active());
@@ -241,8 +187,6 @@ mod tests {
         assert!(!state.effective_auto(), "but it has been dismissed");
         assert!(!state.active());
 
-        // The manual switch overrides a dismissal, since that is the user
-        // asking for it directly.
         let mut manual = state.clone();
         manual.manual = true;
         assert!(manual.active());

@@ -1,16 +1,3 @@
-//! Just enough iCalendar to read a property.
-//!
-//! GNOME's calendar server expands recurrences but drops the location and
-//! description, so those are fetched per event from Evolution Data Server, which
-//! returns a raw `VEVENT`. Only a couple of properties are needed, so this reads
-//! them directly rather than pulling in a full parser — no recurrence rules, no
-//! timezone components, no calendar-level structure.
-
-/// Undo line folding.
-///
-/// iCalendar wraps lines at 75 octets and marks the continuation with a leading
-/// space or tab. A URL in a `LOCATION` is long enough to be folded routinely, so
-/// scanning without unfolding first finds a truncated link.
 pub fn unfold(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for (index, line) in text.split('\n').enumerate() {
@@ -30,18 +17,12 @@ pub fn unfold(text: &str) -> String {
     out
 }
 
-/// Read a property value, ignoring any parameters on the name.
-///
-/// A property line is `NAME[;PARAM=VALUE...]:VALUE`, so the split has to be on
-/// the first colon that follows the name, and parameters may themselves contain
-/// a quoted colon.
 pub fn property(text: &str, name: &str) -> Option<String> {
     let unfolded = unfold(text);
     for line in unfolded.lines() {
         let Some((head, value)) = split_property(line) else {
             continue;
         };
-        // The name is everything before the first parameter separator.
         let key = head.split(';').next().unwrap_or(head);
         if key.eq_ignore_ascii_case(name) {
             return Some(unescape(value));
@@ -50,14 +31,12 @@ pub fn property(text: &str, name: &str) -> Option<String> {
     None
 }
 
-/// Split a content line into its name-with-parameters and its value.
 fn split_property(line: &str) -> Option<(&str, &str)> {
     let bytes = line.as_bytes();
     let mut quoted = false;
     for (index, byte) in bytes.iter().enumerate() {
         match byte {
             b'"' => quoted = !quoted,
-            // A colon inside a quoted parameter value is not the separator.
             b':' if !quoted => return Some((&line[..index], &line[index + 1..])),
             _ => {}
         }
@@ -65,7 +44,6 @@ fn split_property(line: &str) -> Option<(&str, &str)> {
     None
 }
 
-/// Undo the text escaping the spec defines for property values.
 pub fn unescape(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     let mut chars = value.chars();
@@ -79,7 +57,6 @@ pub fn unescape(value: &str) -> String {
             Some('\\') => out.push('\\'),
             Some(',') => out.push(','),
             Some(';') => out.push(';'),
-            // An unknown escape keeps the character as written.
             Some(other) => out.push(other),
             None => out.push('\\'),
         }
@@ -87,10 +64,6 @@ pub fn unescape(value: &str) -> String {
     out
 }
 
-/// Every place a meeting link tends to hide, in the order worth trying.
-///
-/// Google puts the link in `X-GOOGLE-CONFERENCE`, Outlook in the description,
-/// and most people paste it into the location.
 pub const LINK_PROPERTIES: &[&str] = &[
     "X-GOOGLE-CONFERENCE",
     "LOCATION",
@@ -99,7 +72,6 @@ pub const LINK_PROPERTIES: &[&str] = &[
     "X-MICROSOFT-SKYPETEAMSMEETINGURL",
 ];
 
-/// Find a meeting link anywhere in a `VEVENT`.
 pub fn join_url(vevent: &str) -> Option<String> {
     for name in LINK_PROPERTIES {
         if let Some(value) = property(vevent, name) {
@@ -138,8 +110,6 @@ mod tests {
 
     #[test]
     fn unfolds_a_wrapped_value_before_reading_it() {
-        // A long URL is folded across lines; reading without unfolding first
-        // returns a truncated link.
         let folded = "BEGIN:VEVENT\r\nLOCATION:https://meet.google.com/very-long-\r\n room-identifier-here\r\nEND:VEVENT";
         assert_eq!(
             property(folded, "LOCATION").as_deref(),
@@ -179,7 +149,6 @@ mod tests {
         assert_eq!(unescape(r"line one\nline two"), "line one\nline two");
         assert_eq!(unescape(r"a\, b\; c"), "a, b; c");
         assert_eq!(unescape(r"back\\slash"), r"back\slash");
-        // A trailing backslash is kept rather than dropped.
         assert_eq!(unescape(r"trailing\"), r"trailing\");
     }
 

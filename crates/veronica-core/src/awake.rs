@@ -1,20 +1,3 @@
-//! Keep Awake and Lid Awake, including the timed sessions.
-//!
-//! Ported from Edith's Lid Awake: the same two switches, and the same idea that
-//! a session can be given a deadline rather than being left on until somebody
-//! remembers to turn it off. `ed lid-awake on --for 30m` is the front-page
-//! example, and `vr power lid-awake on --for 30m` is the same thing.
-//!
-//! The lock itself is a systemd-logind inhibitor held by the running desktop
-//! app, which is why the CLI writes the setting rather than taking the lock: a
-//! command that exits cannot hold a file descriptor open. The app watches the
-//! settings file and acquires or releases to match — the same route the notch's
-//! quick actions already take.
-//!
-//! The deadline lives here rather than in a timer, so it survives a restart. An
-//! expiry that had passed while the app was closed is honest about it: the
-//! session is over, not silently extended to a fresh half hour.
-
 use serde::{Deserialize, Serialize};
 
 use crate::Settings;
@@ -24,19 +7,12 @@ pub const KEEP_AWAKE_UNTIL_KEY: &str = "preventSleepUntil";
 pub const LID_AWAKE_KEY: &str = "lidAwakeEnabled";
 pub const LID_AWAKE_UNTIL_KEY: &str = "lidAwakeUntil";
 
-/// The longest session that can be asked for. A day is already far past what
-/// anyone means by "keep it awake for a bit", and an unbounded value would let
-/// a typo pin a laptop awake in a bag.
 pub const MAX_DURATION_SECS: i64 = 24 * 60 * 60;
 
-/// Which switch a command is talking about.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Awake {
-    /// Blocks the idle sleep timer only.
     KeepAwake,
-    /// Blocks the idle timer *and* the lid switch, so a closed laptop keeps
-    /// running.
     LidAwake,
 }
 
@@ -63,13 +39,10 @@ impl Awake {
     }
 }
 
-/// One switch's state, as stored.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AwakeState {
     pub enabled: bool,
-    /// When the session ends, in milliseconds since the Unix epoch. `None` is
-    /// an open-ended session, which is what a plain switch means.
     pub until_ms: Option<i64>,
 }
 
@@ -80,28 +53,18 @@ impl AwakeState {
             until_ms: settings
                 .get(switch.until_key())
                 .and_then(serde_json::Value::as_i64)
-                // A deadline in the past is not a deadline; treating it as one
-                // would leave a stale timestamp reported as a live countdown.
                 .filter(|until| *until > 0),
         }
     }
 
-    /// Whether the lock should be held right now.
-    ///
-    /// A timed session that has run out is off, even though `enabled` is still
-    /// true in the file: the app clears the pair on its next tick, and until
-    /// then this is the answer that matters.
     pub fn is_active(&self, now_ms: i64) -> bool {
         self.enabled && self.until_ms.is_none_or(|until| until > now_ms)
     }
 
-    /// Whether the stored pair should be cleared, i.e. a timed session whose
-    /// deadline has passed.
     pub fn has_expired(&self, now_ms: i64) -> bool {
         self.enabled && self.until_ms.is_some_and(|until| until <= now_ms)
     }
 
-    /// Seconds left, or `None` for an open-ended or inactive session.
     pub fn remaining_secs(&self, now_ms: i64) -> Option<i64> {
         let until = self.until_ms?;
         if !self.enabled || until <= now_ms {
@@ -111,11 +74,6 @@ impl AwakeState {
     }
 }
 
-/// Parse `30m`, `2h`, `90s`, `1h30m`, or a bare number of minutes.
-///
-/// A bare number means minutes because that is what `--for 30` means to anyone
-/// typing it; seconds would make `--for 30` half a minute of keeping awake,
-/// which is not a thing anybody wants.
 pub fn parse_duration(raw: &str) -> anyhow::Result<i64> {
     let text = raw.trim().to_lowercase();
     if text.is_empty() {
@@ -189,7 +147,6 @@ mod tests {
             Awake::LidAwake.enabled_key()
         );
         assert_ne!(Awake::KeepAwake.until_key(), Awake::LidAwake.until_key());
-        // The enabled keys are the ones the app already watches.
         assert_eq!(Awake::KeepAwake.enabled_key(), "preventSleep");
         assert_eq!(Awake::LidAwake.enabled_key(), "lidAwakeEnabled");
     }
@@ -225,13 +182,11 @@ mod tests {
         };
         assert!(!state.has_expired(0));
         assert!(state.has_expired(MINUTE));
-        // An open-ended session never expires, so it is never cleared.
         let open = AwakeState {
             enabled: true,
             until_ms: None,
         };
         assert!(!open.has_expired(i64::MAX));
-        // Nor does a switch that is already off.
         let off = AwakeState {
             enabled: false,
             until_ms: Some(MINUTE),
@@ -269,8 +224,6 @@ mod tests {
 
     #[test]
     fn a_stored_deadline_of_zero_or_less_is_no_deadline() {
-        // A hand-edited file, or a value written before the epoch: reading it as
-        // a live countdown would report a session ending in 1970.
         for value in [json!(0), json!(-5)] {
             let state = AwakeState::read(
                 &stored(&[("preventSleep", json!(true)), ("preventSleepUntil", value)]),
@@ -296,7 +249,6 @@ mod tests {
 
     #[test]
     fn a_bare_number_means_minutes() {
-        // `--for 30` meaning thirty seconds would be useless and surprising.
         assert_eq!(parse_duration("30").unwrap(), 1_800);
     }
 
@@ -309,7 +261,6 @@ mod tests {
 
     #[test]
     fn a_session_cannot_be_longer_than_a_day() {
-        // A typo must not pin a laptop awake in a bag indefinitely.
         assert_eq!(parse_duration("24h").unwrap(), MAX_DURATION_SECS);
         assert!(parse_duration("25h").is_err());
         assert!(parse_duration("7d").is_err());

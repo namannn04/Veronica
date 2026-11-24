@@ -1,9 +1,3 @@
-//! Portable core for Veronica.
-//!
-//! Everything here is free of GUI and toolkit dependencies so the desktop app,
-//! the `vr` CLI and the tests can share one definition of paths, capabilities,
-//! the extension catalogue and settings.
-
 pub mod appearance;
 pub mod attention;
 pub mod autostart;
@@ -49,11 +43,8 @@ pub use settings::Settings;
 pub use swatches::{ColorProfile, CopyFormat, Swatch, SwatchHistory};
 pub use tools::{Install as ToolInstall, ToolSpec, CATALOG as TOOL_CATALOG};
 
-/// Version of the running build, from Cargo.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// One resolved snapshot of the environment, built once at launch and handed to
-/// the UI so every screen agrees on what the platform can do.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Diagnostics {
@@ -81,8 +72,6 @@ pub struct ExtensionReport {
     pub title: &'static str,
     pub subtitle: &'static str,
     pub icon: &'static str,
-    /// The settings key holding this extension's on/off state. Sent to the
-    /// interface so the catalogue stays the single source of it.
     pub defaults_key: &'static str,
     pub group: ExtensionGroup,
     pub featured: bool,

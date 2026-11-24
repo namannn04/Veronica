@@ -1,16 +1,3 @@
-//! Portable, local backup archives for Veronica.
-//!
-//! Edith can put its settings in iCloud. Veronica cannot silently choose a
-//! Linux cloud provider, so it provides an explicit export/import instead. A
-//! `.veronica-backup` file is JSON containing a versioned manifest and base64
-//! file bodies. It includes configuration, persistent data and state; cache and
-//! runtime files are deliberately excluded because they are reproducible or
-//! process-local.
-//!
-//! Imports are defensive: every path, byte count and SHA-256 digest is checked
-//! before the first destination file is touched. Files are then written through
-//! siblings and atomically renamed, so a crash cannot leave a truncated file.
-
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
@@ -39,7 +26,6 @@ pub struct BackupManifest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BackupFile {
-    /// `configuration/settings.json`, `data/clipboard.json`, etc.
     pub path: String,
     pub bytes: u64,
     pub sha256: String,
@@ -126,7 +112,6 @@ impl BackupArchive {
     pub fn load(source: &Path) -> Result<Self> {
         let metadata = std::fs::metadata(source)
             .with_context(|| format!("cannot read {}", source.display()))?;
-        // Base64 and JSON add overhead; cap the encoded envelope too.
         if metadata.len() > MAX_ARCHIVE_BYTES + MAX_ARCHIVE_BYTES / 2 {
             bail!("backup archive is too large");
         }
@@ -143,7 +128,6 @@ impl BackupArchive {
             );
         }
 
-        // Validate and decode the complete archive before touching live data.
         let mut seen = BTreeSet::new();
         let mut decoded = Vec::new();
         let mut total = 0u64;
