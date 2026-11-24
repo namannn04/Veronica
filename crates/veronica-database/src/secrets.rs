@@ -136,7 +136,7 @@ impl Service {
         label: String,
         secret: &[u8],
     ) -> Result<()> {
-        let properties: HashMap<&str, ZValue> = HashMap::from([
+        let properties: HashMap<&str, ZValue<'_>> = HashMap::from([
             ("org.freedesktop.Secret.Item.Label", ZValue::from(label)),
             (
                 "org.freedesktop.Secret.Item.Attributes",

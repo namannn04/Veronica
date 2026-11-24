@@ -137,7 +137,7 @@ fn page(connection: &Sqlite, sql: &str, request: &PageRequest, client_paged: boo
         columns,
         rows,
         request,
-        started.elapsed().as_millis() as u64,
+        crate::elapsed_millis(started),
     ))
 }
 
@@ -257,7 +257,7 @@ impl Adapter for SqliteAdapter {
         let sql = format!("SELECT COUNT(*) FROM {}", quote(object.name()));
         self.blocking(move |connection| {
             let count: i64 = connection.query_row(&sql, [], |row| row.get(0))?;
-            Ok(Some(count as u64))
+            Ok(u64::try_from(count).ok())
         })
         .await
     }
@@ -296,12 +296,16 @@ fn to_sqlite(value: &Value) -> rusqlite::types::Value {
         Value::Null | Value::Missing => S::Null,
         Value::Boolean(value) => S::Integer(i64::from(*value)),
         Value::SignedInteger(value) => S::Integer(*value),
-        Value::UnsignedInteger(value) => S::Integer(*value as i64),
+        Value::UnsignedInteger(value) => {
+            i64::try_from(*value).map_or_else(|_| S::Text(value.to_string()), S::Integer)
+        }
         Value::FloatingPoint(value) => S::Real(*value),
         Value::Decimal(Decimal(text)) => S::Text(text.clone()),
-        Value::String(value) => S::Text(value.clone()),
+        Value::String(value)
+        | Value::Date(value)
+        | Value::Time(value)
+        | Value::Timestamp(value) => S::Text(value.clone()),
         Value::Uuid(value) => S::Text(value.to_string()),
-        Value::Date(value) | Value::Time(value) | Value::Timestamp(value) => S::Text(value.clone()),
         Value::Binary(binary) => {
             let encoded = match binary {
                 Binary::Complete { data, .. } | Binary::Preview { bytes: data, .. } => data,
@@ -327,7 +331,7 @@ mod tests {
     fn definition(path: &str, access: SqliteAccessMode) -> ConnectionDefinition {
         let now = chrono::Utc::now();
         ConnectionDefinition {
-            version: crate::connection::SCHEMA_VERSION,
+            version: SCHEMA_VERSION,
             id: Uuid::new_v4(),
             display_name: "Test".into(),
             product_hint: Product::Sqlite,
@@ -358,7 +362,7 @@ mod tests {
         }
     }
 
-    async fn seeded() -> (tempfile::TempDir, SqliteAdapter) {
+    fn seeded() -> (tempfile::TempDir, SqliteAdapter) {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("app.db");
         {
@@ -390,7 +394,7 @@ mod tests {
 
     #[tokio::test]
     async fn it_identifies_a_real_file_as_an_embedded_database() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let identity = adapter.identify().await.unwrap();
         assert_eq!(identity.product, Product::Sqlite);
         assert_eq!(identity.topology.kind, TopologyKind::Embedded);
@@ -399,9 +403,9 @@ mod tests {
 
     #[tokio::test]
     async fn browsing_lists_the_tables_and_views_but_not_sqlites_own() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let objects = adapter.objects(None).await.unwrap();
-        let names: Vec<&str> = objects.iter().map(|object| object.name()).collect();
+        let names: Vec<&str> = objects.iter().map(ObjectIdentifier::name).collect();
         assert_eq!(names, ["orders", "recent"]);
         assert_eq!(objects[0].kind, ObjectKind::Table);
         assert_eq!(objects[1].kind, ObjectKind::View);
@@ -413,10 +417,10 @@ mod tests {
 
     #[tokio::test]
     async fn browsing_into_a_table_lists_its_columns_with_their_types() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let table = ObjectIdentifier::new(ObjectKind::Table, vec!["orders".into()]);
         let columns = adapter.objects(Some(&table)).await.unwrap();
-        let names: Vec<&str> = columns.iter().map(|column| column.name()).collect();
+        let names: Vec<&str> = columns.iter().map(ObjectIdentifier::name).collect();
         assert_eq!(names, ["id", "total", "note", "blob"]);
         assert_eq!(columns[0].kind, ObjectKind::Column);
         assert_eq!(columns[1].native_identifier.as_deref(), Some("REAL"));
@@ -424,7 +428,7 @@ mod tests {
 
     #[tokio::test]
     async fn reading_a_table_returns_typed_values() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let table = ObjectIdentifier::new(ObjectKind::Table, vec!["orders".into()]);
         let page = adapter.read(&table, &PageRequest::default()).await.unwrap();
         assert_eq!(page.rows.len(), 3);
@@ -444,7 +448,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_page_stops_at_its_size_and_says_there_is_more() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let table = ObjectIdentifier::new(ObjectKind::Table, vec!["orders".into()]);
         let request = PageRequest {
             page_size: PageSize::new(2).unwrap(),
@@ -471,7 +475,7 @@ mod tests {
 
     #[tokio::test]
     async fn pragma_and_explain_run_rather_than_failing_inside_a_subquery() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let info = adapter
             .query("PRAGMA table_info(orders);", &PageRequest::default())
             .await
@@ -489,7 +493,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_pragma_that_writes_changes_nothing() {
-        let (directory, mut adapter) = seeded().await;
+        let (directory, mut adapter) = seeded();
         let refused = adapter
             .query("PRAGMA user_version = 5", &PageRequest::default())
             .await;
@@ -503,7 +507,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_unwrapped_statement_is_still_paged() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let request = PageRequest {
             page_size: PageSize::new(3).unwrap(),
             ..PageRequest::default()
@@ -533,7 +537,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_query_that_reads_runs_and_one_that_writes_does_not() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let page = adapter
             .query(
                 "SELECT note FROM orders WHERE id = 1",
@@ -566,14 +570,14 @@ mod tests {
 
     #[tokio::test]
     async fn counting_says_how_many_there_are() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let table = ObjectIdentifier::new(ObjectKind::Table, vec!["orders".into()]);
         assert_eq!(adapter.count(&table).await.unwrap(), Some(3));
     }
 
     #[tokio::test]
     async fn a_mutation_binds_its_values_rather_than_interpolating_them() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let affected = adapter
             .execute(&Payload::Relational {
                 product: Product::Sqlite,
@@ -641,7 +645,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_payload_for_another_family_is_refused() {
-        let (_directory, mut adapter) = seeded().await;
+        let (_directory, mut adapter) = seeded();
         let error = adapter
             .execute(&Payload::Keyspace {
                 product: Product::Redis,

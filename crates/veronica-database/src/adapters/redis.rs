@@ -261,7 +261,7 @@ impl Adapter for RedisAdapter {
                 },
             ]],
             request,
-            started.elapsed().as_millis() as u64,
+            crate::elapsed_millis(started),
         ))
     }
 
@@ -297,7 +297,7 @@ impl Adapter for RedisAdapter {
             ],
             rows,
             request,
-            started.elapsed().as_millis() as u64,
+            crate::elapsed_millis(started),
         ))
     }
 
@@ -329,7 +329,7 @@ impl Adapter for RedisAdapter {
         }
         let reply: redis::Value = request.query_async(&mut self.connection).await?;
         Ok(match reply {
-            redis::Value::Int(count) => count.max(0) as u64,
+            redis::Value::Int(count) => u64::try_from(count).unwrap_or(0),
             redis::Value::Nil => 0,
             _ => 1,
         })

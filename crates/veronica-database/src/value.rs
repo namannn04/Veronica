@@ -121,7 +121,10 @@ impl Value {
             Self::UnsignedInteger(value) => value.to_string(),
             Self::Decimal(value) => value.0.clone(),
             Self::FloatingPoint(value) => value.to_string(),
-            Self::String(value) => value.clone(),
+            Self::String(value)
+            | Self::Date(value)
+            | Self::Time(value)
+            | Self::Timestamp(value) => value.clone(),
             Self::Binary(binary) => format!(
                 "{} bytes{}",
                 binary.byte_count(),
@@ -131,7 +134,6 @@ impl Value {
                     " (preview)"
                 }
             ),
-            Self::Date(value) | Self::Time(value) | Self::Timestamp(value) => value.clone(),
             Self::Uuid(value) => value.to_string(),
             Self::Array(values) => format!("[{} items]", values.len()),
             Self::Object(fields) => format!("{{{} fields}}", fields.len()),

@@ -113,7 +113,7 @@ fn read_value(row: &Row, index: usize) -> Value {
     }
 }
 
-fn to_page(rows: Vec<Row>, request: &PageRequest, elapsed: u64) -> Page {
+fn to_page(rows: &[Row], request: &PageRequest, elapsed: u64) -> Page {
     let columns: Vec<ColumnDescriptor> = rows
         .first()
         .map(|row| {
@@ -292,7 +292,7 @@ impl Adapter for MysqlAdapter {
         let started = std::time::Instant::now();
         let sql = bounded(&format!("SELECT * FROM {}", qualified(object)), request);
         let rows: Vec<Row> = self.connection.query(sql).await?;
-        Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
+        Ok(to_page(&rows, request, crate::elapsed_millis(started)))
     }
 
     async fn query(&mut self, statement: &str, request: &PageRequest) -> Result<Page> {
@@ -309,7 +309,7 @@ impl Adapter for MysqlAdapter {
         } else {
             super::client_window(self.read_only_rows(body.to_string()).await?, request)
         };
-        Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
+        Ok(to_page(&rows, request, crate::elapsed_millis(started)))
     }
 
     async fn count(&mut self, object: &ObjectIdentifier) -> Result<Option<u64>> {
