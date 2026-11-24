@@ -59,6 +59,11 @@ workflows_check() {
 
 all_checks=(em_dash comments typos_check rust deps_check extensions_check web python_check shell_check yaml_check markdown_check workflows_check)
 
+if [ "${1:-}" = "--run-one" ]; then
+  "$2"
+  exit 0
+fi
+
 if [ "$#" -eq 0 ]; then
   set -- "${all_checks[@]}"
 fi
@@ -66,7 +71,7 @@ fi
 failed=()
 for check in "$@"; do
   echo "::group::$check"
-  if ! "$check"; then
+  if ! bash "${BASH_SOURCE[0]}" --run-one "$check"; then
     failed+=("$check")
   fi
   echo "::endgroup::"
