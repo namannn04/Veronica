@@ -1,21 +1,29 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { ArrowUp, ChevronLeft, ChevronRight, Database, Play, Table2 } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
-import type { DatabaseConnection, DatabaseObject, DatabasePage, DatabaseOperation } from "../lib/types";
+import type { DatabaseConnection, DatabaseObject, DatabasePage as ResultPage, DatabaseOperation } from "../lib/types";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  IconButton,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  SkeletonRows,
+  Table,
+  Tabs,
+  TextArea,
+  Toolbar,
+} from "../ui";
+import "./DatabasePage.css";
 
-/**
- * The Database page.
- *
- * Reads only. Browsing, reading a table and running a statement all go through
- * the same adapters the CLI uses, and a statement that would write is refused
- * there rather than here.
- *
- * A change is deliberately not startable from this page. It goes through
- * `vr database mutations preview`, which prints what it would do, the warnings
- * it earns and the exact text to type back — a flow that reads badly as a
- * dialog and reads well as something you have to look at. The page says so
- * rather than offering a button that would open a wizard nobody should rush.
- */
+const STROKE = 1.75;
+
 type Tab = "browse" | "query" | "history";
 
 type PageSource =
@@ -24,30 +32,46 @@ type PageSource =
 
 type Paging = { offset: number; onPrevious?: () => void; onNext?: () => void; busy: boolean };
 
-/** Kinds that hold rows. A schema or database is opened, not read. */
 const READABLE = new Set(["table", "view", "materializedView", "collection", "key"]);
 
+const TABS: { id: Tab; label: string }[] = [
+  { id: "browse", label: "Browse" },
+  { id: "query", label: "Query" },
+  { id: "history", label: "History" },
+];
+
+function isReadOnly(connection: DatabaseConnection) {
+  return connection.readOnlyPolicy === "required"
+    || connection.environment.protection === "readOnly"
+    || connection.productionPolicy === "prohibitMutations";
+}
+
 export function DatabasePage() {
-  const [connections, setConnections] = useState<DatabaseConnection[]>([]);
+  const [connections, setConnections] = useState<DatabaseConnection[] | null>(null);
+  const [connectionsError, setConnectionsError] = useState("");
   const [selected, setSelected] = useState<string>("");
   const [tab, setTab] = useState<Tab>("browse");
   const [objects, setObjects] = useState<DatabaseObject[]>([]);
+  const [objectsRead, setObjectsRead] = useState(false);
   const [path, setPath] = useState<string[]>([]);
-  const [page, setPage] = useState<DatabasePage | null>(null);
+  const [page, setPage] = useState<ResultPage | null>(null);
   const [statement, setStatement] = useState("");
-  const [history, setHistory] = useState<DatabaseOperation[]>([]);
+  const [history, setHistory] = useState<DatabaseOperation[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const loadConnections = useCallback(() => {
+    setConnectionsError("");
     void ipc
       .databaseConnections()
       .then((all) => {
         setConnections(all);
         if (all.length > 0) setSelected((current) => current || all[0].id);
       })
-      .catch((reason) => setError(String(reason)));
+      .catch((reason) => setConnectionsError(String(reason)));
   }, []);
+
+  useEffect(loadConnections, [loadConnections]);
 
   const browse = useCallback(async (connection: string, into: string[]) => {
     setBusy(true); setError(""); setPage(null);
@@ -55,7 +79,7 @@ export function DatabasePage() {
       setObjects(await ipc.databaseBrowse(connection, into));
       setPath(into);
     } catch (reason) { setError(String(reason)); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setObjectsRead(true); }
   }, []);
 
   useEffect(() => {
@@ -68,8 +92,6 @@ export function DatabasePage() {
     void ipc.databaseOperations(50).then(setHistory).catch((reason) => setError(String(reason)));
   }, [tab]);
 
-  // What produced the page on screen, so Next and Previous can ask again
-  // from another offset. "More available" used to be a dead end.
   const [source, setSource] = useState<PageSource | null>(null);
   const [offset, setOffset] = useState(0);
 
@@ -84,11 +106,9 @@ export function DatabasePage() {
     finally { setBusy(false); }
   };
 
-  // Another connection's rows must not stay on screen under this one's name.
   useEffect(() => { setPage(null); setSource(null); setOffset(0); }, [selected]);
 
   const open = async (object: DatabaseObject) => {
-    // A column has nothing inside it; the row it belongs to is what to show.
     if (object.kind === "column") return;
     await fetchPage({ kind: "read", path: object.path, size: 100 }, 0);
   };
@@ -106,168 +126,255 @@ export function DatabasePage() {
     busy,
   } : undefined;
 
-  const connection = connections.find((entry) => entry.id === selected);
-  // Derived here rather than expected from the backend: the definition carries
-  // the policy switches, and what they mean for this page is a front-end
-  // question. `ConnectionDefinition::mutation_prohibition` is the same rule.
-  const readOnly = connection !== undefined
-    && (connection.readOnlyPolicy === "required"
-      || connection.environment.protection === "readOnly"
-      || connection.productionPolicy === "prohibitMutations");
+  const connection = connections?.find((entry) => entry.id === selected);
+  const readOnly = connection !== undefined && isReadOnly(connection);
   const summary = connection ? describeLocation(connection) : "";
 
-  if (connections.length === 0) {
-    return <div className="page">
-      <div className="page-head edith-head"><div><h1>Database</h1><div className="page-sub">Explore databases and run guarded changes</div></div></div>
-      <section className="settings-info">
-        <div className="info-glyph">◇</div>
-        <h2>No saved connections</h2>
-        <p>
-          Add one from the command line, where a password can be given on stdin rather than
-          ending up in a shell history:
-        </p>
-        <pre>vr database connections add local postgresql 127.0.0.1:5432 \
-  --username me --database app --password-stdin</pre>
-        <p>Passwords go to the desktop keyring. A connection definition never holds one.</p>
-      </section>
-    </div>;
+  if (connections === null || connections.length === 0) {
+    return (
+      <Page header={<PageHeader title="Database" subtitle="Explore databases and run guarded changes" />}>
+        {connectionsError ? (
+          <Notice tone="critical" title="Saved connections could not be read" actions={<Button size="small" onClick={loadConnections}>Retry</Button>}>
+            {connectionsError}
+          </Notice>
+        ) : connections === null ? (
+          <div className="db-layout db-layout-static">
+            <List label="Connections"><div className="db-pad"><SkeletonRows rows={3} label="Reading saved connections" /></div></List>
+            <Card><SkeletonRows rows={5} /></Card>
+          </div>
+        ) : (
+          <Card>
+            <EmptyState icon={<Database strokeWidth={STROKE} />} title="No saved connections">
+              Add one from the command line, where a password can be given on stdin rather than ending up in a shell history.
+            </EmptyState>
+            <pre className="db-command ui-mono ui-selectable">{"vr database connections add local postgresql 127.0.0.1:5432 \\\n  --username me --database app --password-stdin"}</pre>
+            <p className="db-footnote db-center">Passwords go to the desktop keyring. A connection definition never holds one.</p>
+          </Card>
+        )}
+      </Page>
+    );
   }
 
-  return <div className="page database-page">
-    <div className="page-head edith-head">
-      <div><h1>Database</h1><div className="page-sub">{summary || "Reads only — changes go through vr"}</div></div>
-      <div className="head-actions">
-        <select value={selected} onChange={(event) => setSelected(event.target.value)} aria-label="Connection">
-          {connections.map((entry) => <option key={entry.id} value={entry.id}>{entry.displayName}</option>)}
-        </select>
-      </div>
-    </div>
+  const placeholder = connection?.productHint === "redis" || connection?.productHint === "valkey" ? "session:*" : "SELECT * FROM orders LIMIT 20";
 
-    <div className="pill-tabs">
-      {(["browse", "query", "history"] as Tab[]).map((item) => (
-        <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>
-          {item[0].toUpperCase() + item.slice(1)}
-        </button>
-      ))}
-    </div>
-
-    {error && <div className="banner error">{error}</div>}
-    {readOnly && <div className="banner">This connection is read-only. No change can be made through it.</div>}
-
-    {tab === "browse" && <>
-      <section className="card">
-        <div className="card-head">
-          <h2>{path.length > 0 ? path.join(" › ") : "Objects"}</h2>
-          {path.length > 0 && <button className="button" onClick={() => void browse(selected, path.slice(0, -1))}>Up</button>}
-        </div>
-        {objects.length === 0
-          ? <p className="quiet">{busy ? "Reading…" : "Nothing here."}</p>
-          : <div className="list">
-              {objects.map((object) => (
-                <div className="list-row" key={object.path.join(".")}>
-                  <button className="quinjet-name" onClick={() => void browse(selected, object.path)} disabled={object.kind === "column"}>
-                    <strong>{object.path[object.path.length - 1]}</strong>
-                    <small>{object.kind}{object.nativeIdentifier ? ` · ${object.nativeIdentifier}` : ""}</small>
-                  </button>
-                  {READABLE.has(object.kind) && <button className="button" onClick={() => void open(object)}>Read</button>}
-                </div>
-              ))}
-            </div>}
-      </section>
-      {page && <ResultGrid page={page} paging={paging} />}
-    </>}
-
-    {tab === "query" && <>
-      <section className="card">
-        <div className="card-head"><h2>Statement</h2><span className="card-note">reads only — a write is refused</span></div>
-        <textarea
-          className="companion-body"
-          value={statement}
-          onChange={(event) => setStatement(event.target.value)}
-          placeholder={connection?.productHint === "redis" || connection?.productHint === "valkey" ? "session:*" : "SELECT * FROM orders LIMIT 20"}
-          spellCheck={false}
+  return (
+    <Page
+      width="fluid"
+      fill
+      className="db-page"
+      header={
+        <PageHeader
+          title="Database"
+          subtitle={<span className="ui-mono">{summary || "Reads only. Changes go through vr."}</span>}
+          accessory={<Tabs label="Database views" items={TABS} value={tab} onChange={setTab} />}
         />
-        <div className="cleaner-actions">
-          <button className="button primary" disabled={busy || !statement.trim()} onClick={() => void run()}>
-            {busy ? "Running…" : "Run"}
-          </button>
-          <span className="card-note">
-            To change data: <code>vr database mutations preview</code>, read what it says, then apply it
-            with the token and the exact confirmation text.
-          </span>
-        </div>
-      </section>
-      {page && <ResultGrid page={page} paging={paging} />}
-    </>}
-
-    {tab === "history" && <section className="card">
-      <div className="card-head"><h2>What Veronica has done</h2><span className="card-note">newest first</span></div>
-      {history.length === 0
-        ? <p className="quiet">Nothing yet.</p>
-        : <div className="list">
-            {history.map((record) => (
-              <div className="list-row" key={record.id}>
-                <div>
-                  <strong>{record.summary}</strong>
-                  <small>{record.connectionName} · {new Date(record.at).toLocaleString()}</small>
-                </div>
-                <span className={`pill ${record.outcome === "succeeded" ? "good" : record.outcome === "failed" ? "critical" : ""}`}>
-                  {record.outcome}{record.affectedRecords !== null ? ` · ${record.affectedRecords}` : ""}
-                </span>
-              </div>
+      }
+    >
+      <div className="db-layout">
+        <div className="db-connections">
+          <List label="Connections">
+            {connections.map((entry) => (
+              <ListRow
+                key={entry.id}
+                leading={<Database strokeWidth={STROKE} />}
+                title={entry.displayName}
+                subtitle={`${entry.productHint} · ${entry.environment.label}`}
+                trailing={isReadOnly(entry) ? <Badge>Read-only</Badge> : undefined}
+                selected={entry.id === selected}
+                onClick={() => setSelected(entry.id)}
+              />
             ))}
-          </div>}
-    </section>}
-  </div>;
+          </List>
+        </div>
+
+        <div className="db-workspace">
+          {readOnly && <Notice compact>This connection is read-only. No change can be made through it.</Notice>}
+          {error && <Notice tone="critical" compact actions={<Button size="small" variant="plain" onClick={() => setError("")}>Dismiss</Button>}>{error}</Notice>}
+
+          {tab === "browse" && (
+            <div className="db-browse">
+              <Card padding="none" className="db-objects">
+                <div className="db-objects-head">
+                  <IconButton
+                    size="small"
+                    label="Go up one level"
+                    icon={<ArrowUp strokeWidth={STROKE} />}
+                    disabled={path.length === 0 || busy}
+                    onClick={() => void browse(selected, path.slice(0, -1))}
+                  />
+                  <span className="db-path ui-mono ui-selectable" title={path.join(" › ")}>{path.length > 0 ? path.join(" › ") : "Objects"}</span>
+                </div>
+                <div className="db-scroll">
+                  {!objectsRead || (busy && objects.length === 0) ? (
+                    <div className="db-pad"><SkeletonRows rows={5} label="Reading objects" /></div>
+                  ) : objects.length === 0 ? (
+                    <EmptyState size="compact" title="Nothing here">This level holds no objects.</EmptyState>
+                  ) : (
+                    <List label="Objects" inset={false}>
+                      {objects.map((object) => (
+                        <ListRow
+                          key={object.path.join(".")}
+                          title={object.path[object.path.length - 1]}
+                          mono
+                          subtitle={`${object.kind}${object.nativeIdentifier ? ` · ${object.nativeIdentifier}` : ""}`}
+                          onClick={object.kind === "column" ? undefined : () => { if (!busy) void browse(selected, object.path); }}
+                          trailing={READABLE.has(object.kind) ? (
+                            <Button size="small" variant="plain" disabled={busy} onClick={() => void open(object)}>Read</Button>
+                          ) : undefined}
+                        />
+                      ))}
+                    </List>
+                  )}
+                </div>
+              </Card>
+              <ResultPane
+                page={page}
+                paging={paging}
+                busy={busy && source !== null}
+                empty={<EmptyState size="compact" icon={<Table2 strokeWidth={STROKE} />} title="No rows yet">Choose Read next to a table or view to see its rows.</EmptyState>}
+              />
+            </div>
+          )}
+
+          {tab === "query" && (
+            <div className="db-query">
+              <Card className="db-editor">
+                <TextArea
+                  mono
+                  className="db-statement"
+                  value={statement}
+                  onChange={(event) => setStatement(event.target.value)}
+                  placeholder={placeholder}
+                  spellCheck={false}
+                  aria-label="Statement"
+                />
+                <Toolbar
+                  leading={
+                    <span className="db-footnote">
+                      Reads only, a write is refused. To change data run <span className="ui-mono">vr database mutations preview</span>, read what it says, then apply it with the token and the exact confirmation text.
+                    </span>
+                  }
+                  trailing={
+                    <Button variant="primary" icon={<Play strokeWidth={STROKE} />} busy={busy} disabled={!statement.trim()} onClick={() => void run()}>
+                      {busy ? "Running…" : "Run"}
+                    </Button>
+                  }
+                />
+              </Card>
+              <ResultPane
+                page={page}
+                paging={paging}
+                busy={busy}
+                empty={<EmptyState size="compact" icon={<Table2 strokeWidth={STROKE} />} title="No results yet">Write a statement and run it to see rows here.</EmptyState>}
+              />
+            </div>
+          )}
+
+          {tab === "history" && (
+            <Card padding="none" className="db-history">
+              <div className="db-history-head">
+                <span className="db-pane-title">What Veronica has done</span>
+                <span className="db-footnote">Newest first</span>
+              </div>
+              <div className="db-scroll">
+                {history === null ? (
+                  <div className="db-pad"><SkeletonRows rows={5} label="Reading history" /></div>
+                ) : history.length === 0 ? (
+                  <EmptyState size="compact" title="Nothing yet">Reads and queries from Veronica and vr appear here.</EmptyState>
+                ) : (
+                  <List label="Operations" inset={false}>
+                    {history.map((record) => (
+                      <ListRow
+                        key={record.id}
+                        title={record.summary}
+                        mono
+                        subtitle={`${record.connectionName} · ${new Date(record.at).toLocaleString()}${record.error ? ` · ${record.error}` : ""}`}
+                        meta={record.affectedRecords !== null ? `${record.affectedRecords} record${record.affectedRecords === 1 ? "" : "s"}` : undefined}
+                        trailing={
+                          <Badge tone={record.outcome === "succeeded" ? "good" : record.outcome === "failed" ? "critical" : "neutral"}>
+                            {record.outcome === "succeeded" ? "Succeeded" : record.outcome === "failed" ? "Failed" : "Abandoned"}
+                          </Badge>
+                        }
+                      />
+                    ))}
+                  </List>
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </Page>
+  );
 }
 
-/** A page of records. Wide results scroll inside the card rather than widening it. */
-function ResultGrid({ page, paging }: { page: DatabasePage; paging?: Paging }) {
-  if (page.rows.length === 0) {
-    return <section className="card"><p className="quiet">No rows.</p></section>;
+function ResultPane({ page, paging, busy, empty }: { page: ResultPage | null; paging?: Paging; busy: boolean; empty: ReactNode }) {
+  if (!page) {
+    return (
+      <Card padding="none" className="db-results">
+        {busy ? <div className="db-pad"><SkeletonRows rows={6} label="Reading rows" /></div> : empty}
+      </Card>
+    );
   }
   const first = (paging?.offset ?? 0) + 1;
-  return <section className="card">
-    <div className="card-head">
-      <h2>{paging && paging.offset > 0 ? `Rows ${first}–${first + page.rows.length - 1}` : `${page.rows.length} row${page.rows.length === 1 ? "" : "s"}`}</h2>
-      <div className="head-actions">
-        <span className="card-note">{page.elapsedMillis} ms{page.hasMore ? " · more available" : ""}</span>
-        {paging?.onPrevious && <button className="button" disabled={paging.busy} onClick={paging.onPrevious}>Previous</button>}
-        {paging?.onNext && <button className="button" disabled={paging.busy} onClick={paging.onNext}>Next</button>}
+  const title = paging && paging.offset > 0
+    ? `Rows ${first} to ${first + page.rows.length - 1}`
+    : `${page.rows.length} row${page.rows.length === 1 ? "" : "s"}`;
+  return (
+    <Card padding="none" className="db-results">
+      <div className="db-results-head">
+        <div className="db-results-titles">
+          <span className="db-pane-title ui-num">{title}</span>
+          <span className="db-footnote ui-num">{page.elapsedMillis} ms{page.hasMore ? " · more available" : ""}</span>
+        </div>
+        {(paging?.onPrevious || paging?.onNext) && (
+          <div className="db-results-paging">
+            <IconButton size="small" label="Previous page" icon={<ChevronLeft strokeWidth={STROKE} />} disabled={!paging?.onPrevious || paging.busy} onClick={paging?.onPrevious} />
+            <IconButton size="small" label="Next page" icon={<ChevronRight strokeWidth={STROKE} />} disabled={!paging?.onNext || paging.busy} onClick={paging?.onNext} />
+          </div>
+        )}
       </div>
-    </div>
-    <div className="result-scroll">
-      <table className="result-grid">
-        <thead><tr>{page.columns.map((column) => <th key={column.name}>{column.name}</th>)}</tr></thead>
-        <tbody>
-          {page.rows.map((row, index) => (
-            <tr key={index}>
-              {row.map((value, cell) => <td key={cell} className={value.kind === "null" || value.kind === "missing" ? "quiet" : ""}>{renderValue(value)}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </section>;
+      <div className="db-scroll db-grid">
+        {page.rows.length === 0 ? (
+          <EmptyState size="compact" title="No rows">The statement returned nothing.</EmptyState>
+        ) : (
+          <Table label="Results">
+            <thead>
+              <tr>
+                {page.columns.map((column) => (
+                  <th key={column.name} title={column.typeName ?? undefined}>{column.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {page.rows.map((row, index) => (
+                <tr key={index}>
+                  {row.map((value, cell) => (
+                    <td key={cell} className={value.kind === "null" || value.kind === "missing" ? "muted" : undefined}>{renderValue(value)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </div>
+    </Card>
+  );
 }
 
-/** The same rule `Value::render` applies in the core. */
 function renderValue(value: { kind: string; value?: unknown }): string {
   switch (value.kind) {
-    case "missing": return "—";
+    case "missing": return "–";
     case "null": return "NULL";
     case "array": return `[${(value.value as unknown[])?.length ?? 0} items]`;
     case "object": return `{${(value.value as unknown[])?.length ?? 0} fields}`;
     case "binary": return "binary";
-    // Decimal is serialized transparently as its complete exact string. It is
-    // not a tuple: indexing it would show only the first character of 19.99.
     case "decimal": return typeof value.value === "string" ? value.value : String(value.value ?? "");
     case "productSpecific": return String((value.value as { rendered?: string })?.rendered ?? "");
     default: return String(value.value ?? "");
   }
 }
 
-/** The same one-line summary `Location::summary` produces in the core. */
 function describeLocation(connection: DatabaseConnection): string {
   const where = connection.location;
   const place = where.kind === "network"
