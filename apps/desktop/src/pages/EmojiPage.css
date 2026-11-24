@@ -1,0 +1,46 @@
+.emoji-search {
+  width: min(420px, 100%);
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 40px);
+  gap: var(--space-1);
+  justify-content: space-between;
+}
+
+.emoji-cell {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  transition: background-color var(--motion-feedback);
+}
+
+.emoji-cell:hover {
+  background: var(--fill-hover);
+}
+
+.emoji-cell:active {
+  background: var(--fill-pressed);
+}
+
+.emoji-cell[data-copied] {
+  background: var(--accent-tint);
+}
+
+@container main (max-width: 720px) {
+  .ui-toolbar-leading:has(.emoji-search) {
+    flex-basis: 100%;
+  }
+
+  .emoji-search {
+    width: 100%;
+  }
+}
