@@ -6,21 +6,15 @@ use std::time::Duration;
 use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use veronica_core::Settings;
 use veronica_host::catalog::CatalogStore;
 use veronica_host::fetch::HttpTransport;
-use veronica_host::update::{
-    plan, AutoUpdate, Decision, Trigger, DEFAULT_UPDATE_HOURS, MIN_UPDATE_HOURS,
-};
+use veronica_host::update::{plan, AutoUpdate, Decision, Trigger};
 use veronica_host::HostIdentity;
 
 use super::host::Host;
 use super::jobs::{submit, Action, Kind};
 
-const ENABLED: &str = "extensionsAutoUpdate";
-const HOURS: &str = "extensionsUpdateHours";
-const OFF: &str = "extensionsAutoUpdateOff";
 const FIRST_LOOK: Duration = Duration::from_mins(1);
 const LOOK_EVERY: Duration = Duration::from_mins(5);
 const RETRY_AFTER: chrono::Duration = chrono::Duration::hours(1);
@@ -35,29 +29,16 @@ pub(crate) struct Preferences {
 
 impl Preferences {
     pub(crate) fn read(settings: &Settings) -> Self {
-        let hours = settings
-            .get(HOURS)
-            .and_then(Value::as_u64)
-            .and_then(|hours| u32::try_from(hours).ok())
-            .unwrap_or(DEFAULT_UPDATE_HOURS);
-        let disabled = settings
-            .get(OFF)
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(|id| id.as_str().map(String::from))
-            .collect();
+        let stored = AutoUpdate::from_settings(settings);
         Self {
-            enabled: settings.bool_or(ENABLED, true),
-            interval_hours: hours.max(MIN_UPDATE_HOURS),
-            disabled,
+            enabled: stored.enabled,
+            interval_hours: stored.interval_hours,
+            disabled: stored.disabled,
         }
     }
 
     pub(crate) fn write(&self, settings: &mut Settings) {
-        settings.set(ENABLED, json!(self.enabled));
-        settings.set(HOURS, json!(self.interval_hours.max(MIN_UPDATE_HOURS)));
-        settings.set(OFF, json!(self.disabled));
+        self.planner().write_settings(settings);
     }
 
     fn planner(&self) -> AutoUpdate {
@@ -108,7 +89,7 @@ pub(crate) async fn run(host: Arc<Host>, settings_file: PathBuf) {
     tokio::time::sleep(FIRST_LOOK).await;
     loop {
         let settings = Settings::load(&settings_file)
-            .map(|settings| Preferences::read(&settings).planner())
+            .map(|settings| AutoUpdate::from_settings(&settings))
             .unwrap_or_default();
         let now = Utc::now();
         let checked = CatalogStore::new(host.layout().clone())
@@ -140,34 +121,6 @@ pub(crate) async fn run(host: Arc<Host>, settings_file: PathBuf) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn preferences_default_to_six_hours_and_round_trip_through_settings() {
-        let mut settings = Settings::default();
-        let defaults = Preferences::read(&settings);
-        assert_eq!((defaults.enabled, defaults.interval_hours), (true, 6));
-        assert!(defaults.disabled.is_empty());
-
-        let chosen = Preferences {
-            enabled: false,
-            interval_hours: 0,
-            disabled: BTreeSet::from(["media".to_string()]),
-        };
-        chosen.write(&mut settings);
-        let stored = Preferences::read(&settings);
-        assert_eq!(stored.interval_hours, 1);
-        assert_eq!(
-            (stored.enabled, &stored.disabled),
-            (false, &chosen.disabled)
-        );
-        assert!(!stored.planner().allows("media"));
-
-        settings.set(HOURS, json!("often"));
-        settings.set(OFF, json!("media"));
-        let odd = Preferences::read(&settings);
-        assert_eq!(odd.interval_hours, 6);
-        assert!(odd.disabled.is_empty());
-    }
 
     #[test]
     fn updates_wait_while_a_page_is_open() {

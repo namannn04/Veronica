@@ -3,6 +3,8 @@ use std::hash::{BuildHasher, Hasher};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Duration, Utc};
+use serde_json::{json, Value};
+use veronica_core::settings::Settings;
 use veronica_protocol::catalog::{Catalog, CatalogVersion, TargetArtifact};
 use veronica_protocol::PackageVersion;
 
@@ -12,6 +14,9 @@ use crate::registry::{InstalledExtension, Origin, Registry};
 
 pub const DEFAULT_UPDATE_HOURS: u32 = 6;
 pub const MIN_UPDATE_HOURS: u32 = 1;
+pub const AUTO_UPDATE_KEY: &str = "extensionsAutoUpdate";
+pub const UPDATE_HOURS_KEY: &str = "extensionsUpdateHours";
+pub const AUTO_UPDATE_OFF_KEY: &str = "extensionsAutoUpdateOff";
 const JITTER_DIVISOR: i32 = 10;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +37,35 @@ impl Default for AutoUpdate {
 }
 
 impl AutoUpdate {
+    pub fn from_settings(settings: &Settings) -> Self {
+        let hours = settings
+            .get(UPDATE_HOURS_KEY)
+            .and_then(Value::as_u64)
+            .and_then(|hours| u32::try_from(hours).ok())
+            .unwrap_or(DEFAULT_UPDATE_HOURS);
+        let disabled = settings
+            .get(AUTO_UPDATE_OFF_KEY)
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|id| id.as_str().map(String::from))
+            .collect();
+        Self {
+            enabled: settings.bool_or(AUTO_UPDATE_KEY, true),
+            interval_hours: hours.max(MIN_UPDATE_HOURS),
+            disabled,
+        }
+    }
+
+    pub fn write_settings(&self, settings: &mut Settings) {
+        settings.set(AUTO_UPDATE_KEY, json!(self.enabled));
+        settings.set(
+            UPDATE_HOURS_KEY,
+            json!(self.interval_hours.max(MIN_UPDATE_HOURS)),
+        );
+        settings.set(AUTO_UPDATE_OFF_KEY, json!(self.disabled));
+    }
+
     pub fn interval(&self) -> Duration {
         Duration::hours(self.interval_hours.max(MIN_UPDATE_HOURS).into())
     }
@@ -179,9 +213,37 @@ pub fn install_from_catalog(
 
 #[cfg(test)]
 mod tests {
-    use chrono::{DateTime, Duration, Utc};
+    use std::collections::BTreeSet;
 
-    use super::AutoUpdate;
+    use chrono::{DateTime, Duration, Utc};
+    use serde_json::json;
+    use veronica_core::settings::Settings;
+
+    use super::{AutoUpdate, AUTO_UPDATE_OFF_KEY, UPDATE_HOURS_KEY};
+
+    #[test]
+    fn preferences_default_to_six_hours_and_round_trip_through_settings() {
+        let mut settings = Settings::default();
+        assert_eq!(AutoUpdate::from_settings(&settings), AutoUpdate::default());
+        let chosen = AutoUpdate {
+            enabled: false,
+            interval_hours: 0,
+            disabled: BTreeSet::from(["media".to_string()]),
+        };
+        chosen.write_settings(&mut settings);
+        let stored = AutoUpdate::from_settings(&settings);
+        assert_eq!(stored.interval_hours, 1);
+        assert_eq!(
+            (stored.enabled, &stored.disabled),
+            (false, &chosen.disabled)
+        );
+        assert!(!stored.allows("media"));
+        settings.set(UPDATE_HOURS_KEY, json!("often"));
+        settings.set(AUTO_UPDATE_OFF_KEY, json!("media"));
+        let odd = AutoUpdate::from_settings(&settings);
+        assert_eq!(odd.interval_hours, 6);
+        assert!(odd.disabled.is_empty());
+    }
 
     fn at(raw: &str) -> DateTime<Utc> {
         raw.parse().unwrap()

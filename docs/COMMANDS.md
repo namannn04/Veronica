@@ -57,7 +57,9 @@ vr cleaner clean --yes       move it to the Trash; --root sweeps a project tree
 vr backup export             back up settings and persistent app data
 vr backup inspect <file>     verify and describe an archive without restoring
 vr backup import <file> --confirm  validate and restore an archive atomically
-vr extensions                what can run on this session, and why not
+vr extensions                every extension, where it came from, and what it can run
+vr extensions install <id>   preview an install; --yes downloads, verifies and installs
+vr extensions doctor         exec permission, backends, tools and the catalog
 vr tools                     the command line programs the extensions need
 vr tools install <tool>      fetch one, when there is a route Veronica can drive
 vr config set <key> <value>  every setting the UI exposes

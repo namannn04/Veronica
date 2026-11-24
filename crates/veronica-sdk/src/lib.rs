@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod dirs;
+mod gate;
 pub mod host_client;
 pub mod runtime;
 

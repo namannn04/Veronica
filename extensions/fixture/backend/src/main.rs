@@ -47,12 +47,7 @@ enum Action {
     },
 }
 
-async fn run_cli(
-    output: Output<'_>,
-    context: &Context,
-    confirm: bool,
-    root: Root,
-) -> anyhow::Result<()> {
+async fn run_cli(output: Output<'_>, context: &Context, root: Root) -> anyhow::Result<()> {
     let Root::Fixture { action } = root;
     match action {
         Action::Echo { text } => output.emit(
@@ -62,12 +57,6 @@ async fn run_cli(
         Action::Fail { code } => {
             let code = ExitCode::from_code(code).unwrap_or(ExitCode::Failed);
             Err(Failure::new(code, format!("failed with {}", code.code())).into())
-        }
-        Action::Wipe { item } if !confirm => {
-            output.emit(&json!({ "wouldRemove": item }), || {
-                format!("would remove {item}")
-            })?;
-            Err(Failure::new(ExitCode::ConfirmationRequired, "wiping needs confirmation").into())
         }
         Action::Wipe { item } => {
             output.emit(&json!({ "removed": item }), || format!("removed {item}"))
@@ -79,6 +68,17 @@ async fn run_cli(
             })
         }
     }
+}
+
+fn preview(output: Output<'_>, root: Root) -> anyhow::Result<()> {
+    let Root::Fixture { action } = root;
+    let Action::Wipe { item } = action else {
+        return Err(Failure::new(ExitCode::ConfirmationRequired, "this needs confirmation").into());
+    };
+    output.emit(&json!({ "wouldRemove": item }), || {
+        format!("would remove {item}")
+    })?;
+    Err(Failure::new(ExitCode::ConfirmationRequired, "wiping needs confirmation").into())
 }
 
 struct CancelledMarker {
@@ -170,7 +170,21 @@ impl Extension for Fixture {
             Err(result) => return Ok(result),
         };
         let capture = Capture::new(params.json);
-        let outcome = run_cli(capture.output(), &context, params.confirm, program.root).await;
+        let outcome = run_cli(capture.output(), &context, program.root).await;
+        Ok(capture.finish(outcome))
+    }
+
+    async fn cli_preview(
+        &self,
+        _context: Context,
+        params: CliRunParams,
+    ) -> Result<CliRunResult, ErrorObject> {
+        let program = match parse::<Program>(&params) {
+            Ok(program) => program,
+            Err(result) => return Ok(result),
+        };
+        let capture = Capture::new(params.json);
+        let outcome = preview(capture.output(), program.root);
         Ok(capture.finish(outcome))
     }
 
