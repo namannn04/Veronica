@@ -1,10 +1,3 @@
-//! `vr` — Veronica's command line interface.
-//!
-//! The Ubuntu counterpart to Edith's `ed`. It reaches the same domain
-//! operations as the UI, every read command takes `--json`, stdout carries
-//! exactly one document, logs go to stderr, and exit codes are meaningful, so
-//! an agent can drive Veronica headlessly.
-
 mod alerts_cmd;
 mod attention_cmd;
 mod audit_cmd;
@@ -45,17 +38,19 @@ use format::Output;
 #[command(
     name = "vr",
     version,
-    about = "Veronica — native control center for Ubuntu",
+    about = "Veronica: native control center for Ubuntu",
     long_about = None,
     disable_help_subcommand = true
 )]
 struct Cli {
-    /// Emit JSON on stdout instead of human-readable text.
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "Emit JSON on stdout instead of human-readable text"
+    )]
     json: bool,
 
-    /// Increase log verbosity on stderr.
-    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
+    #[arg(short, long, global = true, action = clap::ArgAction::Count, help = "Increase log verbosity on stderr")]
     verbose: u8,
 
     #[command(subcommand)]
@@ -64,120 +59,159 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Local notch image conversion and QR generation.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Local notch image conversion and QR generation")]
     Utility(utility_cmd::UtilityCommand),
-    /// On-demand, read-only developer project checks.
-    #[command(subcommand)]
+    #[command(subcommand, about = "On-demand, read-only developer project checks")]
     Workspace(workspace_cmd::WorkspaceCommand),
-    /// Inspect local TCP/UDP ports and gracefully stop owned processes.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Inspect local TCP/UDP ports and gracefully stop owned processes"
+    )]
     Ports(services_cmd::PortsCommand),
-    /// Local Docker status, containers and published ports.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Local Docker status, containers and published ports"
+    )]
     Docker(services_cmd::DockerCommand),
-    /// Report the resolved environment, capabilities and extension state.
+    #[command(about = "Report the resolved environment, capabilities and extension state")]
     Diagnose,
-    /// Read and write settings.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Read and write settings")]
     Config(ConfigCommand),
-    /// Agent usage: totals, limits, projects and collection.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Agent usage: totals, limits, projects and collection"
+    )]
     Usage(usage_cmd::UsageCommand),
-    /// Rate-limit alerts: the notifier's state, a delivery check and a reset.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Rate-limit alerts: the notifier's state, a delivery check and a reset"
+    )]
     Alerts(alerts_cmd::AlertsCommand),
-    /// Attention focus sessions and local attention history.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Attention focus sessions and local attention history"
+    )]
     Attention(attention_cmd::AttentionCommand),
-    /// Export, inspect and restore Veronica's persistent data.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Export, inspect and restore Veronica's persistent data"
+    )]
     Backup(backup_cmd::BackupCommand),
-    /// The clipboard history.
-    #[command(subcommand, alias = "clip")]
+    #[command(subcommand, alias = "clip", about = "The clipboard history")]
     Clipboard(clipboard_cmd::ClipboardCommand),
-    /// The disk cleaner: measure developer caches and build output, and move
-    /// what you choose to the Trash.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "The disk cleaner: measure developer caches and build output, and move what you choose to the Trash"
+    )]
     Cleaner(cleaner_cmd::CleanerCommand),
-    /// App Maintenance: what is installed, what can be updated, and removing
-    /// it with the consequences shown first.
-    #[command(subcommand, alias = "pkg")]
+    #[command(
+        subcommand,
+        alias = "pkg",
+        about = "App Maintenance: what is installed, what can be updated, and removing it with the consequences shown first"
+    )]
     Maintenance(maintenance_cmd::MaintenanceCommand),
-    /// Site Audit: crawl a site's sitemap and check each page's metadata.
-    #[command(subcommand, alias = "seo")]
+    #[command(
+        subcommand,
+        alias = "seo",
+        about = "Site Audit: crawl a site's sitemap and check each page's metadata"
+    )]
     Audit(audit_cmd::AuditCommand),
-    /// Explore databases and run guarded changes.
-    #[command(subcommand, alias = "db")]
+    #[command(
+        subcommand,
+        alias = "db",
+        about = "Explore databases and run guarded changes"
+    )]
     Database(database_cmd::DatabaseCommand),
-    /// Quinjet: discover and open review workspaces.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Quinjet: discover and open review workspaces")]
     Quinjet(quinjet_cmd::QuinjetCommand),
-    /// Sample a colour from the screen and keep a swatch history.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Sample a colour from the screen and keep a swatch history"
+    )]
     Color(color_cmd::ColorCommand),
-    /// The computers Veronica can reach.
-    #[command(subcommand, alias = "machine")]
+    #[command(
+        subcommand,
+        alias = "machine",
+        about = "The computers Veronica can reach"
+    )]
     Machines(machines_cmd::MachineCommand),
-    /// Your agenda, from every configured calendar.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Your agenda, from every configured calendar")]
     Calendar(calendar_cmd::CalendarCommand),
-    /// Control whatever is playing, through MPRIS.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Control whatever is playing, through MPRIS")]
     Media(media_cmd::MediaCommand),
-    /// CPU, memory, storage and battery information.
-    #[command(subcommand)]
+    #[command(subcommand, about = "CPU, memory, storage and battery information")]
     System(system_cmd::SystemCommand),
-    /// Keep Awake and Lid Awake, open-ended or for a while.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Keep Awake and Lid Awake, open-ended or for a while"
+    )]
     Power(power_cmd::PowerCommand),
-    /// Presenter mode: blur sensitive figures on a shared screen.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Presenter mode: blur sensitive figures on a shared screen"
+    )]
     Presenter(presenter_cmd::PresenterCommand),
-    /// Focus Dim: darken everything behind the window you are working in.
-    #[command(subcommand, name = "focus-dim")]
+    #[command(
+        subcommand,
+        name = "focus-dim",
+        about = "Focus Dim: darken everything behind the window you are working in"
+    )]
     FocusDim(focus_dim_cmd::FocusDimCommand),
-    /// Keystroke Highlight: show each key press on screen for demos.
-    #[command(subcommand, name = "keystroke-highlight", alias = "keys")]
+    #[command(
+        subcommand,
+        name = "keystroke-highlight",
+        alias = "keys",
+        about = "Keystroke Highlight: show each key press on screen for demos"
+    )]
     Keystroke(keystroke_cmd::KeystrokeCommand),
-    /// Search the emoji catalogue and copy what you pick.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Search the emoji catalogue and copy what you pick"
+    )]
     Emoji(emoji_cmd::EmojiCommand),
-    /// The live Herdr agent board.
-    #[command(subcommand)]
+    #[command(subcommand, about = "The live Herdr agent board")]
     Herdr(herdr_cmd::HerdrCommand),
-    /// Owned file copies shared by the notch and native drop shelf.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Owned file copies shared by the notch and native drop shelf"
+    )]
     Shelf(shelf_cmd::ShelfCommand),
-    /// Your private notes and voice-memo metadata.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Your private notes and voice-memo metadata")]
     Companion(companion_cmd::CompanionCommand),
-    /// The command line programs Veronica's extensions need, and whether
-    /// this computer has them.
+    #[command(
+        about = "The command line programs Veronica's extensions need, and whether this computer has them"
+    )]
     Tools {
         #[command(subcommand)]
         command: Option<tools_cmd::ToolCommand>,
     },
-    /// List, inspect, enable or disable Veronica's extensions.
-    #[command(name = "extensions", alias = "ext")]
+    #[command(
+        name = "extensions",
+        alias = "ext",
+        about = "List, inspect, enable or disable Veronica's extensions"
+    )]
     Extensions {
         #[command(subcommand)]
         command: Option<extensions_cmd::ExtensionCommand>,
-        /// Filter by title or subtitle.
-        #[arg(long, default_value = "", global = true)]
+        #[arg(
+            long,
+            default_value = "",
+            global = true,
+            help = "Filter by title or subtitle"
+        )]
         query: String,
     },
 }
 
 #[derive(Subcommand)]
 enum ConfigCommand {
-    /// Print every stored setting.
+    #[command(about = "Print every stored setting")]
     List,
-    /// Print one setting.
+    #[command(about = "Print one setting")]
     Get { key: String },
-    /// Store one setting. The value is coerced to a JSON type.
+    #[command(about = "Store one setting. The value is coerced to a JSON type")]
     Set { key: String, value: String },
-    /// Remove one setting, restoring its default.
+    #[command(about = "Remove one setting, restoring its default")]
     Unset { key: String },
 }
 
@@ -186,7 +220,6 @@ fn main() {
     init_logging(cli.verbose);
 
     if let Err(error) = run(&cli) {
-        // Diagnostics belong on stderr so stdout stays one clean document.
         eprintln!("vr: {error:#}");
         std::process::exit(1);
     }
@@ -214,8 +247,6 @@ async fn run(cli: &Cli) -> Result<()> {
     directories.prepare()?;
 
     match &cli.command {
-        // Probing the desktop portal needs a D-Bus round trip, so these two
-        // resolve the session asynchronously rather than assuming.
         Command::Diagnose => {
             let session = veronica_system::detect_session().await;
             diagnose(&directories, session, output)
@@ -234,7 +265,6 @@ async fn run(cli: &Cli) -> Result<()> {
             .await
         }
         Command::Tools { command } => {
-            // `vr tools` on its own is `vr tools ls`, as Edith's is.
             tools_cmd::run(
                 command.as_ref().unwrap_or(&tools_cmd::ToolCommand::Ls),
                 output,
@@ -260,8 +290,6 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Herdr(command) => herdr_cmd::run(command, output).await,
         Command::Companion(command) => companion_cmd::run(&directories, command, output),
         Command::Emoji(command) => {
-            // The picker honours the configured skin tone, so the CLI and the
-            // app agree on what a pick produces.
             let settings = Settings::load(&directories.settings_file())?;
             emoji_cmd::run(&directories, &settings, command, output).await
         }
@@ -274,8 +302,6 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
         Command::Quinjet(command) => quinjet_cmd::run(&directories, command, output).await,
         Command::Color(command) => {
-            // The picker honours the configured format and profile, so the CLI
-            // and the app agree on what a pick produces.
             let settings = Settings::load(&directories.settings_file())?;
             color_cmd::run(&directories, &settings, command, output).await
         }

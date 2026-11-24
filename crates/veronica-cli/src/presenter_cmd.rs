@@ -1,11 +1,3 @@
-//! `vr presenter` — the blur that hides figures on a shared screen.
-//!
-//! Mirrors Edith's `presenter status|start|stop`, plus the two actions Linux
-//! needs: enabling the feature, and dismissing one detected share.
-//!
-//! `status` also reports what detection currently sees, which is the thing to
-//! look at when presenter mode did not activate during a call.
-
 use anyhow::Result;
 use serde_json::json;
 use veronica_core::{AppDirectories, BlurCategory, PresenterState, Settings};
@@ -14,29 +6,25 @@ use crate::format::Output;
 
 #[derive(clap::Subcommand)]
 pub enum PresenterCommand {
-    /// Report the resolved state and what detection sees.
+    #[command(about = "Report the resolved state and what detection sees")]
     Status,
-    /// Blur now.
+    #[command(about = "Blur now")]
     Start,
-    /// Stop blurring. Does not disable detection.
+    #[command(about = "Stop blurring. Does not disable detection")]
     Stop,
-    /// Turn the feature on.
+    #[command(about = "Turn the feature on")]
     Enable,
-    /// Turn the feature off, so nothing blurs and no detection runs.
+    #[command(about = "Turn the feature off, so nothing blurs and no detection runs")]
     Disable,
-    /// Ignore the share happening now. Cleared when it ends.
+    #[command(about = "Ignore the share happening now. Cleared when it ends")]
     Dismiss,
-    /// Undo a dismissal.
+    #[command(about = "Undo a dismissal")]
     Resume,
-    /// Choose which categories are blurred.
+    #[command(about = "Choose which categories are blurred")]
     Blur {
-        /// money, usage, agents, calendar or music.
+        #[arg(help = "money, usage, agents, calendar or music")]
         category: String,
-        /// `on` or `off`.
-        ///
-        /// The explicit action is required: clap would otherwise treat a
-        /// positional bool as a flag and refuse to take a value.
-        #[arg(value_parser = parse_switch, action = clap::ArgAction::Set)]
+        #[arg(value_parser = parse_switch, action = clap::ArgAction::Set, help = "`on` or `off`", long_help = "`on` or `off`.\n\nThe explicit action is required: clap would otherwise treat a positional bool as a flag and refuse to take a value.")]
         value: bool,
     },
 }
@@ -73,9 +61,6 @@ pub async fn run(
     let path = directories.settings_file();
     let mut settings = Settings::load(&path)?;
 
-    // The write commands all set one key. Reporting happens afterwards from the
-    // re-read state, so the output is always what is now stored rather than what
-    // was asked for.
     let write = match command {
         PresenterCommand::Status => None,
         PresenterCommand::Start => Some(("presenterMode", json!(true))),
@@ -91,9 +76,6 @@ pub async fn run(
     };
 
     if let Some((key, value)) = write {
-        // Edith refuses start/stop while the feature is disabled rather than
-        // storing a flag that does nothing. Same here, with a message that says
-        // what to do about it.
         if matches!(command, PresenterCommand::Start | PresenterCommand::Stop)
             && !settings.bool_or("presenterEnabled", false)
         {

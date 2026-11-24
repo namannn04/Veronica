@@ -1,17 +1,3 @@
-//! `vr quinjet` — discover and open Quinjet review workspaces.
-//!
-//! Edith's `ed quinjet`, over the same Quinjet JSON contract. Discovery runs
-//! against this computer or one configured SSH machine, exactly as Edith's
-//! does.
-//!
-//! `open` prints the exact command and starts nothing; `launch` runs it. The
-//! split is Edith's, and it is what makes this usable over SSH and inside a
-//! terminal the user already has open.
-//!
-//! Edith's native session commands — its tabs, its switcher, its restart — have
-//! no counterpart here, because Veronica has no embedded terminal to host them
-//! in. Quinjet opens in the installed terminal instead.
-
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::{AppDirectories, Settings};
@@ -24,32 +10,34 @@ const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
 pub enum QuinjetCommand {
-    /// Recent projects and their worktrees.
+    #[command(about = "Recent projects and their worktrees")]
     Projects {
-        /// Which machine to look on. Defaults to this computer.
-        #[arg(long, default_value = "local")]
+        #[arg(
+            long,
+            default_value = "local",
+            help = "Which machine to look on. Defaults to this computer"
+        )]
         machine: String,
     },
-    /// Every worktree of one project.
+    #[command(about = "Every worktree of one project")]
     Worktrees {
-        /// A project path, or a path inside one.
+        #[arg(help = "A project path, or a path inside one")]
         path: String,
         #[arg(long, default_value = "local")]
         machine: String,
     },
-    /// Print the command that opens a worktree, without running it.
+    #[command(about = "Print the command that opens a worktree, without running it")]
     Open {
-        /// A worktree, or a project — its current worktree is chosen.
+        #[arg(help = "A worktree, or a project, whose current worktree is chosen")]
         path: String,
         #[arg(long)]
         theme: Option<String>,
-        /// light or dark.
-        #[arg(long)]
+        #[arg(long, help = "light or dark")]
         appearance: Option<String>,
         #[arg(long, default_value = "local")]
         machine: String,
     },
-    /// Open a worktree in the installed terminal.
+    #[command(about = "Open a worktree in the installed terminal")]
     Launch {
         path: String,
         #[arg(long)]
@@ -73,11 +61,6 @@ fn find(settings: &Settings, id: &str) -> Result<Machine> {
         .with_context(|| format!("no machine called {id}; run `vr machines ls` for the list"))
 }
 
-/// Run a Quinjet command, here or on a machine.
-///
-/// The remote path runs `quinjet` over the same SSH transport the fleet probe
-/// uses, so the user's own config, keys and jump hosts apply and Veronica never
-/// handles a credential.
 async fn discover(machine: &Machine, args: &[String]) -> Result<Vec<u8>> {
     if machine.is_local() {
         let executable = quinjet::executable().context(
@@ -140,7 +123,7 @@ pub async fn run(
                             project
                                 .default_worktree()
                                 .map(|worktree| worktree.label())
-                                .unwrap_or_else(|| "—".to_string()),
+                                .unwrap_or_else(|| "-".to_string()),
                             project.available_worktrees().len().to_string(),
                             project
                                 .default_worktree()
@@ -194,8 +177,6 @@ pub async fn run(
                 theme: theme.clone(),
                 appearance: appearance.clone(),
             };
-            // Resolve the path first: naming a project should open the worktree
-            // you are on, which is what Edith's `open` does.
             let worktree = resolve(&machine, path).await?;
             let executable = if machine.is_local() {
                 quinjet::executable()
@@ -233,18 +214,12 @@ pub async fn run(
     }
 }
 
-/// Turn whatever the user typed into a worktree Quinjet can open.
-///
-/// A worktree path is used as given; a project path resolves to the worktree
-/// you are on. Asking Quinjet rather than guessing means the answer matches
-/// what the tool itself would do.
 async fn resolve(machine: &Machine, path: &str) -> Result<String> {
     let worktrees =
         quinjet::parse_worktrees(&discover(machine, &quinjet::worktrees_args(path)).await?)?;
     if worktrees.is_empty() {
         anyhow::bail!("{path} is not a git worktree Quinjet can open");
     }
-    // Exactly what `Project::default_worktree` does, over a bare list.
     let openable: Vec<_> = worktrees.iter().filter(|entry| entry.can_open()).collect();
     let chosen = openable
         .iter()

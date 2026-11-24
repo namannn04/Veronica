@@ -1,5 +1,3 @@
-//! `vr calendar` — the agenda, from every configured calendar.
-
 use anyhow::{Context, Result};
 use chrono::Local;
 use clap::Subcommand;
@@ -9,21 +7,17 @@ use crate::format::{self, Output};
 
 #[derive(Subcommand)]
 pub enum CalendarCommand {
-    /// The agenda, grouped by day.
-    #[command(alias = "agenda")]
+    #[command(alias = "agenda", about = "The agenda, grouped by day")]
     List {
-        /// How many days ahead to include.
-        #[arg(long, default_value_t = 7)]
+        #[arg(long, default_value_t = 7, help = "How many days ahead to include")]
         days: i64,
-        /// Include events that have already finished today.
-        #[arg(long)]
+        #[arg(long, help = "Include events that have already finished today")]
         all: bool,
     },
-    /// The next event that has not started yet.
+    #[command(about = "The next event that has not started yet")]
     Next,
 }
 
-/// A time, or "all day" for an event with no time slot.
 fn slot(event: &veronica_calendar::Event) -> String {
     if event.all_day {
         return "all day".to_string();

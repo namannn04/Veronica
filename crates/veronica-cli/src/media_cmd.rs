@@ -1,5 +1,3 @@
-//! `vr media` — control whatever is playing, through MPRIS.
-
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use veronica_media::{mpris, Transport};
@@ -8,22 +6,23 @@ use crate::format::{self, Output};
 
 #[derive(Subcommand)]
 pub enum MediaCommand {
-    /// What is playing right now.
+    #[command(about = "What is playing right now")]
     Status,
-    /// Every MPRIS player registered on the session bus.
+    #[command(about = "Every MPRIS player registered on the session bus")]
     Players,
-    /// The local music library under ~/Music, searchable.
-    #[command(alias = "lib")]
+    #[command(
+        alias = "lib",
+        about = "The local music library under ~/Music, searchable"
+    )]
     Library {
-        /// Match the title, artist or album.
-        #[arg(default_value = "")]
+        #[arg(default_value = "", help = "Match the title, artist or album")]
         query: String,
         #[arg(long, default_value_t = 40)]
         limit: usize,
     },
     Play,
     Pause,
-    /// Play if paused, pause if playing.
+    #[command(about = "Play if paused, pause if playing")]
     Toggle,
     Next,
     #[command(alias = "prev")]
@@ -31,7 +30,6 @@ pub enum MediaCommand {
     Stop,
 }
 
-/// Track position as `m:ss / m:ss`, from the microseconds MPRIS reports.
 fn timeline(position_us: Option<i64>, length_us: Option<i64>) -> String {
     let clock = |us: i64| {
         let seconds = us / 1_000_000;
@@ -41,12 +39,10 @@ fn timeline(position_us: Option<i64>, length_us: Option<i64>) -> String {
         (Some(position), Some(length)) => format!("{} / {}", clock(position), clock(length)),
         (Some(position), None) => clock(position),
         (None, Some(length)) => format!("? / {}", clock(length)),
-        (None, None) => "—".to_string(),
+        (None, None) => "-".to_string(),
     }
 }
 
-/// The library folder Veronica indexes. The same one the app scans, so the two
-/// never disagree about what is in it.
 fn music_root() -> Result<std::path::PathBuf> {
     let home = veronica_core::paths::home_dir()
         .ok_or_else(|| anyhow::anyhow!("cannot resolve the home directory"))?;
@@ -54,9 +50,6 @@ fn music_root() -> Result<std::path::PathBuf> {
 }
 
 pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
-    // The library is files on disk, not a player on the bus, so it answers
-    // before any D-Bus connection is attempted — and works with no session bus
-    // at all, over SSH.
     if let MediaCommand::Library { query, limit } = command {
         let root = music_root()?;
         if !root.is_dir() {
@@ -160,20 +153,18 @@ pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
                 MediaCommand::Next => Transport::Next,
                 MediaCommand::Previous => Transport::Previous,
                 MediaCommand::Stop => Transport::Stop,
-                // Status, Players and Library are all handled above.
                 MediaCommand::Status | MediaCommand::Players | MediaCommand::Library { .. } => {
                     unreachable!()
                 }
             };
             mpris::control(&connection, transport).await?;
-            // Report the resulting state so a script does not have to poll.
             let playing = mpris::now_playing(&connection).await?;
             output.emit(&playing, || {
                 playing
                     .as_ref()
                     .map(|p| {
                         format!(
-                            "{:?} · {} — {}",
+                            "{:?} · {} · {}",
                             p.status.unwrap_or(veronica_media::PlaybackStatus::Stopped),
                             if p.title.is_empty() {
                                 "untitled"
@@ -201,7 +192,7 @@ mod tests {
         );
         assert_eq!(timeline(Some(5_000_000), None), "0:05");
         assert_eq!(timeline(None, Some(60_000_000)), "? / 1:00");
-        assert_eq!(timeline(None, None), "—");
+        assert_eq!(timeline(None, None), "-");
     }
 
     #[test]

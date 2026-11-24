@@ -1,11 +1,3 @@
-//! `vr system` — what this computer is doing right now.
-//!
-//! Edith's `ed system` has `stats` and `disks`; Veronica keeps both names and
-//! adds the reads Linux makes cheap and Edith gets from separate places: the
-//! running processes, the per-application audio mixer and Bluetooth. Every
-//! subcommand reads the machine directly, so none of them needs the app to be
-//! running.
-
 use anyhow::Result;
 use clap::Subcommand;
 use veronica_system::audio::StreamDirection;
@@ -14,50 +6,58 @@ use crate::format::{self, Output};
 
 #[derive(Subcommand)]
 pub enum SystemCommand {
-    /// Read CPU, memory, disks, temperatures and battery state.
+    #[command(about = "Read CPU, memory, disks, temperatures and battery state")]
     Snapshot,
-    /// Sample CPU, memory and load for this computer.
+    #[command(about = "Sample CPU, memory and load for this computer")]
     Stats,
-    /// Mounted volumes and their free space.
+    #[command(about = "Mounted volumes and their free space")]
     Disks,
-    /// Running processes, by CPU or memory.
-    #[command(alias = "ps")]
+    #[command(alias = "ps", about = "Running processes, by CPU or memory")]
     Processes {
-        /// Sort by `cpu`, `memory` or `name`.
-        #[arg(long, default_value = "cpu")]
+        #[arg(
+            long,
+            default_value = "cpu",
+            help = "Sort by `cpu`, `memory` or `name`"
+        )]
         sort: ProcessSort,
-        /// How many rows to print. Ignored with `--json`, which emits them all.
-        #[arg(long, default_value_t = 15)]
+        #[arg(
+            long,
+            default_value_t = 15,
+            help = "How many rows to print. Ignored with `--json`, which emits them all"
+        )]
         limit: usize,
     },
-    /// The per-application audio mixer: every stream and its volume.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "The per-application audio mixer: every stream and its volume"
+    )]
     Audio(AudioCommand),
-    /// Bluetooth adapters and the devices BlueZ knows about.
+    #[command(about = "Bluetooth adapters and the devices BlueZ knows about")]
     Bluetooth,
 }
 
 #[derive(Subcommand)]
 pub enum AudioCommand {
-    /// List every application stream, playing or recording.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "List every application stream, playing or recording"
+    )]
     List,
-    /// Set one stream's volume, as a percentage or a fraction.
+    #[command(about = "Set one stream's volume, as a percentage or a fraction")]
     Volume {
-        /// The PipeWire node id, as printed by `vr system audio list`.
+        #[arg(help = "The PipeWire node id, as printed by `vr system audio list`")]
         id: u32,
-        /// `40`, `40%` or `0.4` — all the same volume.
+        #[arg(help = "`40`, `40%` or `0.4`, all the same volume")]
         level: String,
     },
-    /// Mute one stream, or every stream at once with `--all`.
+    #[command(about = "Mute one stream, or every stream at once with `--all`")]
     Mute {
-        /// The PipeWire node id. Omit it with `--all`.
+        #[arg(help = "The PipeWire node id. Omit it with `--all`")]
         id: Option<u32>,
-        /// Apply to every application stream.
-        #[arg(long)]
+        #[arg(long, help = "Apply to every application stream")]
         all: bool,
     },
-    /// Unmute one stream, or every stream at once with `--all`.
+    #[command(about = "Unmute one stream, or every stream at once with `--all`")]
     Unmute {
         id: Option<u32>,
         #[arg(long)]
@@ -72,8 +72,6 @@ pub enum ProcessSort {
     Name,
 }
 
-/// Accept `40`, `40%` and `0.4` as the same volume, since all three are what
-/// somebody types, and a bare `40` meaning 4000% would be a nasty surprise.
 fn parse_level(raw: &str) -> Result<f32> {
     let trimmed = raw.trim();
     let (number, percent) = match trimmed.strip_suffix('%') {
@@ -86,7 +84,6 @@ fn parse_level(raw: &str) -> Result<f32> {
     if value < 0.0 {
         anyhow::bail!("a volume cannot be negative: {raw:?}");
     }
-    // Without a `%`, anything above 1 was meant as a percentage.
     Ok(if percent || value > 1.0 {
         value / 100.0
     } else {
@@ -236,7 +233,7 @@ pub async fn run(command: &SystemCommand, output: Output) -> Result<()> {
                             device
                                 .battery_percent
                                 .map(|percent| format!("{percent}%"))
-                                .unwrap_or_else(|| "—".to_string()),
+                                .unwrap_or_else(|| "-".to_string()),
                         ]
                     })
                     .collect();
@@ -317,8 +314,6 @@ async fn set_muted(id: Option<u32>, all: bool, muted: bool, output: Output) -> R
     }
 }
 
-/// Re-read one stream after changing it, so the command reports what actually
-/// happened rather than what was asked for.
 async fn report_one(id: u32, output: Output) -> Result<()> {
     let stream = veronica_system::audio::streams()
         .await?

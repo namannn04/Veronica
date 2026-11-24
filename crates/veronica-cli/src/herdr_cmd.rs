@@ -1,41 +1,29 @@
-//! `vr herdr` — the live agent board, from the terminal.
-//!
-//! Edith's `ed herdr` reads Herdr's own JSON API and groups the agents into
-//! Blocked, Working, Unknown, Done and Idle. This is the same read, in the same
-//! lanes: Herdr remains the owner of terminal state, so nothing here starts,
-//! stops or attaches to anything.
-
 use anyhow::Result;
 
 use crate::format::{self, Output};
 
-/// Edith's lane order, which is also the order of urgency.
 const LANES: [&str; 5] = ["blocked", "working", "unknown", "done", "idle"];
 
 #[derive(clap::Subcommand)]
 pub enum HerdrCommand {
-    /// The board: every agent, in Edith's lanes.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "The board: every agent, in Edith's lanes")]
     Board {
-        /// Only agents in this session.
-        #[arg(long)]
+        #[arg(long, help = "Only agents in this session")]
         session: Option<String>,
-        /// Only agents of this kind, e.g. `claude`.
-        #[arg(long)]
+        #[arg(long, help = "Only agents of this kind, e.g. `claude`")]
         kind: Option<String>,
-        /// Only agents in this lane.
-        #[arg(long)]
+        #[arg(long, help = "Only agents in this lane")]
         status: Option<String>,
     },
-    /// The persistent sessions Herdr knows about.
+    #[command(about = "The persistent sessions Herdr knows about")]
     Sessions,
-    /// Print the command that attaches to a session or agent.
-    ///
-    /// Printed rather than run, so it works over SSH and can be piped into
-    /// whatever terminal you actually want it in.
+    #[command(
+        about = "Print the command that attaches to a session or agent",
+        long_about = "Print the command that attaches to a session or agent.\n\nPrinted rather than run, so it works over SSH and can be piped into whatever terminal you actually want it in."
+    )]
     Attach {
         session: String,
-        /// A pane id, to attach to one agent rather than the session.
+        #[arg(help = "A pane id, to attach to one agent rather than the session")]
         pane_id: Option<String>,
     },
 }
@@ -48,9 +36,6 @@ pub async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
              Nothing else on this command needs it."
         );
     }
-    // Herdr answered with something unusable rather than failing outright.
-    // The read still stands, so this is a warning on stderr and not an error:
-    // an empty board with no explanation is the worse outcome.
     if let Some(reason) = &board.error {
         tracing::warn!("herdr: {reason}");
     }
@@ -84,8 +69,6 @@ pub async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
                 if agents.is_empty() {
                     return "no agents are running".to_string();
                 }
-                // Grouped by lane, in Edith's order, so the board reads the same
-                // way it does in the app.
                 let mut rows: Vec<Vec<String>> = Vec::new();
                 for lane in LANES {
                     for agent in agents.iter().filter(|agent| agent.status == lane) {
@@ -98,8 +81,6 @@ pub async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
                         ]);
                     }
                 }
-                // A lane Herdr reports that Veronica does not know about would
-                // otherwise vanish from the table entirely.
                 for agent in agents
                     .iter()
                     .filter(|agent| !LANES.contains(&agent.status.as_str()))
@@ -141,8 +122,6 @@ pub async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
         }),
 
         HerdrCommand::Attach { session, pane_id } => {
-            // Verified against the board, so a typo says so rather than
-            // producing a command that fails later in someone's terminal.
             if !board.sessions.iter().any(|entry| &entry.name == session) {
                 anyhow::bail!(
                     "no Herdr session named '{session}'; run `vr herdr sessions` for the list"
@@ -160,9 +139,6 @@ pub async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
                     );
                 }
             }
-            // The line comes from the same helper the app's detail pane and
-            // the board's own rows use, so what is printed here is what
-            // Veronica would have run.
             let command = veronica_system::herdr::attach_command(session, pane_id.as_deref());
             output.emit(&serde_json::json!({ "command": command }), || {
                 command.clone()

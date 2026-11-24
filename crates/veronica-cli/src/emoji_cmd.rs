@@ -1,12 +1,3 @@
-//! `vr emoji` — the emoji picker from the terminal.
-//!
-//! Edith's `ed emoji` searches the same catalogue and copies the result. The
-//! ranking, the skin tones and the recents ledger are shared verbatim, so a
-//! search here returns what the picker would show.
-//!
-//! `copy` records the pick in the same ledger the picker ranks by, so reaching
-//! for an emoji from a script and reaching for it from the panel both count.
-
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
@@ -17,41 +8,45 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum EmojiCommand {
-    /// Search the catalogue. With no query, the whole catalogue in order.
-    #[command(alias = "search")]
+    #[command(
+        alias = "search",
+        about = "Search the catalogue. With no query, the whole catalogue in order"
+    )]
     List {
-        /// What to look for: a name, a word in one, or a search term.
-        #[arg(default_value = "")]
+        #[arg(
+            default_value = "",
+            help = "What to look for: a name, a word in one, or a search term"
+        )]
         query: String,
         #[arg(long, default_value_t = 20)]
         limit: usize,
-        /// Restrict to one group id, e.g. `flags`.
-        #[arg(long)]
+        #[arg(long, help = "Restrict to one group id, e.g. `flags`")]
         group: Option<String>,
-        /// Which skin tone to print. Defaults to the configured tone.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Which skin tone to print. Defaults to the configured tone"
+        )]
         tone: Option<String>,
     },
-    /// Print the groups the catalogue is divided into.
+    #[command(about = "Print the groups the catalogue is divided into")]
     Groups,
-    /// Copy one emoji to the clipboard and record the pick.
-    ///
-    /// The argument is either the character itself or a search: the best match
-    /// is what gets copied, which is what makes `vr emoji copy shrug` useful.
+    #[command(
+        about = "Copy one emoji to the clipboard and record the pick",
+        long_about = "Copy one emoji to the clipboard and record the pick.\n\nThe argument is either the character itself or a search: the best match is what gets copied, which is what makes `vr emoji copy shrug` useful."
+    )]
     Copy {
         query: String,
         #[arg(long)]
         tone: Option<String>,
-        /// Record the pick without touching the clipboard.
-        #[arg(long)]
+        #[arg(long, help = "Record the pick without touching the clipboard")]
         no_copy: bool,
     },
-    /// The emoji you reach for most, as the picker ranks them.
+    #[command(about = "The emoji you reach for most, as the picker ranks them")]
     Recents {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Forget one emoji's usage, or all of it with `--all`.
+    #[command(about = "Forget one emoji's usage, or all of it with `--all`")]
     Forget {
         character: Option<String>,
         #[arg(long)]
@@ -61,8 +56,6 @@ pub enum EmojiCommand {
 
 fn parse_tone(raw: &str) -> Result<SkinTone> {
     let parsed = SkinTone::parse(raw);
-    // `parse` falls back to the default, which is right for a stored setting
-    // but wrong for an explicit flag: a typo should be reported.
     if parsed == SkinTone::Standard && !raw.eq_ignore_ascii_case("standard") {
         let known: Vec<&str> = SkinTone::ALL.iter().map(|tone| tone.key()).collect();
         anyhow::bail!("unknown skin tone '{raw}'; try one of {}", known.join(", "));
@@ -107,8 +100,6 @@ pub async fn run(
                 None => None,
             };
 
-            // Search first, then narrow: filtering by group before ranking
-            // would change which results win, and the ranking is the point.
             let matches: Vec<_> = catalog
                 .search(query, usize::MAX)
                 .into_iter()
@@ -173,8 +164,6 @@ pub async fn run(
                 None => configured,
             };
 
-            // An exact character wins over a search, so copying an emoji you
-            // already have in hand never resolves to something else.
             let emoji = catalog
                 .find(query)
                 .or_else(|| catalog.search(query, 1).into_iter().next())
@@ -191,8 +180,6 @@ pub async fn run(
                 match veronica_system::selection::write(&value).await {
                     Ok(writer) => Some(writer.title()),
                     Err(error) => {
-                        // The pick is already recorded; a clipboard failure must
-                        // not make the command look like it did nothing.
                         tracing::warn!(target: "veronica", "cannot copy the emoji: {error:#}");
                         None
                     }

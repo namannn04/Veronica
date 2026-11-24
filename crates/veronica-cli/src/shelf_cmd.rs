@@ -1,4 +1,3 @@
-//! The same owned-copy shelf used by the native drop surface and notch tab.
 use crate::format::Output;
 use anyhow::Result;
 use serde_json::json;
@@ -31,7 +30,6 @@ pub fn run(directories: &AppDirectories, command: &ShelfCommand, output: Output)
                 .collect()
         })
         .unwrap_or_default();
-    // A bad old path must not make already-owned entries inaccessible.
     if let Err(error) = shelf.import_legacy(&legacy) {
         tracing::warn!("some legacy shelf entries could not be imported: {error:#}");
     }

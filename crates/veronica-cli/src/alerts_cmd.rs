@@ -1,13 +1,3 @@
-//! `vr alerts` — the notifier's own state and a delivery check.
-//!
-//! Veronica's contract is that the CLI reaches everything the UI does. The
-//! alerts pane can send a test banner and forget the remembered levels, so both
-//! are here too — and `state` prints what the notifier is comparing against,
-//! which is the thing to look at when an alert did not fire when expected.
-//!
-//! The dry run of *what would fire* lives on `vr usage alerts`, next to the
-//! limits it reads.
-
 use anyhow::Result;
 use serde_json::json;
 use veronica_core::AppDirectories;
@@ -18,17 +8,17 @@ use crate::format::Output;
 
 #[derive(clap::Subcommand)]
 pub enum AlertsCommand {
-    /// Print what the notifier is comparing against.
+    #[command(about = "Print what the notifier is comparing against")]
     State,
-    /// Post one sample banner, to confirm notifications arrive at all.
-    ///
-    /// Deliberately does not touch the notifier state: consuming a real edge to
-    /// prove delivery works would suppress the alert being tested.
+    #[command(
+        about = "Post one sample banner, to confirm notifications arrive at all",
+        long_about = "Post one sample banner, to confirm notifications arrive at all.\n\nDeliberately does not touch the notifier state: consuming a real edge to prove delivery works would suppress the alert being tested."
+    )]
     Test,
-    /// Forget the remembered levels and zones.
-    ///
-    /// Worth doing after changing a threshold, since the stored comparison is
-    /// then against the old scale.
+    #[command(
+        about = "Forget the remembered levels and zones",
+        long_about = "Forget the remembered levels and zones.\n\nWorth doing after changing a threshold, since the stored comparison is then against the old scale."
+    )]
     Clear,
 }
 

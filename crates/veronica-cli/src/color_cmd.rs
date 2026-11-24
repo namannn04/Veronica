@@ -1,13 +1,3 @@
-//! `vr color` — the screen colour sampler and its swatch history.
-//!
-//! Edith exposes `color pick` and `color copy`; this adds the list, forget and
-//! clear that the history needs on a machine where the swatches are a file
-//! rather than a user default.
-//!
-//! `pick` is interactive by nature: it opens the compositor's eyedropper and
-//! waits for a click. Cancelling exits non-zero with a plain message, so a
-//! script can tell "no colour chosen" from "no picker available".
-
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
@@ -20,40 +10,34 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum ColorCommand {
-    /// Open the screen colour sampler and record what is picked.
+    #[command(about = "Open the screen colour sampler and record what is picked")]
     Pick {
-        /// Which representation to copy. Defaults to the configured format.
-        #[arg(long, value_parser = parse_format)]
+        #[arg(long, value_parser = parse_format, help = "Which representation to copy. Defaults to the configured format")]
         format: Option<CopyFormat>,
-        /// Record the colour without putting it on the clipboard.
-        #[arg(long)]
+        #[arg(long, help = "Record the colour without putting it on the clipboard")]
         no_copy: bool,
     },
-    /// Print the swatch history, newest first.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "Print the swatch history, newest first")]
     List {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Copy one swatch back to the clipboard.
+    #[command(about = "Copy one swatch back to the clipboard")]
     Copy {
         id: u64,
         #[arg(long, value_parser = parse_format)]
         format: Option<CopyFormat>,
     },
-    /// Print one swatch in every format, for piping onward.
+    #[command(about = "Print one swatch in every format, for piping onward")]
     Show { id: u64 },
-    /// Forget one swatch.
-    #[command(alias = "rm")]
+    #[command(alias = "rm", about = "Forget one swatch")]
     Remove { id: u64 },
-    /// Forget every swatch.
+    #[command(about = "Forget every swatch")]
     Clear,
 }
 
 fn parse_format(raw: &str) -> Result<CopyFormat, String> {
     let parsed = CopyFormat::parse(raw);
-    // `parse` falls back to hex, which is right for a stored setting but wrong
-    // for an explicit flag: a typo should be reported, not silently ignored.
     if parsed == CopyFormat::Hex && !raw.eq_ignore_ascii_case("hex") {
         let known: Vec<&str> = CopyFormat::ALL.iter().map(|f| f.key()).collect();
         return Err(format!(
@@ -88,8 +72,6 @@ pub async fn run(
                 .await
                 .context("no colour was sampled")?;
 
-            // The compositor always reports sRGB; converting is what makes the
-            // profile setting mean something rather than relabel the numbers.
             let (red, green, blue) = match profile {
                 ColorProfile::Srgb => (picked.red, picked.green, picked.blue),
                 ColorProfile::DisplayP3 => {
@@ -107,8 +89,6 @@ pub async fn run(
                 match veronica_system::selection::write(&value).await {
                     Ok(writer) => Some(writer.title()),
                     Err(error) => {
-                        // The swatch is already recorded, so a clipboard failure
-                        // must not lose the colour the user just picked.
                         tracing::warn!(target: "veronica", "cannot copy the colour: {error:#}");
                         None
                     }

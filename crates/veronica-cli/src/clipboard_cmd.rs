@@ -1,9 +1,3 @@
-//! `vr clipboard` — the clipboard history.
-//!
-//! `record` is what the GNOME Shell extension calls: only the compositor can
-//! watch the selection on Wayland, so the extension does the watching and pipes
-//! each new entry here on stdin.
-
 use std::io::Read;
 
 use anyhow::{Context, Result};
@@ -16,36 +10,31 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum ClipboardCommand {
-    /// Record a copy, reading the text from stdin.
-    ///
-    /// Used by the shell extension. Silent and idempotent by design: re-copying
-    /// something moves it to the front rather than adding a duplicate.
+    #[command(
+        about = "Record a copy, reading the text from stdin",
+        long_about = "Record a copy, reading the text from stdin.\n\nUsed by the shell extension. Silent and idempotent by design: re-copying something moves it to the front rather than adding a duplicate."
+    )]
     Record {
-        /// Keep at most this many entries.
-        #[arg(long, default_value_t = DEFAULT_LIMIT)]
+        #[arg(long, default_value_t = DEFAULT_LIMIT, help = "Keep at most this many entries")]
         limit: usize,
-        /// Keep the text byte for byte. Without it one trailing newline is
-        /// dropped, since `echo text | vr clipboard record` adds one; the
-        /// shell extension passes the copy exactly and uses this.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Keep the text byte for byte. Without it one trailing newline is dropped, since `echo text | vr clipboard record` adds one; the shell extension passes the copy exactly and uses this"
+        )]
         exact: bool,
     },
-    /// List the history, newest first.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "List the history, newest first")]
     List {
-        /// Only entries containing this text.
-        #[arg(long, default_value = "")]
+        #[arg(long, default_value = "", help = "Only entries containing this text")]
         query: String,
-        /// Show at most this many.
-        #[arg(long, default_value_t = 20)]
+        #[arg(long, default_value_t = 20, help = "Show at most this many")]
         limit: usize,
     },
-    /// Print one entry's full text, for piping onward.
+    #[command(about = "Print one entry's full text, for piping onward")]
     Get { id: u64 },
-    /// Forget one entry.
-    #[command(alias = "rm")]
+    #[command(alias = "rm", about = "Forget one entry")]
     Remove { id: u64 },
-    /// Forget everything.
+    #[command(about = "Forget everything")]
     Clear,
 }
 
@@ -64,9 +53,6 @@ pub async fn run(
                 .read_to_string(&mut text)
                 .context("cannot read the clipboard text from stdin")?;
 
-            // From a shell a trailing newline is an artefact of piping, not
-            // part of the copy. From the extension it is the copy: a whole line
-            // copied in an editor ends with one, and must paste back with it.
             let text = if *exact {
                 text.as_str()
             } else {
@@ -78,7 +64,6 @@ pub async fn run(
                     history.save(&path)?;
                     output.emit(&json!({ "recorded": id }), String::new)
                 }
-                // Blank or oversized: not an error, just nothing to keep.
                 None => output.emit(&json!({ "recorded": null }), String::new),
             }
         }
@@ -136,7 +121,6 @@ pub async fn run(
             let entry = history
                 .get(*id)
                 .with_context(|| format!("no clipboard entry {id}"))?;
-            // Printed raw so it can be piped; no trailing formatting.
             match output {
                 Output::Json => {
                     println!("{}", serde_json::to_string_pretty(entry)?);

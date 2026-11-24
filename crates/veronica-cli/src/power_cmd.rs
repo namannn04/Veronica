@@ -1,10 +1,3 @@
-//! `vr power` — Keep Awake and Lid Awake, including timed sessions.
-//!
-//! Edith's `ed lid-awake on --for 30m` in Ubuntu's terms. The lock itself is a
-//! systemd-logind inhibitor held by the running desktop app: a command that
-//! exits cannot hold a file descriptor open, so this writes the setting the app
-//! watches, and says so when the app is not running to act on it.
-
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::json;
@@ -15,26 +8,33 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum PowerCommand {
-    /// Report both switches, their countdowns and the battery.
+    #[command(about = "Report both switches, their countdowns and the battery")]
     Status,
-    /// Prevent the idle sleep timer.
-    #[command(subcommand, name = "keep-awake")]
+    #[command(
+        subcommand,
+        name = "keep-awake",
+        about = "Prevent the idle sleep timer"
+    )]
     KeepAwake(SwitchCommand),
-    /// Keep running with the lid shut, which also prevents idle sleep.
-    #[command(subcommand, name = "lid-awake")]
+    #[command(
+        subcommand,
+        name = "lid-awake",
+        about = "Keep running with the lid shut, which also prevents idle sleep"
+    )]
     LidAwake(SwitchCommand),
 }
 
 #[derive(clap::Subcommand)]
 pub enum SwitchCommand {
-    /// Turn it on, open-ended or for a while.
+    #[command(about = "Turn it on, open-ended or for a while")]
     On {
-        /// How long to keep it on, e.g. `30m`, `2h`, `1h30m`. A bare number is
-        /// minutes. Without this the session is open-ended.
-        #[arg(long = "for")]
+        #[arg(
+            long = "for",
+            help = "How long to keep it on, e.g. `30m`, `2h`, `1h30m`. A bare number is minutes. Without this the session is open-ended"
+        )]
         duration: Option<String>,
     },
-    /// Turn it off, cancelling any timed session.
+    #[command(about = "Turn it off, cancelling any timed session")]
     Off,
 }
 
@@ -58,8 +58,6 @@ pub async fn run(
             && matches!(action, SwitchCommand::On { .. })
             && !veronica_system::power::has_lid()
         {
-            // Not fatal: a desktop with no lid can still hold the lock, and the
-            // user may be setting this up for a machine they will dock later.
             tracing::warn!(
                 target: "veronica",
                 "this computer has no laptop lid, so Lid Awake only prevents idle sleep"
@@ -72,8 +70,6 @@ pub async fn run(
                     None => None,
                 };
                 settings.set(switch.enabled_key(), json!(true));
-                // An open-ended session clears any deadline left by a previous
-                // timed one, rather than inheriting it.
                 settings.set(switch.until_key(), json!(until));
             }
             SwitchCommand::Off => {

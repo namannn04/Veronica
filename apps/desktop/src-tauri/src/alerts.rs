@@ -1,22 +1,3 @@
-//! The alert runner.
-//!
-//! Edith evaluates its alerts inside the limits refresh it already performs,
-//! and hands future reminders to `UNUserNotificationCenter`. Neither applies
-//! here: Veronica's limits are read on demand rather than on a schedule, and
-//! freedesktop notifications cannot be scheduled at all. So this owns a poll of
-//! its own.
-//!
-//! Two properties matter:
-//!
-//! - **It costs nothing when alerts are off.** Reading Claude's limits is a
-//!   request to the provider, so the poll only happens while the master switch
-//!   is on. Turning alerts off stops the traffic entirely.
-//! - **It is edge-triggered across restarts.** The notifier state is persisted,
-//!   so relaunching Veronica while a window sits at 90% does not re-announce it.
-//!
-//! The poll also emits `limits-updated`, so screens already open get fresh
-//! figures out of a request that was being made anyway.
-
 use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager};
@@ -26,15 +7,10 @@ use veronica_usage::limits::LimitWindow;
 
 use crate::state::AppState;
 
-/// How often to re-read the limits while alerts are on.
 pub const DEFAULT_POLL_SECS: u64 = 60;
-/// Bounds for the configured interval. Below the floor this would hammer the
-/// provider; above the ceiling a reminder would be uselessly late.
 pub const MIN_POLL_SECS: u64 = 30;
 pub const MAX_POLL_SECS: u64 = 900;
 
-/// While alerts are off, how often to look at the switch again. Cheap: it reads
-/// one small JSON file and makes no network request.
 const IDLE_CHECK_SECS: u64 = 10;
 
 pub fn poll_interval(settings: &veronica_core::Settings) -> Duration {
@@ -46,10 +22,7 @@ pub fn poll_interval(settings: &veronica_core::Settings) -> Duration {
     Duration::from_secs(seconds)
 }
 
-/// Run until the process exits.
 pub async fn run(app: AppHandle) {
-    // A separate connection from the notification monitor's, so a monitor that
-    // the bus refuses cannot stop alerts from being posted.
     let connection = match zbus::Connection::session().await {
         Ok(connection) => connection,
         Err(error) => {
@@ -67,21 +40,10 @@ pub async fn run(app: AppHandle) {
             )
         };
         let notify_settings = NotifySettings::from_settings(&settings);
-        // Turning Agent Usage off in Extensions promises its timers and
-        // background work stop; alerts are part of that feature.
         let usage_enabled = veronica_core::extensions::entry("usage")
             .is_some_and(|entry| settings.extension_enabled(entry));
 
         if !notify_settings.master || !usage_enabled {
-            // Alerts being off clears the remembered levels, so switching them
-            // back on does not immediately announce a state the user never saw a
-            // transition into. Edith clears the same four values.
-            //
-            // Driven by what the state holds rather than by whether the switch
-            // was flipped during *this* run: Veronica may have been restarted
-            // since, and a launch with alerts already off must still clear. It is
-            // also idempotent, so an idle loop does not rewrite the file on every
-            // tick.
             let mut state = NotifierState::load(&state_path);
             if state.has_tracking() {
                 state.reset_tracking();
@@ -103,7 +65,6 @@ pub async fn run(app: AppHandle) {
     }
 }
 
-/// One evaluation: read the limits, decide, post.
 async fn tick(
     app: &AppHandle,
     connection: &zbus::Connection,
@@ -131,18 +92,12 @@ async fn tick(
                 &mut state,
                 now,
             ));
-            // A successful read means the credentials are good again.
             state.token_expired_at = None;
             publish(app, limits.session, limits.week);
         }
-        // Not signed in at all: nothing to alert about, and telling the user to
-        // log in again would be wrong when they never logged in.
         Ok(None) => {}
         Err(error) => {
             let message = format!("{error:#}");
-            // The one failure the user can act on. Everything else — a flaky
-            // network, a provider outage — is logged and retried silently
-            // rather than becoming a banner.
             if is_credential_failure(&message) {
                 if let Some(alert) = alerts::token_expired(settings, &mut state, now) {
                     alerts_to_post.push(alert);
@@ -157,8 +112,6 @@ async fn tick(
         let notification = notify::Notification::new(&alert.title, &alert.body)
             .urgency(urgency_for(&alert.id))
             .timeout(timeout_for(&alert.id))
-            // Replacing this alert's own previous banner is what keeps a rising
-            // threshold to one notification rather than a stack of five.
             .replacing(state.banner(&alert.id).unwrap_or(0));
 
         match notify::post(connection, &notification).await {
@@ -179,8 +132,6 @@ async fn tick(
     }
 }
 
-/// Hand the freshly read windows to any open screen, so the poll's request is
-/// not wasted on the alerts alone.
 fn publish(app: &AppHandle, session: Option<LimitWindow>, week: Option<LimitWindow>) {
     let _ = app.emit(
         "limits-updated",
@@ -198,10 +149,6 @@ fn window_json(window: LimitWindow) -> serde_json::Value {
     })
 }
 
-/// Whether a limits failure is the user's credentials rather than the network.
-///
-/// Matched on the message because that is what the provider client reports; the
-/// wording it uses for an expired login is stable and specific.
 pub fn is_credential_failure(message: &str) -> bool {
     let lowered = message.to_lowercase();
     [
@@ -216,7 +163,6 @@ pub fn is_credential_failure(message: &str) -> bool {
     .any(|needle| lowered.contains(needle))
 }
 
-/// A window actually running out is worth interrupting for; pace advice is not.
 fn urgency_for(alert_id: &str) -> Urgency {
     if alert_id.starts_with("escalation_") || alert_id == "token_expired" {
         Urgency::Critical
@@ -227,7 +173,6 @@ fn urgency_for(alert_id: &str) -> Urgency {
     }
 }
 
-/// The alerts a user must not miss stay until dismissed; the rest time out.
 fn timeout_for(alert_id: &str) -> Timeout {
     if alert_id.starts_with("escalation_") || alert_id == "token_expired" {
         Timeout::Never
@@ -236,10 +181,6 @@ fn timeout_for(alert_id: &str) -> Timeout {
     }
 }
 
-/// Fire one alert of each kind, so the user can confirm banners arrive at all.
-///
-/// Deliberately does not touch the notifier state: a test must not consume the
-/// edge that a real alert would fire on.
 pub async fn send_test(connection: &zbus::Connection) -> anyhow::Result<u32> {
     let notification = notify::Notification::new(
         "Alerts are working",
@@ -267,7 +208,6 @@ mod tests {
         settings.set("notifyPollSeconds", serde_json::json!(120));
         assert_eq!(poll_interval(&settings).as_secs(), 120);
 
-        // A string where a number belongs falls back rather than panicking.
         settings.set("notifyPollSeconds", serde_json::json!("soon"));
         assert_eq!(poll_interval(&settings).as_secs(), DEFAULT_POLL_SECS);
     }
@@ -278,7 +218,6 @@ mod tests {
             "the saved Claude credentials have expired; sign in with Claude Code again"
         ));
         assert!(is_credential_failure("HTTP 401 Unauthorized"));
-        // A flaky network must not tell the user to log in again.
         assert!(!is_credential_failure(
             "error sending request for url: connection refused"
         ));

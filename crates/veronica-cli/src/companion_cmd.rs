@@ -1,14 +1,3 @@
-//! `vr companion` — your private notes and voice-memo metadata.
-//!
-//! Edith's Companion deploys a multi-container backend and reaches it through a
-//! tunnel. Veronica's is local-first: the notes and the searchable metadata are
-//! plain files under the XDG data directory, included in `vr backup export`,
-//! and reachable without an account or a service.
-//!
-//! Recording is the one thing this cannot do, because a voice memo needs a
-//! PipeWire capture held open across a start and a stop; the app owns that. The
-//! recordings it produces are listed and searched here like anything else.
-
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
@@ -19,35 +8,33 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum CompanionCommand {
-    /// Everything, newest first, optionally filtered.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "Everything, newest first, optionally filtered")]
     List {
-        /// Match the title or the body.
-        #[arg(default_value = "")]
+        #[arg(default_value = "", help = "Match the title or the body")]
         query: String,
-        /// Only notes, or only voice memos.
-        #[arg(long)]
+        #[arg(long, help = "Only notes, or only voice memos")]
         kind: Option<String>,
     },
-    /// Print one item in full, for piping onward.
+    #[command(about = "Print one item in full, for piping onward")]
     Show { id: u64 },
-    /// Write a note. The body is read from stdin when it is not given.
+    #[command(about = "Write a note. The body is read from stdin when it is not given")]
     Add {
         title: String,
-        /// The note's text. Omit it to read stdin, so a file can be piped in.
+        #[arg(help = "The note's text. Omit it to read stdin, so a file can be piped in")]
         body: Option<String>,
         #[arg(long)]
         pinned: bool,
     },
-    /// Pin or unpin an item, so it sorts to the top.
+    #[command(about = "Pin or unpin an item, so it sorts to the top")]
     Pin {
         id: u64,
-        /// Unpin instead.
-        #[arg(long)]
+        #[arg(long, help = "Unpin instead")]
         off: bool,
     },
-    /// Delete an item, and its recording if it has one.
-    #[command(alias = "rm")]
+    #[command(
+        alias = "rm",
+        about = "Delete an item, and its recording if it has one"
+    )]
     Remove { id: u64 },
 }
 
@@ -102,8 +89,6 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
         }
 
         CompanionCommand::Show { id } => {
-            // Listing with an empty query is the whole set, which is how the
-            // repository exposes a lookup by id.
             let item = repository
                 .list("")?
                 .into_iter()
@@ -138,8 +123,6 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
             let text = match body {
                 Some(body) => body.clone(),
                 None => {
-                    // Reading stdin is what makes `… | vr companion add "Notes"`
-                    // work, which is the whole point of having this on the CLI.
                     let mut buffer = String::new();
                     std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)
                         .context("cannot read the note body from stdin")?;
@@ -148,14 +131,12 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
             };
             let now = Utc::now();
             let item = repository.create_note(title, text.trim_end(), now)?;
-            // `create_note` has no pinned argument, so pinning is a second step
-            // rather than a duplicated constructor.
             let item = if *pinned {
                 repository.update(item.id, &item.title, &item.body, true, now)?
             } else {
                 item
             };
-            output.emit(&item, || format!("saved note {} — {}", item.id, item.title))
+            output.emit(&item, || format!("saved note {}: {}", item.id, item.title))
         }
 
         CompanionCommand::Pin { id, off } => {

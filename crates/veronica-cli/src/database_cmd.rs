@@ -1,17 +1,3 @@
-//! `vr database` — saved connections, bounded reads, and guarded changes.
-//!
-//! Edith's `ed database`. The safety boundary is the same and is worth
-//! restating, because it is the whole point of the command group:
-//!
-//! - `query` only runs statements that read. A write is refused there, whatever
-//!   it is spelled as.
-//! - A change goes `mutations preview` → read what it says → `mutations apply`
-//!   with the token and the exact confirmation text. The token is signed,
-//!   expires, works once, and stops matching the moment anything about the plan
-//!   changes.
-//! - No credential is ever printed, stored in a definition, or put in a shell
-//!   history. Passwords live in the desktop keyring.
-
 use anyhow::{Context, Result};
 use serde_json::json;
 use uuid::Uuid;
@@ -30,104 +16,104 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum DatabaseCommand {
-    /// Saved connections.
-    #[command(subcommand, alias = "conn")]
+    #[command(subcommand, alias = "conn", about = "Saved connections")]
     Connections(ConnectionCommand),
-    /// What this server can be asked to do.
+    #[command(about = "What this server can be asked to do")]
     Capabilities { connection: String },
-    /// Reach the server and report what it turned out to be. Reads only.
+    #[command(about = "Reach the server and report what it turned out to be. Reads only")]
     Test { connection: String },
-    /// List what is inside a database: schemas, tables, columns, keys.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "List what is inside a database: schemas, tables, columns, keys"
+    )]
     Browse {
         connection: String,
-        /// A dotted path, e.g. `public` or `public.orders`. Omit for the top.
+        #[arg(help = "A dotted path, e.g. `public` or `public.orders`. Omit for the top")]
         path: Option<String>,
     },
-    /// Read a bounded page of one object's records.
+    #[command(about = "Read a bounded page of one object's records")]
     Read {
         connection: String,
-        /// A dotted path to a table, collection or key.
+        #[arg(help = "A dotted path to a table, collection or key")]
         path: String,
         #[arg(long, default_value_t = 50)]
         limit: u32,
         #[arg(long, default_value_t = 0)]
         offset: u64,
     },
-    /// Run one statement that reads. A write is refused.
+    #[command(about = "Run one statement that reads. A write is refused")]
     Query {
         connection: String,
-        /// The statement. For Redis, a key pattern.
+        #[arg(help = "The statement. For Redis, a key pattern")]
         statement: String,
         #[arg(long, default_value_t = 50)]
         limit: u32,
         #[arg(long, default_value_t = 0)]
         offset: u64,
     },
-    /// Queries you kept.
-    #[command(subcommand, name = "saved-queries")]
+    #[command(subcommand, name = "saved-queries", about = "Queries you kept")]
     SavedQueries(SavedQueryCommand),
-    /// Change data, previewed first.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Change data, previewed first")]
     Mutations(MutationCommand),
-    /// What Veronica has done, newest first.
+    #[command(about = "What Veronica has done, newest first")]
     Operations {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Serve the read-only MCP tools over stdin and stdout.
-    ///
-    /// Stays in the foreground and prints no banner: stdout carries protocol
-    /// traffic and nothing else. An agent learns which databases you have saved
-    /// and what each can do — never a host, a username or a credential.
+    #[command(
+        about = "Serve the read-only MCP tools over stdin and stdout",
+        long_about = "Serve the read-only MCP tools over stdin and stdout.\n\nStays in the foreground and prints no banner: stdout carries protocol traffic and nothing else. An agent learns which databases you have saved and what each can do, but never a host, a username or a credential."
+    )]
     Mcp,
 }
 
 #[derive(clap::Subcommand)]
 pub enum ConnectionCommand {
-    /// Every saved connection. No credential is printed.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "Every saved connection. No credential is printed"
+    )]
     List,
-    /// One connection in full.
+    #[command(about = "One connection in full")]
     Get { connection: String },
-    /// Save a connection.
-    ///
-    /// The password is read from stdin, never from an argument, so it does not
-    /// land in your shell history or in the process list.
+    #[command(
+        about = "Save a connection",
+        long_about = "Save a connection.\n\nThe password is read from stdin, never from an argument, so it does not land in your shell history or in the process list."
+    )]
     Add {
-        /// What to call it.
+        #[arg(help = "What to call it")]
         name: String,
-        /// postgresql, mysql, mariadb, sqlite, redis, valkey.
+        #[arg(help = "postgresql, mysql, mariadb, sqlite, redis, valkey")]
         product: String,
-        /// `host:port`, or a path for SQLite.
+        #[arg(help = "`host:port`, or a path for SQLite")]
         target: String,
         #[arg(long)]
         username: Option<String>,
-        /// The database, schema or logical database to default to.
-        #[arg(long)]
+        #[arg(long, help = "The database, schema or logical database to default to")]
         database: Option<String>,
-        /// local, development, testing, staging, production, other.
-        #[arg(long, default_value = "local")]
+        #[arg(
+            long,
+            default_value = "local",
+            help = "local, development, testing, staging, production, other"
+        )]
         environment: String,
-        /// Refuse every change on this connection.
-        #[arg(long)]
+        #[arg(long, help = "Refuse every change on this connection")]
         read_only: bool,
-        /// Read a password from stdin.
-        #[arg(long)]
+        #[arg(long, help = "Read a password from stdin")]
         password_stdin: bool,
     },
-    /// Change a connection's safety policy.
+    #[command(about = "Change a connection's safety policy")]
     Policy {
         connection: String,
-        /// Refuse every change on this connection.
-        #[arg(long)]
+        #[arg(long, help = "Refuse every change on this connection")]
         read_only: Option<bool>,
-        /// local, development, testing, staging, production, other.
-        #[arg(long)]
+        #[arg(long, help = "local, development, testing, staging, production, other")]
         environment: Option<String>,
     },
-    /// Forget a connection, its saved queries and its password.
-    #[command(alias = "rm")]
+    #[command(
+        alias = "rm",
+        about = "Forget a connection, its saved queries and its password"
+    )]
     Remove {
         connection: String,
         #[arg(long)]
@@ -139,14 +125,14 @@ pub enum ConnectionCommand {
 pub enum SavedQueryCommand {
     #[command(alias = "ls")]
     List,
-    /// Keep a query. The text is read from stdin when not given.
+    #[command(about = "Keep a query. The text is read from stdin when not given")]
     Save {
         name: String,
         text: Option<String>,
         #[arg(long)]
         connection: Option<String>,
     },
-    /// Print one saved query's text.
+    #[command(about = "Print one saved query's text")]
     Get { id: String },
     #[command(alias = "rm")]
     Remove { id: String },
@@ -154,48 +140,48 @@ pub enum SavedQueryCommand {
 
 #[derive(clap::Subcommand)]
 pub enum MutationCommand {
-    /// Describe a change without making it, and issue a token.
-    ///
-    /// Prints the plan, what it would affect, the warnings it earns, and the
-    /// exact text you have to type back. Nothing is sent to the server.
+    #[command(
+        about = "Describe a change without making it, and issue a token",
+        long_about = "Describe a change without making it, and issue a token.\n\nPrints the plan, what it would affect, the warnings it earns, and the exact text you have to type back. Nothing is sent to the server."
+    )]
     Preview {
         connection: String,
-        /// The statement, with `?1`, `$1` or `?` placeholders for every value.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "The statement, with `?1`, `$1` or `?` placeholders for every value"
+        )]
         sql: Option<String>,
-        /// A Redis command from the allowed list.
-        #[arg(long)]
+        #[arg(long, help = "A Redis command from the allowed list")]
         command: Option<String>,
-        /// One value, as JSON. Repeat, in order.
-        #[arg(long = "param")]
+        #[arg(long = "param", help = "One value, as JSON. Repeat, in order")]
         params: Vec<String>,
-        /// insert, update, updateMany, delete, deleteMany, truncate, dropObject.
-        #[arg(long, default_value = "update")]
+        #[arg(
+            long,
+            default_value = "update",
+            help = "insert, update, updateMany, delete, deleteMany, truncate, dropObject"
+        )]
         action: String,
-        /// The object this touches, e.g. `public.orders`.
-        #[arg(long)]
+        #[arg(long, help = "The object this touches, e.g. `public.orders`")]
         target: String,
-        /// singleRecord, selectedRecords, predicate, entireObject.
-        #[arg(long, default_value = "singleRecord")]
+        #[arg(
+            long,
+            default_value = "singleRecord",
+            help = "singleRecord, selectedRecords, predicate, entireObject"
+        )]
         scope: String,
-        /// How long the token is good for.
-        #[arg(long, default_value_t = 120)]
+        #[arg(long, default_value_t = 120, help = "How long the token is good for")]
         lifetime: i64,
-        /// Write the plan here so `apply` can read it back.
-        #[arg(long)]
+        #[arg(long, help = "Write the plan here so `apply` can read it back")]
         save_plan: Option<String>,
     },
-    /// Make a previewed change.
+    #[command(about = "Make a previewed change")]
     Apply {
         connection: String,
-        /// The plan `preview --save-plan` wrote. `-` reads stdin.
-        #[arg(long)]
+        #[arg(long, help = "The plan `preview --save-plan` wrote. `-` reads stdin")]
         plan: String,
-        /// The token from the preview.
-        #[arg(long)]
+        #[arg(long, help = "The token from the preview")]
         token: String,
-        /// Exactly the text the preview asked for.
-        #[arg(long)]
+        #[arg(long, help = "Exactly the text the preview asked for")]
         confirm: String,
     },
 }
@@ -208,11 +194,6 @@ fn secret_store(directories: &AppDirectories) -> SecretStore {
     SecretStore::new(directories.database_secrets_fallback())
 }
 
-/// Split a dotted path into components.
-///
-/// Deliberately naive, and the only place a path is parsed: an object with a
-/// dot in its name has to be named by its components, which the interface does
-/// and the CLI cannot.
 fn path_components(path: &str) -> Vec<String> {
     path.split('.')
         .filter(|part| !part.is_empty())
@@ -248,7 +229,6 @@ fn render_page(page: &veronica_database::paging::Page) -> String {
     )
 }
 
-/// Read a password without it appearing in a shell history or the process list.
 fn read_stdin() -> Result<String> {
     use std::io::Read;
     let mut buffer = String::new();
@@ -406,8 +386,6 @@ pub async fn run(
 
         DatabaseCommand::Mcp => {
             let store = directories_store(directories)?;
-            // Blocking on stdin for the process's life, so it goes to the
-            // blocking pool rather than stalling the runtime.
             tokio::task::spawn_blocking(move || veronica_database::mcp::serve(&store))
                 .await
                 .context("the MCP server stopped unexpectedly")?
@@ -481,8 +459,6 @@ async fn connections(
 
         ConnectionCommand::Get { connection } => {
             let definition = store.resolve(connection)?;
-            // The definition holds no secret, so printing it whole is safe —
-            // which is the reason it is shaped the way it is.
             output.emit(&definition, || {
                 use std::fmt::Write;
                 let mut out = format!("{}\n", definition.display_name);
@@ -492,7 +468,7 @@ async fn connections(
                 let _ = writeln!(
                     out,
                     "username     {}",
-                    definition.username.as_deref().unwrap_or("—")
+                    definition.username.as_deref().unwrap_or("-")
                 );
                 let _ = writeln!(
                     out,
@@ -512,7 +488,7 @@ async fn connections(
                     out,
                     "changes      {}",
                     match definition.mutation_prohibition() {
-                        Some(prohibition) => format!("refused — {}", prohibition.reason()),
+                        Some(prohibition) => format!("refused: {}", prohibition.reason()),
                         None => "allowed, previewed first".to_string(),
                     }
                 );
@@ -630,8 +606,6 @@ async fn connections(
                 } else {
                     ReadOnlyPolicy::Disabled
                 },
-                // A connection marked production gets the strongest
-                // confirmation on every change, without anyone opting in.
                 production_policy: if environment_kind == EnvironmentKind::Production {
                     ProductionPolicy::RequireMutationPreview
                 } else {
@@ -720,8 +694,6 @@ async fn connections(
                     definition.display_name
                 );
             }
-            // The password goes too. Leaving it in the keyring would be an
-            // orphan nobody can find and nobody can remove.
             let secrets = secret_store(directories);
             for reference in &definition.authentication.secret_references {
                 let _ = secrets
@@ -807,8 +779,6 @@ fn saved_queries(
     }
 }
 
-/// Build a plan from the flags. Shared by preview and apply, so the two cannot
-/// build subtly different plans and confuse the digest check for tampering.
 fn build_plan(
     definition: &ConnectionDefinition,
     sql: Option<&String>,
@@ -828,8 +798,6 @@ fn build_plan(
         .enumerate()
         .map(|(index, raw)| {
             let json: serde_json::Value = serde_json::from_str(raw)
-                // A bare word is a string, which is what somebody typing
-                // `--param hello` means.
                 .unwrap_or_else(|_| serde_json::Value::String(raw.clone()));
             Ok(Parameter {
                 name: format!("{}", index + 1),
@@ -856,7 +824,6 @@ fn build_plan(
         payload,
         action,
         scope,
-        // Measured by the session against the server, not asserted here.
         impact: Impact::unknown(),
         transaction_behavior: match definition.product_hint.family() {
             veronica_database::product::Family::Relational => TransactionBehavior::Transactional,

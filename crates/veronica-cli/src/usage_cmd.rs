@@ -1,5 +1,3 @@
-//! `vr usage` — the numbers the dashboard rings and charts show.
-
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use serde_json::json;
@@ -11,94 +9,98 @@ use crate::format::{self, countdown, money, tokens, Output};
 
 #[derive(Subcommand)]
 pub enum UsageCommand {
-    /// Totals, day count and model spread for a window.
+    #[command(about = "Totals, day count and model spread for a window")]
     Summary {
-        /// How many recent days to include; omit for the full history.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "How many recent days to include; omit for the full history"
+        )]
         days: Option<usize>,
-        /// Restrict to these collector ids, e.g. --source cli --source codex.
-        #[arg(long = "source")]
+        #[arg(
+            long = "source",
+            help = "Restrict to these collector ids, e.g. --source cli --source codex"
+        )]
         sources: Vec<String>,
     },
-    /// Spend per collector.
+    #[command(about = "Spend per collector")]
     Sources {
         #[arg(long)]
         days: Option<usize>,
     },
-    /// Spend per model.
+    #[command(about = "Spend per model")]
     Models {
         #[arg(long)]
         days: Option<usize>,
         #[arg(long = "source")]
         sources: Vec<String>,
     },
-    /// Spend per project, with its chats.
+    #[command(about = "Spend per project, with its chats")]
     Projects {
         #[arg(long)]
         days: Option<usize>,
         #[arg(long = "source")]
         sources: Vec<String>,
-        /// Show the chats inside each project.
-        #[arg(long)]
+        #[arg(long, help = "Show the chats inside each project")]
         chats: bool,
     },
-    /// The daily spend calendar.
+    #[command(about = "The daily spend calendar")]
     Calendar {
         #[arg(long)]
         days: Option<usize>,
     },
-    /// Rate limits for Claude and Codex, as live gauges.
+    #[command(about = "Rate limits for Claude and Codex, as live gauges")]
     Limits {
-        /// Warn above this utilisation.
-        #[arg(long, default_value_t = 60)]
+        #[arg(long, default_value_t = 60, help = "Warn above this utilisation")]
         warn: i64,
-        /// Treat above this as critical.
-        #[arg(long, default_value_t = 85)]
+        #[arg(long, default_value_t = 85, help = "Treat above this as critical")]
         critical: i64,
     },
-    /// What the alert notifier would do right now.
-    ///
-    /// A dry run: it reads the live windows and the stored notifier state, then
-    /// reports which alerts a poll at this instant would post. Nothing is
-    /// posted and no state is written, so it is safe to run repeatedly.
+    #[command(
+        about = "What the alert notifier would do right now",
+        long_about = "What the alert notifier would do right now.\n\nA dry run: it reads the live windows and the stored notifier state, then reports which alerts a poll at this instant would post. Nothing is posted and no state is written, so it is safe to run repeatedly."
+    )]
     Alerts {
-        /// Also print every switch, so a misfiring alert can be traced to one.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Also print every switch, so a misfiring alert can be traced to one"
+        )]
         settings: bool,
     },
-    /// Render usage as branded PNG cards, for sharing.
-    ///
-    /// A card never shows a repository name, a folder path, a chat title or a
-    /// dollar cost: it exists to be posted somewhere public, and those are the
-    /// four fields that would leak a client, an employer or an income.
+    #[command(
+        about = "Render usage as branded PNG cards, for sharing",
+        long_about = "Render usage as branded PNG cards, for sharing.\n\nA card never shows a repository name, a folder path, a chat title or a dollar cost: it exists to be posted somewhere public, and those are the four fields that would leak a client, an employer or an income."
+    )]
     Export {
-        /// Which card. Repeat for several; `all` is every one. Defaults to all.
-        #[arg(long = "card")]
+        #[arg(
+            long = "card",
+            help = "Which card. Repeat for several; `all` is every one. Defaults to all"
+        )]
         cards: Vec<String>,
-        /// A directory, or — with exactly one card — the destination file.
-        /// Defaults to the current directory.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "A directory, or the destination file when there is exactly one card. Defaults to the current directory"
+        )]
         output: Option<String>,
-        /// How many recent days to include; omit for the full history.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "How many recent days to include; omit for the full history"
+        )]
         days: Option<usize>,
         #[arg(long = "source")]
         sources: Vec<String>,
-        /// Write the SVG rather than a PNG. Useful with no fonts installed,
-        /// and for editing a card before posting it.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Write the SVG rather than a PNG. Useful with no fonts installed, and for editing a card before posting it"
+        )]
         svg: bool,
     },
-    /// Run the collector and rewrite usage.json.
+    #[command(about = "Run the collector and rewrite usage.json")]
     Refresh {
-        /// Print each collector phase as it completes.
-        #[arg(long)]
+        #[arg(long, help = "Print each collector phase as it completes")]
         progress: bool,
     },
 }
 
-/// Load the document the collector last wrote, with a clear error when the
-/// user has never refreshed.
 fn load(directories: &AppDirectories) -> Result<veronica_usage::UsageDocument> {
     let path = directories.usage_file();
     collector::read_document(&path)?.with_context(|| {
@@ -291,8 +293,6 @@ pub async fn run(
             let range = range(*days);
             let cells = aggregate::heatmap(&document, &range, &SourceSelection::All);
             output.emit(&cells, || {
-                // Five shades, quietest to busiest, so the calendar reads in a
-                // terminal the same way it does in the app.
                 const BLOCKS: [&str; 5] = ["·", "░", "▒", "▓", "█"];
                 let mut out = String::new();
                 for cell in &cells {
@@ -317,8 +317,6 @@ pub async fn run(
             let notify = NotifySettings::from_settings(&stored);
             let now = chrono::Utc::now();
 
-            // A copy of the persisted state, so the dry run cannot consume the
-            // edge a real poll would fire on.
             let mut state = NotifierState::load(&directories.alerts_state_file());
             let (session, week, note) = match veronica_usage::claude::limits_for_user(now).await {
                 Ok(Some(limits)) => (limits.session, limits.week, None),
@@ -420,7 +418,7 @@ pub async fn run(
                 } else {
                     let _ = writeln!(out, "\nwould post now:");
                     for alert in &would_post {
-                        let _ = writeln!(out, "  [{}] {} — {}", alert.id, alert.title, alert.body);
+                        let _ = writeln!(out, "  [{}] {}: {}", alert.id, alert.title, alert.body);
                     }
                 }
                 out.trim_end().to_string()
@@ -462,7 +460,7 @@ pub async fn run(
                                 gauge
                                     .resets_in_secs
                                     .map(countdown)
-                                    .unwrap_or_else(|| "—".into()),
+                                    .unwrap_or_else(|| "-".into()),
                                 format!("{:?}", gauge.zone).to_lowercase(),
                                 format!("{level:?}").to_lowercase(),
                             ]
@@ -526,8 +524,6 @@ pub async fn run(
             let extension = if *svg { "svg" } else { "png" };
             let stamp = chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string();
 
-            // A destination that names a file is only meaningful for one card;
-            // four cards written to one path would leave one file and lose three.
             let target = destination.as_deref().map(std::path::Path::new);
             let single_file = match target {
                 Some(path) if chosen.len() == 1 && !path.is_dir() => path.extension().is_some(),
@@ -560,7 +556,6 @@ pub async fn run(
 
                 std::fs::write(&path, &bytes)
                     .with_context(|| format!("cannot write {}", path.display()))?;
-                // Absolute, so the path is usable from wherever the caller is.
                 written.push(
                     std::fs::canonicalize(&path)
                         .unwrap_or(path)
@@ -582,7 +577,6 @@ pub async fn run(
 
             let outcome = collector::refresh(&script, &out_dir, &directories.cache, |event| {
                 if show {
-                    // Progress goes to stderr so stdout stays one document.
                     match event {
                         veronica_usage::CollectorEvent::Phase {
                             name,
@@ -640,7 +634,6 @@ pub async fn run(
     }
 }
 
-/// A ten-cell bar for a percentage, so a terminal reading is scannable.
 fn bar(percent: f64) -> String {
     let filled = ((percent / 10.0).round() as usize).min(10);
     format!("[{}{}]", "#".repeat(filled), "·".repeat(10 - filled))
@@ -655,7 +648,6 @@ mod tests {
         assert_eq!(bar(0.0), "[··········]");
         assert_eq!(bar(50.0), "[#####·····]");
         assert_eq!(bar(100.0), "[##########]");
-        // Over the limit still renders, rather than overflowing the cell count.
         assert_eq!(bar(140.0), "[##########]");
     }
 }

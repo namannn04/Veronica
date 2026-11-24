@@ -1,4 +1,3 @@
-//! Native notch utility surface: GTK owns clipboard image and URI-drop protocols.
 use crate::image_tools::{self, Source};
 use gtk::{gdk_pixbuf::PixbufLoader, gio, glib, prelude::*};
 use std::{
@@ -92,7 +91,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     let preview = gtk::Image::new();
     body.pack_start(&preview, true, true, 0);
     let output: Shared = Rc::new(RefCell::new(None));
-    let status = gtk::Label::new(Some("PNG · JPG / JPEG · SVG — processed locally"));
+    let status = gtk::Label::new(Some("PNG · JPG / JPEG · SVG, processed locally"));
     status.set_line_wrap(true);
     body.add(&status);
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -115,7 +114,6 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     std::thread::spawn(move || {
         let mut source: Option<Source> = None;
         while let Some((mut request, mut job)) = rx.blocking_recv() {
-            // A burst of clicks retains at most the newest pending operation.
             while let Ok((next_request, next_job)) = rx.try_recv() {
                 request = next_request;
                 job = next_job;
@@ -160,7 +158,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                                 format,
                                 preview: preview.clone(),
                             }),
-                            "Converted — ready to download or copy".into(),
+                            "Converted, ready to download or copy".into(),
                             preview,
                         ));
                     }
@@ -172,7 +170,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                                 format: "png".into(),
                                 preview: png.clone(),
                             }),
-                            "QR ready — links directly to your original URL".into(),
+                            "QR ready, links directly to your original URL".into(),
                             png,
                         ));
                     }
@@ -297,12 +295,10 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
         }
         if event.state().contains(gtk::gdk::ModifierType::CONTROL_MASK)
             && event.keyval() == gtk::gdk::keys::constants::v
+            && !paste_entry.has_focus()
         {
-            // Let the URL entry handle text paste normally.
-            if !paste_entry.has_focus() {
-                paste_image();
-                return glib::Propagation::Stop;
-            }
+            paste_image();
+            return glib::Propagation::Stop;
         }
         glib::Propagation::Proceed
     });
@@ -378,7 +374,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
             match pixbuf(&image.preview) {
                 Ok(pixels) => {
                     gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD).set_image(&pixels);
-                    message.set_text("Image copied — paste into another app");
+                    message.set_text("Image copied, paste into another app");
                 }
                 Err(e) => message.set_text(&e.to_string()),
             }
@@ -447,7 +443,6 @@ fn pixbuf(bytes: &[u8]) -> anyhow::Result<gtk::gdk_pixbuf::Pixbuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    /// Run explicitly in a GNOME/X11 session; CI exercises the pure engine tests.
     #[test]
     #[ignore = "requires a desktop display and image clipboard"]
     fn native_image_and_qr_clipboard() {

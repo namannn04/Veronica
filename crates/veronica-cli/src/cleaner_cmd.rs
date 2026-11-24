@@ -1,11 +1,3 @@
-//! `vr cleaner` — the disk cleaner.
-//!
-//! Edith's `ed cleaner`, with Ubuntu's paths. Two things carry over exactly and
-//! are worth repeating on every screen that shows this: `clean` has no notion
-//! of a selection, so it moves everything the same scan found rather than the
-//! subset an interface would have ticked; and moving to the Trash does not free
-//! the space until the Trash is emptied.
-
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::cleaner::{self, Family};
@@ -14,32 +6,37 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum CleanerCommand {
-    /// Measure what could be reclaimed. Reads only.
+    #[command(about = "Measure what could be reclaimed. Reads only")]
     Scan {
-        /// Also sweep this folder for project directories such as
-        /// `node_modules`. Without it, only the fixed caches are measured.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Also sweep this folder for project directories such as `node_modules`. Without it, only the fixed caches are measured"
+        )]
         root: Option<String>,
-        /// Restrict to these category ids. Repeatable.
-        #[arg(long = "category")]
+        #[arg(long = "category", help = "Restrict to these category ids. Repeatable")]
         categories: Vec<String>,
     },
-    /// List the categories the cleaner knows, and what each one costs.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "List the categories the cleaner knows, and what each one costs"
+    )]
     Categories,
-    /// Re-scan, then move everything found to the Trash.
-    ///
-    /// Does nothing without `--yes`.
+    #[command(
+        about = "Re-scan, then move everything found to the Trash",
+        long_about = "Re-scan, then move everything found to the Trash.\n\nDoes nothing without `--yes`."
+    )]
     Clean {
         #[arg(long)]
         root: Option<String>,
         #[arg(long = "category")]
         categories: Vec<String>,
-        /// Required. Without it the command reports what it would move.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Required. Without it the command reports what it would move"
+        )]
         yes: bool,
     },
-    /// The mounted volumes and how full they are.
+    #[command(about = "The mounted volumes and how full they are")]
     Drives,
 }
 
@@ -47,8 +44,6 @@ fn home() -> Result<std::path::PathBuf> {
     veronica_core::paths::home_dir().context("cannot resolve the home directory")
 }
 
-/// Validate the ids, and split them into the two families, because a project
-/// category cannot turn up without a `--root` and saying so beats an empty scan.
 fn check_categories(categories: &[String], root: Option<&String>) -> Result<Option<Vec<String>>> {
     if categories.is_empty() {
         return Ok(None);
@@ -65,7 +60,6 @@ fn check_categories(categories: &[String], root: Option<&String>) -> Result<Opti
     Ok(Some(categories.to_vec()))
 }
 
-/// Both families in one scan, so a command with `--root` reports one total.
 fn scan(
     root: Option<&String>,
     selected: Option<&Vec<String>>,
@@ -192,7 +186,7 @@ fn summary(scan: &veronica_core::CleanerScan, dry_run: bool) -> String {
         let _ = write!(
             out,
             "\n\nNothing was moved. Rerun with --yes, which moves every item above \
-             to the Trash — the Trash then keeps occupying the disk until you empty it."
+             to the Trash, and the Trash then keeps occupying the disk until you empty it."
         );
     }
     out

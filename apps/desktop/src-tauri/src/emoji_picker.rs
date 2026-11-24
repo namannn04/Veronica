@@ -1,9 +1,3 @@
-//! Compact, shortcut-owned emoji picker.
-//!
-//! The full Emoji page remains useful for settings and browsing. Ctrl+Alt+E
-//! should feel like a picker, though, not like opening an application, so it
-//! gets a small disposable webview of its own.
-
 use anyhow::{Context, Result};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 

@@ -1,18 +1,8 @@
-//! Lifecycle for the main webview.
-//!
-//! Veronica spends most of its idle memory in WebKit, not in the tray process.
-//! The configured window is therefore a template: create it only when somebody
-//! opens the app, and destroy it on close so WebKit can return that memory.
-
 use anyhow::{Context, Result};
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const LABEL: &str = "main";
 
-/// Show the main window, creating its webview on demand.
-///
-/// A route is put in the initial URL when a new webview is needed. That avoids
-/// losing a navigation event while React is still installing its listeners.
 pub(crate) fn show(app: &tauri::AppHandle, route: Option<&str>) -> Result<()> {
     if let Some(window) = app.get_webview_window(LABEL) {
         window.show().context("cannot show the main window")?;

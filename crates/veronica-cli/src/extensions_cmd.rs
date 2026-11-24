@@ -1,10 +1,3 @@
-//! `vr extensions` — the catalogue in front of each feature's shared switch.
-//!
-//! These are separate from `vr config` because the catalogue can explain what
-//! a key controls and what setup remains. Enabling is deliberately
-//! noninteractive: the switch is written even when a capability or tool is not
-//! ready, and the shortfall is reported afterwards.
-
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -19,14 +12,16 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum ExtensionCommand {
-    /// Every extension, its group, switch and availability.
-    #[command(alias = "list")]
+    #[command(
+        alias = "list",
+        about = "Every extension, its group, switch and availability"
+    )]
     Ls,
-    /// Turn one extension on, even when setup still remains.
+    #[command(about = "Turn one extension on, even when setup still remains")]
     Enable { id: String },
-    /// Turn one extension off.
+    #[command(about = "Turn one extension off")]
     Disable { id: String },
-    /// Describe one extension and everything it needs.
+    #[command(about = "Describe one extension and everything it needs")]
     Info { id: String },
 }
 

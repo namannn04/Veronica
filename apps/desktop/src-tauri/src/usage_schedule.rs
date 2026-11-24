@@ -1,12 +1,3 @@
-//! Collecting agent usage on a schedule.
-//!
-//! The collector used to run only when somebody pressed Refresh on the Agent
-//! Usage page or in the tray, so the dashboard, Home and the notch showed
-//! whatever was last collected — weeks old, on a machine where nobody pressed
-//! it. While Agent Usage is enabled, the running app now collects every
-//! `usageRefreshMinutes`, and once soon after launch when the stored figures
-//! are already older than that.
-
 use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
@@ -15,18 +6,12 @@ use crate::state::AppState;
 
 pub const KEY: &str = "usageRefreshMinutes";
 pub const DEFAULT_MINUTES: u64 = 15;
-/// A collection walks every agent's history; more often than this costs more
-/// than the freshness is worth.
 pub const MIN_MINUTES: u64 = 5;
 pub const MAX_MINUTES: u64 = 24 * 60;
 
-/// How often to look at the clock and the switches. Cheap: no I/O beyond the
-/// settings already in memory.
 const CHECK_EVERY: Duration = Duration::from_secs(60);
-/// Let launch finish before the first collection competes with it.
 const STARTUP_DELAY: Duration = Duration::from_secs(20);
 
-/// The interval, or `None` when scheduled collection is switched off (`0`).
 pub fn interval(settings: &veronica_core::Settings) -> Option<Duration> {
     let minutes = settings
         .get(KEY)
@@ -35,13 +20,6 @@ pub fn interval(settings: &veronica_core::Settings) -> Option<Duration> {
     (minutes > 0).then(|| Duration::from_secs(minutes.clamp(MIN_MINUTES, MAX_MINUTES) * 60))
 }
 
-/// Whether a collection is due.
-///
-/// `since_attempt` is how long ago this process last tried (`None` before its
-/// first try); `data_age` is how old the stored figures are (`None` when there
-/// are none). Before the first try the data's age decides, so a restart does
-/// not collect again data that is still fresh; after it, the last try does,
-/// so a machine with no agent history is not retried every minute.
 pub fn is_due(
     since_attempt: Option<Duration>,
     data_age: Option<Duration>,
@@ -53,7 +31,6 @@ pub fn is_due(
     }
 }
 
-/// How old the figures in memory are.
 fn data_age(app: &AppHandle) -> Option<Duration> {
     let state = app.state::<AppState>();
     let usage = state.usage.lock().expect("usage lock");
@@ -63,7 +40,6 @@ fn data_age(app: &AppHandle) -> Option<Duration> {
         .ok()
 }
 
-/// Run until the process exits.
 pub async fn run(app: AppHandle) {
     tokio::time::sleep(STARTUP_DELAY).await;
     let mut last_attempt: Option<std::time::Instant> = None;
@@ -75,7 +51,6 @@ pub async fn run(app: AppHandle) {
             let since_attempt = last_attempt.map(|at| at.elapsed());
             if enabled && is_due(since_attempt, data_age(&app), every) {
                 last_attempt = Some(std::time::Instant::now());
-                // A refresh the user started is already doing this one's work.
                 if let Err(error) = crate::commands::usage_refresh(app.clone()).await {
                     tracing::info!(target: "veronica", "scheduled usage collection: {error}");
                 }
@@ -118,8 +93,6 @@ mod tests {
     #[test]
     fn after_a_try_the_schedule_follows_the_try_not_the_data() {
         let every = 15 * MINUTE;
-        // No history to collect leaves the data missing; that must not mean
-        // trying again every minute.
         assert!(!is_due(Some(MINUTE), None, every));
         assert!(is_due(Some(15 * MINUTE), None, every));
     }
