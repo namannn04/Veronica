@@ -1,11 +1,3 @@
-//! The machines Veronica can reach.
-//!
-//! "This computer" is always present. Remote hosts are reached by running the
-//! `ssh` binary, so the user's existing SSH configuration applies unchanged and
-//! Veronica never handles a key or a passphrase. Both are probed with the same
-//! shell snippet and parsed by the same code, so a remote machine reports
-//! exactly what a local one does.
-
 pub mod host;
 pub mod manage;
 pub mod probe;

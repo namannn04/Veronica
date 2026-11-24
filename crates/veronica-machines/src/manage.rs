@@ -1,9 +1,3 @@
-//! Safe interactive operations for a configured machine.
-//!
-//! The same SSH transport used by probes is reused here, so keys, aliases and
-//! jump hosts remain the user's OpenSSH concern. Inputs are validated before a
-//! short POSIX script is sent on stdin; no private credentials enter Veronica.
-
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
@@ -87,9 +81,6 @@ pub fn parse_directory(output: &str) -> Result<MachineDirectory> {
             index += 1;
             continue;
         }
-        // `%Y` is the type after following a link, so `/bin` on Ubuntu, a
-        // link to `usr/bin`, opens as the folder it is rather than being
-        // offered for download. `N` and `L` are a broken or looping link.
         let kind = match fields[index + 1] {
             "d" => "directory",
             "f" => "file",
@@ -200,11 +191,6 @@ pub async fn container_action(
     Ok(())
 }
 
-/// A container's recent output.
-///
-/// Tail rather than follow: a stream would need a channel back to the interface
-/// and a way to stop it, and what the user wants when a container misbehaves is
-/// the last screenful, not a live feed.
 pub async fn container_logs(
     machine: &Machine,
     engine: &str,
@@ -222,7 +208,6 @@ pub async fn container_logs(
     {
         bail!("invalid container id");
     }
-    // Capped so a runaway container cannot return a gigabyte over SSH.
     let lines = lines.clamp(1, 2_000);
     let script = format!(
         "command -v {engine} >/dev/null && {engine} logs --tail {lines} {} 2>&1\n",
@@ -231,7 +216,6 @@ pub async fn container_logs(
     run_script(machine, &script, timeout).await
 }
 
-/// What a power action does to a machine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerAction {
     Restart,
@@ -261,9 +245,6 @@ impl PowerAction {
         }
     }
 
-    /// `systemctl` is preferred because it asks logind, which handles a polkit
-    /// rule the user may already have; `shutdown` is the fallback for a host
-    /// without systemd.
     fn command(self) -> &'static str {
         match self {
             PowerAction::Restart => {
@@ -278,16 +259,6 @@ impl PowerAction {
     }
 }
 
-/// Restart or shut down a machine.
-///
-/// Refused for the local machine: pulling the floor out from under the running
-/// app is never what someone clicking a row in a fleet view meant, and Ubuntu's
-/// own menu is one click away for the case where they did.
-///
-/// The far end decides whether it is allowed. Veronica never escalates: it asks
-/// logind, falls back to `shutdown`, and finally to a *non-interactive* `sudo`,
-/// which fails cleanly rather than blocking on a password prompt that has no
-/// terminal to appear on.
 pub async fn power(machine: &Machine, action: PowerAction, timeout: Duration) -> Result<()> {
     if machine.is_local() {
         bail!(
@@ -295,8 +266,6 @@ pub async fn power(machine: &Machine, action: PowerAction, timeout: Duration) ->
             action.title()
         );
     }
-    // The connection dies with the machine, so a closed connection is the
-    // expected outcome rather than a failure worth reporting.
     match run_script(machine, action.command(), timeout).await {
         Ok(_) => Ok(()),
         Err(error) => {
@@ -320,12 +289,6 @@ pub async fn power(machine: &Machine, action: PowerAction, timeout: Duration) ->
     }
 }
 
-/// Wake a machine that is powered off, with a Wake-on-LAN magic packet.
-///
-/// Sent as a broadcast UDP datagram, which is the whole protocol: six 0xFF
-/// bytes followed by the MAC sixteen times. No SSH is involved, because the
-/// machine is not answering yet — which is also why this cannot report whether
-/// it worked, only that the packet went out.
 pub fn wake(mac: &str) -> Result<()> {
     let bytes = parse_mac(mac)?;
     let mut packet = vec![0xFF_u8; 6];
@@ -338,15 +301,12 @@ pub fn wake(mac: &str) -> Result<()> {
     socket
         .set_broadcast(true)
         .context("cannot broadcast on this network")?;
-    // Port 9 is the discard port, which is where magic packets conventionally
-    // go; nothing has to be listening for the NIC's firmware to see it.
     socket
         .send_to(&packet, "255.255.255.255:9")
         .context("cannot send the wake packet")?;
     Ok(())
 }
 
-/// Accept `aa:bb:cc:dd:ee:ff`, `AA-BB-CC-DD-EE-FF` and `aabbccddeeff`.
 pub fn parse_mac(mac: &str) -> Result<[u8; 6]> {
     let cleaned: String = mac
         .chars()
@@ -451,7 +411,6 @@ fn available_destination(directory: &Path, name: &str) -> PathBuf {
     directory.join(format!("{stem}-{}", chrono::Utc::now().timestamp_millis()))
 }
 
-/// The longest a single download may take once connected.
 pub const TRANSFER_TIMEOUT: Duration = Duration::from_secs(2 * 60 * 60);
 
 pub async fn download_file(
@@ -507,15 +466,10 @@ pub async fn download_file(
                 );
                 stdin.write_all(batch.as_bytes()).await?;
             }
-            // `timeout` bounds connecting. The transfer itself gets far longer:
-            // with the connect timeout covering the whole copy, any file that
-            // took more than twenty seconds was reported as failed while sftp
-            // went on writing it into Downloads.
             let output =
                 match tokio::time::timeout(TRANSFER_TIMEOUT, child.wait_with_output()).await {
                     Ok(output) => output?,
                     Err(_) => {
-                        // The child is killed on drop; do not leave half a file.
                         let _ = std::fs::remove_file(&destination);
                         bail!(
                             "the transfer did not finish within {} minutes",
@@ -562,7 +516,6 @@ mod tests {
 
     #[test]
     fn a_broken_link_is_a_link_and_a_followed_one_takes_its_targets_kind() {
-        // `find -printf %Y` already reports a link to a folder as `d`.
         let listing = "P\x00/\x00E\x00d\x007\x001.0\x00bin\x00E\x00N\x007\x001.0\x00gone\x00";
         let parsed = parse_directory(listing).unwrap();
         assert_eq!(parsed.entries[0].name, "bin");
@@ -644,8 +597,6 @@ mod tests {
 
     #[tokio::test]
     async fn veronica_refuses_to_power_off_the_computer_it_is_running_on() {
-        // Pulling the floor out from under the app is never what a click on a
-        // fleet row meant.
         for action in [PowerAction::Restart, PowerAction::Shutdown] {
             let error = power(&Machine::local(), action, Duration::from_secs(1))
                 .await
@@ -666,9 +617,6 @@ mod tests {
 
     #[test]
     fn a_power_command_never_escalates_interactively() {
-        // A `sudo` that can prompt would block forever on a connection with no
-        // terminal, and asking for a password the user never typed here would
-        // be the wrong thing anyway.
         for action in [PowerAction::Restart, PowerAction::Shutdown] {
             let command = action.command();
             assert!(command.contains("sudo -n"), "got {command}");

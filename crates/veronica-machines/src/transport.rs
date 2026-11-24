@@ -1,11 +1,3 @@
-//! Running the probe, locally or over SSH.
-//!
-//! Remote execution goes through the `ssh` binary rather than a Rust SSH
-//! library, deliberately: the user's own config, keys, agent, jump hosts and
-//! known-hosts all apply unchanged, so a machine that works in a terminal works
-//! here with no further setup. It also means Veronica never handles a private
-//! key or a passphrase.
-
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
@@ -14,21 +6,14 @@ use tokio::process::Command;
 use crate::host::{Machine, Reach};
 use crate::probe::{self, MachineStats};
 
-/// How long to wait for a machine to answer before giving up.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(20);
 
-/// SSH options Veronica always passes.
-///
-/// `BatchMode` matters most: without it a host needing a password blocks
-/// forever on a prompt nobody can see, which looks like a hang rather than a
-/// configuration problem.
 pub fn ssh_options(timeout: Duration) -> Vec<String> {
     vec![
         "-o".into(),
         "BatchMode=yes".into(),
         "-o".into(),
         format!("ConnectTimeout={}", timeout.as_secs().max(1)),
-        // The probe is one short command; multiplexing would add setup cost.
         "-o".into(),
         "ControlMaster=no".into(),
         "-o".into(),
@@ -36,7 +21,6 @@ pub fn ssh_options(timeout: Duration) -> Vec<String> {
     ]
 }
 
-/// Build the argument list for probing a machine over SSH.
 pub fn ssh_args(target: &str, port: Option<u16>, script: &str, timeout: Duration) -> Vec<String> {
     let mut args = ssh_options(timeout);
     if let Some(port) = port {
@@ -44,15 +28,12 @@ pub fn ssh_args(target: &str, port: Option<u16>, script: &str, timeout: Duration
         args.push(port.to_string());
     }
     args.push(target.to_string());
-    // The script goes to the remote shell's stdin via an argument, so quoting is
-    // the remote shell's problem only once.
     args.push("sh".into());
     args.push("-s".into());
     let _ = script;
     args
 }
 
-/// Run a shell script on a machine and return its stdout.
 pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> Result<String> {
     let mut command = match &machine.reach {
         Reach::Local => {
@@ -61,8 +42,6 @@ pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> R
             command
         }
         Reach::Ssh { target, port } => {
-            // Checked here as well as when added, so an entry stored before
-            // the check existed cannot pass an option to ssh either.
             crate::host::validate_ssh_target(target)?;
             let mut command = Command::from(veronica_core::host::command("ssh"));
             command.args(ssh_args(target, *port, script, timeout));
@@ -74,15 +53,12 @@ pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> R
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        // A timed-out wait drops the child; without this the `ssh` kept
-        // running, and a host that accepts and then hangs leaked one per poll.
         .kill_on_drop(true);
 
     let mut child = command
         .spawn()
         .with_context(|| format!("cannot reach {}", machine.name))?;
 
-    // Feed the script on stdin so no quoting has to survive two shells.
     if let Some(mut stdin) = child.stdin.take() {
         use tokio::io::AsyncWriteExt;
         stdin.write_all(script.as_bytes()).await.ok();
@@ -110,7 +86,6 @@ pub async fn run_script(machine: &Machine, script: &str, timeout: Duration) -> R
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// Probe a machine for its vital signs.
 pub async fn probe_machine(machine: &Machine, timeout: Duration) -> Result<MachineStats> {
     let output = run_script(machine, probe::PROBE_SCRIPT, timeout).await?;
     let stats = probe::parse(&output);
@@ -123,20 +98,14 @@ pub async fn probe_machine(machine: &Machine, timeout: Duration) -> Result<Machi
     Ok(stats)
 }
 
-/// One machine's probe result, for reporting a whole fleet at once.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MachineReport {
     pub machine: Machine,
     pub stats: Option<MachineStats>,
-    /// Why the probe failed, when it did.
     pub error: Option<String>,
 }
 
-/// Probe every machine concurrently.
-///
-/// One unreachable host must not delay or fail the others, so each result is
-/// reported independently.
 pub async fn probe_fleet(machines: &[Machine], timeout: Duration) -> Vec<MachineReport> {
     let futures = machines.iter().map(|machine| async move {
         match probe_machine(machine, timeout).await {
@@ -161,7 +130,6 @@ mod tests {
 
     #[test]
     fn ssh_always_runs_in_batch_mode() {
-        // A password prompt nobody can see would otherwise hang the probe.
         let options = ssh_options(Duration::from_secs(10));
         assert!(options.windows(2).any(|w| w == ["-o", "BatchMode=yes"]));
         assert!(options.iter().any(|o| o == "ConnectTimeout=10"));
@@ -169,7 +137,6 @@ mod tests {
 
     #[test]
     fn a_sub_second_timeout_still_produces_a_valid_connect_timeout() {
-        // ssh rejects ConnectTimeout=0.
         let options = ssh_options(Duration::from_millis(200));
         assert!(options.iter().any(|o| o == "ConnectTimeout=1"));
     }
@@ -178,7 +145,6 @@ mod tests {
     fn ssh_args_include_the_target_and_a_shell() {
         let args = ssh_args("tuf", None, "echo hi", Duration::from_secs(5));
         assert!(args.contains(&"tuf".to_string()));
-        // The script arrives on stdin, so a plain shell is invoked.
         assert_eq!(args.last().unwrap(), "-s");
         assert!(!args.contains(&"-p".to_string()));
     }
@@ -219,7 +185,6 @@ mod tests {
 
     #[tokio::test]
     async fn an_unreachable_host_reports_an_error_rather_than_hanging() {
-        // `.invalid` is reserved, so it cannot resolve to a real host.
         let machine = Machine::ssh("nowhere", "Nowhere", "veronica-test.invalid");
         let result = probe_machine(&machine, Duration::from_secs(6)).await;
         assert!(result.is_err(), "an invalid host must fail");
