@@ -1,0 +1,252 @@
+.ui-page {
+  --gutter: var(--page-gutter);
+  --column-width: var(--readable-width);
+  position: relative;
+  min-height: 100%;
+  padding-bottom: var(--space-10);
+}
+
+.ui-page-form {
+  --column-width: var(--form-width);
+}
+
+.ui-page-fluid {
+  --column-width: none;
+}
+
+.ui-page-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+.ui-page-fill > .ui-page-body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding-bottom: var(--gutter);
+}
+
+@container main (max-width: 720px) {
+  .ui-page {
+    --gutter: var(--page-gutter-compact);
+  }
+}
+
+.ui-page-sentinel {
+  position: absolute;
+  top: 0;
+  height: 1px;
+  width: 1px;
+}
+
+.ui-page-column {
+  width: 100%;
+  max-width: calc(var(--column-width) + var(--gutter) * 2);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.ui-page-fluid .ui-page-column {
+  max-width: none;
+}
+
+.ui-page-header-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: var(--page-top);
+  padding-bottom: var(--header-bottom);
+  background: var(--bg-content);
+  transition: box-shadow var(--motion-feedback);
+}
+
+.ui-page-header-bar[data-scrolled] {
+  box-shadow: 0 1px 0 var(--separator);
+}
+
+.ui-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ui-page-header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 36px;
+}
+
+.ui-page-header-leading {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.ui-page-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-page-title {
+  margin: 0;
+  font-size: var(--text-title-1);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.022em;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-page-subtitle {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: var(--text-body);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+  flex: none;
+  max-width: 70%;
+}
+
+@container main (max-width: 720px) {
+  .ui-page-header-row {
+    flex-wrap: wrap;
+  }
+
+  .ui-page-titles {
+    flex-basis: 100%;
+  }
+
+  .ui-page-actions {
+    max-width: none;
+    justify-content: flex-start;
+  }
+}
+
+.ui-page-accessory {
+  display: flex;
+  align-items: center;
+  gap: var(--control-gap);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ui-page-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+}
+
+.ui-page-header-bar + .ui-page-body {
+  padding-top: var(--space-1);
+}
+
+.ui-page:not(:has(.ui-page-header-bar)) > .ui-page-body {
+  padding-top: var(--page-top);
+}
+
+.ui-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ui-section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 26px;
+}
+
+.ui-section-titles {
+  min-width: 0;
+}
+
+.ui-section-title {
+  margin: 0;
+  font-size: var(--text-title-3);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+  color: var(--text-1);
+}
+
+.ui-section-description {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  line-height: 1.45;
+}
+
+.ui-section-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--control-gap);
+  flex: none;
+}
+
+.ui-stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ui-stack-section {
+  gap: var(--section-gap);
+}
+
+.ui-stack-card {
+  gap: var(--card-gap);
+}
+
+.ui-stack-control {
+  gap: var(--control-gap);
+}
+
+.ui-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--grid-min), 100%), 1fr));
+  gap: var(--card-gap);
+  min-width: 0;
+}
+
+.ui-columns {
+  display: grid;
+  gap: var(--card-gap);
+  min-width: 0;
+  align-items: start;
+}
+
+.ui-columns-even {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ui-columns-wide-start {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+
+.ui-columns-wide-end {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+
+@container main (max-width: 720px) {
+  .ui-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

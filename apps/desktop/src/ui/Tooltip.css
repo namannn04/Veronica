@@ -1,0 +1,15 @@
+.ui-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 280px;
+  padding: 5px 8px;
+  border-radius: var(--radius-s);
+  background: color-mix(in srgb, var(--ink) 92%, var(--plane));
+  color: var(--plane);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 0 4px 14px color-mix(in srgb, #000 18%, transparent);
+  animation: ui-fade 90ms var(--ease-out);
+}

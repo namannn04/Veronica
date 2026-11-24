@@ -1,0 +1,82 @@
+.ui-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--control-gap) var(--space-3);
+  min-width: 0;
+}
+
+.ui-toolbar-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+  min-width: 0;
+}
+
+.ui-toolbar-leading {
+  flex: 1 1 auto;
+}
+
+.ui-toolbar-trailing {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.ui-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-callout);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-table th {
+  padding: 0 var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--separator);
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  text-align: left;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ui-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--separator);
+  color: var(--text-1);
+  vertical-align: middle;
+}
+
+.ui-table th:first-child,
+.ui-table td:first-child {
+  padding-left: 0;
+}
+
+.ui-table th:last-child,
+.ui-table td:last-child {
+  padding-right: 0;
+}
+
+.ui-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ui-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}
+
+.ui-table .num {
+  text-align: right;
+}
+
+.ui-table .muted {
+  color: var(--text-3);
+}
