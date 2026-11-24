@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AtSign, Check, ClipboardList, Copy, Link2, TextAlignStart, Trash, Type, X } from "lucide-react";
+import {
+  AtSign,
+  Check,
+  ClipboardList,
+  Copy,
+  Link2,
+  TextAlignStart,
+  Trash,
+  Type,
+  X,
+} from "lucide-react";
 
 import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
@@ -99,7 +109,12 @@ export function ClipboardPage() {
           title="Clipboard"
           subtitle="Everything you have copied, kept on this computer"
           actions={
-            <Button variant="destructive-plain" icon={<Trash />} onClick={() => void askToClear()} disabled={!query && rows.length === 0}>
+            <Button
+              variant="destructive-plain"
+              icon={<Trash />}
+              onClick={() => void askToClear()}
+              disabled={!query && rows.length === 0}
+            >
               Clear all
             </Button>
           }
@@ -107,12 +122,35 @@ export function ClipboardPage() {
       }
     >
       <Toolbar
-        leading={<SearchField ref={search} className="clip-search" value={query} onChange={setQuery} placeholder="Search the history" />}
-        trailing={loaded && !error && <span className="clip-count ui-num">{query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}</span>}
+        leading={
+          <SearchField
+            ref={search}
+            className="clip-search"
+            value={query}
+            onChange={setQuery}
+            placeholder="Search the history"
+          />
+        }
+        trailing={
+          loaded &&
+          !error && (
+            <span className="clip-count ui-num">
+              {query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}
+            </span>
+          )
+        }
       />
 
       {error && (
-        <Notice tone="critical" title="Clipboard history is unavailable" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+        <Notice
+          tone="critical"
+          title="Clipboard history is unavailable"
+          actions={
+            <Button size="small" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Notice>
       )}
@@ -123,21 +161,33 @@ export function ClipboardPage() {
         </List>
       )}
 
-      {loaded && rows.length === 0 && !error && (
-        query ? (
+      {loaded &&
+        rows.length === 0 &&
+        !error &&
+        (query ? (
           <EmptyState
             icon={<ClipboardList />}
             title={`Nothing matches “${query}”`}
-            action={<Button icon={<X />} onClick={() => { setQuery(""); search.current?.focus(); }}>Clear search</Button>}
+            action={
+              <Button
+                icon={<X />}
+                onClick={() => {
+                  setQuery("");
+                  search.current?.focus();
+                }}
+              >
+                Clear search
+              </Button>
+            }
           >
             Try a different word from what you copied.
           </EmptyState>
         ) : (
           <EmptyState icon={<ClipboardList />} title="Nothing captured yet">
-            Copy something and it appears here. Capture needs the GNOME Shell extension, because on Wayland only the compositor may watch the clipboard.
+            Copy something and it appears here. Capture needs the GNOME Shell extension, because on
+            Wayland only the compositor may watch the clipboard.
           </EmptyState>
-        )
-      )}
+        ))}
 
       {rows.length > 0 && (
         <List label="Clipboard history">
@@ -153,11 +203,19 @@ export function ClipboardPage() {
                   <IconButton
                     size="small"
                     label={copied === row.id ? "Copied" : "Copy"}
-                    tooltip={copied === row.id ? "Copied to the clipboard" : "Copy to the clipboard"}
+                    tooltip={
+                      copied === row.id ? "Copied to the clipboard" : "Copy to the clipboard"
+                    }
                     icon={copied === row.id ? <Check className="clip-copied" /> : <Copy />}
                     onClick={() => void copy(row)}
                   />
-                  <IconButton size="small" label="Forget entry" tooltip="Forget this entry" icon={<X />} onClick={() => void remove(row.id)} />
+                  <IconButton
+                    size="small"
+                    label="Forget entry"
+                    tooltip="Forget this entry"
+                    icon={<X />}
+                    onClick={() => void remove(row.id)}
+                  />
                 </>
               }
             />

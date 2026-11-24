@@ -117,7 +117,10 @@
 }
 
 .cp-swatch[aria-pressed="true"] .cp-swatch-color {
-  box-shadow: inset 0 0 0 1px var(--separator), 0 0 0 2px var(--bg-content), 0 0 0 3.5px var(--accent);
+  box-shadow:
+    inset 0 0 0 1px var(--separator),
+    0 0 0 2px var(--bg-content),
+    0 0 0 3.5px var(--accent);
 }
 
 .cp-swatch-check {

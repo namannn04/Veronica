@@ -61,14 +61,23 @@ export function ColorPickerPage() {
 
   useEffect(() => {
     void load();
-    void ipc.colorFormats().then(setFormats).catch(() => {});
-    void ipc.settingsAll().then(setSettings).catch(() => {});
+    void ipc
+      .colorFormats()
+      .then(setFormats)
+      .catch(() => {});
+    void ipc
+      .settingsAll()
+      .then(setSettings)
+      .catch(() => {});
   }, [load]);
 
   useEffect(() => {
     const updated = listenEvent("swatches-updated", () => void load());
     const changed = listenEvent("settings-updated", () => {
-      void ipc.settingsAll().then(setSettings).catch(() => {});
+      void ipc
+        .settingsAll()
+        .then(setSettings)
+        .catch(() => {});
     });
     return () => {
       void updated.then((un) => un());
@@ -76,7 +85,8 @@ export function ColorPickerPage() {
     };
   }, [load]);
 
-  const format = typeof settings.colorPickerCopyFormat === "string" ? settings.colorPickerCopyFormat : "hex";
+  const format =
+    typeof settings.colorPickerCopyFormat === "string" ? settings.colorPickerCopyFormat : "hex";
   const profile = settings.colorPickerProfile === "displayP3" ? "displayP3" : "srgb";
   const selected = swatches.find((swatch) => swatch.id === selectedId) ?? swatches[0];
 
@@ -157,7 +167,13 @@ export function ColorPickerPage() {
     <Notice
       tone="critical"
       title={loadFailed ? "Could not read your swatches" : "Something went wrong"}
-      actions={loadFailed ? <Button size="small" onClick={() => void load()}>Retry</Button> : undefined}
+      actions={
+        loadFailed ? (
+          <Button size="small" onClick={() => void load()}>
+            Retry
+          </Button>
+        ) : undefined
+      }
     >
       {error}
     </Notice>
@@ -187,13 +203,18 @@ export function ColorPickerPage() {
 
       {loaded && swatches.length === 0 && !loadFailed && (
         <EmptyState icon={<Pipette />} title="No colors picked yet">
-          Pick a color and it is copied and kept here. The same history is behind vr color pick and the Pick Color action in the top bar.
+          Pick a color and it is copied and kept here. The same history is behind vr color pick and
+          the Pick Color action in the top bar.
         </EmptyState>
       )}
 
       {selected && (
         <Card className="cp-current">
-          <div className="cp-current-preview" style={{ background: paint(selected) }} aria-hidden="true" />
+          <div
+            className="cp-current-preview"
+            style={{ background: paint(selected) }}
+            aria-hidden="true"
+          />
           <div className="cp-current-body">
             <div className="cp-current-head">
               <div className="cp-current-titles">
@@ -202,7 +223,12 @@ export function ColorPickerPage() {
                   {selected.profileLabel} · picked {timeAgo(selected.pickedAt)}
                 </p>
               </div>
-              <Button size="small" variant="plain" aria-label={`Forget ${selected.hex}`} onClick={() => void forget(selected.id)}>
+              <Button
+                size="small"
+                variant="plain"
+                aria-label={`Forget ${selected.hex}`}
+                onClick={() => void forget(selected.id)}
+              >
                 Forget
               </Button>
             </div>
@@ -239,7 +265,12 @@ export function ColorPickerPage() {
           title="Swatches"
           description={`${swatches.length} ${swatches.length === 1 ? "color" : "colors"}, newest first. Click one to copy it as ${labelFor(formats, format)}.`}
           actions={
-            <Button size="small" variant="destructive-plain" icon={<Trash />} onClick={() => setConfirmClear(true)}>
+            <Button
+              size="small"
+              variant="destructive-plain"
+              icon={<Trash />}
+              onClick={() => setConfirmClear(true)}
+            >
               Clear all
             </Button>
           }
@@ -259,9 +290,19 @@ export function ColorPickerPage() {
                         void copy(swatch);
                       }}
                     >
-                      <span className="cp-swatch-color" style={{ "--swatch": paint(swatch) } as CSSProperties}>
+                      <span
+                        className="cp-swatch-color"
+                        style={{ "--swatch": paint(swatch) } as CSSProperties}
+                      >
                         {done && (
-                          <Check className={swatch.prefersDarkText ? "cp-swatch-check cp-on-light" : "cp-swatch-check cp-on-dark"} aria-hidden="true" />
+                          <Check
+                            className={
+                              swatch.prefersDarkText
+                                ? "cp-swatch-check cp-on-light"
+                                : "cp-swatch-check cp-on-dark"
+                            }
+                            aria-hidden="true"
+                          />
                         )}
                       </span>
                       <span className="cp-swatch-hex ui-mono">{done ? "Copied" : swatch.hex}</span>
@@ -280,7 +321,11 @@ export function ColorPickerPage() {
             label="Copy format"
             description="What a pick puts on the clipboard. Every format stays available per swatch."
             control={
-              <Select value={format} onChange={(event) => void set("colorPickerCopyFormat", event.target.value)} aria-label="Copy format">
+              <Select
+                value={format}
+                onChange={(event) => void set("colorPickerCopyFormat", event.target.value)}
+                aria-label="Copy format"
+              >
                 {formats.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -292,7 +337,14 @@ export function ColorPickerPage() {
           <FormRow
             label="Color profile"
             description="The compositor samples sRGB. Display P3 converts it for a wide-gamut panel."
-            control={<Segmented options={PROFILES} value={profile} onChange={(value) => void set("colorPickerProfile", value)} label="Color profile" />}
+            control={
+              <Segmented
+                options={PROFILES}
+                value={profile}
+                onChange={(value) => void set("colorPickerProfile", value)}
+                label="Color profile"
+              />
+            }
           />
         </FormGroup>
       )}
@@ -331,5 +383,7 @@ function labelFor(formats: CopyFormatOption[], id: string): string {
 }
 
 function paint(swatch: SwatchRow): string {
-  return swatch.profile === "displayP3" ? `color(display-p3 ${swatch.red} ${swatch.green} ${swatch.blue})` : swatch.hex;
+  return swatch.profile === "displayP3"
+    ? `color(display-p3 ${swatch.red} ${swatch.green} ${swatch.blue})`
+    : swatch.hex;
 }

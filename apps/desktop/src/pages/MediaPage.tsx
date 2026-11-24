@@ -2,7 +2,12 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useState } from "react";
 import { AudioLines, Music, Radio } from "lucide-react";
 
-import { TrackProgress, Transport, TransportControls, useNowPlaying } from "../components/NowPlaying";
+import {
+  TrackProgress,
+  Transport,
+  TransportControls,
+  useNowPlaying,
+} from "../components/NowPlaying";
 import { stopwatch } from "../lib/format";
 import { useLocalPlayer } from "../lib/localPlayer";
 import {
@@ -64,7 +69,21 @@ function Artwork({ src, label }: { src: string | null | undefined; label: string
 }
 
 function LibraryView() {
-  const { tracks, libraryStatus, index, current, playing, position, duration, play, toggle, next, previous, seek, loadLibrary } = useLocalPlayer();
+  const {
+    tracks,
+    libraryStatus,
+    index,
+    current,
+    playing,
+    position,
+    duration,
+    play,
+    toggle,
+    next,
+    previous,
+    seek,
+    loadLibrary,
+  } = useLocalPlayer();
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -75,14 +94,25 @@ function LibraryView() {
     const needle = query.trim().toLowerCase();
     return tracks
       .map((track, position) => ({ track, position }))
-      .filter(({ track }) => !needle || `${track.title} ${track.artist} ${track.album}`.toLowerCase().includes(needle));
+      .filter(
+        ({ track }) =>
+          !needle || `${track.title} ${track.artist} ${track.album}`.toLowerCase().includes(needle),
+      );
   }, [query, tracks]);
 
   const loading = libraryStatus === "idle" || libraryStatus === "loading";
 
   if (libraryStatus === "failed") {
     return (
-      <Notice tone="critical" title="Could not read ~/Music" actions={<Button size="small" onClick={loadLibrary}>Retry</Button>}>
+      <Notice
+        tone="critical"
+        title="Could not read ~/Music"
+        actions={
+          <Button size="small" onClick={loadLibrary}>
+            Retry
+          </Button>
+        }
+      >
         The music library did not load. Check that the folder exists and can be read.
       </Notice>
     );
@@ -103,14 +133,27 @@ function LibraryView() {
           <NowPlayingSkeleton />
         ) : (
           <>
-            <Artwork src={current?.artPath ? convertFileSrc(current.artPath) : null} label={current ? `${current.album} artwork` : ""} />
+            <Artwork
+              src={current?.artPath ? convertFileSrc(current.artPath) : null}
+              label={current ? `${current.album} artwork` : ""}
+            />
             <div className="media-now-body">
               <div className="media-now-titles">
                 <p className="media-now-title">{current?.title ?? "Choose a track"}</p>
-                <p className="media-now-artist">{current ? `${current.artist} · ${current.album}` : `${tracks.length} tracks ready to play`}</p>
+                <p className="media-now-artist">
+                  {current
+                    ? `${current.artist} · ${current.album}`
+                    : `${tracks.length} tracks ready to play`}
+                </p>
               </div>
               <div className="media-seek">
-                <Slider value={position} max={duration || 0} onChange={seek} label="Position" disabled={!current || !duration} />
+                <Slider
+                  value={position}
+                  max={duration || 0}
+                  onChange={seek}
+                  label="Position"
+                  disabled={!current || !duration}
+                />
                 <div className="media-seek-times ui-num">
                   <span>{stopwatch(current ? position : 0)}</span>
                   <span>{stopwatch(current ? duration : 0)}</span>
@@ -133,7 +176,15 @@ function LibraryView() {
       <Section
         title="Tracks"
         description={loading ? "Reading ~/Music…" : `${tracks.length} in your library`}
-        actions={<SearchField size="small" className="media-search" value={query} onChange={setQuery} placeholder="Search library" />}
+        actions={
+          <SearchField
+            size="small"
+            className="media-search"
+            value={query}
+            onChange={setQuery}
+            placeholder="Search library"
+          />
+        }
       >
         {loading ? (
           <List label="Tracks">
@@ -159,7 +210,11 @@ function LibraryView() {
                   }
                   title={track.title}
                   subtitle={`${track.artist} · ${track.album}`}
-                  meta={isCurrent ? <Badge tone="accent">{playing ? "Playing" : "Paused"}</Badge> : undefined}
+                  meta={
+                    isCurrent ? (
+                      <Badge tone="accent">{playing ? "Playing" : "Paused"}</Badge>
+                    ) : undefined
+                  }
                   selected={isCurrent}
                   onClick={() => (isCurrent ? toggle() : play(trackIndex))}
                 />
@@ -199,7 +254,15 @@ function PlayersView({ external }: { external: ReturnType<typeof useNowPlaying> 
 
   if (external.unavailable) {
     return (
-      <Notice tone="critical" title="No desktop media session" actions={<Button size="small" onClick={() => void external.refresh()}>Retry</Button>}>
+      <Notice
+        tone="critical"
+        title="No desktop media session"
+        actions={
+          <Button size="small" onClick={() => void external.refresh()}>
+            Retry
+          </Button>
+        }
+      >
         Veronica could not reach the session bus, so other players cannot be shown or controlled.
       </Notice>
     );

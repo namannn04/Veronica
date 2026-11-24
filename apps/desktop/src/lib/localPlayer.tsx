@@ -1,5 +1,14 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { ipc } from "./ipc";
 import type { LocalTrack } from "./types";
@@ -50,14 +59,17 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
       });
   }, [libraryStatus]);
 
-  const play = useCallback((next: number) => {
-    const track = tracks[next];
-    if (!track) return;
-    const element = audio.current;
-    setIndex(next);
-    element.src = convertFileSrc(track.path);
-    void element.play().catch(() => setPlaying(false));
-  }, [tracks]);
+  const play = useCallback(
+    (next: number) => {
+      const track = tracks[next];
+      if (!track) return;
+      const element = audio.current;
+      setIndex(next);
+      element.src = convertFileSrc(track.path);
+      void element.play().catch(() => setPlaying(false));
+    },
+    [tracks],
+  );
 
   const toggle = useCallback(() => {
     const element = audio.current;
@@ -66,10 +78,13 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
     else element.pause();
   }, []);
 
-  const step = useCallback((by: number) => {
-    if (tracks.length === 0) return;
-    play(((index < 0 ? 0 : index) + by + tracks.length) % tracks.length);
-  }, [index, play, tracks.length]);
+  const step = useCallback(
+    (by: number) => {
+      if (tracks.length === 0) return;
+      play(((index < 0 ? 0 : index) + by + tracks.length) % tracks.length);
+    },
+    [index, play, tracks.length],
+  );
   const next = useCallback(() => step(1), [step]);
   const previous = useCallback(() => step(-1), [step]);
 
@@ -112,10 +127,38 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
     navigator.mediaSession.setActionHandler("previoustrack", previous);
   }, [current, next, previous, toggle]);
 
-  const value = useMemo<LocalPlayer>(() => ({
-    tracks, libraryStatus, index, current, playing, position, duration,
-    play, toggle, next, previous, seek, loadLibrary,
-  }), [tracks, libraryStatus, index, current, playing, position, duration, play, toggle, next, previous, seek, loadLibrary]);
+  const value = useMemo<LocalPlayer>(
+    () => ({
+      tracks,
+      libraryStatus,
+      index,
+      current,
+      playing,
+      position,
+      duration,
+      play,
+      toggle,
+      next,
+      previous,
+      seek,
+      loadLibrary,
+    }),
+    [
+      tracks,
+      libraryStatus,
+      index,
+      current,
+      playing,
+      position,
+      duration,
+      play,
+      toggle,
+      next,
+      previous,
+      seek,
+      loadLibrary,
+    ],
+  );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
