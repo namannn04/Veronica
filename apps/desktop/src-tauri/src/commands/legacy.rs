@@ -5,13 +5,8 @@ use veronica_system::metrics::SystemSnapshot;
 use veronica_usage::aggregate::{self, DayRange, SourceSelection};
 use veronica_usage::collector;
 
+use super::{fail, CommandResult};
 use crate::state::AppState;
-
-type CommandResult<T> = Result<T, String>;
-
-fn fail(error: impl std::fmt::Display) -> String {
-    format!("{error:#}")
-}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
