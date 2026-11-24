@@ -50,6 +50,6 @@ is.
   the public key compiled into `trust.rs`, and publishes it as
   `extensions/v1/catalog.signed.json`. A weekly run re-signs it so its 30-day
   expiry keeps moving.
-- The installer, the in-app update check and the package repositories only
-  consider `vX.Y.Z` release tags, so an extension release is never mistaken for
-  an app release.
+- The installer, the website, the in-app update check and the package
+  repositories only consider `vX.Y.Z` release tags, so an extension release is
+  never mistaken for an app release.

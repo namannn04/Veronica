@@ -1,8 +1,32 @@
-const releaseApi = "https://api.github.com/repos/namannn04/Veronica/releases/latest";
+const releaseApi = "https://api.github.com/repos/namannn04/Veronica/releases?per_page=100";
+const appTag = /^v(\d+)\.(\d+)\.(\d+)$/;
 const fallbackVersion = "0.1.10";
 
 function assetUrl(release, suffix) {
   return release.assets?.find((asset) => asset.name.endsWith(suffix))?.browser_download_url;
+}
+
+function appVersion(release) {
+  const match = appTag.exec(release.tag_name ?? "");
+  return match && !release.draft && !release.prerelease ? match.slice(1).map(Number) : null;
+}
+
+function isNewer(version, than) {
+  const index = version.findIndex((part, at) => part !== than[at]);
+  return index !== -1 && version[index] > than[index];
+}
+
+function newestAppRelease(releases) {
+  let newest = null;
+  let newestVersion = null;
+  for (const release of releases) {
+    const version = appVersion(release);
+    if (version && (!newestVersion || isNewer(version, newestVersion))) {
+      newest = release;
+      newestVersion = version;
+    }
+  }
+  return newest;
 }
 
 async function refreshRelease() {
@@ -13,7 +37,10 @@ async function refreshRelease() {
     if (!response.ok) {
       return;
     }
-    const release = await response.json();
+    const release = newestAppRelease(await response.json());
+    if (!release) {
+      return;
+    }
     const version = String(release.tag_name || `v${fallbackVersion}`);
     document.querySelectorAll("[data-version]").forEach((node) => {
       node.textContent = version;
