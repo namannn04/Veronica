@@ -6,6 +6,7 @@ mod color;
 mod emoji;
 mod legacy;
 mod media;
+mod usage;
 
 pub(crate) use attention::*;
 pub(crate) use audit::*;
@@ -15,6 +16,7 @@ pub(crate) use color::*;
 pub(crate) use emoji::*;
 pub(crate) use legacy::*;
 pub(crate) use media::*;
+pub(crate) use usage::*;
 
 type CommandResult<T> = Result<T, String>;
 
