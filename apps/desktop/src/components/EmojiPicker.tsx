@@ -208,7 +208,7 @@ export function EmojiPicker() {
               })}
             </div>
           ) : (
-            <p className="emoji-picker-empty">No emoji match “{query.trim()}”</p>
+            <p className="emoji-picker-empty">{query.trim() ? `No emoji match “${query.trim()}”` : "No emoji loaded"}</p>
           )}
         </section>
       </div>

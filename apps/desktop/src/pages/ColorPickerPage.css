@@ -62,7 +62,7 @@
 }
 
 .cp-format-label {
-  width: 112px;
+  width: 116px;
   color: var(--text-3);
   font-size: var(--text-callout);
   font-weight: var(--weight-medium);
@@ -149,9 +149,5 @@
   .cp-current-preview {
     width: 100%;
     min-height: 96px;
-  }
-
-  .cp-format-label {
-    width: 88px;
   }
 }
