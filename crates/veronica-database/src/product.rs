@@ -1,15 +1,5 @@
-//! What a database is: which product, which version, how it is deployed.
-//!
-//! A direct port of Edith's `ProductIdentity.swift`. The ten products, the five
-//! families and the nine topology kinds are the same set with the same wire
-//! names, so a connection exported on macOS reads correctly here.
-
 use serde::{Deserialize, Serialize};
 
-/// The shape of a product, which decides what operations even mean. A
-/// relational database has tables and SQL; a key-value store has keys and
-/// commands; asking one for the other is a category error, and the family is
-/// what catches it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Family {
@@ -92,7 +82,6 @@ impl Product {
         }
     }
 
-    /// The wire name, which is what a stored definition and the CLI both use.
     pub fn key(self) -> &'static str {
         match self {
             Product::Postgresql => "postgresql",
@@ -108,8 +97,6 @@ impl Product {
         }
     }
 
-    /// The port a product listens on when nobody says otherwise. SQLite has
-    /// none: it is a file, not a server.
     pub fn default_port(self) -> Option<u16> {
         match self {
             Product::Postgresql => Some(5432),
@@ -127,7 +114,6 @@ impl Product {
         Product::ALL
             .into_iter()
             .find(|product| product.key() == lowered)
-            // `postgres` is what everybody types, and `mongo` likewise.
             .or(match lowered.as_str() {
                 "postgres" | "pg" => Some(Product::Postgresql),
                 "mongo" => Some(Product::MongoDb),
@@ -146,11 +132,6 @@ pub struct Version {
 }
 
 impl Version {
-    /// Read the leading `major.minor.patch` out of whatever the server said.
-    ///
-    /// Every product reports its version differently — `8.0.35-0ubuntu0.1`,
-    /// `PostgreSQL 16.2 (Ubuntu ...)`, `7.2.4` — and taking the first run of
-    /// dotted digits handles all of them without a rule per product.
     pub fn parse(reported: &str) -> Self {
         let mut numbers: Vec<u32> = Vec::new();
         let mut current = String::new();
@@ -220,9 +201,6 @@ pub struct ExtensionIdentity {
     pub version: Option<String>,
 }
 
-/// What the server turned out to be, as opposed to what the connection said it
-/// would be. Edith calls this the identity; it is what `test` reports and what
-/// the capability map is derived from.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductIdentity {
@@ -313,8 +291,6 @@ mod tests {
 
     #[test]
     fn a_version_is_read_out_of_whatever_the_server_reported() {
-        // Every product spells it differently; the leading dotted digits are
-        // the part they agree on.
         let cases = [
             ("8.0.35-0ubuntu0.1", (8, 0, 35)),
             ("16.2", (16, 2, 0)),

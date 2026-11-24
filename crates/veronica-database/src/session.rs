@@ -1,16 +1,3 @@
-//! Doing something with a database, end to end.
-//!
-//! Everything above this module is a model; this is where they meet. A session
-//! opens the right adapter for a connection, and every mutation goes through
-//! the guard on its way to one — there is no path from a caller to
-//! `Adapter::execute` that skips the preview.
-//!
-//! Edith puts a broker process on that boundary, because a sandboxed macOS app
-//! cannot hold a database socket itself. Veronica has no sandbox to cross, so
-//! the boundary is this type instead: the CLI and the desktop app both go
-//! through it, and neither can construct a payload and hand it to an adapter
-//! directly, because `execute` is only reachable from `apply`.
-
 use anyhow::{Context, Result};
 use uuid::Uuid;
 
@@ -25,19 +12,14 @@ use crate::product::{Product, ProductIdentity};
 use crate::secrets::SecretStore;
 use crate::store::{MetadataStore, OperationOutcome, OperationRecord};
 
-/// The identifier the confirmation signing key is filed under. Fixed, so the
-/// key survives restarts and outstanding previews stay valid.
 pub const SIGNING_KEY_ID: Uuid = Uuid::from_u128(0x7e_20_1c_a0_00_00_40_00_80_00_00_00_00_00_00_01);
 
-/// One open database.
 pub struct Session {
     adapter: Box<dyn Adapter>,
     connection: ConnectionDefinition,
     identity: Option<ProductIdentity>,
 }
 
-/// By hand, because an adapter holds a live socket and a definition that names
-/// a host — neither belongs in a panic message.
 impl std::fmt::Debug for Session {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Session")
@@ -48,7 +30,6 @@ impl std::fmt::Debug for Session {
 }
 
 impl Session {
-    /// Open a connection, choosing the adapter from the product.
     pub async fn open(connection: &ConnectionDefinition, secrets: &SecretStore) -> Result<Self> {
         let adapter: Box<dyn Adapter> = match connection.product_hint {
             Product::Sqlite => Box::new(sqlite::SqliteAdapter::open(connection)?),
@@ -61,8 +42,6 @@ impl Session {
             Product::Redis | Product::Valkey => {
                 Box::new(redis::RedisAdapter::connect(connection, secrets).await?)
             }
-            // The three HTTP products are the remaining gap, and it is named
-            // rather than papered over with a client that would not work.
             product => anyhow::bail!(
                 "Veronica has no {} adapter yet. It reads PostgreSQL, MySQL, MariaDB, \
                  SQLite, Redis and Valkey.",
@@ -80,7 +59,6 @@ impl Session {
         &self.connection
     }
 
-    /// What the server turned out to be, cached after the first ask.
     pub async fn identify(&mut self) -> Result<ProductIdentity> {
         if let Some(identity) = &self.identity {
             return Ok(identity.clone());
@@ -90,8 +68,6 @@ impl Session {
         Ok(identity)
     }
 
-    /// What this server can be asked to do, narrowed by what it turned out to
-    /// be rather than only by its product.
     pub async fn capabilities(&mut self) -> Result<Report> {
         Ok(Report::for_identity(&self.identify().await?))
     }
@@ -115,11 +91,6 @@ impl Session {
         self.adapter.count(object).await
     }
 
-    /// Preview a change. Nothing is sent to the server.
-    ///
-    /// The impact is measured here rather than trusted from the caller: a plan
-    /// that claims it touches one row when it touches nine thousand would be
-    /// reviewed on the strength of a number nobody checked.
     pub async fn preview(
         &mut self,
         plan: &Plan,
@@ -131,8 +102,6 @@ impl Session {
         if measured.impact.estimated_records.is_none() {
             if let Some(object) = &plan.target.object {
                 if let Ok(Some(count)) = self.adapter.count(object).await {
-                    // The count is of the object, not of the predicate, so it
-                    // is an upper bound and is reported as inexact.
                     measured.impact = crate::mutation::Impact {
                         estimated_records: Some(count),
                         is_exact: measured.scope == crate::mutation::Scope::EntireObject,
@@ -153,11 +122,6 @@ impl Session {
         )?)
     }
 
-    /// Apply a previewed change.
-    ///
-    /// The only route to `Adapter::execute`. The guard verifies the token, the
-    /// clock, the receipt, the plan and the typed confirmation before this gets
-    /// as far as sending anything.
     pub async fn apply(
         &mut self,
         plan: &Plan,
@@ -169,8 +133,6 @@ impl Session {
         let key = secrets
             .signing_key(SIGNING_KEY_ID, SecretPurpose::ConfirmationSigningKey)
             .await?;
-        // The plan must be re-measured the same way the preview measured it, or
-        // the digests will not match what was signed.
         let mut measured = plan.clone();
         if measured.impact.estimated_records.is_none() {
             if let Some(object) = &plan.target.object {
@@ -198,15 +160,11 @@ impl Session {
         let outcome = self.adapter.execute(&measured.payload).await;
         let elapsed = started.elapsed().as_millis() as u64;
 
-        // Recorded either way. A mutation that failed is still a thing that was
-        // attempted, and a history that only holds successes is a history that
-        // hides the interesting part.
         let record = OperationRecord {
             id: Uuid::new_v4(),
             connection_id: self.connection.id,
             connection_name: self.connection.display_name.clone(),
             kind: "mutation".to_string(),
-            // The redacted command, never a parameter value.
             summary: format!(
                 "{} · {}",
                 measured.action.key(),
@@ -233,7 +191,6 @@ impl Session {
     }
 }
 
-/// What an applied mutation did.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Applied {
@@ -325,7 +282,6 @@ mod tests {
         }
     }
 
-    /// The whole feature, end to end, against a real database.
     #[tokio::test]
     async fn a_change_is_previewed_confirmed_and_applied() {
         let directory = tempfile::tempdir().unwrap();
@@ -342,7 +298,6 @@ mod tests {
             .preview(&plan, &mut store, &secrets, 120)
             .await
             .unwrap();
-        // Nothing has happened yet.
         assert_eq!(
             session
                 .count(&ObjectIdentifier::new(
@@ -376,7 +331,6 @@ mod tests {
             Some(2)
         );
 
-        // And it is in the history, with no parameter value in the summary.
         let history = store.operations(10).unwrap();
         assert_eq!(history.len(), 1);
         assert_eq!(history[0].outcome, OperationOutcome::Succeeded);
@@ -407,7 +361,6 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("not a token"), "got {error}");
-        // And nothing was deleted.
         assert_eq!(
             session
                 .count(&ObjectIdentifier::new(
@@ -436,7 +389,6 @@ mod tests {
             .await
             .unwrap();
 
-        // Swap the row being deleted after taking the preview.
         let mut other = delete_plan(&connection);
         other.payload = Payload::Relational {
             product: Product::Sqlite,
@@ -489,10 +441,8 @@ mod tests {
             .preview(&plan, &mut store, &secrets, 120)
             .await
             .unwrap();
-        // Three rows are in the table, and the preview says so.
         assert_eq!(preview.effect.impact.estimated_records, Some(3));
         assert!(preview.effect.impact.is_exact);
-        // And a truncate asks for the strongest confirmation.
         assert_eq!(
             preview.required_confirmation.strength,
             ConfirmationStrength::ConnectionAndTarget
@@ -501,7 +451,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_failed_mutation_is_recorded_too() {
-        // A history that only holds successes hides the interesting part.
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("app.db");
         seed(&path);

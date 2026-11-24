@@ -1,10 +1,3 @@
-//! PostgreSQL.
-//!
-//! `tokio-postgres` is async throughout, so unlike the SQLite adapter nothing
-//! here needs a blocking pool. The connection task is spawned and held: dropping
-//! it closes the socket, which is why the join handle is kept alive alongside
-//! the client rather than discarded.
-
 use anyhow::{Context, Result};
 use tokio_postgres::types::Type;
 use tokio_postgres::{Client, NoTls};
@@ -21,7 +14,6 @@ use super::Adapter;
 
 pub struct PostgresAdapter {
     client: Client,
-    /// Holds the connection task open. Dropping it closes the socket.
     _task: tokio::task::JoinHandle<()>,
     read_only: bool,
 }
@@ -46,8 +38,6 @@ impl PostgresAdapter {
         if let Some(database) = &definition.namespaces.database {
             config.dbname(database);
         }
-        // The password is fetched at connect time and never stored on the
-        // adapter, so it lives as briefly as it can.
         if let Some(reference) = definition.authentication.reference(SecretPurpose::Password) {
             if let Some(password) = secrets
                 .load(reference.identifier, reference.purpose)
@@ -56,8 +46,6 @@ impl PostgresAdapter {
                 config.password(password);
             }
         }
-        // A read-only connection tells the server so, as well as Veronica
-        // refusing to send a write. Two locks are better than one.
         let read_only = definition.read_only_policy == ReadOnlyPolicy::Required;
         if read_only {
             config.options("-c default_transaction_read_only=on");
@@ -81,13 +69,10 @@ impl PostgresAdapter {
     }
 }
 
-/// Quote an identifier the way PostgreSQL does.
 pub fn quote(identifier: &str) -> String {
     format!("\"{}\"", identifier.replace('"', "\"\""))
 }
 
-/// A schema-qualified name, each part quoted separately so a dot in a name is
-/// part of the name rather than a separator.
 fn qualified(object: &ObjectIdentifier) -> String {
     object
         .path
@@ -97,11 +82,6 @@ fn qualified(object: &ObjectIdentifier) -> String {
         .join(".")
 }
 
-/// Read one column, mapping PostgreSQL's types onto Veronica's.
-///
-/// Everything unknown falls through to text, which every type has a
-/// representation in. Guessing at a binary layout would be worse than showing
-/// what the server itself would print.
 fn read_value(row: &tokio_postgres::Row, index: usize) -> Value {
     let column = &row.columns()[index];
     match *column.type_() {
@@ -159,8 +139,6 @@ fn read_value(row: &tokio_postgres::Row, index: usize) -> Value {
             .ok()
             .flatten()
             .map(|json| Value::from_json(&json)),
-        // NUMERIC is exact, and reading it through a float would lose that, so
-        // it comes back as text and stays exact.
         _ => None,
     }
     .unwrap_or_else(|| match row.try_get::<_, Option<String>>(index) {
@@ -172,8 +150,6 @@ fn read_value(row: &tokio_postgres::Row, index: usize) -> Value {
             }
         }
         Ok(None) => Value::Null,
-        // A type with no text representation this client can read. Saying so
-        // beats showing an empty cell that looks like NULL.
         Err(_) => Value::ProductSpecific(crate::value::ProductValue {
             type_name: column.type_().name().to_string(),
             rendered: format!("<{}>", column.type_().name()),
@@ -214,13 +190,6 @@ fn bounded(sql: &str, request: &PageRequest) -> String {
 }
 
 impl PostgresAdapter {
-    /// Run a statement the text check called a read inside a read-only
-    /// transaction that is always rolled back.
-    ///
-    /// The check reads only the leading verb, and a `SELECT` can still write:
-    /// `SELECT nextval('orders_id_seq')`, `SELECT setval(...)` or a volatile
-    /// function with side effects. PostgreSQL refuses those inside a
-    /// `READ ONLY` transaction, so the server enforces what the check intends.
     async fn read_only_rows(&mut self, sql: &str) -> Result<Vec<tokio_postgres::Row>> {
         let transaction = self
             .client
@@ -229,8 +198,6 @@ impl PostgresAdapter {
             .start()
             .await?;
         let rows = transaction.query(sql, &[]).await;
-        // Rolled back even after an error, which leaves the transaction
-        // aborted; nothing it did is ever kept.
         transaction.rollback().await?;
         Ok(rows?)
     }
@@ -256,8 +223,6 @@ impl Adapter for PostgresAdapter {
             version: Some(Version::parse(&version)),
             distribution: Some(banner),
             topology: Topology {
-                // A server in recovery is a replica, and knowing that before
-                // trying to write to it saves an obscure error later.
                 kind: if in_recovery {
                     TopologyKind::PrimaryReplica
                 } else {
@@ -276,7 +241,6 @@ impl Adapter for PostgresAdapter {
         parent: Option<&ObjectIdentifier>,
     ) -> Result<Vec<ObjectIdentifier>> {
         match parent {
-            // The top level is the schemas a user would care about.
             None => {
                 let rows = self
                     .client
@@ -360,7 +324,6 @@ impl Adapter for PostgresAdapter {
         let rows = if super::is_wrappable_query(body) {
             self.read_only_rows(&bounded(body, request)).await?
         } else {
-            // `EXPLAIN`/`SHOW` cannot sit inside a subquery, so page by hand.
             super::client_window(self.read_only_rows(body).await?, request)
         };
         Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
@@ -389,9 +352,6 @@ impl Adapter for PostgresAdapter {
         if self.read_only {
             anyhow::bail!("this connection is read-only");
         }
-        // Values are bound as text and cast by the server, which is the one
-        // mapping that works for every column type without this client having
-        // to know the schema. The statement is still exactly what was signed.
         let bound: Vec<Option<String>> = parameters
             .iter()
             .map(|parameter| bind_text(&parameter.value))
@@ -404,7 +364,6 @@ impl Adapter for PostgresAdapter {
     }
 }
 
-/// A value as the text PostgreSQL will cast.
 fn bind_text(value: &Value) -> Option<String> {
     match value {
         Value::Null | Value::Missing => None,
@@ -419,7 +378,6 @@ fn bind_text(value: &Value) -> Option<String> {
         Value::Binary(binary) => Some(match binary {
             crate::value::Binary::Complete { data, .. }
             | crate::value::Binary::Preview { bytes: data, .. } => {
-                // PostgreSQL's hex bytea form, which it casts without help.
                 match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, data) {
                     Ok(bytes) => format!(
                         "\\x{}",
@@ -448,7 +406,6 @@ mod tests {
 
     #[test]
     fn each_part_of_a_path_is_quoted_separately() {
-        // So a schema called `a.b` is one schema, not two path components.
         let object =
             ObjectIdentifier::new(ObjectKind::Table, vec!["my.schema".into(), "orders".into()]);
         assert_eq!(qualified(&object), r#""my.schema"."orders""#);
@@ -476,7 +433,6 @@ mod tests {
 
     #[test]
     fn null_and_missing_bind_as_null_rather_than_an_empty_string() {
-        // Writing '' into a nullable column is not the same as writing NULL.
         assert_eq!(bind_text(&Value::Null), None);
         assert_eq!(bind_text(&Value::Missing), None);
         assert_eq!(

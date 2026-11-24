@@ -1,15 +1,7 @@
-//! Reading a bounded slice of something.
-//!
-//! A port of Edith's `Paging.swift` and `Filters.swift`. The point of both is
-//! that no read is unbounded: a page has a size with a hard ceiling, so
-//! `SELECT * FROM events` against a billion-row table returns a screenful
-//! rather than filling memory and taking the app down with it.
-
 use serde::{Deserialize, Serialize};
 
 use crate::value::Value;
 
-/// Edith's page bounds exactly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub struct PageSize(u32);
@@ -30,8 +22,6 @@ impl PageSize {
         Ok(Self(value))
     }
 
-    /// Clamp rather than refuse. For a `--limit` flag, where "as many as you
-    /// can" is a reasonable thing to mean and an error would be pedantic.
     pub fn clamped(value: u32) -> Self {
         Self(value.clamp(Self::MIN, Self::MAX))
     }
@@ -71,7 +61,6 @@ pub enum SortDirection {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sort {
-    /// Field path components, outermost first.
     pub path: Vec<String>,
     #[serde(default)]
     pub direction: SortDirection,
@@ -92,7 +81,6 @@ pub struct Projection {
     pub paths: Vec<Vec<String>>,
 }
 
-/// Edith's eighteen operators.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum FilterOperator {
@@ -117,8 +105,6 @@ pub enum FilterOperator {
 }
 
 impl FilterOperator {
-    /// Whether the operator takes any values at all. `IS NULL` with a value is
-    /// a malformed filter, not a filter with an ignored field.
     pub fn arity(self) -> usize {
         match self {
             FilterOperator::IsNull
@@ -153,7 +139,6 @@ pub struct FilterPredicate {
 }
 
 impl FilterPredicate {
-    /// Whether the values match what the operator takes.
     pub fn is_well_formed(&self) -> bool {
         if self.path.is_empty() {
             return false;
@@ -165,7 +150,6 @@ impl FilterPredicate {
     }
 }
 
-/// A tree, so `a AND (b OR c)` is expressible without a parser.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Filter {
@@ -176,8 +160,6 @@ pub enum Filter {
 }
 
 impl Filter {
-    /// How deep the tree goes. A filter nested a thousand levels down would
-    /// recurse an adapter to death, so the caller checks before building.
     pub fn depth(&self) -> usize {
         match self {
             Filter::Predicate { .. } => 1,
@@ -188,7 +170,6 @@ impl Filter {
         }
     }
 
-    /// Every predicate in the tree, for validating one filter in one pass.
     pub fn predicates(&self) -> Vec<&FilterPredicate> {
         match self {
             Filter::Predicate { predicate } => vec![predicate],
@@ -210,14 +191,11 @@ impl Filter {
     }
 }
 
-/// One bounded read.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PageRequest {
     #[serde(default)]
     pub page_size: PageSize,
-    /// How many records to skip. Offset paging is what every product supports;
-    /// a keyset continuation is better and is what an adapter uses when it can.
     #[serde(default)]
     pub offset: u64,
     pub projection: Option<Projection>,
@@ -226,28 +204,20 @@ pub struct PageRequest {
     pub sorts: Vec<Sort>,
 }
 
-/// One column of a result.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ColumnDescriptor {
     pub name: String,
-    /// What the product calls the type, where it says.
     pub type_name: Option<String>,
 }
 
-/// A page of records.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Page {
     pub columns: Vec<ColumnDescriptor>,
     pub rows: Vec<Vec<Value>>,
-    /// True when the server had more to give. Distinguishes "that is all of it"
-    /// from "that is the first two hundred", which changes what a total means.
     pub has_more: bool,
-    /// The offset to ask for next, when there is more.
     pub next_offset: Option<u64>,
-    /// How long the read took, which is the number that tells you a query needs
-    /// an index.
     pub elapsed_millis: u64,
 }
 
@@ -262,8 +232,6 @@ impl Page {
         }
     }
 
-    /// Build a page from rows the adapter fetched, which it fetches one over
-    /// the page size so "is there more" is known rather than guessed.
     pub fn from_rows(
         columns: Vec<ColumnDescriptor>,
         mut rows: Vec<Vec<Value>>,
@@ -298,7 +266,6 @@ mod tests {
 
     #[test]
     fn a_page_size_outside_the_range_is_refused_when_stored() {
-        // So no read is ever unbounded.
         assert!(PageSize::new(0).is_err());
         assert!(PageSize::new(2_001).is_err());
         assert!(serde_json::from_str::<PageSize>("100000").is_err());
@@ -306,7 +273,6 @@ mod tests {
 
     #[test]
     fn a_limit_flag_clamps_rather_than_erroring() {
-        // "As many as you can" is a reasonable thing to type.
         assert_eq!(PageSize::clamped(1_000_000).get(), 2_000);
         assert_eq!(PageSize::clamped(0).get(), 1);
         assert_eq!(PageSize::clamped(50).get(), 50);
@@ -388,7 +354,6 @@ mod tests {
 
     #[test]
     fn a_filter_nested_past_the_limit_is_refused() {
-        // A thousand levels would recurse an adapter to death.
         let mut filter = leaf("a");
         for _ in 0..40 {
             filter = Filter::Not {

@@ -1,20 +1,3 @@
-//! A read-only MCP server over stdio.
-//!
-//! A port of Edith's `ed database mcp`: the same two tools, the same read-only
-//! annotations, and the same projection rule. An agent gets to know *which*
-//! databases you have saved and what each can do; it does not get the host, the
-//! port, the username, the TLS material, the tunnel, or any reference to a
-//! secret.
-//!
-//! That projection is the whole design. A model asked to help with a query does
-//! not need a connection string, and handing it one puts a credential's
-//! neighbourhood into a transcript that goes somewhere else. `Projection` below
-//! is what may leave this process; adding a field to it is a decision about
-//! what an agent may learn.
-//!
-//! stdout carries protocol traffic and nothing else — no banner, no log line —
-//! because anything else on it corrupts the stream. Diagnostics go to stderr.
-
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as Json};
@@ -23,15 +6,9 @@ use crate::capabilities::{Capability, Report};
 use crate::connection::ConnectionDefinition;
 use crate::store::MetadataStore;
 
-/// The protocol version this server speaks.
 pub const PROTOCOL_VERSION: &str = "2024-11-05";
-/// At most this many connections in one reply, as Edith bounds it.
 pub const MAX_CONNECTIONS: usize = 100;
 
-/// What an agent may know about a connection.
-///
-/// Deliberately small. No endpoint, no username, no authentication, no TLS, no
-/// tunnel, no options, no secret reference, no authentication source.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Projection {
@@ -40,8 +17,6 @@ pub struct Projection {
     pub product: String,
     pub family: String,
     pub environment: String,
-    /// Whether a change is refused outright. Useful to an agent, and says
-    /// nothing about where the database is.
     pub read_only: bool,
 }
 
@@ -58,7 +33,6 @@ impl Projection {
     }
 }
 
-/// The tools this server offers. Both read; neither can change anything.
 fn tools() -> Json {
     json!([
         {
@@ -130,11 +104,6 @@ fn capability_rows(report: &Report) -> Json {
         .collect::<Vec<_>>())
 }
 
-/// Handle one tool call.
-///
-/// Returns the MCP content payload. Every failure comes back as an `isError`
-/// result rather than a protocol error, because a model reads the text and a
-/// transport error just looks like the tool is broken.
 pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
     let text = |value: Json, error: bool| {
         json!({
@@ -173,8 +142,6 @@ pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
                         json!({
                             "connections": projections,
                             "total": total,
-                            // Says so rather than silently truncating, which
-                            // would let a model conclude a database is absent.
                             "complete": total <= MAX_CONNECTIONS
                         }),
                         false,
@@ -216,13 +183,10 @@ pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
     }
 }
 
-/// Handle one JSON-RPC request. `None` for a notification, which takes no reply.
 pub fn handle(store: &MetadataStore, request: &Json) -> Option<Json> {
     let id = request.get("id").cloned();
     let method = request.get("method").and_then(Json::as_str).unwrap_or("");
 
-    // A notification has no id and must not be answered; replying to one is a
-    // protocol violation that some clients treat as fatal.
     id.as_ref()?;
 
     let result = match method {
@@ -257,9 +221,6 @@ pub fn handle(store: &MetadataStore, request: &Json) -> Option<Json> {
     Some(json!({ "jsonrpc": "2.0", "id": id, "result": result }))
 }
 
-/// Serve until stdin closes.
-///
-/// One JSON document per line, which is what every MCP stdio client sends.
 pub fn serve(store: &MetadataStore) -> Result<()> {
     use std::io::{BufRead, Write};
 
@@ -273,8 +234,6 @@ pub fn serve(store: &MetadataStore) -> Result<()> {
         let request: Json = match serde_json::from_str(&line) {
             Ok(request) => request,
             Err(error) => {
-                // A parse error has no id to answer against, so it is reported
-                // with a null id, as the spec requires.
                 let reply = json!({
                     "jsonrpc": "2.0",
                     "id": Json::Null,
@@ -287,8 +246,6 @@ pub fn serve(store: &MetadataStore) -> Result<()> {
         };
         if let Some(reply) = handle(store, &request) {
             writeln!(stdout, "{reply}")?;
-            // Flushed per message: a client waiting on a reply that is sitting
-            // in a buffer looks like a hung server.
             stdout.flush()?;
         }
     }
@@ -369,7 +326,6 @@ mod tests {
         reply["content"][0]["text"].as_str().unwrap().to_string()
     }
 
-    /// The rule the whole module exists for.
     #[test]
     fn a_projection_tells_an_agent_nothing_it_could_connect_with() {
         let store = store_with(definition());
@@ -388,7 +344,6 @@ mod tests {
                 "the projection leaked {secret:?}: {text}"
             );
         }
-        // What it does say is which database it is and what it is for.
         assert!(text.contains("Production"));
         assert!(text.contains("postgresql"));
         assert!(text.contains("production"));
@@ -408,7 +363,6 @@ mod tests {
 
     #[test]
     fn an_unknown_id_is_an_error_result_rather_than_a_transport_failure() {
-        // A model reads the text; a transport error just looks broken.
         let store = store_with(definition());
         let reply = call_tool(
             &store,
@@ -424,7 +378,6 @@ mod tests {
 
     #[test]
     fn a_listing_says_whether_it_is_complete() {
-        // Silently truncating would let a model conclude a database is absent.
         let store = MetadataStore::in_memory().unwrap();
         for index in 0..3 {
             let mut connection = definition();
@@ -462,7 +415,6 @@ mod tests {
                 );
             }
         }
-        // And it still leaks nothing.
         assert!(!text.contains("app_writer"));
     }
 
@@ -500,7 +452,6 @@ mod tests {
 
     #[test]
     fn there_is_no_tool_that_can_change_anything() {
-        // The server is read-only by construction, not by convention.
         let tools = tools();
         let names: Vec<&str> = tools
             .as_array()
@@ -535,7 +486,6 @@ mod tests {
 
     #[test]
     fn a_notification_is_not_answered() {
-        // Replying to one is a protocol violation some clients treat as fatal.
         let store = store_with(definition());
         assert!(handle(
             &store,
@@ -558,7 +508,6 @@ mod tests {
 
     #[test]
     fn a_string_id_comes_back_unchanged() {
-        // Coercing it to a number would lose the client's correlation.
         let store = store_with(definition());
         let reply = handle(
             &store,

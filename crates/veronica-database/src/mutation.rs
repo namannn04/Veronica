@@ -1,12 +1,3 @@
-//! What a change to a database is, before it is allowed to happen.
-//!
-//! A port of Edith's mutation model. The shape matters: a mutation is described
-//! as a *plan* — what it does, to what, how far it reaches, whether it can be
-//! rolled back — separately from the *payload* that would execute it. The plan
-//! is what gets shown to the user and signed; the payload is what gets run. If
-//! either changes between the preview and the apply, the signature stops
-//! matching and nothing runs.
-
 use serde::{Deserialize, Serialize};
 
 use crate::connection::ConnectionIdentity;
@@ -15,8 +6,6 @@ use crate::paging::Filter;
 use crate::product::Product;
 use crate::value::{Value, ValueKind};
 
-/// The fourteen things a mutation can be. The action is what decides how loud
-/// the confirmation has to be, so it is named rather than inferred from SQL.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Action {
@@ -36,9 +25,6 @@ pub enum Action {
 }
 
 impl Action {
-    /// Actions that always demand the strongest confirmation, whatever else is
-    /// true about the connection. Edith's list exactly: each one either loses
-    /// data wholesale, changes who can reach it, or cannot be undone.
     pub fn is_strongest(self) -> bool {
         matches!(
             self,
@@ -61,16 +47,12 @@ impl Action {
     }
 }
 
-/// How much a mutation reaches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Scope {
     SingleRecord,
     SelectedRecords,
-    /// Everything matching a filter — the count of which is not known until it
-    /// runs.
     Predicate,
-    /// Everything in the object.
     EntireObject,
 }
 
@@ -98,14 +80,10 @@ pub enum ExecutionMode {
     Asynchronous,
 }
 
-/// How many records this is expected to touch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Impact {
-    /// What the adapter counted, where it could count without running the
-    /// mutation. `None` means unknown, which is itself worth showing.
     pub estimated_records: Option<u64>,
-    /// True when the count came from a real query rather than statistics.
     pub is_exact: bool,
 }
 
@@ -152,11 +130,6 @@ pub struct Parameter {
     pub value: Value,
 }
 
-/// A parameter with its value removed.
-///
-/// This is what a preview shows. The point is not decoration: a preview is
-/// printed, logged and stored, and the value being written may be the very
-/// password or token the user is rotating.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParameterPreview {
@@ -164,7 +137,6 @@ pub struct ParameterPreview {
     pub value_kind: ValueKind,
 }
 
-/// What would actually be sent to the server.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Payload {
@@ -226,8 +198,6 @@ impl Payload {
         }
     }
 
-    /// The statement or command, which is shown in full — it contains no values
-    /// because every value is a parameter.
     pub fn command(&self) -> &str {
         match self {
             Payload::Relational { statement, .. } | Payload::Analytical { statement, .. } => {
@@ -257,8 +227,6 @@ impl Payload {
         }
     }
 
-    /// The redacted form. Every value becomes its kind; the body becomes its
-    /// shape. What is left is enough to review and impossible to leak through.
     pub fn preview(&self) -> MutationPreview {
         MutationPreview {
             product: self.product(),
@@ -276,8 +244,6 @@ impl Payload {
         }
     }
 
-    /// Whether the payload's family matches the product it names. A keyspace
-    /// command aimed at PostgreSQL is a bug that must not reach a server.
     pub fn is_family_consistent(&self) -> bool {
         use crate::product::Family;
         matches!(
@@ -287,16 +253,11 @@ impl Payload {
                 | (PayloadKind::Document, Family::Document)
                 | (PayloadKind::Search, Family::Search)
                 | (PayloadKind::Analytical, Family::Analytical)
-                // Administrative commands exist for every family.
                 | (PayloadKind::Administrative, _)
         )
     }
 }
 
-/// Replace every leaf with its kind, keeping the structure.
-///
-/// A document body is reviewed for its *shape* — which fields are being set —
-/// not its contents, for the same reason parameters are redacted.
 fn redact(value: &Value) -> Value {
     match value {
         Value::Array(values) => Value::Array(values.iter().map(redact).collect()),
@@ -309,7 +270,6 @@ fn redact(value: &Value) -> Value {
                 })
                 .collect(),
         ),
-        // A leaf becomes the name of its type, which is reviewable and empty.
         other => Value::ProductSpecific(crate::value::ProductValue {
             type_name: format!("{:?}", other.kind()),
             rendered: format!("<{:?}>", other.kind()),
@@ -317,7 +277,6 @@ fn redact(value: &Value) -> Value {
     }
 }
 
-/// The redacted request, as shown to the user.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MutationPreview {
@@ -336,7 +295,6 @@ pub enum ContextKind {
     LogicalDatabase,
 }
 
-/// Which database, on which server, the mutation lands in.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MutationContext {
@@ -349,20 +307,12 @@ pub struct MutationContext {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum WarningKind {
-    /// Reaches every record in the object.
     UnboundedScope,
-    /// Cannot be undone once it has run.
     Irreversible,
-    /// The database is marked production.
     ProductionEnvironment,
-    /// Runs outside a transaction.
     NotTransactional,
-    /// Returns before it has finished.
     Asynchronous,
-    /// The number of affected records is not known in advance.
     UnknownImpact,
-    /// The record was selected without a concurrency token, so a change made by
-    /// someone else since will be overwritten silently.
     NoConcurrencyToken,
 }
 
@@ -373,7 +323,6 @@ pub struct Warning {
     pub detail: String,
 }
 
-/// Everything about what a mutation would do. This is the signed object.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Plan {
@@ -392,8 +341,6 @@ pub struct Plan {
 }
 
 impl Plan {
-    /// The warnings this plan earns, derived rather than supplied, so no caller
-    /// can build a plan that quietly fails to mention it is irreversible.
     pub fn warnings(&self, environment_is_production: bool) -> Vec<Warning> {
         let mut warnings = Vec::new();
         if self.scope == Scope::EntireObject {
@@ -456,15 +403,11 @@ impl Plan {
     }
 }
 
-/// How hard the user has to work to confirm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ConfirmationStrength {
-    /// Type `confirm`.
     Explicit,
-    /// Type the target.
     Target,
-    /// Type the connection and the target.
     ConnectionAndTarget,
 }
 
@@ -472,11 +415,9 @@ pub enum ConfirmationStrength {
 #[serde(rename_all = "camelCase")]
 pub struct RequiredConfirmation {
     pub strength: ConfirmationStrength,
-    /// Exactly what has to be typed back.
     pub text: String,
 }
 
-/// What the preview reports about the change.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Effect {
@@ -491,9 +432,7 @@ pub struct Effect {
     pub transaction_behavior: TransactionBehavior,
     pub rollback_availability: RollbackAvailability,
     pub execution_mode: ExecutionMode,
-    /// Binds the token to what would run.
     pub execution_digest: String,
-    /// Binds it to what was shown.
     pub display_digest: String,
 }
 
@@ -551,7 +490,6 @@ mod tests {
 
     #[test]
     fn a_preview_never_carries_a_parameter_value() {
-        // The value being written may be the very password being rotated.
         let preview = payload().preview();
         let json = serde_json::to_string(&preview).unwrap();
         assert!(
@@ -591,14 +529,12 @@ mod tests {
         let json = serde_json::to_string(&preview).unwrap();
         assert!(!json.contains("sk-live"), "leaked: {json}");
         assert!(!json.contains("secret-tag"), "leaked: {json}");
-        // The field names survive, which is what makes it reviewable.
         assert!(json.contains("apiKey"));
         assert!(json.contains("tags"));
     }
 
     #[test]
     fn a_payload_aimed_at_the_wrong_family_is_refused() {
-        // A keyspace command against PostgreSQL must never reach a server.
         let wrong = Payload::Keyspace {
             product: Product::Postgresql,
             command: "DEL".into(),
