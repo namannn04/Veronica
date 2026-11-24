@@ -1,18 +1,23 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
 
 use anyhow::{Context as _, Result};
 use serde_json::{json, Map, Value};
 use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::task::JoinSet;
+use veronica_host::Layout;
 
 use super::protocol::{
     self, Message, RpcError, INTERNAL_ERROR, INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND,
 };
 use super::tools::{self, CatalogCall, Invocation, CATALOG_TOOL};
+use super::resources;
 
 const SERVER_NAME: &str = "veronica";
+const SETTLE: Duration = Duration::from_millis(150);
+const CONCURRENT: [&str; 2] = ["tools/call", "resources/read"];
 
 const INSTRUCTIONS: &str = "\
 Veronica runs on this computer and exposes its `vr` commands as tools.
@@ -25,7 +30,10 @@ without --json or --yes. Every call answers with one JSON document.
 return a preview; show it to the person and ask before calling again with confirm.
 4. Install when needed: if no tool fits, call veronica_catalog with action search, then \
 install with confirm. The new extension's tools appear and the server announces that the \
-list changed.";
+list changed.
+5. Navigate: the resource veronica://guide lists every command as data, \
+veronica://guide/<topic> holds one part of the manual and veronica://extensions/<id> \
+describes one extension.";
 
 pub(crate) struct Server {
     program: PathBuf,
@@ -49,6 +57,7 @@ impl Server {
             "protocolVersion": version,
             "capabilities": {
                 "tools": { "listChanged": true },
+                "resources": { "listChanged": true },
             },
             "serverInfo": {
                 "name": SERVER_NAME,
@@ -106,10 +115,11 @@ impl Server {
     }
 
     async fn respond(self: Arc<Self>, id: Value, method: String, params: Value) {
-        let outcome = if method == "tools/call" && self.version().is_some() {
-            self.call(&params).await
-        } else {
-            self.answer(&method, &params)
+        let outcome = match method.as_str() {
+            _ if self.version().is_none() => self.answer(&method, &params),
+            "tools/call" => self.call(&params).await,
+            "resources/read" => resources::read(&params, &self.program).await,
+            _ => self.answer(&method, &params),
         };
         self.send(match outcome {
             Ok(result) => protocol::success(&id, result),
@@ -126,6 +136,8 @@ impl Server {
                 "the session is not initialized; send initialize first",
             )),
             "tools/list" => Ok(Self::list_tools()),
+            "resources/list" => Ok(resources::list()),
+            "resources/templates/list" => Ok(resources::templates()),
             other => Err(RpcError::new(
                 METHOD_NOT_FOUND,
                 format!("no method called {other}"),
@@ -152,6 +164,7 @@ pub(crate) async fn serve() -> Result<()> {
         version: Mutex::new(None),
         outgoing,
     });
+    let watcher = watch(&server);
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
     let mut work = JoinSet::new();
     while let Some(line) = lines.next_line().await? {
@@ -159,7 +172,7 @@ pub(crate) async fn serve() -> Result<()> {
             continue;
         }
         match protocol::parse(&line) {
-            Message::Request { id, method, params } if method == "tools/call" => {
+            Message::Request { id, method, params } if CONCURRENT.contains(&method.as_str()) => {
                 work.spawn(Arc::clone(&server).respond(id, method, params));
             }
             Message::Request { id, method, params } => {
@@ -171,9 +184,66 @@ pub(crate) async fn serve() -> Result<()> {
         while work.try_join_next().is_some() {}
     }
     while work.join_next().await.is_some() {}
+    drop(watcher);
     drop(server);
     writer
         .await
         .context("the MCP writer stopped unexpectedly")?;
     Ok(())
+}
+
+fn watch(server: &Arc<Server>) -> Option<notify::RecommendedWatcher> {
+    use notify::Watcher as _;
+
+    let installed = match Layout::current() {
+        Ok(layout) => layout.installed_file(),
+        Err(error) => {
+            eprintln!("vr: cannot watch installed extensions: {error:#}");
+            return None;
+        }
+    };
+    let directory = installed.parent()?.to_path_buf();
+    let name = installed.file_name()?.to_os_string();
+    let (changed, mut signals) = unbounded_channel::<()>();
+    let started = std::fs::create_dir_all(&directory)
+        .map_err(notify::Error::io)
+        .and_then(|()| {
+            notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
+                let relevant = event.is_ok_and(|event| {
+                    event
+                        .paths
+                        .iter()
+                        .any(|path| path.file_name() == Some(name.as_os_str()))
+                });
+                if relevant {
+                    let _ = changed.send(());
+                }
+            })
+        })
+        .and_then(|mut watcher| {
+            watcher
+                .watch(&directory, notify::RecursiveMode::NonRecursive)
+                .map(|()| watcher)
+        });
+    let watcher = match started {
+        Ok(watcher) => watcher,
+        Err(error) => {
+            eprintln!("vr: cannot watch {}: {error}", directory.display());
+            return None;
+        }
+    };
+    let server = Arc::clone(server);
+    tokio::spawn(async move {
+        while signals.recv().await.is_some() {
+            tokio::time::sleep(SETTLE).await;
+            while signals.try_recv().is_ok() {}
+            if server.version().is_some() {
+                server.send(protocol::notification("notifications/tools/list_changed"));
+                server.send(protocol::notification(
+                    "notifications/resources/list_changed",
+                ));
+            }
+        }
+    });
+    Some(watcher)
 }
