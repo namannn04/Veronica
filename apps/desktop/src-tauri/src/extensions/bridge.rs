@@ -359,51 +359,15 @@ impl<'a> Frame<'a> {
         }
     }
 
-    fn provider(&self, contract: &ContractId) -> Result<String, Failure> {
-        let mut other_versions = Vec::new();
-        for (id, entry) in &self.host.registry()?.extensions {
-            let Some(manifest) = entry.enabled.then(|| self.host.manifest(id).ok()).flatten()
-            else {
-                continue;
-            };
-            for provided in &manifest.contracts.provides {
-                if provided.id == *contract {
-                    return Ok(id.clone());
-                }
-                if provided.id.name() == contract.name() {
-                    other_versions.push(provided.id.version());
-                }
-            }
-        }
-        match other_versions.first() {
-            Some(version) => Err(Failure::new(
-                Code::Version,
-                format!(
-                    "{} is provided at version {version}, not {}",
-                    contract.name(),
-                    contract.version()
-                ),
-            )),
-            None => Err(Failure::unavailable(format!(
-                "no enabled extension provides {contract}"
-            ))),
-        }
-    }
-
     async fn contract_request(&self, params: &Value) -> Reply {
         let contract = self.used_contract(params)?;
-        let provider = self.provider(&contract)?;
         let limit = patience(params)?;
-        let call = self.host.router().contract_request(
-            &provider,
-            contract,
-            argument(params),
-            self.caller(),
-        );
-        match tokio::time::timeout(limit, call).await {
-            Ok(answer) => Ok(answer?),
-            Err(_) => Err(BackendError::Timeout(limit).into()),
-        }
+        let answer = self
+            .host
+            .routing()
+            .request(self.caller(), contract, argument(params), limit)
+            .await?;
+        Ok(answer)
     }
 
     fn navigate(&self, method: &str, params: &Value) -> Reply {

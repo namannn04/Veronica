@@ -26,7 +26,7 @@ pub(crate) struct Row {
     pub pid: Option<u32>,
     pub update: Option<String>,
     pub open_pages: Vec<String>,
-    pub surfaces: std::collections::BTreeMap<String, Value>,
+    pub surfaces: Vec<veronica_host::surfaces::Surface>,
     pub manifest: Option<Manifest>,
 }
 
