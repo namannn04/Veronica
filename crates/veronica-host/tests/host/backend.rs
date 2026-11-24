@@ -278,6 +278,23 @@ async fn oneshot_cli_run_end_to_end() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn shortcuts_fall_back_to_their_run_argv() {
+    let env = Env::new();
+    env.install(|_| {});
+    let router = Router::oneshot(Arc::clone(&env.services));
+    let argv = |args: &[&str]| args.iter().map(ToString::to_string).collect::<Vec<_>>();
+    router
+        .shortcut(ID, "say", argv(&["fixture", "echo", "hi"]))
+        .await
+        .unwrap();
+    let failed = router
+        .shortcut(ID, "break", argv(&["fixture", "fail", "--code", "1"]))
+        .await
+        .unwrap_err();
+    assert!(failed.to_string().contains("break"), "{failed}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn on_demand_backends_start_on_first_call_and_stop_when_idle() {
     let env = Env::new();
     env.install(|manifest| manifest["activation"]["idleStopSeconds"] = json!(1));
