@@ -19,7 +19,7 @@ pub enum Placement {
     Notch,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Surface {
     pub extension: String,
@@ -324,13 +324,25 @@ mod tests {
     #[test]
     fn every_template_checks_its_own_shape() {
         let good = [
-            (SurfaceTemplate::Ring, json!({ "value": 0.4, "label": "Session" })),
+            (
+                SurfaceTemplate::Ring,
+                json!({ "value": 0.4, "label": "Session" }),
+            ),
             (SurfaceTemplate::Meter, json!({ "value": 1 })),
-            (SurfaceTemplate::Stat, json!({ "value": "$4.20", "label": "Today" })),
+            (
+                SurfaceTemplate::Stat,
+                json!({ "value": "$4.20", "label": "Today" }),
+            ),
             (SurfaceTemplate::Stat, json!({ "value": 12 })),
             (SurfaceTemplate::Text, json!({ "text": "All quiet" })),
-            (SurfaceTemplate::List, json!({ "items": [{ "title": "a", "detail": "b" }] })),
-            (SurfaceTemplate::NowPlaying, json!({ "title": "Song", "playing": true })),
+            (
+                SurfaceTemplate::List,
+                json!({ "items": [{ "title": "a", "detail": "b" }] }),
+            ),
+            (
+                SurfaceTemplate::NowPlaying,
+                json!({ "title": "Song", "playing": true }),
+            ),
             (SurfaceTemplate::Actions, json!({})),
         ];
         for (template, state) in good {
@@ -341,8 +353,14 @@ mod tests {
             (SurfaceTemplate::Meter, json!({ "label": "no value" })),
             (SurfaceTemplate::Stat, json!({ "value": [1] })),
             (SurfaceTemplate::Text, json!({ "text": 3 })),
-            (SurfaceTemplate::List, json!({ "items": [{ "detail": "untitled" }] })),
-            (SurfaceTemplate::NowPlaying, json!({ "title": "Song", "playing": "yes" })),
+            (
+                SurfaceTemplate::List,
+                json!({ "items": [{ "detail": "untitled" }] }),
+            ),
+            (
+                SurfaceTemplate::NowPlaying,
+                json!({ "title": "Song", "playing": "yes" }),
+            ),
             (SurfaceTemplate::Actions, json!("not an object")),
         ];
         for (template, state) in bad {
@@ -366,7 +384,10 @@ mod tests {
         ));
         assert!(matches!(
             validate(&manifest, "volume", &state),
-            Err(SurfaceError::Shape { template: "meter", .. })
+            Err(SurfaceError::Shape {
+                template: "meter",
+                ..
+            })
         ));
         let huge = json!({ "title": "x".repeat(MAX_STATE_BYTES) });
         assert!(matches!(
@@ -381,9 +402,18 @@ mod tests {
         let file = directory.path().join("surfaces.json");
         let store = SurfaceStore::new(file.clone());
         let manifest = manifest();
-        assert_eq!(store.update(&manifest, "volume", &json!({ "value": 0.5 })), Ok(true));
-        assert_eq!(store.update(&manifest, "volume", &json!({ "value": 0.5 })), Ok(false));
-        assert_eq!(store.update(&manifest, "now-playing", &json!({ "title": "Song" })), Ok(true));
+        assert_eq!(
+            store.update(&manifest, "volume", &json!({ "value": 0.5 })),
+            Ok(true)
+        );
+        assert_eq!(
+            store.update(&manifest, "volume", &json!({ "value": 0.5 })),
+            Ok(false)
+        );
+        assert_eq!(
+            store.update(&manifest, "now-playing", &json!({ "title": "Song" })),
+            Ok(true)
+        );
         let ids: Vec<(Placement, String)> = load(&file)
             .into_iter()
             .map(|surface| (surface.placement, surface.id))
@@ -396,7 +426,10 @@ mod tests {
                 (Placement::Notch, "now-playing".to_string()),
             ]
         );
-        assert_eq!(store.update(&manifest, "now-playing", &Value::Null), Ok(true));
+        assert_eq!(
+            store.update(&manifest, "now-playing", &Value::Null),
+            Ok(true)
+        );
         assert_eq!(store.for_extension("media").len(), 1);
         assert!(store.remove_extension("media"));
         assert!(load(&file).is_empty());

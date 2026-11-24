@@ -122,7 +122,7 @@ pub fn provider<'a>(
             .iter()
             .find(|provided| provided.id.name() == contract.name());
         if let Some(other) = other {
-            available.get_or_insert(other.id.version());
+            available.get_or_insert_with(|| other.id.version());
         }
     }
     match available {
@@ -219,10 +219,20 @@ mod tests {
     #[test]
     fn requests_route_to_the_provider_of_that_exact_version() {
         let all = [usage(), media()];
-        assert_eq!(provider(&all, &id("media.control@1")), Ok("media".to_string()));
+        assert_eq!(
+            provider(&all, &id("media.control@1")),
+            Ok("media".to_string())
+        );
         let mismatch = provider(&all, &id("media.control@2")).expect_err("version");
         assert_eq!(mismatch.code(), error_code::VERSION_MISMATCH);
-        assert!(matches!(mismatch, ContractError::Version { available: 1, wanted: 2, .. }));
+        assert!(matches!(
+            mismatch,
+            ContractError::Version {
+                available: 1,
+                wanted: 2,
+                ..
+            }
+        ));
         let topic_only = provider(&all, &id("media.nowPlaying@1")).expect_err("topic");
         assert!(matches!(topic_only, ContractError::Version { .. }));
         let missing = provider(&all, &id("calendar.today@1")).expect_err("missing");
@@ -234,10 +244,18 @@ mod tests {
         let all = [usage(), media()];
         assert_eq!(consumers(&all, &id("media.nowPlaying@1")), ["usage"]);
         assert_eq!(consumers(&all, &id("host.presenter@1")), ["media"]);
-        assert_eq!(topic(&id("media.nowPlaying@1")), "contract:media.nowPlaying@1");
-        assert_eq!(from_topic("contract:host.session@1"), Some(id("host.session@1")));
+        assert_eq!(
+            topic(&id("media.nowPlaying@1")),
+            "contract:media.nowPlaying@1"
+        );
+        assert_eq!(
+            from_topic("contract:host.session@1"),
+            Some(id("host.session@1"))
+        );
         assert_eq!(from_topic("tick"), None);
-        assert!(HOST_CONTRACTS.iter().all(|contract| is_host_contract(&id(contract))));
+        assert!(HOST_CONTRACTS
+            .iter()
+            .all(|contract| is_host_contract(&id(contract))));
         assert!(!is_host_contract(&id("media.nowPlaying@1")));
     }
 }

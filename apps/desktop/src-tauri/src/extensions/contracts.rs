@@ -46,7 +46,8 @@ pub(crate) fn enabled_manifests(layout: &Layout) -> Vec<Manifest> {
         .iter()
         .filter(|(_, entry)| entry.enabled)
         .filter_map(|(id, _)| {
-            let raw = std::fs::read_to_string(layout.current_link(id).join("manifest.json")).ok()?;
+            let raw =
+                std::fs::read_to_string(layout.current_link(id).join("manifest.json")).ok()?;
             Manifest::parse(&raw).ok()
         })
         .collect()

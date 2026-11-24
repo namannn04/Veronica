@@ -10,7 +10,7 @@ pub(crate) mod probe;
 pub(crate) mod protocol;
 pub(crate) mod shell;
 pub(crate) mod storage;
-pub(crate) mod topics;
 #[cfg(test)]
 mod tests;
+pub(crate) mod topics;
 pub(crate) mod updates;

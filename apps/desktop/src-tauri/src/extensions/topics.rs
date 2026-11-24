@@ -9,8 +9,10 @@ const TRIGGERS: [&str; 2] = ["settings-updated", "session-resolved"];
 
 fn payloads(state: &AppState) -> [(&'static str, Value); 5] {
     let settings = state.settings_snapshot();
-    let presenter =
-        crate::presenter::view(state, veronica_system::screencast::ScreenShareState::default());
+    let presenter = crate::presenter::view(
+        state,
+        veronica_system::screencast::ScreenShareState::default(),
+    );
     let session = state.session.lock().expect("session lock").clone();
     let capabilities = Capabilities::resolve(&session);
     [

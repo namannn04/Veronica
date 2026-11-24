@@ -124,16 +124,19 @@ impl HostServices {
         let path = self.layout.current_link(id).join("manifest.json");
         let raw = fs::read_to_string(&path)
             .map_err(|_| unavailable(&format!("{id} is not installed")))?;
-        Manifest::parse(&raw).map_err(|error| {
-            ErrorObject::new(error_code::INTERNAL_ERROR, format!("{id}: {error}"))
-        })
+        Manifest::parse(&raw)
+            .map_err(|error| ErrorObject::new(error_code::INTERNAL_ERROR, format!("{id}: {error}")))
     }
 
     pub fn answers_later(request: &Request) -> bool {
         request.method == HostContractRequest::NAME
     }
 
-    pub async fn handle_later(&self, grant: &Grant, request: &Request) -> Result<Value, ErrorObject> {
+    pub async fn handle_later(
+        &self,
+        grant: &Grant,
+        request: &Request,
+    ) -> Result<Value, ErrorObject> {
         permissions::check(&grant.id, &grant.permissions, request)?;
         let params = request.params::<HostContractRequest>()?;
         let manifest = self.manifest(&grant.id)?;
