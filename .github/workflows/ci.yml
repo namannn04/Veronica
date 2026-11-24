@@ -78,6 +78,34 @@ jobs:
       - name: Test the Rust workspace
         run: cargo test --workspace --locked
 
+  frame-isolation:
+    name: Extension frame isolation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/linux-build-deps
+      - name: Install a headless display and a session bus
+        run: sudo apt-get install --no-install-recommends -y xvfb xauth dbus-daemon
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: frame
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Install interface dependencies exactly
+        working-directory: apps/desktop
+        run: bun install --frozen-lockfile
+      - name: Build the interface the application serves
+        working-directory: apps/desktop
+        run: bun run build
+      - name: Run a hostile bundle inside the real application
+        run: >-
+          xvfb-run -a dbus-run-session -- cargo test -p veronica-desktop --locked
+          --features tauri/custom-protocol --test frame_isolation -- --ignored --nocapture
+
   web:
     name: Interface and shell extension
     runs-on: ubuntu-24.04
@@ -195,7 +223,7 @@ jobs:
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [hygiene, rust-lint, rust-test, web, package, snap]
+    needs: [hygiene, rust-lint, rust-test, frame-isolation, web, package, snap]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}

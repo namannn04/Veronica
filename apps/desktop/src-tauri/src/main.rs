@@ -355,7 +355,9 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
 
             sync_global_shortcuts(&handle, &handle.state::<AppState>().settings_snapshot());
 
-            if tools {
+            if let Some(probe) = extensions::probe::requested() {
+                probe.start(&handle)?;
+            } else if tools {
                 notch_tools::show()?;
             } else if shelf {
                 file_shelf::show(&handle)?;
