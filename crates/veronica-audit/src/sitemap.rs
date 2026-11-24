@@ -1,16 +1,3 @@
-//! Finding the pages a site says it has.
-//!
-//! A port of Edith's `SitemapCrawler`, with the same three candidate sources
-//! tried in the same order: the URL itself when it is XML, whatever
-//! `robots.txt` points at, and `/sitemap.xml` on the origin. A sitemap index is
-//! followed one level into its children, and a site with no sitemap at all
-//! audits the single URL it was given rather than failing.
-//!
-//! The XML is read with a regular expression over `<loc>` elements rather than
-//! a parser. A sitemap is a flat list of URLs in one element; a full XML
-//! dependency would buy nothing and would still have to handle the same
-//! malformed files.
-
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -18,7 +5,6 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use url::Url;
 
-/// Edith's ceilings, kept so a hostile or broken sitemap cannot run forever.
 pub const MAX_PAGES: usize = 20_000;
 pub const MAX_SITEMAPS: usize = 1_000;
 
@@ -29,19 +15,12 @@ static SITEMAP_INDEX: LazyLock<Regex> =
 static ROBOTS_SITEMAP: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?im)^\s*sitemap\s*:\s*(\S+)\s*$").expect("a literal pattern"));
 
-/// One parsed sitemap: the URLs it lists, and whether they are pages or more
-/// sitemaps.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Document {
     pub locations: Vec<Url>,
-    /// True for a `<sitemapindex>`, whose locations are themselves sitemaps.
     pub is_index: bool,
 }
 
-/// Parse a sitemap or sitemap index.
-///
-/// Entries that are not URLs are dropped rather than failing the document: one
-/// bad line in a generated sitemap should not lose the other nine thousand.
 pub fn parse(xml: &str) -> Document {
     Document {
         locations: LOC
@@ -52,7 +31,6 @@ pub fn parse(xml: &str) -> Document {
     }
 }
 
-/// The sitemap URLs a `robots.txt` advertises.
 pub fn robots_sitemaps(robots: &str, base: &Url) -> Vec<Url> {
     ROBOTS_SITEMAP
         .captures_iter(robots)
@@ -67,7 +45,6 @@ fn unique(urls: impl IntoIterator<Item = Url>) -> Vec<Url> {
         .collect()
 }
 
-/// The origin, which is where `robots.txt` and `sitemap.xml` live.
 pub fn origin(url: &Url) -> Option<Url> {
     let mut origin = url.clone();
     origin.set_path("");
@@ -76,17 +53,10 @@ pub fn origin(url: &Url) -> Option<Url> {
     Some(origin)
 }
 
-/// Everything a crawl needs to fetch, so the walk itself is testable without a
-/// network.
 pub trait Fetch {
     fn get(&self, url: &Url) -> impl std::future::Future<Output = Result<String>> + Send;
 }
 
-/// Discover up to `want` pages to audit, starting from whatever the user typed.
-///
-/// `want` stops the walk as well as trimming its result: a sitemap index can
-/// hold hundreds of child sitemaps, each fetched in turn, and an audit of ten
-/// pages used to fetch every one of them before checking a single page.
 pub async fn pages<F: Fetch + Sync>(fetcher: &F, input: &Url, want: usize) -> Result<Vec<Url>> {
     let want = want.clamp(1, MAX_PAGES);
     let mut candidates = Vec::new();
@@ -108,8 +78,6 @@ pub async fn pages<F: Fetch + Sync>(fetcher: &F, input: &Url, want: usize) -> Re
         }
     }
 
-    // A URL that claimed to be a sitemap and turned out not to be is an error;
-    // a page with no sitemap is simply a page, and auditing it alone is useful.
     if input.path().to_lowercase().ends_with(".xml") {
         anyhow::bail!("the sitemap at {input} did not contain any pages");
     }
@@ -133,8 +101,6 @@ async fn crawl<F: Fetch + Sync>(
         return document.locations;
     }
 
-    // An index's children are sitemaps; one that fails is skipped rather than
-    // losing the whole index.
     let mut pages = Vec::new();
     for child in document.locations {
         pages = unique(pages);
@@ -146,7 +112,6 @@ async fn crawl<F: Fetch + Sync>(
     unique(pages)
 }
 
-/// Fetch pages over HTTP.
 pub struct HttpFetcher {
     pub client: reqwest::Client,
 }
@@ -197,7 +162,6 @@ mod tests {
         Url::parse(raw).unwrap()
     }
 
-    /// Records what was fetched.
     struct Counting(Canned, std::sync::Mutex<Vec<String>>);
 
     impl Fetch for Counting {
@@ -268,8 +232,6 @@ mod tests {
 
     #[test]
     fn an_entry_that_is_not_a_url_is_dropped_not_fatal() {
-        // One bad line in a generated sitemap must not lose the other nine
-        // thousand.
         let document = parse(
             r#"<urlset><url><loc>not a url</loc></url>
                <url><loc>https://a.test/ok</loc></url></urlset>"#,
@@ -386,7 +348,6 @@ mod tests {
             "https://a.test/sitemap.xml",
             "<sitemapindex><sitemap><loc>https://a.test/sitemap.xml</loc></sitemap></sitemapindex>",
         )]);
-        // The point is that this returns at all.
         let pages = pages(&fetcher, &url("https://a.test/page"), MAX_PAGES)
             .await
             .unwrap();
@@ -410,7 +371,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_url_that_claimed_to_be_a_sitemap_and_was_not_is_an_error() {
-        // Auditing sitemap.xml as if it were a page would be nonsense.
         let fetcher = canned(&[("https://a.test/s.xml", "<urlset></urlset>")]);
         assert!(pages(&fetcher, &url("https://a.test/s.xml"), MAX_PAGES)
             .await
