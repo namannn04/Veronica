@@ -18,7 +18,7 @@ pub(crate) struct AppState {
     pub prevent_sleep: Mutex<Option<veronica_system::power::InhibitorLock>>,
     pub usage: Mutex<Option<UsageDocument>>,
     pub sampler: Mutex<MetricsSampler>,
-    pub refreshing: Mutex<bool>,
+    pub refreshing: tokio::sync::watch::Sender<bool>,
     pub notifications: Mutex<Vec<veronica_system::Notification>>,
     pub companion_recording: Mutex<Option<CompanionRecording>>,
     pub emoji: veronica_core::EmojiCatalog,
@@ -56,7 +56,7 @@ impl AppState {
             prevent_sleep: Mutex::new(None),
             usage: Mutex::new(usage),
             sampler: Mutex::new(MetricsSampler::new()),
-            refreshing: Mutex::new(false),
+            refreshing: tokio::sync::watch::Sender::new(false),
             notifications: Mutex::new(Vec::new()),
             companion_recording: Mutex::new(None),
         })

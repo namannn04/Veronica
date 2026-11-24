@@ -28,6 +28,7 @@ fn main() {
         "capabilities",
         "usage_view",
         "usage_refresh",
+        "usage_refreshing",
         "usage_export",
         "usage_limits",
         "settings_all",

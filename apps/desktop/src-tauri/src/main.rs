@@ -220,6 +220,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::capabilities,
             commands::usage_view,
             commands::usage_refresh,
+            commands::usage_refreshing,
             commands::usage_export,
             commands::usage_limits,
             commands::settings_all,

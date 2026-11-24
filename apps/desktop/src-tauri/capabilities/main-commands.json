@@ -32,6 +32,7 @@
     "allow-capabilities",
     "allow-usage-view",
     "allow-usage-refresh",
+    "allow-usage-refreshing",
     "allow-usage-export",
     "allow-usage-limits",
     "allow-settings-all",

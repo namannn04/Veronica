@@ -157,6 +157,7 @@ export const ipc = {
   usageExport: (cards: string[], days: number | null, sources: string[] = []) =>
     invoke<string[]>("usage_export", { cards, days, sources }),
   usageRefresh: () => invoke<string>("usage_refresh"),
+  usageRefreshing: () => invoke<boolean>("usage_refreshing"),
 
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
   settingsSet: (key: string, value: unknown) => invoke<void>("settings_set", { key, value }),
