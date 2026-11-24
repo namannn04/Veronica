@@ -70,6 +70,7 @@ import type {
   GaugeReport,
   HerdrBoard,
   ImportReport,
+  InstalledExtension,
   LaunchAtLoginStatus,
   LocalTrack,
   Machine,
@@ -197,6 +198,13 @@ export const ipc = {
   clipboardClear: () => invoke<void>("clipboard_clear"),
 
   presenterState: () => invoke<PresenterView>("presenter_state"),
+  extList: () => invoke<InstalledExtension[]>("ext_list"),
+  extPageOpened: (extension: string, page: string) =>
+    invoke<void>("ext_page_opened", { extension, page }),
+  extPageClosed: (extension: string, page: string) =>
+    invoke<void>("ext_page_closed", { extension, page }),
+  extConfirmAnswer: (request: number, accepted: boolean) =>
+    invoke<boolean>("ext_confirm_answer", { request, accepted }),
   presenterSet: (action: string) => invoke<void>("presenter_set", { action }),
 
   alertsView: () => invoke<AlertsView>("alerts_view"),

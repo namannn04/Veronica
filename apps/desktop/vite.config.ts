@@ -1,8 +1,16 @@
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@veronica/extension-api": fileURLToPath(
+        new URL("../../packages/extension-api/src/index.ts", import.meta.url),
+      ),
+    },
+  },
   clearScreen: false,
   server: {
     port: 5183,

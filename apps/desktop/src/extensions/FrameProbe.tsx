@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { useEffect, useMemo } from "react";
 
-import { type BridgeMethods, ECHO_METHODS } from "./bridge";
+import { type BridgeHandler, ECHO_METHODS, localHandler } from "./bridge";
 import { ExtensionFrame } from "./ExtensionFrame";
 
 const REPORT_EVENT = "extension-frame-probe";
@@ -60,17 +60,18 @@ async function conclude(report: unknown): Promise<void> {
 
 export function FrameProbe() {
   const target = useMemo(() => new URLSearchParams(window.location.search), []);
-  const methods = useMemo<BridgeMethods>(
-    () => ({
-      echo: (params) => {
-        echoes += 1;
-        return ECHO_METHODS.echo(params);
-      },
-      report: (params) => {
-        void conclude(params);
-        return true;
-      },
-    }),
+  const handler = useMemo<BridgeHandler>(
+    () =>
+      localHandler({
+        echo: (params) => {
+          echoes += 1;
+          return ECHO_METHODS.echo(params);
+        },
+        report: (params) => {
+          void conclude(params);
+          return true;
+        },
+      }),
     [],
   );
 
@@ -83,9 +84,10 @@ export function FrameProbe() {
     <main style={{ position: "fixed", inset: 0 }}>
       <ExtensionFrame
         extension={target.get("extension") ?? ""}
+        page={target.get("entry") ?? ""}
         entry={target.get("entry") ?? ""}
         title="Extension frame probe"
-        methods={methods}
+        handler={handler}
       />
     </main>
   );
