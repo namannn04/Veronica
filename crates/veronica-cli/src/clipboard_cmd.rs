@@ -123,12 +123,12 @@ pub(crate) fn run(
                 .get(*id)
                 .with_context(|| format!("no clipboard entry {id}"))?;
             match output {
-                Output::Json => {
-                    println!("{}", serde_json::to_string_pretty(entry)?);
+                Output::Json => output.emit(entry, String::new),
+                Output::Text => {
+                    print!("{}", entry.text);
+                    Ok(())
                 }
-                Output::Text => print!("{}", entry.text),
             }
-            Ok(())
         }
 
         ClipboardCommand::Remove { id } => {

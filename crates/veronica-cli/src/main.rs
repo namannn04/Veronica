@@ -15,6 +15,7 @@ mod extensions_cmd;
 mod focus_dim_cmd;
 mod format;
 mod herdr_cmd;
+mod invoke_cmd;
 mod keystroke_cmd;
 mod machines_cmd;
 mod maintenance_cmd;
@@ -22,6 +23,7 @@ mod media_cmd;
 mod power_cmd;
 mod presenter_cmd;
 mod quinjet_cmd;
+mod routes;
 mod services_cmd;
 mod shelf_cmd;
 mod system_cmd;
@@ -31,8 +33,9 @@ mod utility_cmd;
 mod workspace_cmd;
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand};
 use veronica_core::{AppDirectories, DesktopSession, Diagnostics, Settings};
+use veronica_protocol::ExitCode;
 
 use format::Output;
 
@@ -51,6 +54,14 @@ struct Cli {
         help = "Emit JSON on stdout instead of human-readable text"
     )]
     json: bool,
+
+    #[arg(
+        short,
+        long,
+        global = true,
+        help = "Confirm destructive commands instead of printing a preview"
+    )]
+    yes: bool,
 
     #[arg(short, long, global = true, action = clap::ArgAction::Count, help = "Increase log verbosity on stderr")]
     verbose: u8,
@@ -77,6 +88,12 @@ enum Command {
     Docker(services_cmd::DockerCommand),
     #[command(about = "Report the resolved environment, capabilities and extension state")]
     Diagnose,
+    #[command(about = "Call one method on an installed extension's backend")]
+    Invoke {
+        id: String,
+        #[arg(help = "The call as JSON: {\"method\": \"...\", \"params\": {}}")]
+        request: String,
+    },
     #[command(subcommand, about = "Read and write settings")]
     Config(ConfigCommand),
     #[command(
@@ -218,12 +235,39 @@ enum ConfigCommand {
 }
 
 fn main() {
-    let cli = Cli::parse();
-    init_logging(cli.verbose);
+    let arguments = routes::arguments();
+    let mut routes = routes::Routes::discover();
+    let program = routes.command(Cli::command());
+    let code = match program.try_get_matches_from(std::env::args_os()) {
+        Ok(matches) => {
+            let json = matches.get_flag("json");
+            init_logging(matches.get_count("verbose"));
+            match matches
+                .subcommand_name()
+                .and_then(|name| routes.route(name))
+            {
+                Some(route) => {
+                    let yes = matches.get_flag("yes");
+                    routes::dispatch(route, &matches, &arguments, json, yes)
+                }
+                None => host(&matches, json),
+            }
+        }
+        Err(error) => routes.reject(&error, &arguments),
+    };
+    std::process::exit(i32::from(code));
+}
 
-    if let Err(error) = run(&cli) {
-        eprintln!("vr: {error:#}");
-        std::process::exit(1);
+fn host(matches: &ArgMatches, json: bool) -> ExitCode {
+    let cli = Cli::from_arg_matches(matches).unwrap_or_else(|error| error.exit());
+    match run(&cli) {
+        Ok(()) => ExitCode::Success,
+        Err(error) => {
+            let code = error
+                .downcast_ref::<format::Failure>()
+                .map_or(ExitCode::Failed, |failure| failure.code);
+            format::fail(json, code, &format!("{error:#}"))
+        }
     }
 }
 
@@ -266,6 +310,7 @@ async fn run(cli: &Cli) -> Result<()> {
             )
             .await
         }
+        Command::Invoke { id, request } => invoke_cmd::run(id, request, output).await,
         Command::Tools { command } => {
             tools_cmd::run(
                 command.as_ref().unwrap_or(&tools_cmd::ToolCommand::Ls),

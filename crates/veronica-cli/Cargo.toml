@@ -21,8 +21,10 @@ veronica-database = { workspace = true }
 uuid = { version = "1", features = ["v4"] }
 veronica-calendar = { workspace = true }
 veronica-machines = { workspace = true }
+veronica-host = { path = "../veronica-host" }
+veronica-protocol = { workspace = true }
 zbus = { workspace = true }
-clap = { workspace = true }
+clap = { workspace = true, features = ["string"] }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -33,6 +35,7 @@ tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+veronica-pack = { path = "../veronica-pack" }
 
 [lints]
 workspace = true

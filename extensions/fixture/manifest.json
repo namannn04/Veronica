@@ -33,6 +33,28 @@
               "required": true
             }
           ]
+        },
+        {
+          "name": "wipe",
+          "about": "Pretend to delete one item",
+          "effect": "destructive",
+          "json": true,
+          "args": [{ "name": "item", "kind": "positional", "type": "string", "required": true }]
+        },
+        {
+          "name": "wait",
+          "effect": "read",
+          "json": true,
+          "timeoutSeconds": 1,
+          "args": [
+            {
+              "name": "seconds",
+              "kind": "option",
+              "long": "seconds",
+              "type": "integer",
+              "required": true
+            }
+          ]
         }
       ]
     }

@@ -38,9 +38,21 @@ enum Action {
         #[arg(long)]
         code: i32,
     },
+    Wipe {
+        item: String,
+    },
+    Wait {
+        #[arg(long)]
+        seconds: u64,
+    },
 }
 
-fn run_cli(output: Output<'_>, context: &Context, root: Root) -> anyhow::Result<()> {
+async fn run_cli(
+    output: Output<'_>,
+    context: &Context,
+    confirm: bool,
+    root: Root,
+) -> anyhow::Result<()> {
     let Root::Fixture { action } = root;
     match action {
         Action::Echo { text } => output.emit(
@@ -50,6 +62,21 @@ fn run_cli(output: Output<'_>, context: &Context, root: Root) -> anyhow::Result<
         Action::Fail { code } => {
             let code = ExitCode::from_code(code).unwrap_or(ExitCode::Failed);
             Err(Failure::new(code, format!("failed with {}", code.code())).into())
+        }
+        Action::Wipe { item } if !confirm => {
+            output.emit(&json!({ "wouldRemove": item }), || {
+                format!("would remove {item}")
+            })?;
+            Err(Failure::new(ExitCode::ConfirmationRequired, "wiping needs confirmation").into())
+        }
+        Action::Wipe { item } => {
+            output.emit(&json!({ "removed": item }), || format!("removed {item}"))
+        }
+        Action::Wait { seconds } => {
+            tokio::time::sleep(Duration::from_secs(seconds)).await;
+            output.emit(&json!({ "waited": seconds }), || {
+                format!("waited {seconds}s")
+            })
         }
     }
 }
@@ -143,7 +170,7 @@ impl Extension for Fixture {
             Err(result) => return Ok(result),
         };
         let capture = Capture::new(params.json);
-        let outcome = run_cli(capture.output(), &context, program.root);
+        let outcome = run_cli(capture.output(), &context, params.confirm, program.root).await;
         Ok(capture.finish(outcome))
     }
 
