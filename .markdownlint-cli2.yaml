@@ -2,6 +2,8 @@ config:
   default: true
   MD013: false
   MD033: false
+  MD041:
+    allow_preamble: true
 ignores:
   - "**/node_modules/**"
   - "packaging/flatpak/shared-modules/**"
