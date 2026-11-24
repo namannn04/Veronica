@@ -1,15 +1,7 @@
-//! `usage.json` schema version 8.
-//!
-//! These types mirror exactly what the bundled `refresh-usage` collector
-//! writes, so Veronica reads the same document Edith does. Numeric fields are
-//! all optional-with-default because the collector omits zero-valued keys in
-//! several places, and a strict decode would reject real files.
-
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-/// The only schema this build understands.
 pub const SCHEMA_VERSION: u32 = 8;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -21,7 +13,6 @@ pub struct UsageDocument {
     pub generated_at: String,
     #[serde(default)]
     pub sources: Vec<String>,
-    /// Sources shown when the user has not chosen a subset.
     #[serde(default)]
     pub default_sources: Vec<String>,
     #[serde(default)]
@@ -32,20 +23,15 @@ pub struct UsageDocument {
     pub daily: Vec<DailyEntry>,
     #[serde(default)]
     pub sessions: Vec<SessionRef>,
-    /// Present only when SSH machines have folded their usage in.
     #[serde(default)]
     pub machines: Vec<MachineRef>,
 }
 
 impl UsageDocument {
-    /// Whether this document was written by a collector this build can read.
-    /// A newer schema is refused rather than silently misread.
     pub fn is_compatible(&self) -> bool {
         self.schema_version == SCHEMA_VERSION
     }
 
-    /// Label for a source id, falling back to the id so an unknown collector
-    /// still renders something meaningful.
     pub fn label_for(&self, source: &str) -> String {
         self.source_meta
             .get(source)
@@ -83,12 +69,9 @@ pub struct Totals {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DailyEntry {
-    /// Local calendar day, `YYYY-MM-DD`.
     pub period: String,
-    /// Source id to the per-model rows recorded for that source that day.
     #[serde(default)]
     pub by_source: BTreeMap<String, Vec<ModelRow>>,
-    /// Always 24 buckets, midnight-first, in the machine's local time.
     #[serde(default)]
     pub hours: Vec<HourBucket>,
     #[serde(default)]
@@ -145,8 +128,6 @@ pub struct Amount {
 pub struct ProjectEntry {
     #[serde(default)]
     pub project_name: String,
-    // The collector spells these with acronym casing, which camelCase would
-    // render as `repositoryId`/`repositoryUrl` and never match.
     #[serde(default, rename = "repositoryID")]
     pub repository_id: Option<String>,
     #[serde(default)]
@@ -193,7 +174,6 @@ pub struct ChatEntry {
     pub tokens: u64,
     #[serde(default)]
     pub cost: f64,
-    /// Milliseconds since the epoch, as the collector writes them.
     #[serde(default)]
     pub first_ts: Option<i64>,
     #[serde(default)]

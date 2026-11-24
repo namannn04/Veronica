@@ -1,15 +1,3 @@
-//! Codex rate limits.
-//!
-//! Codex exposes its own limits over a JSON-RPC conversation on stdio rather
-//! than an HTTP endpoint, so there is no network request and no token for
-//! Veronica to handle: `codex app-server` is asked, and it uses whatever
-//! credentials the user already signed in with.
-//!
-//! The protocol is: initialize, initialized, then `account/rateLimits/read`.
-//! The reply carries a primary and a secondary window, distinguished by their
-//! duration rather than by name, so the shorter one is the session window and
-//! the longer one the weekly window.
-
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
@@ -20,12 +8,10 @@ use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 
-/// How long to wait for the whole exchange before giving up.
 pub const READ_TIMEOUT: Duration = Duration::from_secs(20);
 
 use crate::limits::LimitWindow;
 
-/// One window as Codex reports it.
 #[derive(Debug, Clone, Deserialize)]
 struct RawWindow {
     #[serde(rename = "usedPercent")]
@@ -62,9 +48,6 @@ fn to_window(raw: &RawWindow) -> Option<(f64, LimitWindow)> {
     ))
 }
 
-/// Map the reply's rate-limit snapshot onto session and weekly windows.
-///
-/// Classify each available duration independently, including partial replies.
 pub fn parse_snapshot(snapshot: &Value) -> CodexLimits {
     let mut limits = CodexLimits::default();
     for key in ["primary", "secondary"] {
@@ -75,8 +58,6 @@ pub fn parse_snapshot(snapshot: &Value) -> CodexLimits {
         else {
             continue;
         };
-        // Classify each window independently. If only a weekly window is
-        // available, sorting a one-item list used to relabel it as Session.
         let weekly = if duration > 0.0 {
             duration > 24.0 * 60.0
         } else {
@@ -91,14 +72,10 @@ pub fn parse_snapshot(snapshot: &Value) -> CodexLimits {
     limits
 }
 
-/// Whether the codex command is available at all.
 pub fn is_available() -> bool {
     codex_binary().is_some()
 }
 
-/// Locate Codex in both shell and desktop-launch environments. GNOME starts
-/// desktop entries with a deliberately small PATH, while the Codex desktop app
-/// ships its CLI inside `/usr/lib/chatgpt/resources`.
 pub fn codex_binary() -> Option<PathBuf> {
     let override_path = std::env::var_os("VERONICA_CODEX_BIN").map(PathBuf::from);
     codex_binary_from(
@@ -128,7 +105,6 @@ fn codex_binary_from(
         .find(|path| veronica_core::host::is_executable(path))
 }
 
-/// Ask `codex app-server` for the account's rate limits.
 pub async fn fetch_limits() -> Result<CodexLimits> {
     if !is_available() {
         bail!("the codex command is not installed");
@@ -185,8 +161,6 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
             .await?;
         stdin.flush().await?;
 
-        // Wait for the initialize reply before going on, as the protocol
-        // requires; sending the rest first can be rejected.
         await_response(&mut lines, 0).await?;
 
         stdin
@@ -213,7 +187,6 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
         .await
         .context("codex app-server stopped responding")?;
 
-    // The child is killed on drop, so a hung server cannot outlive this call.
     let _ = child.start_kill();
     let diagnostics = stderr_task.await.unwrap_or_default();
     result.with_context(|| {
@@ -224,7 +197,6 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
     })
 }
 
-/// Read lines until the reply with this id arrives.
 async fn await_response<R>(lines: &mut tokio::io::Lines<BufReader<R>>, id: i64) -> Result<Value>
 where
     R: tokio::io::AsyncRead + Unpin,
@@ -235,7 +207,6 @@ where
             continue;
         }
         let Ok(value) = serde_json::from_str::<Value>(trimmed) else {
-            // The server may log non-JSON to stdout; skip rather than fail.
             continue;
         };
         if value.get("id").and_then(Value::as_i64) == Some(id) {
@@ -254,8 +225,6 @@ mod tests {
 
     #[test]
     fn shorter_window_is_the_session_regardless_of_naming() {
-        // `primary` is the weekly window here; ordering by duration is what
-        // keeps the two straight.
         let snapshot = json!({
             "primary":   {"usedPercent": 45.0, "resetsAt": 1787200000, "windowDurationMins": 10080},
             "secondary": {"usedPercent": 81.0, "resetsAt": 1787100000, "windowDurationMins": 300}
@@ -334,8 +303,6 @@ mod tests {
 
     #[tokio::test]
     async fn a_missing_codex_command_reports_clearly() {
-        // This machine has no codex binary; the message should say so rather
-        // than surfacing a spawn error.
         if is_available() {
             return;
         }
