@@ -2,13 +2,12 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
-const TRACK_RGBA = [1, 1, 1, 0.12];
 const STROKE_WIDTH = 4.5;
 const CAIRO_LINE_CAP_BUTT = 0;
 const CAIRO_LINE_CAP_ROUND = 1;
 
 const BAND_RGB = {
-    good: [0x6a / 255, 0x8d / 255, 0x73 / 255],
+    good: [0x0c / 255, 0xa3 / 255, 0x0c / 255],
     warning: [0xfa / 255, 0xb2 / 255, 0x19 / 255],
     critical: [0xd0 / 255, 0x3b / 255, 0x3b / 255],
 };
@@ -25,8 +24,9 @@ class RingGauge extends St.Widget {
         this._percent = 0;
         this._band = 'good';
 
-        this._area = new St.DrawingArea({ width: size, height: size });
+        this._area = new St.DrawingArea({ style_class: 'veronica-ring-track', width: size, height: size });
         this._area.connect('repaint', area => this._draw(area));
+        this._area.connect('style-changed', area => area.queue_repaint());
         this.add_child(this._area);
 
         this._label = new St.Label({
@@ -55,7 +55,8 @@ class RingGauge extends St.Widget {
 
         cr.setLineWidth(STROKE_WIDTH);
         cr.setLineCap(CAIRO_LINE_CAP_BUTT);
-        cr.setSourceRGBA(...TRACK_RGBA);
+        const track = area.get_theme_node().get_foreground_color();
+        cr.setSourceRGBA(track.red / 255, track.green / 255, track.blue / 255, track.alpha / 255);
         cr.arc(cx, cy, radius, 0, 2 * Math.PI);
         cr.stroke();
 
