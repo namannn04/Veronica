@@ -1,26 +1,66 @@
-import { startVisiblePolling } from "../lib/polling";
 import { useCallback, useEffect, useState } from "react";
+import { ArrowUp, ChevronRight, File, Folder, Plus, Power, RefreshCw, RotateCcw, Server, SquareTerminal, X, Zap } from "lucide-react";
 
+import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
-import { bytes, countdown, percent } from "../lib/format";
+import { bytes, countdown } from "../lib/format";
 import type { ContainerInfo, MachineDirectory, MachineReport } from "../lib/types";
+import { MeterStat } from "../components/MeterStat";
+import {
+  Button,
+  Card,
+  CardHeader,
+  ConfirmDialog,
+  Dialog,
+  EmptyState,
+  Field,
+  IconButton,
+  KeyValueList,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  Segmented,
+  SkeletonRows,
+  StatGrid,
+  StatusDot,
+  Table,
+  TextField,
+  Toolbar,
+  type Tone,
+} from "../ui";
+import "./MachinesPage.css";
 
-/** How often to re-probe while the page is open. */
 const TICK_MS = 5000;
+const STROKE = 1.75;
 
-/**
- * The fleet.
- *
- * This computer is always listed and needs no configuration. Remote machines are
- * reached by running `ssh`, so whatever already works in a terminal works here:
- * config aliases, keys, agents and jump hosts all apply, and Veronica never
- * handles a key itself.
- */
+type Tool = "overview" | "files" | "containers" | "sensors";
+
+const TOOLS: { value: Tool; label: string }[] = [
+  { value: "overview", label: "Overview" },
+  { value: "files", label: "Files" },
+  { value: "containers", label: "Containers" },
+  { value: "sensors", label: "Sensors" },
+];
+
+function reachLabel(report: MachineReport) {
+  return report.machine.reach.kind === "local" ? "this computer" : `ssh ${report.machine.reach.target}`;
+}
+
+function containerTone(state: string): Tone {
+  if (state === "running") return "good";
+  if (state === "paused" || state === "restarting") return "warning";
+  return "neutral";
+}
+
 export function MachinesPage() {
   const [reports, setReports] = useState<MachineReport[]>([]);
   const [discovered, setDiscovered] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [target, setTarget] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,7 +80,7 @@ export function MachinesPage() {
     try {
       setDiscovered(await ipc.machinesDiscover());
     } catch {
-      // No SSH config is perfectly normal.
+      setDiscovered([]);
     }
   }, []);
 
@@ -58,6 +98,7 @@ export function MachinesPage() {
       setTarget("");
       setName("");
       setError(null);
+      setAdding(false);
       await Promise.all([load(), loadDiscovered()]);
     } catch (e) {
       setError(String(e));
@@ -78,104 +119,146 @@ export function MachinesPage() {
     }
   };
 
+  const refresh = () => { setLoading(true); void load(); };
+  const selected = reports.find((report) => report.machine.id === selectedId) ?? reports[0] ?? null;
+  const online = reports.filter((report) => report.stats).length;
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>Machines</h1>
-          <div className="page-sub">
-            This computer and any host you can reach over SSH
+    <Page
+      className="mach-page"
+      header={
+        <PageHeader
+          title="Machines"
+          subtitle={reports.length > 0 ? `${online} of ${reports.length} answering · this computer and your SSH hosts` : "This computer and any host you can reach over SSH"}
+          actions={
+            <>
+              <Button icon={<RefreshCw strokeWidth={STROKE} />} busy={loading && reports.length > 0} disabled={loading} onClick={refresh}>
+                {loading && reports.length > 0 ? "Probing…" : "Refresh"}
+              </Button>
+              <Button variant="primary" icon={<Plus strokeWidth={STROKE} />} onClick={() => setAdding(true)}>Add machine</Button>
+            </>
+          }
+        />
+      }
+    >
+      {error && (
+        <Notice
+          tone="critical"
+          title={reports.length === 0 ? "No machine could be probed" : "The last probe failed"}
+          actions={<Button size="small" disabled={loading} onClick={refresh}>Retry</Button>}
+        >
+          {error}
+        </Notice>
+      )}
+
+      {reports.length === 0 ? (
+        loading ? (
+          <div className="mach-layout">
+            <List label="Machines"><div className="mach-pad"><SkeletonRows rows={3} label="Probing this computer and your SSH hosts" /></div></List>
+            <Card><SkeletonRows rows={4} /></Card>
           </div>
-        </div>
-        <button className="button" onClick={() => { setLoading(true); void load(); }} disabled={loading}>
-          {loading ? "Probing…" : "Refresh"}
-        </button>
-      </div>
-
-      {error && <div className="banner error">{error}</div>}
-
-      {/* This computer is always one of the reports, so an empty list means the
-          probe has not answered yet or could not run - not that the fleet is
-          empty. The two say different things and get different words. */}
-      {reports.length === 0 && (
-        <div className="empty">
-          <h3>{loading ? "Probing…" : "No machines answered"}</h3>
-          <p>
-            {loading
-              ? "Reading this computer, then every host in your SSH config."
-              : "This computer should always be listed. Refresh, and if it stays empty run `vr machines list` to see what the probe reports."}
-          </p>
+        ) : !error && (
+          <Card>
+            <EmptyState
+              icon={<Server strokeWidth={STROKE} />}
+              title="No machines answered"
+              action={<Button onClick={refresh}>Refresh</Button>}
+            >
+              This computer is always listed. If it stays empty, run vr machines list to see what the probe reports.
+            </EmptyState>
+          </Card>
+        )
+      ) : (
+        <div className="mach-layout">
+          <div className="mach-sidebar">
+            <List label="Machines">
+              {reports.map((report) => (
+                <ListRow
+                  key={report.machine.id}
+                  leading={<StatusDot tone={report.stats ? "good" : "critical"} label={report.stats ? "Online" : "Unreachable"} />}
+                  title={report.machine.name}
+                  subtitle={<span className="ui-mono">{reachLabel(report)}</span>}
+                  meta={report.stats ? `${Math.round(report.stats.cpuPercent)}% CPU` : "Unreachable"}
+                  selected={selected?.machine.id === report.machine.id}
+                  onClick={() => setSelectedId(report.machine.id)}
+                />
+              ))}
+            </List>
+            {discovered.length > 0 && (
+              <Button variant="plain" size="small" icon={<Plus strokeWidth={STROKE} />} onClick={() => setAdding(true)}>
+                {discovered.length} host{discovered.length === 1 ? "" : "s"} found in your SSH config
+              </Button>
+            )}
+          </div>
+          {selected && (
+            <MachineDetail
+              key={selected.machine.id}
+              report={selected}
+              onRemove={selected.machine.reach.kind === "local" ? undefined : remove}
+              busy={busy}
+            />
+          )}
         </div>
       )}
 
-      <div className="grid" style={{ gap: 12 }}>
-        {reports.map((report) => (
-          <MachineCard
-            key={report.machine.id}
-            report={report}
-            onRemove={report.machine.reach.kind === "local" ? undefined : remove}
-            busy={busy}
-          />
-        ))}
-      </div>
-
-      <section className="card" style={{ marginTop: 12 }}>
-        <div className="card-head">
-          <h2>Add a machine</h2>
-          <span className="card-note">Anything `ssh` can already reach</span>
-        </div>
-        <div className="toolbar" style={{ marginBottom: 0 }}>
-          <input
-            className="button"
-            style={{ minWidth: 200 }}
-            placeholder="ssh target, e.g. tuf or naman@10.0.0.5"
-            value={target}
-            onChange={(event) => setTarget(event.target.value)}
-            aria-label="SSH target"
-          />
-          <input
-            className="button"
-            style={{ minWidth: 140 }}
-            placeholder="name (optional)"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            aria-label="Display name"
-          />
-          <button
-            className="button primary"
-            onClick={() => void add(target, name)}
-            disabled={busy || !target.trim()}
-          >
-            Add
-          </button>
-        </div>
-
-        {discovered.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <div className="tile-label" style={{ marginBottom: 6 }}>
-              Found in your SSH config
+      <Dialog
+        open={adding}
+        onClose={() => { if (!busy) setAdding(false); }}
+        title="Add a machine"
+        description="Anything ssh can already reach: config aliases, keys, agents and jump hosts all apply."
+        width={460}
+        footer={
+          <>
+            <Button onClick={() => setAdding(false)} disabled={busy}>Cancel</Button>
+            <Button variant="primary" busy={busy} disabled={!target.trim()} onClick={() => void add(target, name)}>Add machine</Button>
+          </>
+        }
+      >
+        <div className="mach-form">
+          <Field label="SSH target" hint="An alias or user@host, for example tuf or naman@10.0.0.5">
+            {(id) => (
+              <TextField
+                id={id}
+                mono
+                value={target}
+                placeholder="user@host"
+                aria-label="SSH target"
+                onChange={(event) => setTarget(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void add(target, name); }}
+              />
+            )}
+          </Field>
+          <Field label="Name" hint="Optional. Shown instead of the target.">
+            {(id) => (
+              <TextField
+                id={id}
+                value={name}
+                placeholder="Display name"
+                aria-label="Display name"
+                onChange={(event) => setName(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void add(target, name); }}
+              />
+            )}
+          </Field>
+          {discovered.length > 0 && (
+            <div className="mach-discovered">
+              <span className="mach-discovered-label">Found in your SSH config</span>
+              <div className="mach-discovered-list">
+                {discovered.map((alias) => (
+                  <Button key={alias} size="small" icon={<Plus strokeWidth={STROKE} />} disabled={busy} onClick={() => void add(alias)}>
+                    <span className="ui-mono">{alias}</span>
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="toolbar" style={{ marginBottom: 0 }}>
-              {discovered.map((alias) => (
-                <button
-                  key={alias}
-                  className="chip"
-                  onClick={() => void add(alias)}
-                  disabled={busy}
-                  title={`Add ${alias}`}
-                >
-                  + {alias}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-    </>
+          )}
+        </div>
+      </Dialog>
+    </Page>
   );
 }
 
-function MachineCard({
+function MachineDetail({
   report,
   onRemove,
   busy,
@@ -185,14 +268,14 @@ function MachineCard({
   busy: boolean;
 }) {
   const { machine, stats, error } = report;
-  const [tool, setTool] = useState<"files" | "containers" | "sensors" | null>(null);
+  const [tool, setTool] = useState<Tool>("overview");
   const [directory, setDirectory] = useState<MachineDirectory | null>(null);
-  const [containers, setContainers] = useState<ContainerInfo[]>([]);
+  const [containers, setContainers] = useState<ContainerInfo[] | null>(null);
   const [toolBusy, setToolBusy] = useState(false);
   const [toolError, setToolError] = useState("");
+  const [toolNote, setToolNote] = useState("");
   const [logs, setLogs] = useState<{ container: string; text: string } | null>(null);
-  const reach =
-    machine.reach.kind === "local" ? "this computer" : `ssh ${machine.reach.target}`;
+  const [power, setPower] = useState<"restart" | "shutdown" | null>(null);
 
   const loadFiles = async (path: string | null = null) => {
     setTool("files"); setToolBusy(true); setToolError("");
@@ -218,19 +301,16 @@ function MachineCard({
     catch (reason) { setToolError(String(reason)); }
     finally { setToolBusy(false); }
   };
-  // Restarting or shutting down a machine cannot be undone from here, so it is
-  // confirmed by name rather than by a button that is easy to hit twice.
-  const powerOff = async (action: "restart" | "shutdown") => {
-    const verb = action === "restart" ? "Restart" : "Shut down";
-    if (!window.confirm(`${verb} ${machine.name}?\n\nVeronica asks the machine over SSH and never escalates; the account it connects as has to be permitted already.`)) return;
+  const powerOff = async () => {
+    if (!power) return;
     setToolBusy(true); setToolError("");
-    try { await ipc.machinesPower(machine.id, action); setToolError(""); }
+    try { await ipc.machinesPower(machine.id, power); }
     catch (reason) { setToolError(String(reason)); }
-    finally { setToolBusy(false); }
+    finally { setToolBusy(false); setPower(null); }
   };
   const wake = async () => {
-    setToolBusy(true); setToolError("");
-    try { await ipc.machinesWake(machine.id); setToolError("Wake packet sent. Nothing confirms it: the machine is not answering yet."); }
+    setToolBusy(true); setToolError(""); setToolNote("");
+    try { await ipc.machinesWake(machine.id); setToolNote("Wake packet sent. Nothing confirms it: the machine is not answering yet."); }
     catch (reason) { setToolError(String(reason)); }
     finally { setToolBusy(false); }
   };
@@ -239,146 +319,234 @@ function MachineCard({
     try { await ipc.machinesContainerAction(machine.id, container.engine, container.id, action); await loadContainers(); }
     catch (reason) { setToolError(String(reason)); setToolBusy(false); }
   };
+  const openTerminal = () => void ipc.machinesTerminal(machine.id).catch((reason) => setToolError(String(reason)));
+
+  const chooseTool = (next: Tool) => {
+    setToolError("");
+    if (next === "files") void loadFiles(directory?.path ?? null);
+    else if (next === "containers") void loadContainers();
+    else setTool(next);
+  };
+
+  const remote = machine.reach.kind !== "local";
+  const verb = power === "restart" ? "Restart" : "Shut down";
 
   return (
-    <section className="card">
-      <div className="card-head">
-        <h2>
-          {machine.name}{" "}
-          {stats ? (
-            <span className="pill good">Online</span>
-          ) : (
-            <span className="pill critical">Unreachable</span>
-          )}
-        </h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="card-note mono">{reach}</span>
-          <button className="button" disabled={!stats || toolBusy} onClick={() => void ipc.machinesTerminal(machine.id).catch((reason) => setToolError(String(reason)))}>Terminal</button>
-          {machine.reach.kind !== "local" && <>
-            {machine.mac && !stats && <button className="button" disabled={toolBusy} onClick={() => void wake()}>Wake</button>}
-            {stats && <button className="button" disabled={toolBusy} onClick={() => void powerOff("restart")}>Restart</button>}
-            {stats && <button className="button danger" disabled={toolBusy} onClick={() => void powerOff("shutdown")}>Shut down</button>}
-          </>}
-          {onRemove && (
-            <button
-              className="button"
-              onClick={() => onRemove(machine.id)}
-              disabled={busy}
-            >
-              Remove
-            </button>
-          )}
-        </div>
-      </div>
+    <Card className="mach-detail">
+      <CardHeader
+        title={
+          <span className="mach-title">
+            <span>{machine.name}</span>
+            <span className={stats ? "mach-state mach-state-good" : "mach-state mach-state-bad"}>{stats ? "Online" : "Unreachable"}</span>
+          </span>
+        }
+        subtitle={
+          stats
+            ? <span className="ui-mono">{stats.hostName} · {stats.os} · kernel {stats.kernel} · up {countdown(stats.uptimeSecs)}</span>
+            : <span className="ui-mono">{reachLabel(report)}</span>
+        }
+      />
 
-      {!stats && (
-        <p className="card-note">{error ?? "No answer yet."}</p>
-      )}
+      <Toolbar
+        className="mach-actions"
+        leading={
+          <>
+            <Button size="small" icon={<SquareTerminal strokeWidth={STROKE} />} disabled={!stats || toolBusy} onClick={openTerminal}>Terminal</Button>
+            {remote && machine.mac && !stats && (
+              <Button size="small" icon={<Zap strokeWidth={STROKE} />} disabled={toolBusy} onClick={() => void wake()}>Wake</Button>
+            )}
+            {remote && stats && (
+              <Button size="small" icon={<RotateCcw strokeWidth={STROKE} />} disabled={toolBusy} onClick={() => setPower("restart")}>Restart</Button>
+            )}
+            {remote && stats && (
+              <Button size="small" variant="destructive-plain" icon={<Power strokeWidth={STROKE} />} disabled={toolBusy} onClick={() => setPower("shutdown")}>Shut down</Button>
+            )}
+          </>
+        }
+        trailing={onRemove && (
+          <Button size="small" variant="plain" disabled={busy} onClick={() => onRemove(machine.id)}>Remove</Button>
+        )}
+      />
 
-      {stats && (
+      {toolNote && <Notice tone="neutral" compact>{toolNote}</Notice>}
+
+      {!stats ? (
+        <Notice tone="warning" title="Not answering">
+          <span className="ui-mono ui-selectable">{error ?? "No answer yet."}</span>
+        </Notice>
+      ) : (
         <>
-          <div className="card-note" style={{ marginBottom: 10 }}>
-            {stats.hostName} · {stats.os} · kernel {stats.kernel} · up{" "}
-            {countdown(stats.uptimeSecs)}
-          </div>
+          <Segmented label="Machine view" options={TOOLS} value={tool} onChange={chooseTool} size="small" />
 
-          <div className="grid tiles" style={{ marginBottom: 0 }}>
-            <Meter label="CPU" value={stats.cpuPercent} note={`load ${stats.loadAverage[0].toFixed(2)}`} />
-            <Meter
-              label="Memory"
-              value={
-                stats.memoryTotalBytes > 0
-                  ? ((stats.memoryTotalBytes - stats.memoryAvailableBytes) /
-                      stats.memoryTotalBytes) *
-                    100
-                  : 0
-              }
-              note={`${bytes(
-                stats.memoryTotalBytes - stats.memoryAvailableBytes,
-              )} of ${bytes(stats.memoryTotalBytes)}`}
-            />
-            {stats.gpus.map((gpu) => (
-              <Meter
-                key={gpu.name}
-                label="GPU"
-                value={gpu.utilizationPercent}
-                note={`${bytes(gpu.memoryUsedBytes)} of ${bytes(gpu.memoryTotalBytes)}${gpu.temperatureCelsius === null ? "" : ` · ${gpu.temperatureCelsius.toFixed(0)} °C`}`}
+          {toolError && <Notice tone="critical" compact>{toolError}</Notice>}
+
+          {tool === "overview" && (
+            <StatGrid min={150}>
+              <MeterStat label="CPU" value={stats.cpuPercent} note={`load ${stats.loadAverage[0].toFixed(2)}`} />
+              <MeterStat
+                label="Memory"
+                value={stats.memoryTotalBytes > 0 ? ((stats.memoryTotalBytes - stats.memoryAvailableBytes) / stats.memoryTotalBytes) * 100 : 0}
+                note={`${bytes(stats.memoryTotalBytes - stats.memoryAvailableBytes)} of ${bytes(stats.memoryTotalBytes)}`}
               />
-            ))}
-            {stats.disks.slice(0, 2).map((disk) => (
-              <Meter
-                key={disk.mountPoint}
-                label={disk.mountPoint}
-                literal
-                value={
-                  disk.totalBytes > 0
-                    ? ((disk.totalBytes - disk.availableBytes) / disk.totalBytes) * 100
-                    : 0
-                }
-                note={bytes(disk.totalBytes)}
-              />
-            ))}
-          </div>
-          <div className="machine-actions">
-            <button className="button" aria-pressed={tool === "files"} onClick={() => void loadFiles(directory?.path ?? null)}>Files</button>
-            <button className="button" aria-pressed={tool === "containers"} onClick={() => void loadContainers()}>Containers</button>
-            <button className="button" aria-pressed={tool === "sensors"} onClick={() => { setTool("sensors"); setToolError(""); }}>Sensors &amp; processes</button>
-            {tool && <button className="button" onClick={() => { setTool(null); setToolError(""); }}>Close</button>}
-          </div>
-          {toolError && <div className="banner error">{toolError}</div>}
-          {tool === "files" && <div className="machine-tool"><div className="machine-path"><button className="button" disabled={!directory?.parent || toolBusy} onClick={() => void loadFiles(directory?.parent ?? null)}>↑</button><code>{directory?.path ?? "Loading…"}</code><button className="button" disabled={toolBusy} onClick={() => void loadFiles(directory?.path ?? null)}>Refresh</button></div>{directory && directory.entries.length > 0 ? <div className="machine-file-list">{directory.entries.map((entry) => <button key={entry.path} disabled={toolBusy} onClick={() => entry.kind === "directory" ? void loadFiles(entry.path) : void openFile(entry.path)}><span className="machine-file-icon">{entry.kind === "directory" ? "▰" : "▤"}</span><span><strong>{entry.name}</strong><small>{entry.kind === "directory" ? "Folder" : bytes(entry.sizeBytes)}</small></span><span>›</span></button>)}</div> : !toolBusy && <div className="empty compact"><p>This folder is empty.</p></div>}</div>}
-          {tool === "containers" && <div className="machine-tool">{containers.length > 0 ? <div className="machine-container-list">{containers.map((container) => <div key={`${container.engine}-${container.id}`}><span className={`pill ${container.state === "running" ? "good" : "warning"}`}>{container.state}</span><span><strong>{container.name}</strong><small>{container.image} · {container.status}</small>{container.ports && <small>{container.ports}</small>}</span><div>{container.state === "running" ? <button className="button" disabled={toolBusy} onClick={() => void act(container, "stop")}>Stop</button> : <button className="button" disabled={toolBusy} onClick={() => void act(container, "start")}>Start</button>}<button className="button" disabled={toolBusy} onClick={() => void act(container, "restart")}>Restart</button><button className="button" disabled={toolBusy} onClick={() => void showLogs(container)}>Logs</button></div></div>)}</div> : !toolBusy && <div className="empty compact"><p>No Docker or Podman containers found.</p></div>}
-            {logs && <div className="machine-logs"><div className="card-head"><h2>{logs.container}</h2><button className="button" onClick={() => setLogs(null)}>Close</button></div><pre>{logs.text.trim() || "This container has written nothing."}</pre></div>}</div>}
-          {tool === "sensors" && <div className="machine-tool">
-            {stats.temperatures.length === 0 && stats.fans.length === 0 && stats.processes.length === 0
-              ? <div className="empty compact"><p>This machine exposes no sensors, and its <code>ps</code> reported nothing.</p></div>
-              : <div className="machine-sensors">
-                  {stats.gpus.map((gpu) => <div className="sensor-row" key={`gpu-${gpu.name}`}><span>{gpu.name}</span><b>{gpu.utilizationPercent.toFixed(0)}% · {bytes(gpu.memoryUsedBytes)}{gpu.temperatureCelsius === null ? "" : ` · ${gpu.temperatureCelsius.toFixed(0)} °C`}</b></div>)}
-                  {stats.temperatures.map((reading, index) => <div className="sensor-row" key={`t-${reading.label}-${index}`}><span>{reading.label}</span><b className={reading.celsius >= 85 ? "hot" : ""}>{reading.celsius.toFixed(1)} °C</b></div>)}
-                  {stats.fans.map((fan) => <div className="sensor-row" key={`f-${fan.label}`}><span>{fan.label}</span><b>{fan.rpm.toLocaleString()} rpm</b></div>)}
-                  {stats.processes.length > 0 && <div className="sensor-heading">Busiest processes</div>}
-                  {stats.processes.map((process) => <div className="sensor-row" key={process.pid}><span>{process.name}<small> · {process.pid}</small></span><b>{process.cpuPercent.toFixed(1)}% · {bytes(process.memoryBytes)}</b></div>)}
-                </div>}
-          </div>}
+              {stats.gpus.map((gpu) => (
+                <MeterStat
+                  key={gpu.name}
+                  label="GPU"
+                  value={gpu.utilizationPercent}
+                  note={`${bytes(gpu.memoryUsedBytes)} of ${bytes(gpu.memoryTotalBytes)}${gpu.temperatureCelsius === null ? "" : ` · ${gpu.temperatureCelsius.toFixed(0)} °C`}`}
+                />
+              ))}
+              {stats.disks.slice(0, 2).map((disk) => (
+                <MeterStat
+                  key={disk.mountPoint}
+                  label={disk.mountPoint}
+                  mono
+                  value={disk.totalBytes > 0 ? ((disk.totalBytes - disk.availableBytes) / disk.totalBytes) * 100 : 0}
+                  note={`${bytes(disk.totalBytes)} total`}
+                  warnAt={80}
+                  criticalAt={90}
+                />
+              ))}
+            </StatGrid>
+          )}
+
+          {tool === "files" && (
+            <div className="mach-tool">
+              <div className="mach-path">
+                <IconButton size="small" label="Go to parent folder" icon={<ArrowUp strokeWidth={STROKE} />} disabled={!directory?.parent || toolBusy} onClick={() => void loadFiles(directory?.parent ?? null)} />
+                <span className="mach-path-text ui-mono ui-selectable">{directory?.path ?? "Loading…"}</span>
+                <IconButton size="small" label="Reload this folder" icon={<RefreshCw strokeWidth={STROKE} />} disabled={toolBusy} onClick={() => void loadFiles(directory?.path ?? null)} />
+              </div>
+              <div className="mach-scroll">
+                {!directory && toolBusy ? (
+                  <div className="mach-pad"><SkeletonRows rows={5} label="Reading the folder" /></div>
+                ) : directory && directory.entries.length > 0 ? (
+                  <List label="Folder contents" inset={false}>
+                    {directory.entries.map((entry) => (
+                      <ListRow
+                        key={entry.path}
+                        leading={entry.kind === "directory" ? <Folder strokeWidth={STROKE} /> : <File strokeWidth={STROKE} />}
+                        title={entry.name}
+                        subtitle={entry.kind === "directory" ? "Folder" : bytes(entry.sizeBytes)}
+                        trailing={entry.kind === "directory" ? <ChevronRight className="mach-chevron" strokeWidth={STROKE} aria-hidden="true" /> : undefined}
+                        onClick={() => {
+                          if (toolBusy) return;
+                          if (entry.kind === "directory") void loadFiles(entry.path);
+                          else void openFile(entry.path);
+                        }}
+                      />
+                    ))}
+                  </List>
+                ) : (
+                  !toolBusy && <EmptyState size="compact" icon={<Folder strokeWidth={STROKE} />} title="This folder is empty" />
+                )}
+              </div>
+            </div>
+          )}
+
+          {tool === "containers" && (
+            <div className="mach-tool">
+              <div className="mach-scroll">
+                {containers === null && toolBusy ? (
+                  <div className="mach-pad"><SkeletonRows rows={3} label="Reading containers" /></div>
+                ) : containers && containers.length > 0 ? (
+                  <List label="Containers" inset={false}>
+                    {containers.map((container) => (
+                      <ListRow
+                        key={`${container.engine}-${container.id}`}
+                        className="mach-container-row"
+                        leading={<StatusDot tone={containerTone(container.state)} label={container.state} />}
+                        title={container.name}
+                        subtitle={
+                          <span className="mach-container-meta">
+                            <span>{container.state} · {container.image} · {container.status}</span>
+                            {container.ports && <span className="ui-mono">{container.ports}</span>}
+                          </span>
+                        }
+                        trailing={
+                          <>
+                            {container.state === "running"
+                              ? <Button size="small" disabled={toolBusy} onClick={() => void act(container, "stop")}>Stop</Button>
+                              : <Button size="small" disabled={toolBusy} onClick={() => void act(container, "start")}>Start</Button>}
+                            <Button size="small" disabled={toolBusy} onClick={() => void act(container, "restart")}>Restart</Button>
+                            <Button size="small" variant="plain" disabled={toolBusy} onClick={() => void showLogs(container)}>Logs</Button>
+                          </>
+                        }
+                      />
+                    ))}
+                  </List>
+                ) : (
+                  !toolBusy && <EmptyState size="compact" title="No containers">This machine has no Docker or Podman containers.</EmptyState>
+                )}
+              </div>
+              {logs && (
+                <div className="mach-logs">
+                  <div className="mach-logs-head">
+                    <span className="mach-logs-title">Logs · <span className="ui-mono">{logs.container}</span></span>
+                    <IconButton size="small" label="Close logs" icon={<X strokeWidth={STROKE} />} onClick={() => setLogs(null)} />
+                  </div>
+                  <pre className="mach-logs-body ui-mono ui-selectable">{logs.text.trim() || "This container has written nothing."}</pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tool === "sensors" && (
+            stats.temperatures.length === 0 && stats.fans.length === 0 && stats.processes.length === 0 && stats.gpus.length === 0 ? (
+              <EmptyState size="compact" title="No sensors">This machine exposes no sensors, and its ps reported nothing.</EmptyState>
+            ) : (
+              <div className="mach-sensors">
+                {(stats.gpus.length > 0 || stats.temperatures.length > 0 || stats.fans.length > 0) && (
+                  <KeyValueList
+                    items={[
+                      ...stats.gpus.map((gpu) => ({
+                        label: gpu.name,
+                        value: `${gpu.utilizationPercent.toFixed(0)}% · ${bytes(gpu.memoryUsedBytes)}${gpu.temperatureCelsius === null ? "" : ` · ${gpu.temperatureCelsius.toFixed(0)} °C`}`,
+                      })),
+                      ...stats.temperatures.map((reading) => ({
+                        label: reading.label,
+                        value: <span className={reading.celsius >= 85 ? "mach-hot" : undefined}>{reading.celsius.toFixed(1)} °C{reading.celsius >= 85 ? " · hot" : ""}</span>,
+                      })),
+                      ...stats.fans.map((fan) => ({ label: fan.label, value: `${fan.rpm.toLocaleString()} rpm` })),
+                    ]}
+                  />
+                )}
+                {stats.processes.length > 0 && (
+                  <div className="mach-processes">
+                    <span className="mach-subhead">Busiest processes</span>
+                    <Table label="Busiest processes">
+                      <thead>
+                        <tr><th>Process</th><th>PID</th><th className="num">CPU</th><th className="num">Memory</th></tr>
+                      </thead>
+                      <tbody>
+                        {stats.processes.map((process) => (
+                          <tr key={process.pid}>
+                            <td>{process.name}</td>
+                            <td className="ui-mono muted">{process.pid}</td>
+                            <td className="num">{process.cpuPercent.toFixed(1)}%</td>
+                            <td className="num">{bytes(process.memoryBytes)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            )
+          )}
         </>
       )}
-    </section>
-  );
-}
 
-function Meter({
-  label,
-  value,
-  note,
-  literal,
-}: {
-  label: string;
-  value: number;
-  note: string;
-  /** True when the label is a literal value, such as a mount point. */
-  literal?: boolean;
-}) {
-  // A meter is a status readout, so the band carries a word as well as a colour.
-  const status = value >= 85 ? "critical" : value >= 60 ? "warning" : "good";
-  return (
-    <div className="card" style={{ padding: "11px 12px" }}>
-      <div className={`tile-label truncate${literal ? " literal" : ""}`} title={label}>
-        {label}
-      </div>
-      <div className="tile-value" style={{ fontSize: 20 }}>
-        {percent(value)}
-      </div>
-      <div style={{ height: 5, background: "var(--grid)", borderRadius: 3, marginTop: 7 }}>
-        <div
-          style={{
-            width: `${Math.min(100, Math.max(value, 1))}%`,
-            height: "100%",
-            background: `var(--status-${status})`,
-            borderRadius: 3,
-          }}
-        />
-      </div>
-      <div className="tile-note truncate">{note}</div>
-    </div>
+      <ConfirmDialog
+        open={power !== null}
+        onClose={() => { if (!toolBusy) setPower(null); }}
+        onConfirm={() => void powerOff()}
+        title={`${verb} ${machine.name}?`}
+        message="Veronica asks the machine over SSH and never escalates; the account it connects as has to be permitted already."
+        confirmLabel={verb}
+        destructive={power === "shutdown"}
+        busy={toolBusy && power !== null}
+      />
+    </Card>
   );
 }

@@ -1,0 +1,201 @@
+.mach-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: var(--card-gap);
+  align-items: start;
+}
+
+.mach-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mach-sidebar > .ui-list {
+  align-self: stretch;
+}
+
+.mach-pad {
+  padding: var(--space-2) var(--card-padding);
+}
+
+.mach-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+
+.mach-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mach-detail .ui-card-title {
+  font-size: var(--text-title-3);
+}
+
+.mach-state {
+  flex: none;
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+}
+
+.mach-state-good {
+  color: var(--tone-good-text);
+}
+
+.mach-state-bad {
+  color: var(--tone-critical-text);
+}
+
+.mach-actions {
+  padding-bottom: var(--space-1);
+}
+
+.mach-tool {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.mach-path {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mach-path-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+  font-size: var(--text-callout);
+}
+
+.mach-scroll {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-l);
+  background: var(--bg-card);
+}
+
+.mach-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+}
+
+.mach-container-row .ui-list-row-leading {
+  width: 12px;
+}
+
+.mach-container-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.mach-container-meta > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mach-logs {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-l);
+  background: var(--bg-inset);
+  overflow: hidden;
+}
+
+.mach-logs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-2) var(--space-1-5) var(--space-3);
+  border-bottom: 1px solid var(--separator);
+}
+
+.mach-logs-title {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+}
+
+.mach-logs-body {
+  max-height: 280px;
+  margin: 0;
+  padding: var(--space-3);
+  overflow: auto;
+  color: var(--text-1);
+  font-size: var(--text-callout);
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.mach-sensors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.mach-processes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mach-subhead {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-semibold);
+}
+
+.mach-hot {
+  color: var(--tone-critical-text);
+  font-weight: var(--weight-semibold);
+}
+
+.mach-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mach-discovered {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--separator);
+}
+
+.mach-discovered-label {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+}
+
+.mach-discovered-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@container main (max-width: 720px) {
+  .mach-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
