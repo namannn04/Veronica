@@ -138,6 +138,24 @@
     "allow-notifications-dismiss",
     "allow-notifications-clear",
     "allow-show-main-window",
-    "allow-open-external"
+    "allow-open-external",
+    "allow-ext-list",
+    "allow-ext-status",
+    "allow-ext-restart",
+    "allow-ext-catalog-refresh",
+    "allow-ext-catalog-search",
+    "allow-ext-catalog-info",
+    "allow-ext-install",
+    "allow-ext-sideload",
+    "allow-ext-update",
+    "allow-ext-enable",
+    "allow-ext-disable",
+    "allow-ext-remove",
+    "allow-ext-rollback",
+    "allow-ext-jobs",
+    "allow-ext-page-opened",
+    "allow-ext-page-closed",
+    "allow-ext-confirm-answer",
+    "allow-ext-bridge"
   ]
 }

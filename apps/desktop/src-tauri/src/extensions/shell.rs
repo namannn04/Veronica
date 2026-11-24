@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use veronica_protocol::rpc::{error_code, ErrorObject, NotifyParams};
 use veronica_system::notify;
 
-use super::host::Shell;
+use super::host::{Pending, Shell};
 use crate::state::AppState;
 
 const MAIN_WINDOW: &str = "main";
@@ -66,6 +66,21 @@ impl Shell for AppShell {
             }
         });
         Ok(())
+    }
+
+    fn open_external(&self, url: &str) -> Result<(), String> {
+        veronica_core::host::spawn_detached(veronica_core::host::command("xdg-open").arg(url))
+            .map(drop)
+            .map_err(|error| format!("cannot open {url}: {error}"))
+    }
+
+    fn copy(&self, text: String) -> Pending<Result<(), String>> {
+        Box::pin(async move {
+            veronica_system::selection::write(&text)
+                .await
+                .map(drop)
+                .map_err(|error| format!("{error:#}"))
+        })
     }
 }
 

@@ -6041,6 +6041,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-global-shortcut",
  "tempfile",
+ "thiserror 2.0.21",
  "tokio",
  "tracing",
  "tracing-subscriber",

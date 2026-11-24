@@ -37,6 +37,7 @@ tracing-subscriber = { workspace = true }
 chrono = { workspace = true }
 base64 = "0.22"
 tempfile = "3"
+thiserror = { workspace = true }
 
 [target."cfg(target_os = \"linux\")".dependencies]
 gtk = "0.18"

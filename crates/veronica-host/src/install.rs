@@ -416,6 +416,18 @@ impl Installer {
         Ok(entry)
     }
 
+    pub fn set_enabled(&self, id: &str, enabled: bool) -> Result<InstalledExtension> {
+        let _lock = self.lock()?;
+        let mut registry = self.registry()?;
+        let Some(entry) = registry.extensions.get_mut(id) else {
+            bail!("{id} is not installed");
+        };
+        entry.enabled = enabled;
+        let entry = entry.clone();
+        registry.save(&self.layout.installed_file())?;
+        Ok(entry)
+    }
+
     pub fn remove(&self, id: &str, purge: bool) -> Result<()> {
         let _lock = self.lock()?;
         let mut registry = self.registry()?;

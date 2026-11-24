@@ -3,15 +3,18 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use tauri::http::{header, Method, Request, Response, StatusCode};
 use veronica_host::registry::Registry;
 use veronica_host::Layout;
 use veronica_protocol::Manifest;
 
+use super::files::{granted_file, FileTokens};
+
 pub(crate) const SCHEME: &str = "veronica-ext";
 const DEVELOPMENT_ROOT: &str = "VERONICA_EXTENSIONS_DEV";
+const SHARED_FILES: &str = "/_fs/";
 const RANGE_CHUNK: u64 = 4 * 1024 * 1024;
 
 type Body = Cow<'static, [u8]>;
@@ -21,6 +24,8 @@ pub(crate) struct Bundles {
     development: BTreeMap<String, PathBuf>,
     installed: Option<Layout>,
     interfaces: Mutex<HashMap<PathBuf, Option<PathBuf>>>,
+    files: Arc<FileTokens>,
+    home: PathBuf,
 }
 
 struct Content {
@@ -30,7 +35,7 @@ struct Content {
 }
 
 impl Bundles {
-    pub(crate) fn discover(layout: Layout) -> Self {
+    pub(crate) fn discover(layout: Layout, files: Arc<FileTokens>) -> Self {
         let development = if cfg!(debug_assertions) {
             std::env::var_os(DEVELOPMENT_ROOT)
                 .map(PathBuf::from)
@@ -43,6 +48,8 @@ impl Bundles {
             development,
             installed: Some(layout),
             interfaces: Mutex::default(),
+            files,
+            home: veronica_core::paths::home_dir().unwrap_or_default(),
         }
     }
 
@@ -103,6 +110,9 @@ impl Bundles {
     }
 
     fn resolve(&self, id: &str, path: &str) -> Option<PathBuf> {
+        if let Some(token) = path.strip_prefix(SHARED_FILES) {
+            return self.shared_file(id, token);
+        }
         let root = match self.development.get(id) {
             Some(root) => root.clone(),
             None => self.installed_interface(id)?,
@@ -112,7 +122,7 @@ impl Bundles {
         (file.starts_with(&root) && file.is_file()).then_some(file)
     }
 
-    fn installed_interface(&self, id: &str) -> Option<PathBuf> {
+    fn enabled_install(&self, id: &str) -> Option<PathBuf> {
         let layout = self.installed.as_ref()?;
         if !is_extension_id(id) {
             return None;
@@ -121,7 +131,18 @@ impl Bundles {
         if !registry.get(id)?.enabled {
             return None;
         }
-        let install = layout.current_link(id).canonicalize().ok()?;
+        layout.current_link(id).canonicalize().ok()
+    }
+
+    fn shared_file(&self, id: &str, token: &str) -> Option<PathBuf> {
+        let issued = self.files.lookup(id, token)?;
+        let raw = std::fs::read_to_string(self.enabled_install(id)?.join("manifest.json")).ok()?;
+        let permissions = Manifest::parse(&raw).ok()?.permissions;
+        granted_file(&permissions, &self.home, issued.to_str()?)
+    }
+
+    fn installed_interface(&self, id: &str) -> Option<PathBuf> {
+        let install = self.enabled_install(id)?;
         let mut interfaces = self
             .interfaces
             .lock()
@@ -401,6 +422,7 @@ mod tests {
             "summary": "A test extension.", "category": "labs",
             "engines": { "host": ">=0.1.0", "hostApi": 1 },
             "targets": ["linux-x86_64"],
+            "permissions": { "filesystem": [{ "path": root.join("shared"), "access": "read" }] },
             "ui": { "root": declared, "pages": [{ "id": "main", "title": "Probe", "entry": "index.html" }] }
         });
         std::fs::write(tree.join("manifest.json"), manifest.to_string()).expect("manifest");
@@ -462,6 +484,51 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn shared_files_need_a_live_token_and_a_granted_scope() {
+        let root = tempfile::tempdir().expect("temporary directory");
+        let home = root.path().canonicalize().expect("home");
+        let bundles = installed(&home, true, "ui");
+        std::fs::create_dir_all(home.join("shared")).expect("shared directory");
+        std::fs::write(home.join("shared/song.mp3"), "song").expect("song");
+        std::fs::write(home.join("private.txt"), "private").expect("private file");
+        let song = bundles.files.issue("probe", home.join("shared/song.mp3"));
+        let private = bundles.files.issue("probe", home.join("private.txt"));
+        let foreign = bundles.files.issue("other", home.join("shared/song.mp3"));
+
+        let served = get(&bundles, &format!("veronica-ext://probe/_fs/{song}"));
+        assert_eq!(served.status(), StatusCode::OK);
+        assert_eq!(served.body().as_ref(), b"song");
+        assert_eq!(header_value(&served, header::CONTENT_TYPE), "audio/mpeg");
+        assert!(
+            header_value(&served, header::CONTENT_SECURITY_POLICY).contains("connect-src 'none'")
+        );
+        for token in [
+            private.as_str(),
+            foreign.as_str(),
+            "absent",
+            "",
+            "../ui/index.html",
+        ] {
+            let uri = format!("veronica-ext://probe/_fs/{token}");
+            assert_eq!(
+                get(&bundles, &uri).status(),
+                StatusCode::NOT_FOUND,
+                "{token}"
+            );
+        }
+        let post = Request::post(format!("veronica-ext://probe/_fs/{song}"))
+            .body(())
+            .expect("request");
+        assert_eq!(
+            bundles.respond(&post).status(),
+            StatusCode::METHOD_NOT_ALLOWED
+        );
+        bundles.files.revoke("probe");
+        let revoked = get(&bundles, &format!("veronica-ext://probe/_fs/{song}"));
+        assert_eq!(revoked.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
