@@ -114,7 +114,7 @@ impl Value {
 
     pub fn render(&self, limit: usize) -> String {
         let rendered = match self {
-            Value::Missing => "—".to_string(),
+            Value::Missing => "-".to_string(),
             Value::Null => "NULL".to_string(),
             Value::Boolean(value) => value.to_string(),
             Value::SignedInteger(value) => value.to_string(),
@@ -185,7 +185,7 @@ mod tests {
     fn missing_and_null_are_different_facts() {
         assert_ne!(Value::Missing, Value::Null);
         assert_ne!(Value::Missing.kind(), Value::Null.kind());
-        assert_eq!(Value::Missing.render(20), "—");
+        assert_eq!(Value::Missing.render(20), "-");
         assert_eq!(Value::Null.render(20), "NULL");
     }
 

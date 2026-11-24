@@ -39,7 +39,7 @@ fn tools() -> Json {
             "name": "database_connections",
             "description":
                 "List the databases Veronica has saved, or get one by id. Returns names, \
-                 products and environments only — never a host, username, or credential.",
+                 products and environments only, never a host, username, or credential.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -61,7 +61,7 @@ fn tools() -> Json {
         {
             "name": "database_capabilities",
             "description":
-                "What one saved database can be asked to do — whether it has transactions, \
+                "What one saved database can be asked to do: whether it has transactions, \
                  a schema to describe, sessions to list. Derived from the product; it does \
                  not connect.",
             "inputSchema": {
