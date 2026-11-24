@@ -14,12 +14,12 @@ clipboard and GNOME integration in one app, with no account, no telemetry and
 no paid tier.
 
 Requires Ubuntu 24.04 or later on x86_64 with GNOME Shell 46 to 50. Screenshots
-and shortcuts are on the [website](https://namannn04.github.io/veronica/).
+and shortcuts are on the [website](https://veronica.namandadhich.in/).
 
 ## Install
 
 ```bash
-curl -fsSL https://namannn04.github.io/veronica/install | bash
+curl -fsSL https://veronica.namandadhich.in/install | bash
 ```
 
 This verifies and installs the latest Debian package and turns on the GNOME
@@ -32,7 +32,7 @@ sudo snap install veronica --classic
 ```
 
 ```bash
-flatpak install --user https://namannn04.github.io/veronica/flatpak/veronica.flatpakref
+flatpak install --user https://veronica.namandadhich.in/flatpak/veronica.flatpakref
 ```
 
 ```bash
@@ -42,8 +42,8 @@ sudo add-apt-repository ppa:namannn04/veronica && sudo apt install veronica
 To get updates through `apt upgrade` from the signed apt repository instead:
 
 ```bash
-curl -fsSL https://namannn04.github.io/veronica/apt/veronica.gpg | sudo tee /etc/apt/keyrings/veronica.gpg >/dev/null
-echo "deb [signed-by=/etc/apt/keyrings/veronica.gpg] https://namannn04.github.io/veronica/apt stable main" | sudo tee /etc/apt/sources.list.d/veronica.list
+curl -fsSL https://veronica.namandadhich.in/apt/veronica.gpg | sudo tee /etc/apt/keyrings/veronica.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/veronica.gpg] https://veronica.namandadhich.in/apt stable main" | sudo tee /etc/apt/sources.list.d/veronica.list
 sudo apt update && sudo apt install veronica
 ```
 

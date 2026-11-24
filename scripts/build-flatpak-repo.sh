@@ -5,7 +5,7 @@ repository="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 bundle="${1:?usage: $0 bundle.flatpak destination gpg-key-id}"
 destination="${2:?usage: $0 bundle.flatpak destination gpg-key-id}"
 key_id="${3:?usage: $0 bundle.flatpak destination gpg-key-id}"
-base_url="https://namannn04.github.io/veronica/flatpak"
+base_url="https://veronica.namandadhich.in/flatpak"
 app_id="io.github.namannn04.Veronica"
 
 output="$destination/flatpak"
@@ -26,14 +26,14 @@ Url=$base_url/repo/
 SuggestRemoteName=veronica
 RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
 IsRuntime=false
-Homepage=https://namannn04.github.io/veronica/
+Homepage=https://veronica.namandadhich.in/
 GPGKey=$public_key
 REF
 cat >"$output/veronica.flatpakrepo" <<REPO
 [Flatpak Repo]
 Title=Veronica
 Url=$base_url/repo/
-Homepage=https://namannn04.github.io/veronica/
+Homepage=https://veronica.namandadhich.in/
 Comment=Native control center for Ubuntu
 GPGKey=$public_key
 REPO
