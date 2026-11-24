@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016
 set -euo pipefail
 
 export PATH="$HOME/.local/bin:$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
@@ -13,7 +14,10 @@ export PATH="$EDCACHE/bin:$EDCACHE/bun/bin:$PATH"
 
 if ! command -v bun >/dev/null 2>&1; then
   NODE_DIR="$HOME/.nvm/versions/node"
-  [ -d "$NODE_DIR" ] && export PATH="$NODE_DIR/$(ls "$NODE_DIR" 2>/dev/null | tail -1)/bin:$PATH"
+  if [ -d "$NODE_DIR" ]; then
+    NODE_VERSION="$(find "$NODE_DIR" -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort | tail -1)"
+    export PATH="$NODE_DIR/$NODE_VERSION/bin:$PATH"
+  fi
 fi
 
 OUT_DIR="${1:-$PWD/data}"
@@ -107,8 +111,8 @@ install_jq() {
 install_bun() {
   command -v curl >/dev/null 2>&1 || return 1
   command -v unzip >/dev/null 2>&1 || return 1
-  BUN_INSTALL="$EDCACHE/bun" bash -c 'curl -fsSL https://bun.sh/install | bash' >/dev/null 2>&1 \
-    || return 1
+  BUN_INSTALL="$EDCACHE/bun" bash -c 'curl -fsSL https://bun.sh/install | bash' >/dev/null 2>&1 ||
+    return 1
   [ -x "$EDCACHE/bun/bin/bun" ]
 }
 
@@ -774,13 +778,13 @@ done
 
 CCODE_DIR="$HOME/.commandcode/projects"
 if [ -d "$CCODE_DIR" ]; then
-  if ! find "$CCODE_DIR" -name '*.jsonl' ! -name '*.checkpoints.jsonl' -exec cat {} + 2>/dev/null \
-    | jq -s --argjson off "$OFF" "$CCDAILY" >"$TMP/commandcode.daily.json"; then
+  if ! find "$CCODE_DIR" -name '*.jsonl' ! -name '*.checkpoints.jsonl' -exec cat {} + 2>/dev/null |
+    jq -s --argjson off "$OFF" "$CCDAILY" >"$TMP/commandcode.daily.json"; then
     _error "commandcode daily collection failed; previous data preserved"
     exit 1
   fi
-  if ! find "$CCODE_DIR" -name '*.jsonl' ! -name '*.checkpoints.jsonl' -exec cat {} + 2>/dev/null \
-    | jq -s '{ sessions: [ .[] | select(.type == "session") | { sessionId: (.id // "") } ] }' \
+  if ! find "$CCODE_DIR" -name '*.jsonl' ! -name '*.checkpoints.jsonl' -exec cat {} + 2>/dev/null |
+    jq -s '{ sessions: [ .[] | select(.type == "session") | { sessionId: (.id // "") } ] }' \
       >"$TMP/commandcode.session.json"; then
     _error "commandcode session collection failed; previous data preserved"
     exit 1
@@ -1431,15 +1435,15 @@ if [ -s "$TMP/manifest.jsonl" ]; then
     [ -d "$1" ] || return 0
     local prog="${3:-$WALK}"
     if ! command -v perl >/dev/null 2>&1; then
-      find "$1" -name '*.jsonl' -print0 2>/dev/null \
-        | while IFS= read -r -d '' file; do
+      find "$1" -name '*.jsonl' -print0 2>/dev/null |
+        while IFS= read -r -d '' file; do
           jq -c --argjson off "$OFF" --arg src "$2" "$prog" "$file" \
             >>"$TMP/walk.jsonl" 2>/dev/null || true
         done
       return 0
     fi
     WALK_DIR="$1" WALK_SRC="$2" WALK_OFF="$OFF" WALK_VER="$(_hash "$prog")" \
-      WALK_CACHE="$WCACHE" WALK_OUT="$TMP/walk.jsonl" WALK_PROG="$prog" \
+    WALK_CACHE="$WCACHE" WALK_OUT="$TMP/walk.jsonl" WALK_PROG="$prog" \
       perl -e '
       use File::Find;
       use Digest::MD5 qw(md5_hex);
@@ -1535,8 +1539,8 @@ if [ -s "$TMP/manifest.jsonl" ]; then
       install_bun >/dev/null 2>&1 || return 0
     fi
     if ! opencode_sql "$db" "$OPENCODE_MESSAGES" >"$TMP/opencode.rows.jsonl" 2>/dev/null; then
-      opencode_sql "$db" "$OPENCODE_MESSAGES_FALLBACK" >"$TMP/opencode.rows.jsonl" 2>/dev/null \
-        || return 0
+      opencode_sql "$db" "$OPENCODE_MESSAGES_FALLBACK" >"$TMP/opencode.rows.jsonl" 2>/dev/null ||
+        return 0
     fi
     jq -c --argjson off "$OFF" --arg src opencode '
         select(.inp + .out + .cc + .cr > 0)
@@ -1641,8 +1645,8 @@ if [ -s "$TMP/manifest.jsonl" ]; then
     if [ -d "$git_probe" ]; then
       repository_verified=true
       git_root=$(git_quick -C "$git_probe" rev-parse --path-format=absolute --show-toplevel || true)
-      remote_config=$(git_quick -C "$git_probe" config --get-regexp '^remote\..*\.url$' \
-        | LC_ALL=C sort || true)
+      remote_config=$(git_quick -C "$git_probe" config --get-regexp '^remote\..*\.url$' |
+        LC_ALL=C sort || true)
     fi
     if [ -n "$git_root" ]; then
       repository_fingerprint=$(_hash "$git_root|$remote_config")
