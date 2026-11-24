@@ -5,6 +5,7 @@ import { App } from "./App";
 import { EmojiPicker } from "./components/EmojiPicker";
 import { isEmojiPickerSurface } from "./lib/surfaces";
 import "./styles.css";
+import "./ui";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root");

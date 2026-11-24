@@ -1,0 +1,284 @@
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  height: 100%;
+  background: var(--bg-window);
+}
+
+.shell-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-3) var(--space-2) var(--space-4);
+  background: var(--bg-window);
+  border-right: 1px solid var(--separator);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.shell-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.shell-brand-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-s);
+  object-fit: cover;
+  flex: none;
+}
+
+.shell-brand-name {
+  font-size: var(--text-title-3);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+}
+
+.shell-brand-version {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.shell-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 30px;
+  margin: 0 0 var(--space-3);
+  padding: 0 var(--space-1-5) 0 var(--space-2);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-m);
+  background: var(--fill-control);
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  text-align: left;
+  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+}
+
+.shell-search:hover {
+  background: var(--fill-hover);
+  color: var(--text-2);
+}
+
+.shell-search svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.shell-search span {
+  flex: 1;
+}
+
+.shell-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.shell-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.shell-nav-heading {
+  padding: 0 var(--space-2) var(--space-1);
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
+}
+
+.shell-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  height: 30px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+}
+
+.shell-nav-item:hover {
+  background: var(--fill-hover);
+  color: var(--text-1);
+}
+
+.shell-nav-item:active {
+  background: var(--fill-pressed);
+}
+
+.shell-nav-item[aria-current="page"] {
+  background: var(--fill-selected);
+  color: var(--text-1);
+  font-weight: var(--weight-semibold);
+}
+
+.shell-nav-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  color: var(--text-3);
+  transition: color var(--motion-feedback);
+}
+
+.shell-nav-item:hover .shell-nav-icon {
+  color: var(--text-2);
+}
+
+.shell-nav-item[aria-current="page"] .shell-nav-icon {
+  color: var(--accent);
+}
+
+.shell-nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell-main {
+  container: main / inline-size;
+  position: relative;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--bg-content);
+}
+
+
+.shell-loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.palette-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh var(--space-4) var(--space-4);
+  background: color-mix(in srgb, #000 22%, transparent);
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(480px, 76vh);
+  border-radius: var(--radius-panel);
+  background: var(--bg-popover);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+}
+
+.palette-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  height: 52px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--separator);
+  color: var(--text-3);
+}
+
+.palette-field svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.palette-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text-1);
+  font-size: var(--text-title-3);
+}
+
+.palette-field input::placeholder {
+  color: var(--text-3);
+}
+
+.palette-results {
+  padding: var(--space-1-5);
+  overflow-y: auto;
+}
+
+.palette-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-1-5) var(--space-2-5);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  text-align: left;
+}
+
+.palette-option[aria-selected="true"] {
+  background: var(--fill-selected);
+}
+
+.palette-glyph {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-m);
+  background: var(--fill-control);
+  color: var(--text-2);
+}
+
+.palette-option[aria-selected="true"] .palette-glyph {
+  background: var(--accent-tint);
+  color: var(--accent-text);
+}
+
+.palette-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.palette-copy strong {
+  color: var(--text-1);
+  font-weight: var(--weight-medium);
+}
+
+.palette-copy small {
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+.palette-none {
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  color: var(--text-3);
+  text-align: center;
+}
+
+.shell-main > :not(.ui-page):not(.shell-loading) {
+  padding: 22px 26px 40px;
+}

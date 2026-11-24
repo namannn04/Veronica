@@ -22,12 +22,13 @@ import { HerdrPage } from "./pages/HerdrPage";
 import { QuinjetPage } from "./pages/QuinjetPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { CommandPalette } from "./components/CommandPalette";
-import { SearchIcon } from "./components/icons";
 import { ipc, listenEvent } from "./lib/ipc";
 import { isRoute, routeFromSearch, routeIsVisible, visibleNavGroups, type Route } from "./lib/navigation";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
-import veronicaLogo from "./assets/veronica-logo.png";
+import { Sidebar } from "./shell/Sidebar";
+import { Spinner } from "./ui";
+import "./shell/Shell.css";
 
 const WorkspacePage = lazy(() => import("./pages/WorkspacePage").then(module => ({ default: module.WorkspacePage })));
 
@@ -44,8 +45,6 @@ export function App() {
         .map((extension) => extension.id),
     );
   }, [diagnostics]);
-  // One filtered tree feeds both the rail and Ctrl+K, so their reachability
-  // cannot drift when a switch changes.
   const navGroups = useMemo(
     () => visibleNavGroups(enabledExtensions),
     [enabledExtensions],
@@ -59,23 +58,19 @@ export function App() {
     try {
       setDiagnostics(await ipc.diagnostics());
     } catch {
-      // Diagnostics are informational; a failure must not blank the app.
+      return;
     }
   }, []);
 
   const applySettings = useCallback((settings: Record<string, unknown>) => {
     applyAppearance(settings.appearance);
   }, []);
-
-  // Presenter mode is resolved in the core — enabled, and either the manual
-  // switch or a detected screen share — so the interface asks rather than
-  // recomputing the gate and risking a different answer.
   const applyPresenterState = useCallback(async () => {
     try {
       const view = await ipc.presenterState();
       applyPresenter(view.active, view.blurredClasses);
     } catch {
-      // Not running as the desktop app: nothing to blur.
+      return;
     }
   }, []);
 
@@ -86,14 +81,12 @@ export function App() {
   }, [applySettings, applyPresenterState, loadDiagnostics]);
 
   useEffect(() => {
-    document.querySelector(".content")?.scrollTo({ top: 0 });
+    document.querySelector(".shell-main")?.scrollTo({ top: 0 });
   }, [route]);
 
   useEffect(() => {
     if (!routeIsVisible(route, enabledExtensions)) setRoute("home");
   }, [enabledExtensions, route]);
-
-  // The portal probe finishes after launch, which can change what is available.
   useEffect(() => {
     const resolved = listenEvent("session-resolved", () => void loadDiagnostics());
     const navigate = listenEvent<string>("navigate", (event) => {
@@ -117,9 +110,6 @@ export function App() {
       void updated.then((un) => un());
     };
   }, [applySettings, applyPresenterState, loadDiagnostics]);
-
-  // Ctrl+K opens the palette from anywhere, including from inside a text field,
-  // which is the whole point of a jump-to shortcut.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
@@ -133,49 +123,22 @@ export function App() {
 
   return (
     <div className="shell">
-      <nav className="sidebar" aria-label="Sections">
-        <div className="brand">
-          <img className="brand-mark" src={veronicaLogo} alt="" aria-hidden="true" />
-          <div>
-            <div className="brand-name">Veronica</div>
-            <div className="brand-version">{diagnostics?.version ?? ""}</div>
-          </div>
-        </div>
-
-        <button className="nav-search" onClick={() => setPaletteOpen(true)}>
-          <SearchIcon />
-          <span>Go to…</span>
-          <kbd>Ctrl K</kbd>
-        </button>
-
-        <div className="nav-list">
-          {navGroups.map((group) => (
-            <div key={group.label} className="nav-group">
-              <div className="nav-section">{group.label}</div>
-              {group.items.map((item) => (
-                <button
-                  key={item.id}
-                  className="nav-item"
-                  aria-current={route === item.id ? "page" : undefined}
-                  onClick={() => setRoute(item.id)}
-                >
-                  <span className="nav-glyph">{item.icon}</span>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
-      </nav>
+      <Sidebar
+        groups={navGroups}
+        route={route}
+        version={diagnostics?.version}
+        onNavigate={setRoute}
+        onSearch={() => setPaletteOpen(true)}
+      />
 
       <LocalPlayerProvider>
-      <main className="content">
+      <main className="shell-main">
         {route === "home" && <HomePage onNavigate={setRoute} />}
         {route === "usage" && <UsagePage />}
         {route === "herdr" && <HerdrPage />}
         {route === "quinjet" && <QuinjetPage />}
         {route === "services" && <ServicesPage />}
-        {route === "workspace" && <Suspense fallback={<div className="page" role="status">Opening Developer Workspace…</div>}><WorkspacePage /></Suspense>}
+        {route === "workspace" && <Suspense fallback={<div className="shell-loading"><Spinner size={20} label="Opening Developer Workspace" /></div>}><WorkspacePage /></Suspense>}
         {route === "system" && <SystemPage />}
         {route === "machines" && <MachinesPage />}
         {route === "maintenance" && <MaintenancePage />}

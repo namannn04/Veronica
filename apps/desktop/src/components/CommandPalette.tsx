@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { searchNav, type NavItem, type Route } from "../lib/navigation";
+import { Kbd } from "../ui";
 import { SearchIcon } from "./icons";
 
-/**
- * Jump to any page by typing.
- *
- * Nineteen pages is more than a rail can make findable by eye, and the two
- * that are hardest to find are the ones you need least often - which is
- * exactly when you have forgotten where they live. Ctrl+K searches labels,
- * one-line descriptions and a keyword list, so "ssh" reaches Machines and
- * "theme" reaches Settings.
- */
 export function CommandPalette({
   open,
   onClose,
@@ -29,16 +21,12 @@ export function CommandPalette({
   const listRef = useRef<HTMLDivElement>(null);
 
   const results = searchNav(query, items);
-  // A filter that removed the highlighted row must not leave the highlight
-  // pointing past the end, or Enter would do nothing.
   const index = Math.min(active, Math.max(results.length - 1, 0));
 
   useEffect(() => {
     if (!open) return;
     setQuery("");
     setActive(0);
-    // The dialog mounts hidden-then-shown, so focus has to wait for the frame
-    // in which it is actually in the layout.
     const frame = requestAnimationFrame(() => input.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [open]);
@@ -88,7 +76,7 @@ export function CommandPalette({
           <input
             ref={input}
             value={query}
-            placeholder="Go to a page…"
+            placeholder="Go to a page"
             aria-label="Search pages"
             aria-controls="palette-results"
             autoComplete="off"
@@ -98,7 +86,7 @@ export function CommandPalette({
               setActive(0);
             }}
           />
-          <kbd>Esc</kbd>
+          <Kbd>Esc</Kbd>
         </div>
 
         <div className="palette-results" id="palette-results" role="listbox" ref={listRef}>
@@ -108,7 +96,9 @@ export function CommandPalette({
           {results.map((item, position) => (
             <button
               key={item.id}
+              type="button"
               role="option"
+              className="palette-option"
               aria-selected={position === index}
               onMouseEnter={() => setActive(position)}
               onClick={() => choose(item.id)}
