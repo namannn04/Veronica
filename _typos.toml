@@ -8,5 +8,11 @@ extend-exclude = [
   "*.gpg",
 ]
 
+[default]
+extend-ignore-re = ["nd-ubuntu-fixes1"]
+
 [default.extend-words]
 gir = "gir"
+
+[default.extend-identifiers]
+PNGs = "PNGs"
