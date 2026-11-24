@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 
 import "./Tabs.css";
+import { useIndicator } from "./useIndicator";
 
 export type TabItem<T extends string> = { id: T; label: string; badge?: ReactNode };
 
@@ -19,6 +20,12 @@ export function Tabs<T extends string>({
   const measure = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const list = useRef<HTMLDivElement>(null);
+  const indicator = useIndicator(
+    list,
+    '[role="tab"][aria-selected="true"]',
+    `${value}:${collapsed}`,
+  );
 
   useLayoutEffect(() => {
     const node = host.current;
@@ -33,6 +40,18 @@ export function Tabs<T extends string>({
     observer.observe(ruler);
     return () => observer.disconnect();
   }, []);
+
+  const select = (next: T, animate: boolean) => {
+    const page = host.current?.closest<HTMLElement>(".ui-page");
+    if (page && next !== value) {
+      if (animate) {
+        page.dataset.tabSwap = page.dataset.tabSwap === "a" ? "b" : "a";
+      } else {
+        delete page.dataset.tabSwap;
+      }
+    }
+    onChange(next);
+  };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = items.findIndex((item) => item.id === value);
@@ -49,7 +68,7 @@ export function Tabs<T extends string>({
       return;
     }
     event.preventDefault();
-    onChange(items[next].id);
+    select(items[next].id, false);
     const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]");
     buttons[next]?.focus();
   };
@@ -81,7 +100,7 @@ export function Tabs<T extends string>({
       {collapsed ? (
         <label className="ui-tabs-menu">
           <span className="ui-visually-hidden">{label}</span>
-          <select value={value} onChange={(event) => onChange(event.target.value as T)}>
+          <select value={value} onChange={(event) => select(event.target.value as T, true)}>
             {items.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.label}
@@ -91,7 +110,8 @@ export function Tabs<T extends string>({
           <ChevronDown aria-hidden="true" />
         </label>
       ) : (
-        <div className="ui-tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+        <div className="ui-tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown} ref={list}>
+          <span className="ui-tabs-indicator" style={indicator} aria-hidden="true" />
           {items.map((item) => (
             <button
               key={item.id}
@@ -101,7 +121,7 @@ export function Tabs<T extends string>({
               tabIndex={item.id === value ? 0 : -1}
               className="ui-tab"
               data-selected={item.id === value || undefined}
-              onClick={() => onChange(item.id)}
+              onClick={() => select(item.id, true)}
             >
               {tabContent(item)}
             </button>

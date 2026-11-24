@@ -50,3 +50,4 @@ export { Stat, StatGrid } from "./Stat";
 export { type TabItem, Tabs } from "./Tabs";
 export { Table, Toolbar } from "./Toolbar";
 export { Tooltip } from "./Tooltip";
+export { useIndicator } from "./useIndicator";
