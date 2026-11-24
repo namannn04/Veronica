@@ -38,7 +38,7 @@ use format::Output;
 #[command(
     name = "vr",
     version,
-    about = "Veronica — native control center for Ubuntu",
+    about = "Veronica: native control center for Ubuntu",
     long_about = None,
     disable_help_subcommand = true
 )]

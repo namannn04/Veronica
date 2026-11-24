@@ -47,7 +47,7 @@ pub enum AudioCommand {
     Volume {
         #[arg(help = "The PipeWire node id, as printed by `vr system audio list`")]
         id: u32,
-        #[arg(help = "`40`, `40%` or `0.4` — all the same volume")]
+        #[arg(help = "`40`, `40%` or `0.4`, all the same volume")]
         level: String,
     },
     #[command(about = "Mute one stream, or every stream at once with `--all`")]
@@ -233,7 +233,7 @@ pub async fn run(command: &SystemCommand, output: Output) -> Result<()> {
                             device
                                 .battery_percent
                                 .map(|percent| format!("{percent}%"))
-                                .unwrap_or_else(|| "—".to_string()),
+                                .unwrap_or_else(|| "-".to_string()),
                         ]
                     })
                     .collect();

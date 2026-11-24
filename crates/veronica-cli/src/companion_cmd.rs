@@ -136,7 +136,7 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
             } else {
                 item
             };
-            output.emit(&item, || format!("saved note {} — {}", item.id, item.title))
+            output.emit(&item, || format!("saved note {}: {}", item.id, item.title))
         }
 
         CompanionCommand::Pin { id, off } => {

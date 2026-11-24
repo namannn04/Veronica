@@ -144,7 +144,7 @@ pub async fn run(command: &AuditCommand, output: Output) -> Result<()> {
                 let field = |label: &str, value: &Option<String>| {
                     vec![
                         label.to_string(),
-                        value.clone().unwrap_or_else(|| "—".to_string()),
+                        value.clone().unwrap_or_else(|| "-".to_string()),
                     ]
                 };
                 let meta = &page.metadata;

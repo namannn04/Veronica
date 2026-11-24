@@ -78,7 +78,7 @@ pub enum UsageCommand {
         cards: Vec<String>,
         #[arg(
             long,
-            help = "A directory, or — with exactly one card — the destination file. Defaults to the current directory"
+            help = "A directory, or the destination file when there is exactly one card. Defaults to the current directory"
         )]
         output: Option<String>,
         #[arg(
@@ -418,7 +418,7 @@ pub async fn run(
                 } else {
                     let _ = writeln!(out, "\nwould post now:");
                     for alert in &would_post {
-                        let _ = writeln!(out, "  [{}] {} — {}", alert.id, alert.title, alert.body);
+                        let _ = writeln!(out, "  [{}] {}: {}", alert.id, alert.title, alert.body);
                     }
                 }
                 out.trim_end().to_string()
@@ -460,7 +460,7 @@ pub async fn run(
                                 gauge
                                     .resets_in_secs
                                     .map(countdown)
-                                    .unwrap_or_else(|| "—".into()),
+                                    .unwrap_or_else(|| "-".into()),
                                 format!("{:?}", gauge.zone).to_lowercase(),
                                 format!("{level:?}").to_lowercase(),
                             ]

@@ -45,7 +45,7 @@ pub async fn run(command: &WorkspaceCommand, output: Output) -> Result<()> {
                 report
                     .checks
                     .iter()
-                    .map(|c| format!("{}: {} — {}", c.status, c.name, c.detail))
+                    .map(|c| format!("{}: {}: {}", c.status, c.name, c.detail))
                     .collect::<Vec<_>>()
                     .join("\n")
             })

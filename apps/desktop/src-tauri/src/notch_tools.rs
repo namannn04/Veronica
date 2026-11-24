@@ -91,7 +91,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     let preview = gtk::Image::new();
     body.pack_start(&preview, true, true, 0);
     let output: Shared = Rc::new(RefCell::new(None));
-    let status = gtk::Label::new(Some("PNG · JPG / JPEG · SVG — processed locally"));
+    let status = gtk::Label::new(Some("PNG · JPG / JPEG · SVG, processed locally"));
     status.set_line_wrap(true);
     body.add(&status);
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -158,7 +158,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                                 format,
                                 preview: preview.clone(),
                             }),
-                            "Converted — ready to download or copy".into(),
+                            "Converted, ready to download or copy".into(),
                             preview,
                         ));
                     }
@@ -170,7 +170,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                                 format: "png".into(),
                                 preview: png.clone(),
                             }),
-                            "QR ready — links directly to your original URL".into(),
+                            "QR ready, links directly to your original URL".into(),
                             png,
                         ));
                     }
@@ -374,7 +374,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
             match pixbuf(&image.preview) {
                 Ok(pixels) => {
                     gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD).set_image(&pixels);
-                    message.set_text("Image copied — paste into another app");
+                    message.set_text("Image copied, paste into another app");
                 }
                 Err(e) => message.set_text(&e.to_string()),
             }

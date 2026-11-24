@@ -39,7 +39,7 @@ fn timeline(position_us: Option<i64>, length_us: Option<i64>) -> String {
         (Some(position), Some(length)) => format!("{} / {}", clock(position), clock(length)),
         (Some(position), None) => clock(position),
         (None, Some(length)) => format!("? / {}", clock(length)),
-        (None, None) => "—".to_string(),
+        (None, None) => "-".to_string(),
     }
 }
 
@@ -164,7 +164,7 @@ pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
                     .as_ref()
                     .map(|p| {
                         format!(
-                            "{:?} · {} — {}",
+                            "{:?} · {} · {}",
                             p.status.unwrap_or(veronica_media::PlaybackStatus::Stopped),
                             if p.title.is_empty() {
                                 "untitled"
@@ -192,7 +192,7 @@ mod tests {
         );
         assert_eq!(timeline(Some(5_000_000), None), "0:05");
         assert_eq!(timeline(None, Some(60_000_000)), "? / 1:00");
-        assert_eq!(timeline(None, None), "—");
+        assert_eq!(timeline(None, None), "-");
     }
 
     #[test]

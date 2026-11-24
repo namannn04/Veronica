@@ -170,15 +170,15 @@ pub async fn run(
                             stats
                                 .root_disk()
                                 .map(|disk| format!("{:.0}%", disk.used_percent()))
-                                .unwrap_or_else(|| "—".into()),
+                                .unwrap_or_else(|| "-".into()),
                             countdown(stats.uptime_secs as i64),
                         ],
                         None => vec![
                             report.machine.id.clone(),
                             report.machine.name.clone(),
-                            "—".into(),
-                            "—".into(),
-                            "—".into(),
+                            "-".into(),
+                            "-".into(),
+                            "-".into(),
                             "unreachable".into(),
                         ],
                     })
@@ -294,7 +294,7 @@ pub async fn run(
                                 ),
                                 gpu.temperature_celsius
                                     .map(|celsius| format!("{celsius:.0} °C"))
-                                    .unwrap_or_else(|| "—".to_string()),
+                                    .unwrap_or_else(|| "-".to_string()),
                             ]
                         })
                         .collect();

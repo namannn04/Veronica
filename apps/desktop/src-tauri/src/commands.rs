@@ -2475,7 +2475,7 @@ pub async fn alerts_test() -> CommandResult<String> {
         .await
         .map_err(|error| format!("no session bus, so no notifications: {error}"))?;
     match crate::alerts::send_test(&connection).await {
-        Ok(_) => Ok("Sent — check your notification list if no banner appeared.".to_string()),
+        Ok(_) => Ok("Sent. Check your notification list if no banner appeared.".to_string()),
         Err(error) => Err(fail(error)),
     }
 }

@@ -107,7 +107,7 @@ pub async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
                             entry
                                 .size_bytes
                                 .map(veronica_system::metrics::human_bytes)
-                                .unwrap_or_else(|| "—".to_string()),
+                                .unwrap_or_else(|| "-".to_string()),
                         ]
                     })
                     .collect();
@@ -140,7 +140,7 @@ pub async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
                             entry
                                 .installed_version
                                 .clone()
-                                .unwrap_or_else(|| "—".to_string()),
+                                .unwrap_or_else(|| "-".to_string()),
                             entry.available_version.clone(),
                         ]
                     })
@@ -191,7 +191,7 @@ pub async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
                                     entry
                                         .installed_version
                                         .clone()
-                                        .unwrap_or_else(|| "—".to_string()),
+                                        .unwrap_or_else(|| "-".to_string()),
                                     entry.available_version.clone(),
                                 ]
                             })

@@ -28,7 +28,7 @@ pub enum QuinjetCommand {
     },
     #[command(about = "Print the command that opens a worktree, without running it")]
     Open {
-        #[arg(help = "A worktree, or a project — its current worktree is chosen")]
+        #[arg(help = "A worktree, or a project, whose current worktree is chosen")]
         path: String,
         #[arg(long)]
         theme: Option<String>,
@@ -123,7 +123,7 @@ pub async fn run(
                             project
                                 .default_worktree()
                                 .map(|worktree| worktree.label())
-                                .unwrap_or_else(|| "—".to_string()),
+                                .unwrap_or_else(|| "-".to_string()),
                             project.available_worktrees().len().to_string(),
                             project
                                 .default_worktree()

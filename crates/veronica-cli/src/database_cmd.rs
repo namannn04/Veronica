@@ -62,7 +62,7 @@ pub enum DatabaseCommand {
     },
     #[command(
         about = "Serve the read-only MCP tools over stdin and stdout",
-        long_about = "Serve the read-only MCP tools over stdin and stdout.\n\nStays in the foreground and prints no banner: stdout carries protocol traffic and nothing else. An agent learns which databases you have saved and what each can do — never a host, a username or a credential."
+        long_about = "Serve the read-only MCP tools over stdin and stdout.\n\nStays in the foreground and prints no banner: stdout carries protocol traffic and nothing else. An agent learns which databases you have saved and what each can do, but never a host, a username or a credential."
     )]
     Mcp,
 }
@@ -468,7 +468,7 @@ async fn connections(
                 let _ = writeln!(
                     out,
                     "username     {}",
-                    definition.username.as_deref().unwrap_or("—")
+                    definition.username.as_deref().unwrap_or("-")
                 );
                 let _ = writeln!(
                     out,
@@ -488,7 +488,7 @@ async fn connections(
                     out,
                     "changes      {}",
                     match definition.mutation_prohibition() {
-                        Some(prohibition) => format!("refused — {}", prohibition.reason()),
+                        Some(prohibition) => format!("refused: {}", prohibition.reason()),
                         None => "allowed, previewed first".to_string(),
                     }
                 );

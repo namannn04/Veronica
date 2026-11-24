@@ -186,7 +186,7 @@ fn summary(scan: &veronica_core::CleanerScan, dry_run: bool) -> String {
         let _ = write!(
             out,
             "\n\nNothing was moved. Rerun with --yes, which moves every item above \
-             to the Trash — the Trash then keeps occupying the disk until you empty it."
+             to the Trash, and the Trash then keeps occupying the disk until you empty it."
         );
     }
     out
