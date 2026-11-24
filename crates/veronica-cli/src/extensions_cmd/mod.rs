@@ -300,6 +300,7 @@ async fn list(env: &Env) -> Result<()> {
 pub(crate) fn origin_label(origin: Origin) -> &'static str {
     match origin {
         Origin::Builtin => "built in",
+        Origin::Bundled => "bundled",
         Origin::Catalog => "catalog",
         Origin::Sideload => "sideload",
     }

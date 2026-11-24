@@ -9,8 +9,12 @@ use tempfile::TempDir;
 use veronica_core::paths::{AppDirectories, EnvOverrides};
 use veronica_host::trust::DEVELOPMENT_KEY;
 use veronica_host::{HostIdentity, Installer, Layout};
+use veronica_pack::bundle::bundle;
+use veronica_pack::fingerprint::Stamp;
+use veronica_pack::pack::{pack, PackInputs};
 use veronica_protocol::canonical;
 use veronica_protocol::catalog::Catalog;
+use veronica_protocol::manifest::Target;
 const XDG: [&str; 5] = [
     "XDG_CONFIG_HOME",
     "XDG_DATA_HOME",
@@ -55,9 +59,16 @@ impl Home {
     }
 
     fn vr(&self, args: &[&str]) -> Output {
+        self.vr_with(args, &[])
+    }
+
+    fn vr_with(&self, args: &[&str], env: &[(&str, &Path)]) -> Output {
         let mut command = Command::new(env!("CARGO_BIN_EXE_vr"));
         for key in XDG {
             command.env_remove(key);
+        }
+        for (key, value) in env {
+            command.env(key, value);
         }
         command
             .env("HOME", self.root.path())
@@ -495,4 +506,105 @@ fn catalog_commands_work_offline_from_the_cached_catalog() {
     assert_eq!(updates, json!({ "updated": [] }));
     assert_eq!(code(&home.vr(&["extensions", "update", "fixture"])), 1);
     assert_eq!(code(&home.vr(&["extensions", "setup", "--dry-run"])), 3);
+}
+
+fn bundled_snap(root: &Path) -> PathBuf {
+    let repo = root.join("repo");
+    let manifest = json!({
+        "schema": 1, "id": "probe", "version": "1.0", "title": "Probe",
+        "summary": "A bundled test extension.", "category": "labs",
+        "engines": { "host": ">=0.1.0", "hostApi": 1 },
+        "targets": ["linux-x86_64"], "profiles": ["simple"]
+    });
+    fs::create_dir_all(repo.join("extensions/probe")).unwrap();
+    fs::write(
+        repo.join("extensions/probe/manifest.json"),
+        manifest.to_string(),
+    )
+    .unwrap();
+    fs::write(repo.join("LICENSE"), "license\n").unwrap();
+    fs::write(repo.join("NOTICE"), "notice\n").unwrap();
+    let stamp = Stamp {
+        id: "probe".to_string(),
+        version: "1.0.2".parse().unwrap(),
+        fingerprint: "sha256:probe".to_string(),
+        commit: "0123abcd".to_string(),
+        published_at: "2026-11-25T00:00:00Z".to_string(),
+        inputs: Vec::new(),
+    };
+    pack(
+        &PackInputs {
+            root: &repo,
+            backend: None,
+            ui: None,
+            out: &repo.join("out"),
+            target: Target::LinuxX86_64,
+        },
+        &stamp,
+    )
+    .unwrap();
+    let snap = root.join("snap");
+    bundle(
+        &repo.join("out"),
+        &snap.join("usr/share/veronica/extensions"),
+    )
+    .unwrap();
+    snap
+}
+
+#[test]
+fn bundled_packages_install_offline_with_the_bundled_origin() {
+    let home = Home::new();
+    let packages = tempfile::tempdir().unwrap();
+    let snap = bundled_snap(packages.path());
+    let env = [
+        ("SNAP_NAME", Path::new("veronica")),
+        ("SNAP", snap.as_path()),
+    ];
+
+    let setup = home.vr_with(
+        &[
+            "--json",
+            "extensions",
+            "setup",
+            "--profile",
+            "simple",
+            "--dry-run",
+        ],
+        &env,
+    );
+    assert_eq!(code(&setup), 0, "{}", stderr(&setup));
+    assert_eq!(document(&setup)["install"][0]["id"], "probe");
+
+    let preview = home.vr_with(&["--json", "extensions", "install", "probe"], &env);
+    assert_eq!(code(&preview), 5, "{}", stderr(&preview));
+    assert_eq!(document(&preview)["preview"]["origin"], "bundled");
+    let installed = home.vr_with(&["--json", "--yes", "extensions", "install", "probe"], &env);
+    assert_eq!(code(&installed), 0, "{}", stderr(&installed));
+    assert_eq!(document(&installed)["origin"], "bundled");
+    assert_eq!(document(&installed)["version"], "1.0.2");
+
+    let listed = document(&home.vr(&["--json", "extensions", "ls"]));
+    let row = listed
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == "probe")
+        .unwrap();
+    assert_eq!(row["origin"], "bundled");
+    let table = stdout(&home.vr(&["extensions", "ls"]));
+    assert!(
+        table
+            .lines()
+            .any(|line| line.starts_with("probe") && line.contains("bundled")),
+        "{table}"
+    );
+    let status = document(&home.vr(&["--json", "extensions", "status"]));
+    let probe = status["extensions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == "probe")
+        .unwrap();
+    assert_eq!(probe["origin"], "bundled");
 }

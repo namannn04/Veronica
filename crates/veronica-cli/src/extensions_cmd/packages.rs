@@ -6,13 +6,12 @@ use std::sync::Arc;
 use anyhow::{Context as _, Result};
 use chrono::Utc;
 use serde::Serialize;
+use veronica_host::bundled::{install_preferred, Bundled};
 use veronica_host::catalog::CatalogStore;
 use veronica_host::fetch::HttpTransport;
 use veronica_host::host_api::HostServices;
 use veronica_host::registry::{InstalledExtension, Origin, Registry};
-use veronica_host::update::{
-    install_from_catalog, plan, resolve, AutoUpdate, Decision, Skip, Trigger,
-};
+use veronica_host::update::{plan, resolve, AutoUpdate, Decision, Skip, Trigger};
 use veronica_host::{HostIdentity, Installer};
 use veronica_protocol::catalog::Catalog;
 use veronica_protocol::manifest::{Permissions, Profile, Requirements};
@@ -59,6 +58,42 @@ async fn catalog(env: &Env) -> Result<Catalog> {
     }
 }
 
+fn bundled() -> Option<Bundled> {
+    Bundled::current().unwrap_or_else(|error| {
+        eprintln!("vr: ignoring the bundled extensions: {error:#}");
+        None
+    })
+}
+
+async fn install_bundled(env: &Env, bundled: Bundled, id: &str) -> Result<()> {
+    let registry = env.registry()?;
+    let package = bundled
+        .get(id)
+        .context("bundled packages come from the index")?;
+    if let Some(entry) = registry
+        .get(id)
+        .filter(|entry| entry.origin != Origin::Builtin && entry.version >= package.version)
+    {
+        return report_installed(env, id, entry, false);
+    }
+    let preview = InstallPreview {
+        action: "install",
+        id: id.to_string(),
+        title: id.to_string(),
+        version: package.version.to_string(),
+        origin: Origin::Bundled,
+        source: Some(bundled.dir().join(package.file_name())),
+        download_bytes: None,
+        replaces: registry.get(id).map(|entry| entry.version.to_string()),
+        permissions: Permissions::default(),
+    };
+    env.confirm(&preview, || preview.render())?;
+    let installer = installer(env, true);
+    let owned = id.to_string();
+    let entry = blocking(move || bundled.install(&installer, &owned)).await?;
+    report_installed(env, id, &entry, true)
+}
+
 fn built_in(id: &str, advice: &str) -> Option<anyhow::Error> {
     veronica_core::extensions::entry(id).map(|_| {
         Failure::new(
@@ -95,8 +130,14 @@ impl InstallPreview {
         if let Some(replaces) = &self.replaces {
             let _ = write!(text, ", replacing {replaces}");
         }
-        if let Some(source) = &self.source {
-            let _ = write!(text, "\nfrom {} as a development install", source.display());
+        match (&self.source, self.origin) {
+            (Some(source), Origin::Bundled) => {
+                let _ = write!(text, "\nfrom the copy bundled at {}", source.display());
+            }
+            (Some(source), _) => {
+                let _ = write!(text, "\nfrom {} as a development install", source.display());
+            }
+            (None, _) => {}
         }
         text
     }
@@ -135,6 +176,9 @@ pub(super) async fn install(env: &Env, target: &str) -> Result<()> {
     let registry = env.registry()?;
     let catalog = catalog(env).await?;
     let Some(listed) = catalog.extension(id) else {
+        if let Some(bundled) = bundled().filter(|bundled| bundled.get(id).is_some()) {
+            return install_bundled(env, bundled, id).await;
+        }
         return Err(
             built_in(id, &format!("turn it on with `vr extensions enable {id}`"))
                 .unwrap_or_else(|| not_found(id)),
@@ -171,7 +215,14 @@ pub(super) async fn install(env: &Env, target: &str) -> Result<()> {
     let installer = installer(env, true);
     let owned = id.to_string();
     let entry = blocking(move || {
-        install_from_catalog(&installer, &catalog, &HttpTransport::new()?, &owned)
+        let bundled = bundled();
+        install_preferred(
+            &installer,
+            &catalog,
+            bundled.as_ref(),
+            &HttpTransport::new()?,
+            &owned,
+        )
     })
     .await?;
     report_installed(env, id, &entry, true)
@@ -294,10 +345,12 @@ async fn install_each(
     let installer = installer(env, true);
     let outcomes = blocking(move || {
         let transport = HttpTransport::new()?;
+        let bundled = bundled();
         Ok(ids
             .into_iter()
             .map(|id| {
-                let outcome = install_from_catalog(&installer, &catalog, &transport, &id);
+                let outcome =
+                    install_preferred(&installer, &catalog, bundled.as_ref(), &transport, &id);
                 (id, outcome)
             })
             .collect::<Vec<_>>())
@@ -473,37 +526,70 @@ impl SetupPlan {
     }
 }
 
-fn profile_plan(registry: &Registry, catalog: &Catalog, profile: Profile) -> Result<SetupPlan> {
+fn profile_plan(
+    registry: &Registry,
+    catalog: &Catalog,
+    bundled: Option<&Bundled>,
+    profile: Profile,
+) -> Result<SetupPlan> {
     let listed = catalog
         .profiles
         .iter()
-        .find(|candidate| candidate.id == profile)
-        .ok_or_else(|| Failure::new(ExitCode::NotFound, "the catalog has no such profile"))?;
+        .find(|candidate| candidate.id == profile);
+    let packaged: Vec<_> = bundled
+        .map(|bundled| bundled.index().extensions.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .filter(|package| package.profiles.contains(&profile))
+        .collect();
+    if listed.is_none() && packaged.is_empty() {
+        return Err(Failure::new(ExitCode::NotFound, "the catalog has no such profile").into());
+    }
+    let mut members: Vec<String> = listed
+        .map(|listed| listed.extensions.clone())
+        .unwrap_or_default();
+    for package in &packaged {
+        if !members.contains(&package.id) {
+            members.push(package.id.clone());
+        }
+    }
     let host = HostIdentity::current();
     let mut plan = SetupPlan {
         profile,
-        title: listed.title.clone(),
+        title: listed.map_or_else(
+            || match profile {
+                Profile::Simple => "Simple".to_string(),
+                Profile::Developer => "Developer".to_string(),
+            },
+            |listed| listed.title.clone(),
+        ),
         install: Vec::new(),
         present: Vec::new(),
         unavailable: Vec::new(),
     };
-    for id in &listed.extensions {
-        if registry.get(id).is_some() {
-            plan.present.push(id.clone());
-        } else if catalog.extension(id).is_none() {
-            plan.unavailable.push(Unavailable {
-                id: id.clone(),
-                reason: "not in the catalog",
-            });
-        } else if let Some((version, _)) = resolve(catalog, id, &host, &BTreeSet::new()) {
+    for id in members {
+        let published =
+            resolve(catalog, &id, &host, &BTreeSet::new()).map(|(version, _)| version.version);
+        let shipped = packaged
+            .iter()
+            .find(|package| package.id == id)
+            .map(|package| package.version);
+        if registry.get(&id).is_some() {
+            plan.present.push(id);
+        } else if let Some(version) = published.max(shipped) {
             plan.install.push(Planned {
-                id: id.clone(),
+                id,
                 from: None,
-                to: version.version.to_string(),
+                to: version.to_string(),
+            });
+        } else if catalog.extension(&id).is_none() {
+            plan.unavailable.push(Unavailable {
+                id,
+                reason: "not in the catalog",
             });
         } else {
             plan.unavailable.push(Unavailable {
-                id: id.clone(),
+                id,
                 reason: "no published version fits this computer",
             });
         }
@@ -521,7 +607,7 @@ pub(super) async fn setup(env: &Env, profile: ProfileArg, dry_run: bool) -> Resu
     } else {
         catalog(env).await?
     };
-    let plan = profile_plan(&env.registry()?, &catalog, profile)?;
+    let plan = profile_plan(&env.registry()?, &catalog, bundled().as_ref(), profile)?;
     if dry_run || plan.install.is_empty() {
         return env.output.emit(&plan, || plan.render());
     }
