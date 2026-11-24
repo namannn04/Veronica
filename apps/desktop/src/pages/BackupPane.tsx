@@ -4,7 +4,16 @@ import { Archive, FileSearch, RotateCcw } from "lucide-react";
 import { bytes } from "../lib/format";
 import { ipc } from "../lib/ipc";
 import type { BackupSummary } from "../lib/types";
-import { Button, ConfirmDialog, FormGroup, FormRow, KeyValueList, Notice, Stack, TextField } from "../ui";
+import {
+  Button,
+  ConfirmDialog,
+  FormGroup,
+  FormRow,
+  KeyValueList,
+  Notice,
+  Stack,
+  TextField,
+} from "../ui";
 
 export function BackupPane() {
   const [path, setPath] = useState("");
@@ -64,7 +73,9 @@ export function BackupPane() {
     begin("restore");
     try {
       const report = await ipc.backupImport(path.trim(), true);
-      setRestored(`Restored ${report.filesRestored} files (${bytes(report.bytesRestored)}). Settings are live now.`);
+      setRestored(
+        `Restored ${report.filesRestored} files (${bytes(report.bytesRestored)}). Settings are live now.`,
+      );
     } catch (reason) {
       setError(String(reason));
     } finally {
@@ -89,7 +100,13 @@ export function BackupPane() {
           label="Create a local backup"
           description="Saved to Downloads with the current date and time. Nothing is uploaded."
           control={
-            <Button variant="primary" icon={<Archive />} busy={busy === "export"} disabled={working} onClick={() => void exportBackup()}>
+            <Button
+              variant="primary"
+              icon={<Archive />}
+              busy={busy === "export"}
+              disabled={working}
+              onClick={() => void exportBackup()}
+            >
               {busy === "export" ? "Exporting…" : "Export backup"}
             </Button>
           }
@@ -102,13 +119,18 @@ export function BackupPane() {
         footer={
           restored || (
             <>
-              From a terminal: <code className="ui-mono">vr backup export</code>, <code className="ui-mono">vr backup inspect &lt;file&gt;</code> and{" "}
+              From a terminal: <code className="ui-mono">vr backup export</code>,{" "}
+              <code className="ui-mono">vr backup inspect &lt;file&gt;</code> and{" "}
               <code className="ui-mono">vr backup import &lt;file&gt; --confirm</code>.
             </>
           )
         }
       >
-        <FormRow label="Backup archive" description="The full path to a .veronica-backup file." stacked>
+        <FormRow
+          label="Backup archive"
+          description="The full path to a .veronica-backup file."
+          stacked
+        >
           <div className="settings-inline">
             <TextField
               mono
@@ -124,7 +146,12 @@ export function BackupPane() {
               placeholder="/home/you/Downloads/Veronica-backup.veronica-backup"
               aria-label="Backup archive path"
             />
-            <Button icon={<FileSearch />} busy={busy === "inspect"} disabled={working} onClick={() => void inspect()}>
+            <Button
+              icon={<FileSearch />}
+              busy={busy === "inspect"}
+              disabled={working}
+              onClick={() => void inspect()}
+            >
               Inspect
             </Button>
           </div>
@@ -156,7 +183,11 @@ export function BackupPane() {
         busy={busy === "restore"}
         destructive
         title="Restore this backup?"
-        message={summary ? `${summary.files} files from Veronica ${summary.appVersion}. Matching settings and data are replaced. Other files stay untouched.` : undefined}
+        message={
+          summary
+            ? `${summary.files} files from Veronica ${summary.appVersion}. Matching settings and data are replaced. Other files stay untouched.`
+            : undefined
+        }
         confirmLabel="Restore"
       />
     </Stack>

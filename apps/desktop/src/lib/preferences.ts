@@ -116,9 +116,7 @@ export const APPEARANCE_FAMILIES: { id: AppearanceFamily; label: string }[] = [
 const APPEARANCE_IDS = new Set<string>(APPEARANCES.map((theme) => theme.id));
 
 export function appearanceOf(value: unknown): Appearance {
-  return typeof value === "string" && APPEARANCE_IDS.has(value)
-    ? value as Appearance
-    : "system";
+  return typeof value === "string" && APPEARANCE_IDS.has(value) ? (value as Appearance) : "system";
 }
 
 export function applyAppearance(value: unknown) {
@@ -133,9 +131,7 @@ export const LIMIT_PROVIDERS = ["Claude", "Codex"] as const;
 export type LimitProvider = (typeof LIMIT_PROVIDERS)[number];
 
 export function limitProviderOf(value: unknown): LimitProvider {
-  return typeof value === "string" && value.toLowerCase() === "codex"
-    ? "Codex"
-    : "Claude";
+  return typeof value === "string" && value.toLowerCase() === "codex" ? "Codex" : "Claude";
 }
 
 export function storedLimitProvider(provider: LimitProvider) {
@@ -175,7 +171,8 @@ export function applyPresenter(active: boolean, blurredClasses: string[]) {
   root.dataset.presenter = active ? "true" : "false";
   for (const category of BLUR_CATEGORIES) {
     const blurred = active && blurredClasses.includes(category.css);
-    root.dataset[`blur${category.id.charAt(0).toUpperCase()}${category.id.slice(1)}`] =
-      blurred ? "true" : "false";
+    root.dataset[`blur${category.id.charAt(0).toUpperCase()}${category.id.slice(1)}`] = blurred
+      ? "true"
+      : "false";
   }
 }

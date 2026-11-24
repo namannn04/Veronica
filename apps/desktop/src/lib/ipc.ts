@@ -16,10 +16,7 @@ export function isDesktopApp(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
-export function listenEvent<T>(
-  event: EventName,
-  handler: EventCallback<T>,
-): Promise<UnlistenFn> {
+export function listenEvent<T>(event: EventName, handler: EventCallback<T>): Promise<UnlistenFn> {
   if (!isDesktopApp()) return Promise.resolve(() => {});
   return tauriListen<T>(event, handler);
 }
@@ -95,30 +92,55 @@ import type {
 } from "./types";
 
 export const ipc = {
-  chatJournal:(text:string)=>invoke<import("./companionChat").ChatMessage>("chat_journal",{text}),
-  chatView:()=>invoke<import("./companionChat").ChatView>("chat_view"),
-  chatConfigure:(config:import("./companionChat").ModelConfig,memory:string)=>invoke<void>("chat_configure",{config,memory}),
-  chatEnable:(enabled:boolean)=>invoke<import("./companionChat").ChatView>("chat_enable",{enabled}),
-  chatSend:(text:string,key:string,includeHistory:boolean,includeMemory:boolean)=>invoke<import("./companionChat").ChatMessage>("chat_send",{text,key,includeHistory,includeMemory}),
-  chatPreview:(text:string,includeHistory:boolean,includeMemory:boolean)=>invoke<unknown>("chat_preview",{text,includeHistory,includeMemory}),
-  chatModels:(config:import("./companionChat").ModelConfig)=>invoke<string[]>("chat_models",{config}),
-  chatPull:(config:import("./companionChat").ModelConfig,confirmed:boolean)=>invoke<void>("chat_pull",{config,confirmed}),
-  chatClear:(memory:boolean)=>invoke<void>("chat_clear",{memory}),
-  chatExport:()=>invoke<string>("chat_export"),
-  agentHerdrAttach:(session:string,pane:string,confirmed:boolean)=>invoke<import("./agents").AgentView>("agent_herdr_attach",{session,pane,confirmed}),
-  agentTracking:(enabled:boolean,confirmed:boolean)=>invoke<void>("agent_tracking",{enabled,confirmed}),
-  agentProfiles:()=>invoke<import("./agents").AgentProfile[]>("agent_profiles"),
-  agentProfilesSave:(profiles:import("./agents").AgentProfile[])=>invoke<void>("agent_profiles_save",{profiles}),
-  agentList:()=>invoke<import("./agents").AgentView[]>("agent_list"),
-  agentExternal:()=>invoke<import("./agents").AgentView[]>("agent_external"),
-  agentStart:(profile:import("./agents").AgentProfile,cwd:string)=>invoke<import("./agents").AgentView>("agent_start",{profile,cwd}),
-  agentOutput:(id:string,cursor:number)=>invoke<import("./agents").TerminalOutput>("agent_output",{id,cursor}),
-  agentInput:(id:string,bytes:string)=>invoke<void>("agent_input",{id,bytes}),
-  agentResize:(id:string,cols:number,rows:number)=>invoke<void>("agent_resize",{id,cols,rows}),
-  agentStop:(id:string)=>invoke<void>("agent_stop",{id}),
-  graftDiscover: (connection: import("./workspace").GraftConnection) => invoke<import("./workspace").GraftDiscovery>("graft_discover", { connection }),
-  graftCall: (connection: import("./workspace").GraftConnection, name: string, argumentsValue: Record<string, unknown>, confirmed: boolean) => invoke<unknown>("graft_call", { connection, name, arguments: argumentsValue, confirmed }),
-  workspaceDoctor: (request: { root: string; ports: number[]; containers: string[] }) => invoke<import("./workspace").DoctorReport>("workspace_doctor", { request }),
+  chatJournal: (text: string) =>
+    invoke<import("./companionChat").ChatMessage>("chat_journal", { text }),
+  chatView: () => invoke<import("./companionChat").ChatView>("chat_view"),
+  chatConfigure: (config: import("./companionChat").ModelConfig, memory: string) =>
+    invoke<void>("chat_configure", { config, memory }),
+  chatEnable: (enabled: boolean) =>
+    invoke<import("./companionChat").ChatView>("chat_enable", { enabled }),
+  chatSend: (text: string, key: string, includeHistory: boolean, includeMemory: boolean) =>
+    invoke<import("./companionChat").ChatMessage>("chat_send", {
+      text,
+      key,
+      includeHistory,
+      includeMemory,
+    }),
+  chatPreview: (text: string, includeHistory: boolean, includeMemory: boolean) =>
+    invoke<unknown>("chat_preview", { text, includeHistory, includeMemory }),
+  chatModels: (config: import("./companionChat").ModelConfig) =>
+    invoke<string[]>("chat_models", { config }),
+  chatPull: (config: import("./companionChat").ModelConfig, confirmed: boolean) =>
+    invoke<void>("chat_pull", { config, confirmed }),
+  chatClear: (memory: boolean) => invoke<void>("chat_clear", { memory }),
+  chatExport: () => invoke<string>("chat_export"),
+  agentHerdrAttach: (session: string, pane: string, confirmed: boolean) =>
+    invoke<import("./agents").AgentView>("agent_herdr_attach", { session, pane, confirmed }),
+  agentTracking: (enabled: boolean, confirmed: boolean) =>
+    invoke<void>("agent_tracking", { enabled, confirmed }),
+  agentProfiles: () => invoke<import("./agents").AgentProfile[]>("agent_profiles"),
+  agentProfilesSave: (profiles: import("./agents").AgentProfile[]) =>
+    invoke<void>("agent_profiles_save", { profiles }),
+  agentList: () => invoke<import("./agents").AgentView[]>("agent_list"),
+  agentExternal: () => invoke<import("./agents").AgentView[]>("agent_external"),
+  agentStart: (profile: import("./agents").AgentProfile, cwd: string) =>
+    invoke<import("./agents").AgentView>("agent_start", { profile, cwd }),
+  agentOutput: (id: string, cursor: number) =>
+    invoke<import("./agents").TerminalOutput>("agent_output", { id, cursor }),
+  agentInput: (id: string, bytes: string) => invoke<void>("agent_input", { id, bytes }),
+  agentResize: (id: string, cols: number, rows: number) =>
+    invoke<void>("agent_resize", { id, cols, rows }),
+  agentStop: (id: string) => invoke<void>("agent_stop", { id }),
+  graftDiscover: (connection: import("./workspace").GraftConnection) =>
+    invoke<import("./workspace").GraftDiscovery>("graft_discover", { connection }),
+  graftCall: (
+    connection: import("./workspace").GraftConnection,
+    name: string,
+    argumentsValue: Record<string, unknown>,
+    confirmed: boolean,
+  ) => invoke<unknown>("graft_call", { connection, name, arguments: argumentsValue, confirmed }),
+  workspaceDoctor: (request: { root: string; ports: number[]; containers: string[] }) =>
+    invoke<import("./workspace").DoctorReport>("workspace_doctor", { request }),
   diagnostics: () => invoke<Diagnostics>("diagnostics"),
 
   usageView: (days: number | null, sources: string[]) =>
@@ -131,21 +153,21 @@ export const ipc = {
   usageRefresh: () => invoke<string>("usage_refresh"),
 
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
-  settingsSet: (key: string, value: unknown) =>
-    invoke<void>("settings_set", { key, value }),
+  settingsSet: (key: string, value: unknown) => invoke<void>("settings_set", { key, value }),
   launchAtLoginStatus: () => invoke<LaunchAtLoginStatus>("launch_at_login_status"),
   launchAtLoginSet: (enabled: boolean) =>
     invoke<LaunchAtLoginStatus>("launch_at_login_set", { enabled }),
   shellExtensionStatus: () => invoke<ShellExtensionStatus>("shell_extension_status"),
   shellExtensionEnable: () => invoke<ShellExtensionStatus>("shell_extension_enable"),
-  backupExport: (path: string | null = null) =>
-    invoke<BackupSummary>("backup_export", { path }),
+  backupExport: (path: string | null = null) => invoke<BackupSummary>("backup_export", { path }),
   backupInspect: (path: string) => invoke<BackupSummary>("backup_inspect", { path }),
   backupImport: (path: string, confirm: boolean) =>
     invoke<ImportReport>("backup_import", { path, confirm }),
   companionList: (query = "") => invoke<CompanionItem[]>("companion_list", { query }),
-  companionNoteCreate: (title: string, body: string) => invoke<CompanionItem>("companion_note_create", { title, body }),
-  companionUpdate: (id: number, title: string, body: string, pinned: boolean) => invoke<CompanionItem>("companion_update", { id, title, body, pinned }),
+  companionNoteCreate: (title: string, body: string) =>
+    invoke<CompanionItem>("companion_note_create", { title, body }),
+  companionUpdate: (id: number, title: string, body: string, pinned: boolean) =>
+    invoke<CompanionItem>("companion_update", { id, title, body, pinned }),
   companionRemove: (id: number) => invoke<void>("companion_remove", { id }),
   companionRecordingStatus: () => invoke<CompanionRecordingStatus>("companion_recording_status"),
   companionRecordStart: () => invoke<void>("companion_record_start"),
@@ -159,7 +181,8 @@ export const ipc = {
   attentionHistory: () => invoke<AttentionFocusSession[]>("attention_history"),
   attentionOverview: (days: number) => invoke<AttentionOverview>("attention_overview", { days }),
   attentionSettings: () => invoke<AttentionSettings>("attention_settings"),
-  attentionSettingsSave: (settings: AttentionSettings) => invoke<void>("attention_settings_save", { settings }),
+  attentionSettingsSave: (settings: AttentionSettings) =>
+    invoke<void>("attention_settings_save", { settings }),
   shellAction: (action: "cleanKeys" | "pickColor" | "showClipboard") =>
     invoke<void>("shell_action", { action }),
 
@@ -192,10 +215,13 @@ export const ipc = {
     invoke<MachineDirectory>("machines_files", { id, path }),
   machinesFileDownload: (id: string, path: string) =>
     invoke<string>("machines_file_download", { id, path }),
-  machinesContainers: (id: string) =>
-    invoke<ContainerInfo[]>("machines_containers", { id }),
-  machinesContainerAction: (id: string, engine: string, container: string, action: "start" | "stop" | "restart") =>
-    invoke<void>("machines_container_action", { id, engine, container, action }),
+  machinesContainers: (id: string) => invoke<ContainerInfo[]>("machines_containers", { id }),
+  machinesContainerAction: (
+    id: string,
+    engine: string,
+    container: string,
+    action: "start" | "stop" | "restart",
+  ) => invoke<void>("machines_container_action", { id, engine, container, action }),
   machinesContainerLogs: (id: string, engine: string, container: string, lines = 200) =>
     invoke<string>("machines_container_logs", { id, engine, container, lines }),
   machinesPower: (id: string, action: "restart" | "shutdown") =>
@@ -203,9 +229,11 @@ export const ipc = {
   machinesWake: (id: string) => invoke<void>("machines_wake", { id }),
 
   portsSnapshot: () => invoke<import("./types").PortsSnapshot>("ports_snapshot"),
-  portsStop: (request: { pid: number; startedAt: string; inode: string }) => invoke<string>("ports_stop", { request }),
+  portsStop: (request: { pid: number; startedAt: string; inode: string }) =>
+    invoke<string>("ports_stop", { request }),
   dockerSnapshot: () => invoke<import("./types").DockerSnapshot>("docker_snapshot"),
-  dockerAction: (endpoint: string, id: string, action: "start" | "stop" | "restart") => invoke<void>("docker_action", { endpoint, id, action }),
+  dockerAction: (endpoint: string, id: string, action: "start" | "stop" | "restart") =>
+    invoke<void>("docker_action", { endpoint, id, action }),
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
   powerStatus: () => invoke<PowerStatus>("power_status"),
   updateCheck: () => invoke<UpdateInfo>("update_check"),
@@ -241,8 +269,7 @@ export const ipc = {
   cleanerScan: (categories: string[]) => invoke<CleanerScan>("cleaner_scan", { categories }),
   cleanerClean: (items: CleanerItem[]) => invoke<CleanReport>("cleaner_clean", { items }),
   toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
-  toolsInstall: (tool: string) =>
-    invoke<ToolInstallOutcome>("tools_install", { tool }),
+  toolsInstall: (tool: string) => invoke<ToolInstallOutcome>("tools_install", { tool }),
   herdrBoard: () => invoke<HerdrBoard>("herdr_board"),
   herdrOpen: (session: string, paneId: string | null = null) =>
     invoke<void>("herdr_open", { session, paneId }),
@@ -268,17 +295,23 @@ export const ipc = {
   calendarOpen: () => invoke<void>("calendar_open"),
 
   mediaNowPlaying: () => invoke<NowPlaying | null>("media_now_playing"),
-  mediaControl: (action: MediaAction) =>
-    invoke<void>("media_control", { action }),
+  mediaControl: (action: MediaAction) => invoke<void>("media_control", { action }),
   musicLibrary: () => invoke<LocalTrack[]>("music_library"),
 
   notificationsList: () => invoke<DesktopNotification[]>("notifications_list"),
-  notificationsDismiss: (id: number) =>
-    invoke<void>("notifications_dismiss", { id }),
+  notificationsDismiss: (id: number) => invoke<void>("notifications_dismiss", { id }),
   notificationsClear: () => invoke<void>("notifications_clear"),
 
   showMainWindow: () => invoke<void>("show_main_window"),
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
 
-export type { AgendaView, Dashboard, Diagnostics, NowPlaying, SystemSnapshot, UsageView, VolumeState };
+export type {
+  AgendaView,
+  Dashboard,
+  Diagnostics,
+  NowPlaying,
+  SystemSnapshot,
+  UsageView,
+  VolumeState,
+};

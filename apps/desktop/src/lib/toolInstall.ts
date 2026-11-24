@@ -5,10 +5,7 @@ export type InstallNotice = {
   text: string;
 };
 
-export function installNotice(
-  displayName: string,
-  outcome: ToolInstallOutcome,
-): InstallNotice {
+export function installNotice(displayName: string, outcome: ToolInstallOutcome): InstallNotice {
   if (outcome.outcome === "installed") {
     return {
       tone: "good",

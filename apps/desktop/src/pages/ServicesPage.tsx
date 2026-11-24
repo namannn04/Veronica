@@ -4,7 +4,13 @@ import { Container, Network, RefreshCw } from "lucide-react";
 import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
 import { endpointLabel, matchesContainer, matchesPort } from "../lib/services";
-import type { DockerContainer, DockerSnapshot, ListeningPort, PortOwner, PortsSnapshot } from "../lib/types";
+import type {
+  DockerContainer,
+  DockerSnapshot,
+  ListeningPort,
+  PortOwner,
+  PortsSnapshot,
+} from "../lib/types";
 import {
   Button,
   ConfirmDialog,
@@ -30,7 +36,11 @@ type Change =
   | { kind: "process"; row: ListeningPort; owner: PortOwner }
   | { kind: "container"; container: DockerContainer; endpoint: string; action: ContainerAction };
 
-const ACTION_LABEL: Record<ContainerAction, string> = { start: "Start", stop: "Stop", restart: "Restart" };
+const ACTION_LABEL: Record<ContainerAction, string> = {
+  start: "Start",
+  stop: "Stop",
+  restart: "Restart",
+};
 
 function containerTone(state: string): Tone {
   if (state === "running") return "good";
@@ -66,50 +76,101 @@ export function ServicesPage() {
 
   const loadPorts = useCallback(async () => {
     if (portRead.current) return;
-    portRead.current = true; setReadingPorts(true);
-    try { const data = await ipc.portsSnapshot(); if (live.current) { setPorts(data); setPortsError(null); } }
-    catch (error) { if (live.current) { setPorts(null); setPortsError(String(error)); } }
-    finally { portRead.current = false; if (live.current) setReadingPorts(false); }
+    portRead.current = true;
+    setReadingPorts(true);
+    try {
+      const data = await ipc.portsSnapshot();
+      if (live.current) {
+        setPorts(data);
+        setPortsError(null);
+      }
+    } catch (error) {
+      if (live.current) {
+        setPorts(null);
+        setPortsError(String(error));
+      }
+    } finally {
+      portRead.current = false;
+      if (live.current) setReadingPorts(false);
+    }
   }, []);
 
   const loadDocker = useCallback(async () => {
     if (dockerRead.current) return;
-    dockerRead.current = true; setReadingDocker(true);
-    try { const data = await ipc.dockerSnapshot(); if (live.current) { setDocker(data); setDockerError(null); } }
-    catch (error) { if (live.current) { setDocker(null); setDockerError(String(error)); } }
-    finally { dockerRead.current = false; if (live.current) setReadingDocker(false); }
+    dockerRead.current = true;
+    setReadingDocker(true);
+    try {
+      const data = await ipc.dockerSnapshot();
+      if (live.current) {
+        setDocker(data);
+        setDockerError(null);
+      }
+    } catch (error) {
+      if (live.current) {
+        setDocker(null);
+        setDockerError(String(error));
+      }
+    } finally {
+      dockerRead.current = false;
+      if (live.current) setReadingDocker(false);
+    }
   }, []);
 
   useEffect(() => {
     live.current = true;
-    const stopPorts = startVisiblePolling(async () => { if (!actionRunning.current) await loadPorts(); }, 5000);
-    const stopDocker = startVisiblePolling(async () => { if (!actionRunning.current) await loadDocker(); }, 10000);
-    return () => { live.current = false; stopPorts(); stopDocker(); };
+    const stopPorts = startVisiblePolling(async () => {
+      if (!actionRunning.current) await loadPorts();
+    }, 5000);
+    const stopDocker = startVisiblePolling(async () => {
+      if (!actionRunning.current) await loadDocker();
+    }, 10000);
+    return () => {
+      live.current = false;
+      stopPorts();
+      stopDocker();
+    };
   }, [loadPorts, loadDocker]);
 
-  const refresh = () => { void loadPorts(); void loadDocker(); };
+  const refresh = () => {
+    void loadPorts();
+    void loadDocker();
+  };
 
   const apply = async () => {
     if (!pending || actionRunning.current) return;
     const change = pending;
-    actionRunning.current = true; setBusy(true); setActionError(null); setMessage(null);
+    actionRunning.current = true;
+    setBusy(true);
+    setActionError(null);
+    setMessage(null);
     try {
       if (change.kind === "process") {
-        const result = await ipc.portsStop({ pid: change.owner.pid, startedAt: change.owner.startedAt, inode: change.row.inode });
+        const result = await ipc.portsStop({
+          pid: change.owner.pid,
+          startedAt: change.owner.startedAt,
+          inode: change.row.inode,
+        });
         if (live.current) setMessage(result);
       } else {
         await ipc.dockerAction(change.endpoint, change.container.id, change.action);
         if (live.current) setMessage(`${change.container.name}: ${change.action} completed.`);
       }
       if (live.current) setPending(null);
-    } catch (error) { if (live.current) setActionError(String(error)); }
-    finally {
+    } catch (error) {
+      if (live.current) setActionError(String(error));
+    } finally {
       actionRunning.current = false;
-      if (live.current) { setBusy(false); refresh(); }
+      if (live.current) {
+        setBusy(false);
+        refresh();
+      }
     }
   };
 
-  const ask = (change: Change) => { setActionError(null); setPending(change); };
+  const ask = (change: Change) => {
+    setActionError(null);
+    setPending(change);
+  };
 
   const portRows = ports?.ports.filter((row) => matchesPort(row, query)) ?? [];
   const containers = docker?.containers.filter((row) => matchesContainer(row, query)) ?? [];
@@ -125,7 +186,12 @@ export function ServicesPage() {
           title="Ports & Docker"
           subtitle="See what is running on this computer and free a busy port"
           actions={
-            <Button icon={<RefreshCw strokeWidth={STROKE} />} busy={reading && (ports !== null || docker !== null)} disabled={busy || reading} onClick={refresh}>
+            <Button
+              icon={<RefreshCw strokeWidth={STROKE} />}
+              busy={reading && (ports !== null || docker !== null)}
+              disabled={busy || reading}
+              onClick={refresh}
+            >
               Refresh
             </Button>
           }
@@ -144,7 +210,15 @@ export function ServicesPage() {
       />
 
       {message && (
-        <Notice tone="good" compact actions={<Button size="small" variant="plain" onClick={() => setMessage(null)}>Dismiss</Button>}>
+        <Notice
+          tone="good"
+          compact
+          actions={
+            <Button size="small" variant="plain" onClick={() => setMessage(null)}>
+              Dismiss
+            </Button>
+          }
+        >
           {message}
         </Notice>
       )}
@@ -157,18 +231,52 @@ export function ServicesPage() {
             : "TCP listeners and unconnected UDP sockets, IPv4 and IPv6"
         }
       >
-        {ports?.warnings.map((warning) => <Notice tone="warning" compact key={warning}>{warning}</Notice>)}
+        {ports?.warnings.map((warning) => (
+          <Notice tone="warning" compact key={warning}>
+            {warning}
+          </Notice>
+        ))}
         {portsError ? (
-          <Notice tone="critical" title="Listening ports could not be read" actions={<Button size="small" onClick={() => void loadPorts()}>Retry</Button>}>
+          <Notice
+            tone="critical"
+            title="Listening ports could not be read"
+            actions={
+              <Button size="small" onClick={() => void loadPorts()}>
+                Retry
+              </Button>
+            }
+          >
             {portsError}
           </Notice>
         ) : !ports ? (
-          <List label="Listening ports"><div className="svc-pad"><SkeletonRows rows={4} label="Reading listening ports" /></div></List>
+          <List label="Listening ports">
+            <div className="svc-pad">
+              <SkeletonRows rows={4} label="Reading listening ports" />
+            </div>
+          </List>
         ) : portRows.length === 0 ? (
           <List label="Listening ports">
-            {query
-              ? <EmptyState size="compact" title={`No ports match “${query}”`} action={<Button size="small" onClick={() => setQuery("")}>Clear filter</Button>}>Try a port number, a process name or a PID.</EmptyState>
-              : <EmptyState size="compact" icon={<Network strokeWidth={STROKE} />} title="Nothing is listening">No process on this computer is waiting for connections.</EmptyState>}
+            {query ? (
+              <EmptyState
+                size="compact"
+                title={`No ports match “${query}”`}
+                action={
+                  <Button size="small" onClick={() => setQuery("")}>
+                    Clear filter
+                  </Button>
+                }
+              >
+                Try a port number, a process name or a PID.
+              </EmptyState>
+            ) : (
+              <EmptyState
+                size="compact"
+                icon={<Network strokeWidth={STROKE} />}
+                title="Nothing is listening"
+              >
+                No process on this computer is waiting for connections.
+              </EmptyState>
+            )}
           </List>
         ) : (
           <List label="Listening ports">
@@ -182,19 +290,26 @@ export function ServicesPage() {
                 subtitle={
                   row.owners.length === 0
                     ? "Owner hidden by permissions or no longer running"
-                    : row.owners.map((owner) => `${owner.name} · PID ${owner.pid}${owner.canStop ? "" : " · runs as another user"}`).join(", ")
+                    : row.owners
+                        .map(
+                          (owner) =>
+                            `${owner.name} · PID ${owner.pid}${owner.canStop ? "" : " · runs as another user"}`,
+                        )
+                        .join(", ")
                 }
-                trailing={row.owners.filter((owner) => owner.canStop).map((owner) => (
-                  <Button
-                    key={`${owner.pid}-${owner.startedAt}`}
-                    size="small"
-                    disabled={busy || !!portsError}
-                    aria-label={`Stop ${owner.name} (PID ${owner.pid})`}
-                    onClick={() => ask({ kind: "process", row, owner })}
-                  >
-                    {row.owners.length > 1 ? `Stop ${owner.name}` : "Stop process"}
-                  </Button>
-                ))}
+                trailing={row.owners
+                  .filter((owner) => owner.canStop)
+                  .map((owner) => (
+                    <Button
+                      key={`${owner.pid}-${owner.startedAt}`}
+                      size="small"
+                      disabled={busy || !!portsError}
+                      aria-label={`Stop ${owner.name} (PID ${owner.pid})`}
+                      onClick={() => ask({ kind: "process", row, owner })}
+                    >
+                      {row.owners.length > 1 ? `Stop ${owner.name}` : "Stop process"}
+                    </Button>
+                  ))}
               />
             ))}
           </List>
@@ -208,34 +323,79 @@ export function ServicesPage() {
             ? `${docker.containers.length === 0 ? "Docker is available" : `${running} of ${docker.containers.length} running`}${docker.version ? ` · Docker ${docker.version}` : ""}`
             : "Local Docker daemon and its published ports"
         }
-        actions={docker?.endpoint ? <span className="svc-endpoint ui-mono ui-selectable" title={docker.detail}>{docker.endpoint}</span> : undefined}
+        actions={
+          docker?.endpoint ? (
+            <span className="svc-endpoint ui-mono ui-selectable" title={docker.detail}>
+              {docker.endpoint}
+            </span>
+          ) : undefined
+        }
       >
         {dockerError ? (
-          <Notice tone="critical" title="Docker could not be reached" actions={<Button size="small" onClick={() => void loadDocker()}>Retry</Button>}>
+          <Notice
+            tone="critical"
+            title="Docker could not be reached"
+            actions={
+              <Button size="small" onClick={() => void loadDocker()}>
+                Retry
+              </Button>
+            }
+          >
             {dockerError}
           </Notice>
         ) : !docker ? (
-          <List label="Containers"><div className="svc-pad"><SkeletonRows rows={3} label="Checking Docker" /></div></List>
+          <List label="Containers">
+            <div className="svc-pad">
+              <SkeletonRows rows={3} label="Checking Docker" />
+            </div>
+          </List>
         ) : dockerProblem ? (
           <List label="Containers">
-            <EmptyState size="compact" icon={<Container strokeWidth={STROKE} />} title={dockerProblem}>{docker.detail}</EmptyState>
+            <EmptyState
+              size="compact"
+              icon={<Container strokeWidth={STROKE} />}
+              title={dockerProblem}
+            >
+              {docker.detail}
+            </EmptyState>
           </List>
         ) : containers.length === 0 ? (
           <List label="Containers">
-            {query
-              ? <EmptyState size="compact" title={`No containers match “${query}”`} action={<Button size="small" onClick={() => setQuery("")}>Clear filter</Button>}>Try a name, an image or a published port.</EmptyState>
-              : <EmptyState size="compact" icon={<Container strokeWidth={STROKE} />} title="No containers yet">Docker is available. Containers you create appear here.</EmptyState>}
+            {query ? (
+              <EmptyState
+                size="compact"
+                title={`No containers match “${query}”`}
+                action={
+                  <Button size="small" onClick={() => setQuery("")}>
+                    Clear filter
+                  </Button>
+                }
+              >
+                Try a name, an image or a published port.
+              </EmptyState>
+            ) : (
+              <EmptyState
+                size="compact"
+                icon={<Container strokeWidth={STROKE} />}
+                title="No containers yet"
+              >
+                Docker is available. Containers you create appear here.
+              </EmptyState>
+            )}
           </List>
         ) : (
           <>
             <List label="Containers">
               {containers.map((container) => {
-                const actions: ContainerAction[] = container.state === "running" ? ["stop", "restart"] : ["start"];
+                const actions: ContainerAction[] =
+                  container.state === "running" ? ["stop", "restart"] : ["start"];
                 return (
                   <ListRow
                     key={container.id}
                     className="svc-container-row"
-                    leading={<StatusDot tone={containerTone(container.state)} label={container.state} />}
+                    leading={
+                      <StatusDot tone={containerTone(container.state)} label={container.state} />
+                    }
                     title={
                       <span className="svc-container-title">
                         <span>{container.name}</span>
@@ -244,7 +404,9 @@ export function ServicesPage() {
                     }
                     subtitle={
                       <span className="svc-container-meta">
-                        <span>{container.image} · {container.status}</span>
+                        <span>
+                          {container.image} · {container.status}
+                        </span>
                         <span className="ui-mono">{container.ports || "No published ports"}</span>
                       </span>
                     }
@@ -253,7 +415,15 @@ export function ServicesPage() {
                         key={action}
                         size="small"
                         disabled={busy || docker.status !== "ready"}
-                        onClick={() => { if (docker.endpoint) ask({ kind: "container", container, endpoint: docker.endpoint, action }); }}
+                        onClick={() => {
+                          if (docker.endpoint)
+                            ask({
+                              kind: "container",
+                              container,
+                              endpoint: docker.endpoint,
+                              action,
+                            });
+                        }}
                       >
                         {ACTION_LABEL[action]}
                       </Button>
@@ -263,7 +433,8 @@ export function ServicesPage() {
               })}
             </List>
             <p className="svc-footnote">
-              Ports read <span className="ui-mono">host:port → container:port</span>. A bare port is exposed inside Docker, not published to the host.
+              Ports read <span className="ui-mono">host:port → container:port</span>. A bare port is
+              exposed inside Docker, not published to the host.
             </p>
           </>
         )}
@@ -271,7 +442,9 @@ export function ServicesPage() {
 
       <ConfirmDialog
         open={pending !== null}
-        onClose={() => { if (!busy) setPending(null); }}
+        onClose={() => {
+          if (!busy) setPending(null);
+        }}
         onConfirm={() => void apply()}
         busy={busy}
         destructive={!(pending?.kind === "container" && pending.action === "start")}
@@ -297,7 +470,11 @@ export function ServicesPage() {
               : "Confirm"
         }
       >
-        {actionError && <Notice tone="critical" compact>{actionError}</Notice>}
+        {actionError && (
+          <Notice tone="critical" compact>
+            {actionError}
+          </Notice>
+        )}
       </ConfirmDialog>
     </Page>
   );

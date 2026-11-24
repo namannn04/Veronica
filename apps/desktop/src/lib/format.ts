@@ -25,7 +25,8 @@ const UNITS: [number, string][] = [
 
 export function tokens(value: number): string {
   const decimals = (scaled: number) => (scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2);
-  const round = (scaled: number, places: number) => Math.round(scaled * 10 ** places) / 10 ** places;
+  const round = (scaled: number, places: number) =>
+    Math.round(scaled * 10 ** places) / 10 ** places;
   for (let index = 0; index < UNITS.length; index++) {
     const [scale, suffix] = UNITS[index];
     if (value >= scale) {
@@ -114,10 +115,7 @@ export function trackClock(microseconds: number): string {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function trackTimeline(
-  positionUs: number | null,
-  lengthUs: number | null,
-): string {
+export function trackTimeline(positionUs: number | null, lengthUs: number | null): string {
   if (positionUs === null && lengthUs === null) return "";
   if (lengthUs === null) return positionUs === null ? "" : trackClock(positionUs);
   const position = positionUs === null ? "?" : trackClock(positionUs);

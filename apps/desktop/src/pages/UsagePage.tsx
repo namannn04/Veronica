@@ -104,7 +104,10 @@ export function UsagePage() {
     setExported(null);
     try {
       const files = await ipc.usageExport([], days, sources);
-      setExported({ tone: "good", text: `Saved ${files.length} card${files.length === 1 ? "" : "s"} to ~/Pictures` });
+      setExported({
+        tone: "good",
+        text: `Saved ${files.length} card${files.length === 1 ? "" : "s"} to ~/Pictures`,
+      });
     } catch (reason) {
       setExported({ tone: "critical", text: String(reason) });
     } finally {
@@ -123,8 +126,14 @@ export function UsagePage() {
   };
 
   const board = view?.dashboard ?? null;
-  const isActive = useCallback((id: string) => sources.length === 0 || sources.includes(id), [sources]);
-  const sourceColor = useMemo(() => colorScale(view?.sources.map((s) => s.id) ?? []), [view?.sources]);
+  const isActive = useCallback(
+    (id: string) => sources.length === 0 || sources.includes(id),
+    [sources],
+  );
+  const sourceColor = useMemo(
+    () => colorScale(view?.sources.map((s) => s.id) ?? []),
+    [view?.sources],
+  );
   const modelColor = useMemo(() => colorScale(view?.models ?? []), [view?.models]);
 
   const cacheHitRate = useMemo(() => {
@@ -141,10 +150,20 @@ export function UsagePage() {
   const header = (
     <PageHeader
       title="Agent usage"
-      subtitle={generatedAt ? `Collected ${timeAgo(generatedAt)}, stays on this computer` : "Nothing collected yet"}
+      subtitle={
+        generatedAt
+          ? `Collected ${timeAgo(generatedAt)}, stays on this computer`
+          : "Nothing collected yet"
+      }
       actions={
         <>
-          <Button icon={<Share2 />} onClick={() => void share()} busy={exporting} disabled={!generatedAt} title="Branded PNGs with no repository, path, chat title or cost on them">
+          <Button
+            icon={<Share2 />}
+            onClick={() => void share()}
+            busy={exporting}
+            disabled={!generatedAt}
+            title="Branded PNGs with no repository, path, chat title or cost on them"
+          >
             {exporting ? "Rendering…" : "Share cards"}
           </Button>
           <Button icon={<RefreshCw />} onClick={() => void refresh()} busy={refreshing}>
@@ -158,19 +177,44 @@ export function UsagePage() {
   const messages = (
     <>
       {error && (
-        <Notice tone="critical" title="Usage could not be loaded" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+        <Notice
+          tone="critical"
+          title="Usage could not be loaded"
+          actions={
+            <Button size="small" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Notice>
       )}
       {refreshing && progress && <Notice title="Collecting usage…">{progress}</Notice>}
       {exported && (
-        <Notice tone={exported.tone} compact actions={<Button size="small" variant="plain" onClick={() => setExported(null)}>Dismiss</Button>}>
+        <Notice
+          tone={exported.tone}
+          compact
+          actions={
+            <Button size="small" variant="plain" onClick={() => setExported(null)}>
+              Dismiss
+            </Button>
+          }
+        >
           {exported.text}
         </Notice>
       )}
       {stale && generatedAt && !refreshing && (
-        <Notice tone="warning" title="These figures are out of date" actions={<Button size="small" onClick={() => void refresh()}>Refresh</Button>}>
-          They were collected {timeAgo(generatedAt)}, so recent use is missing. Choose how often Veronica collects in Settings, General.
+        <Notice
+          tone="warning"
+          title="These figures are out of date"
+          actions={
+            <Button size="small" onClick={() => void refresh()}>
+              Refresh
+            </Button>
+          }
+        >
+          They were collected {timeAgo(generatedAt)}, so recent use is missing. Choose how often
+          Veronica collects in Settings, General.
         </Notice>
       )}
     </>
@@ -190,7 +234,8 @@ export function UsagePage() {
               </Button>
             }
           >
-            Veronica reads your local Claude, Codex, Cursor and Command Code history. Nothing is sent anywhere.
+            Veronica reads your local Claude, Codex, Cursor and Command Code history. Nothing is
+            sent anywhere.
           </EmptyState>
         </Card>
       </Page>
@@ -215,7 +260,11 @@ export function UsagePage() {
                   onClick={() => toggleSource(source.id)}
                   title={`Toggle ${source.label}`}
                 >
-                  <span className="chart-swatch" style={{ background: sourceColor(source.id) }} aria-hidden="true" />
+                  <span
+                    className="chart-swatch"
+                    style={{ background: sourceColor(source.id) }}
+                    aria-hidden="true"
+                  />
                   {source.label}
                 </button>
               ))}
@@ -227,7 +276,9 @@ export function UsagePage() {
               size="small"
               options={RANGES}
               value={range}
-              onChange={(value) => setDays(RANGES.find((item) => item.value === value)?.days ?? null)}
+              onChange={(value) =>
+                setDays(RANGES.find((item) => item.value === value)?.days ?? null)
+              }
             />
           }
         />
@@ -240,10 +291,23 @@ export function UsagePage() {
       {board && (
         <div className="usage-sensitive usage-board">
           <StatGrid min={180}>
-            <Stat label="Estimated API cost" value={money(board.totals.cost)} note={`${board.activeDays} active ${board.activeDays === 1 ? "day" : "days"}`} />
-            <Stat label="Tokens" value={tokens(board.totals.tokens)} note={`${tokens(board.totals.outputTokens)} generated`} />
+            <Stat
+              label="Estimated API cost"
+              value={money(board.totals.cost)}
+              note={`${board.activeDays} active ${board.activeDays === 1 ? "day" : "days"}`}
+            />
+            <Stat
+              label="Tokens"
+              value={tokens(board.totals.tokens)}
+              note={`${tokens(board.totals.outputTokens)} generated`}
+            />
             <Stat label="Sessions" value={String(board.sessionCount)} note="Chats collected" />
-            <Stat label="Cache reads" value={cacheHitRate === null ? "None" : cacheHitRate.toFixed(0)} unit={cacheHitRate === null ? undefined : "%"} note="Of all tokens" />
+            <Stat
+              label="Cache reads"
+              value={cacheHitRate === null ? "None" : cacheHitRate.toFixed(0)}
+              unit={cacheHitRate === null ? undefined : "%"}
+              note="Of all tokens"
+            />
           </StatGrid>
 
           <Columns ratio="wide-start">
@@ -263,8 +327,15 @@ export function UsagePage() {
               <HourBars hours={board.byHour} />
             </Card>
             <Card className="usage-chart-card">
-              <CardHeader title="By model" subtitle={`${board.byModel.length} ${board.byModel.length === 1 ? "model" : "models"}`} />
-              <RankedBars rows={board.byModel} colorOf={modelColor} labelOf={(row) => modelLabel(row.name)} />
+              <CardHeader
+                title="By model"
+                subtitle={`${board.byModel.length} ${board.byModel.length === 1 ? "model" : "models"}`}
+              />
+              <RankedBars
+                rows={board.byModel}
+                colorOf={modelColor}
+                labelOf={(row) => modelLabel(row.name)}
+              />
             </Card>
           </Columns>
 
