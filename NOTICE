@@ -1,0 +1,47 @@
+Veronica
+Copyright (C) 2026 Naman Dadhich (https://github.com/namannn04)
+Copyright (C) 2026 Pulkit (https://github.com/pulkitxm)
+https://github.com/namannn04/Veronica
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License version 3 as published by the Free
+Software Foundation, supplemented by the additional terms below. The full
+license text is in the LICENSE file.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+
+Additional terms under section 7 of the GNU General Public License version 3
+
+1. Attribution, section 7(b).
+
+   Every copy you convey, in source or object form, and every work based on
+   Veronica or any part of it, must preserve this NOTICE file and must credit
+   the original project in a reasonable and visible place with this statement,
+   or an equivalent that keeps both names and the link:
+
+       Based on Veronica by Naman Dadhich and Pulkit
+       https://github.com/namannn04/Veronica
+
+   For a work with an interactive user interface, the credit must appear
+   wherever it displays its Appropriate Legal Notices, such as an About or
+   Settings screen. For a work without one, the credit must appear in its
+   README or equivalent primary documentation. Running Veronica unmodified for
+   your own use requires nothing beyond the license itself.
+
+2. Origin, section 7(c).
+
+   A modified version must be marked as changed in a reasonable way and must
+   not be presented as the original Veronica or as endorsed by its authors.
+
+3. Names and logo, section 7(e).
+
+   This license grants no right to use the Veronica logo or the names of its
+   authors to promote or endorse a modified version, except as needed to give
+   the credit required by term 1.
+
+You may not remove or alter these additional terms when you convey Veronica or
+a work based on it. Any further restriction you add is void under section 10 of
+the license.
