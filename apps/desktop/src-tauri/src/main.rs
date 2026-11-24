@@ -497,6 +497,82 @@ mod tests {
         assert!(!is_background_launch(["veronica", "--not-background"]));
     }
 
+    fn between<'a>(source: &'a str, start: &str, end: &str) -> &'a str {
+        let from = source.find(start).expect("list start") + start.len();
+        let length = source[from..].find(end).expect("list end");
+        &source[from..from + length]
+    }
+
+    fn handled_commands() -> Vec<String> {
+        between(include_str!("main.rs"), "generate_handler![", "])")
+            .split("commands::")
+            .skip(1)
+            .map(|rest| {
+                rest.chars()
+                    .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn quoted(source: &str) -> Vec<String> {
+        source
+            .split('"')
+            .skip(1)
+            .step_by(2)
+            .map(str::to_string)
+            .collect()
+    }
+
+    fn granted(capability: &str) -> Vec<String> {
+        let capability: serde_json::Value = serde_json::from_str(capability).expect("capability");
+        capability["permissions"]
+            .as_array()
+            .expect("permissions")
+            .iter()
+            .filter_map(|permission| permission.as_str())
+            .filter_map(|permission| permission.strip_prefix("allow-"))
+            .map(|command| command.replace('-', "_"))
+            .collect()
+    }
+
+    #[test]
+    fn every_command_is_gated_and_granted_to_the_main_window() {
+        let handled = handled_commands();
+        assert!(handled.len() > 100);
+        assert_eq!(
+            quoted(between(include_str!("../build.rs"), ".commands(&[", "])")),
+            handled
+        );
+        assert_eq!(
+            granted(include_str!("../capabilities/main-commands.json")),
+            handled
+        );
+    }
+
+    #[test]
+    fn only_the_main_window_holds_the_full_command_grant() {
+        let main: serde_json::Value =
+            serde_json::from_str(include_str!("../capabilities/main-commands.json"))
+                .expect("capability");
+        assert_eq!(main["windows"], serde_json::json!(["main"]));
+        assert!(main.get("webviews").is_none());
+        assert!(main.get("remote").is_none());
+
+        let picker = granted(include_str!("../capabilities/emoji-picker.json"));
+        assert_eq!(
+            picker,
+            [
+                "emoji_groups",
+                "emoji_search",
+                "emoji_recents",
+                "emoji_copy",
+                "settings_all"
+            ]
+        );
+        assert!(granted(include_str!("../capabilities/default.json")).is_empty());
+    }
+
     fn wanted(settings: &veronica_core::Settings) -> Vec<&'static str> {
         SHORTCUTS
             .iter()
