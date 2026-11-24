@@ -1,7 +1,3 @@
-//! Veronica — native control center for Ubuntu.
-
-// Tauri's own main is the entry point; there is no console window to hide on
-// Linux, so no windows_subsystem attribute is needed.
 mod alerts;
 mod art;
 mod commands;
@@ -51,26 +47,14 @@ fn init_logging() {
         .init();
 }
 
-/// Ask GTK for the X11 backend before it initialises.
-///
-/// The notch overlay has to place itself at the top centre of the display and
-/// stay above other windows. A Wayland client cannot position its own toplevel
-/// or raise itself, so on a Wayland session the overlay would appear wherever
-/// the compositor decided. Under XWayland those hints work, and GNOME sessions
-/// always run XWayland.
-///
-/// Set `VERONICA_GDK_BACKEND=wayland` to override, accepting that the notch will
-/// not be positionable.
 fn force_x11_backend() {
     if let Ok(override_backend) = std::env::var("VERONICA_GDK_BACKEND") {
         std::env::set_var("GDK_BACKEND", override_backend);
         return;
     }
-    // Respect an existing choice rather than overriding the user's environment.
     if std::env::var_os("GDK_BACKEND").is_some() {
         return;
     }
-    // Only meaningful when an X display is actually reachable.
     if std::env::var_os("DISPLAY").is_some() {
         std::env::set_var("GDK_BACKEND", "x11");
     }
@@ -123,10 +107,6 @@ fn shortcut_enabled(settings: &veronica_core::Settings, binding: ShortcutBinding
         .is_none_or(|id| extension_enabled(settings, id))
 }
 
-/// Match registered accelerators to the shared extension switches.
-///
-/// Each operation is independent because one compositor collision must not
-/// prevent the other five shortcuts from following their settings.
 pub(crate) fn sync_global_shortcuts(app: &tauri::AppHandle, settings: &veronica_core::Settings) {
     let manager = app.global_shortcut();
     for binding in SHORTCUTS {
@@ -157,7 +137,6 @@ fn show_route(app: &tauri::AppHandle, route: &str) {
 fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
     let settings = app.state::<AppState>().settings_snapshot();
     if matches(shortcut, Code::KeyV) {
-        // Bring Veronica forward on the page it was left on, as the tray does.
         if let Err(error) = main_window::show(app, None) {
             tracing::warn!(target: "veronica", "cannot open Veronica: {error:#}");
         }
@@ -344,12 +323,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         .setup(move |app| {
             let handle = app.handle().clone();
 
-            // Probing the desktop portal needs D-Bus, so the session is
-            // resolved on the async runtime and the state is seeded with the
-            // synchronous answer first.
-            // Voice memos play from disk through the asset protocol. The scope
-            // is granted here rather than in tauri.conf.json because the data
-            // directory follows XDG_DATA_HOME, which a static pattern cannot.
             let recordings =
                 veronica_core::CompanionRepository::new(directories.companion_dir()).recordings_dir();
             if let Err(error) = std::fs::create_dir_all(&recordings)
@@ -369,15 +342,11 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
 
             if let Some(guard) = instance {
                 guard.attach(&handle);
-                // Managed state lives as long as the app, and so does the name.
                 app.manage(guard);
             }
 
             tray::install(&handle)?;
 
-            // Registration can be refused by the compositor or collide with
-            // another app; each failure stays non-fatal and the other bindings
-            // still get their chance.
             sync_global_shortcuts(&handle, &handle.state::<AppState>().settings_snapshot());
 
             if tools {
@@ -390,11 +359,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 main_window::show(&handle, Some("home"))?;
             }
 
-            // The shell extension writes through `vr config set`, outside
-            // Tauri's IPC. Re-read that small JSON file so notch quick actions
-            // acquire and release the same process-owned inhibitor locks as
-            // switches clicked in the desktop app. The first interval tick is
-            // immediate, which also restores both locks after a restart.
             let watch_settings = handle.clone();
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
@@ -407,10 +371,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                     let Ok(settings) = veronica_core::Settings::load(&path) else {
                         continue;
                     };
-                    // A timed session's deadline lives in the file rather than
-                    // in a timer, so it survives a restart. This tick is what
-                    // enforces it: an expired pair is cleared once, here, and
-                    // the switches below then see the session as over.
                     let now = chrono::Utc::now().timestamp_millis();
                     let mut settings = settings;
                     let mut expired = false;
@@ -461,9 +421,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 }
             });
 
-            // Watch the bus for notifications. This runs for the process's
-            // lifetime; if the bus refuses monitoring, the feature is simply
-            // absent rather than fatal.
             let watcher = handle.clone();
             tauri::async_runtime::spawn(async move {
                 let emitter = watcher.clone();
@@ -481,21 +438,16 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 }
             });
 
-            // Keep the usage figures current without anyone pressing Refresh.
             let collecting = handle.clone();
             tauri::async_runtime::spawn(async move {
                 usage_schedule::run(collecting).await;
             });
 
-            // Rate-limit alerts. Idles cheaply until the user turns them on,
-            // so a fresh install makes no provider requests of its own.
             let alerting = handle.clone();
             tauri::async_runtime::spawn(async move {
                 alerts::run(alerting).await;
             });
 
-            // Presenter mode's screen-share detector. Also idles until the
-            // feature is switched on.
             let presenting = handle.clone();
             tauri::async_runtime::spawn(async move {
                 presenter::run(presenting).await;
@@ -506,7 +458,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 let resolved = veronica_system::detect_session().await;
                 let state = refine.state::<AppState>();
                 *state.session.lock().expect("session lock") = resolved;
-                // Capability-dependent screens re-read once the probe lands.
                 use tauri::Emitter;
                 let _ = refine.emit("session-resolved", ());
             });
@@ -517,8 +468,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             if window.label() == "main" && matches!(event, WindowEvent::CloseRequested {..} | WindowEvent::Destroyed) { window.app_handle().state::<AppState>().agents.stop_all();
                 window.app_handle().state::<AppState>().chat.close_window(); }
             if let WindowEvent::CloseRequested { api, .. } = event {
-                // Veronica lives in the tray, so release the expensive webview
-                // without quitting or losing the collector schedule.
                 if window.label() == "main" {
                     api.prevent_close();
                     if let Err(error) = window.destroy() {
@@ -529,9 +478,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         })
         .build(tauri::generate_context!())?
         .run(|app, event| match event {
-            // Destroying the last window normally exits a Tauri application.
-            // Keep the native tray process alive, but still honour the tray's
-            // explicit `app.exit(0)` (which carries an exit code).
             RunEvent::ExitRequested {
                 code: None, api, ..
             } => api.prevent_exit(),

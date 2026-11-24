@@ -1,18 +1,3 @@
-//! Presenter mode's detector.
-//!
-//! `veronica-core` owns the model — the gate and the blur categories — and
-//! `veronica-system` owns the detection. This connects them: while presenter
-//! mode is enabled it watches for a screencast session and records what it finds
-//! in the settings, under the same keys Edith uses.
-//!
-//! The detection result is written to settings rather than held in memory
-//! because three processes need it: the app blurs its own figures, the GNOME
-//! extension blurs the notch's, and `vr presenter status` reports it. One file
-//! they all read is the only way those three cannot disagree.
-//!
-//! It costs nothing when the feature is off: no poll runs until
-//! `presenterEnabled` is set.
-
 use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, Manager};
@@ -20,12 +5,8 @@ use veronica_core::PresenterState;
 
 use crate::state::AppState;
 
-/// How often to look for a screencast session. A local D-Bus introspection, so
-/// this is cheap; the interval is short because presenter mode is worthless if
-/// it activates ten seconds into a call.
 const POLL: Duration = Duration::from_secs(2);
 
-/// How often to re-check the switch while the feature is off.
 const IDLE_CHECK: Duration = Duration::from_secs(5);
 
 pub async fn run(app: AppHandle) {
@@ -36,8 +17,6 @@ pub async fn run(app: AppHandle) {
         };
 
         if !enabled {
-            // Leaving a stale "a share is happening" behind would blur the notch
-            // forever after the feature is switched off.
             clear_detection(&app);
             tokio::time::sleep(IDLE_CHECK).await;
             continue;
@@ -69,8 +48,6 @@ async fn tick(app: &AppHandle) {
         tracing::warn!(target: "veronica", "cannot record the share reason: {error:#}");
     }
 
-    // A dismissal applies to one share. Once it ends, the next one must blur
-    // again, or dismissing once would disable detection permanently.
     if !share.sharing && settings.bool_or("presenterAutoPaused", false) {
         if let Err(error) = state.set_setting("presenterAutoPaused", false.into()) {
             tracing::warn!(target: "veronica", "cannot clear the dismissal: {error:#}");
@@ -85,7 +62,6 @@ async fn tick(app: &AppHandle) {
     let _ = app.emit("settings-updated", "presenter");
 }
 
-/// Drop any recorded detection, so switching the feature off unblurs at once.
 fn clear_detection(app: &AppHandle) {
     let state = app.state::<AppState>();
     let settings = state.settings_snapshot();
@@ -113,15 +89,12 @@ fn clear_detection(app: &AppHandle) {
     let _ = app.emit("settings-updated", "presenter");
 }
 
-/// The resolved state, plus what detection currently sees.
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PresenterView {
     #[serde(flatten)]
     pub state: PresenterState,
-    /// True while the gate says to blur.
     pub active: bool,
-    /// The CSS classes the interface should switch on, one per blurred category.
     pub blurred_classes: Vec<&'static str>,
     pub share: veronica_system::screencast::ScreenShareState,
 }
@@ -158,8 +131,6 @@ mod tests {
 
     #[test]
     fn the_poll_is_frequent_enough_to_catch_the_start_of_a_call() {
-        // Presenter mode that activates half a minute in has already leaked the
-        // figures it exists to hide.
         assert!(POLL.as_secs() <= 3, "poll was {:?}", POLL);
         assert!(
             IDLE_CHECK >= POLL,

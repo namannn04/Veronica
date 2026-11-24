@@ -1,4 +1,3 @@
-//! Native GTK file shelf: real URI drags work with browsers and file managers.
 use crate::state::AppState;
 use gtk::{gio, glib, prelude::*};
 use std::{cell::RefCell, path::PathBuf};
@@ -229,8 +228,6 @@ fn import_files(
     sender: tokio::sync::mpsc::UnboundedSender<Change>,
     drag: Option<(gtk::gdk::DragContext, u32)>,
 ) {
-    // GTK objects cannot cross threads. Complete native DND on the main
-    // context through a one-shot channel; file copying stays off the UI thread.
     let (tx, rx) = tokio::sync::oneshot::channel::<Result<usize, String>>();
     glib::MainContext::default().spawn_local(async move {
         if let Ok(result) = rx.await {

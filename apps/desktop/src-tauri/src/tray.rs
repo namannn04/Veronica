@@ -1,9 +1,3 @@
-//! The tray indicator.
-//!
-//! Edith's readout lives in the macOS menu bar. Ubuntu's equivalent is a
-//! StatusNotifierItem, which GNOME exposes through the AppIndicator extension
-//! that ships enabled on Ubuntu.
-
 use anyhow::{Context, Result};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -20,8 +14,6 @@ pub fn install(app: &AppHandle) -> Result<()> {
     TrayIconBuilder::with_id("veronica-tray")
         .icon(app.default_window_icon().cloned().context("no app icon")?)
         .menu(&menu)
-        // The left click opens the app; the menu is on right click, matching
-        // how other Ubuntu indicators behave.
         .show_menu_on_left_click(false)
         .tooltip("Veronica")
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -54,8 +46,6 @@ pub fn install(app: &AppHandle) -> Result<()> {
 }
 
 fn show_main(app: &AppHandle) {
-    // No route: an open window stays on its page, and a new one starts on Home
-    // as it always does. Naming Home here sent an open window back to it.
     if let Err(error) = crate::main_window::show(app, None) {
         tracing::warn!("cannot open Veronica from the tray: {error:#}");
     }

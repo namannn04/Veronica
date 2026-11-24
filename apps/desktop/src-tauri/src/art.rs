@@ -1,23 +1,8 @@
-//! Album art.
-//!
-//! MPRIS reports art as a URL, and in practice it is almost always a local
-//! `file://` path a player wrote to a temp directory. The webview cannot load
-//! `file://` under Veronica's content policy, and widening that policy to reach
-//! arbitrary paths would be worse than the problem. So the art is read here and
-//! handed over as a `data:` URL instead.
-
 use base64::Engine as _;
 
-/// Largest art file inlined. Beyond this the tile falls back to a glyph rather
-/// than pushing megabytes through the IPC channel on every poll.
 pub const MAX_ART_BYTES: usize = 2 * 1024 * 1024;
 
-/// Turn an MPRIS art URL into something the webview can render.
-///
-/// Returns `None` when there is nothing usable, which the interface shows as a
-/// placeholder glyph.
 pub fn to_data_url(url: &str) -> Option<String> {
-    // Already inline: pass through untouched.
     if url.starts_with("data:") {
         return Some(url.to_string());
     }
@@ -31,25 +16,18 @@ pub fn to_data_url(url: &str) -> Option<String> {
     Some(format!("data:{mime};base64,{encoded}"))
 }
 
-/// The filesystem path behind a `file://` URL.
-///
-/// Only local paths are accepted: a `file://host/path` URL points at another
-/// machine, and any other scheme is not ours to fetch.
 pub fn local_path(url: &str) -> Option<String> {
     let rest = url.strip_prefix("file://")?;
-    // An empty authority ("file:///path") or "localhost" are both local.
     let path = if let Some(stripped) = rest.strip_prefix("localhost/") {
         format!("/{stripped}")
     } else if rest.starts_with('/') {
         rest.to_string()
     } else {
-        // A non-empty authority is a remote host.
         return None;
     };
     Some(percent_decode(&path))
 }
 
-/// Decode `%XX` escapes, which appear whenever a path contains a space.
 pub fn percent_decode(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
@@ -66,15 +44,9 @@ pub fn percent_decode(input: &str) -> String {
         out.push(bytes[index]);
         index += 1;
     }
-    // Art paths are filesystem paths, so invalid UTF-8 is replaced rather than
-    // rejected; the read will simply fail if the path is genuinely wrong.
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// Identify an image from its magic bytes.
-///
-/// The file extension is unreliable here: players write art to temp files with
-/// no extension at all.
 pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
         return Some("image/png");
@@ -121,7 +93,6 @@ mod tests {
     fn decodes_escapes_so_paths_with_spaces_resolve() {
         assert_eq!(percent_decode("/tmp/my%20art.png"), "/tmp/my art.png");
         assert_eq!(percent_decode("/tmp/a%2Bb.png"), "/tmp/a+b.png");
-        // A stray percent is left alone rather than dropped.
         assert_eq!(percent_decode("/tmp/100%.png"), "/tmp/100%.png");
         assert_eq!(percent_decode("/tmp/%ZZ.png"), "/tmp/%ZZ.png");
     }
@@ -144,7 +115,6 @@ mod tests {
     fn refuses_content_that_is_not_an_image() {
         assert_eq!(sniff_image(b""), None);
         assert_eq!(sniff_image(b"not an image at all"), None);
-        // A truncated RIFF header must not be read past its end.
         assert_eq!(sniff_image(b"RIFF"), None);
     }
 
@@ -164,7 +134,6 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("veronica-art-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("art");
-        // Minimal PNG signature plus filler; sniffing only reads the header.
         let mut bytes = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
         bytes.extend_from_slice(&[1, 2, 3, 4]);
         std::fs::write(&path, &bytes).unwrap();
