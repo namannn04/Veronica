@@ -49,6 +49,8 @@ import {
 } from "../ui";
 import "./HomePage.css";
 
+const CLOCK_TICK_ANGLES = Array.from({ length: 12 }, (_, hour) => hour * 30);
+
 type HomeRoute = "usage" | "media" | "calendar" | "system";
 type HomeData = {
   usage: UsageView | null;
@@ -795,11 +797,11 @@ function ClockTile({
   return (
     <div className="home-clock">
       <div className="home-clock-face" aria-hidden="true">
-        {Array.from({ length: 12 }, (_, index) => (
+        {CLOCK_TICK_ANGLES.map((angle) => (
           <i
-            key={index}
-            className={index % 3 === 0 ? "home-clock-tick major" : "home-clock-tick"}
-            style={{ transform: `rotate(${index * 30}deg)` }}
+            key={angle}
+            className={angle % 90 === 0 ? "home-clock-tick major" : "home-clock-tick"}
+            style={{ transform: `rotate(${angle}deg)` }}
           />
         ))}
         <span

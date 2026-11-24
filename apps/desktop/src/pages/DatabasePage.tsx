@@ -545,9 +545,11 @@ function ResultPane({
             </thead>
             <tbody>
               {page.rows.map((row, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: query result rows have no identity column
                 <tr key={index}>
                   {row.map((value, cell) => (
                     <td
+                      // biome-ignore lint/suspicious/noArrayIndexKey: result cells are identified by column position, and column names can repeat
                       key={cell}
                       className={
                         value.kind === "null" || value.kind === "missing" ? "muted" : undefined

@@ -24,6 +24,8 @@ import {
 } from "../ui";
 import "./UsagePage.css";
 
+const SKELETON_BARS = Array.from({ length: 18 }, (_, bar) => bar);
+
 type Range = "7" | "30" | "90" | "all";
 
 const RANGES: { value: Range; label: string; days: number | null }[] = [
@@ -382,8 +384,8 @@ function UsageSkeleton() {
         <Card className="usage-chart-card">
           <Skeleton width="45%" height={12} />
           <div className="usage-skeleton-bars">
-            {Array.from({ length: 18 }, (_, index) => (
-              <Skeleton key={index} height={`${30 + ((index * 37) % 60)}%`} radius={3} />
+            {SKELETON_BARS.map((bar) => (
+              <Skeleton key={bar} height={`${30 + ((bar * 37) % 60)}%`} radius={3} />
             ))}
           </div>
         </Card>
