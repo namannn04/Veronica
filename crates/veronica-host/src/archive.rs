@@ -89,7 +89,7 @@ const fn allowed_mode(mode: u32) -> bool {
     matches!(mode, FILE_MODE_REGULAR | FILE_MODE_EXECUTABLE)
 }
 
-fn is_sha256(value: &str) -> bool {
+pub(crate) fn is_sha256(value: &str) -> bool {
     value.len() == 64
         && value
             .bytes()

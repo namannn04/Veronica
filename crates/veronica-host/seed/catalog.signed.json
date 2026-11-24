@@ -1,0 +1,11 @@
+{
+  "payload": "eyJjYXRlZ29yaWVzIjpbXSwiZXhwaXJlc0F0IjoiMjAyNi0xMi0yNFQwMDowMDowMFoiLCJleHRlbnNpb25zIjpbXSwiZ2VuZXJhdGVkQXQiOiIyMDI2LTExLTI0VDAwOjAwOjAwWiIsInByb2ZpbGVzIjpbeyJkZXNjcmlwdGlvbiI6IkV2ZXJ5ZGF5IHRvb2xzIiwiZXh0ZW5zaW9ucyI6W10sImlkIjoic2ltcGxlIiwidGl0bGUiOiJTaW1wbGUifSx7ImRlc2NyaXB0aW9uIjoiQWdlbnRzLCBtYWNoaW5lcyBhbmQgc2VydmljZXMiLCJleHRlbnNpb25zIjpbXSwiaWQiOiJkZXZlbG9wZXIiLCJ0aXRsZSI6IkRldmVsb3BlciJ9XSwicmV2aXNpb24iOjE3OTU0Nzg0MDAsInNjaGVtYSI6MSwic291cmNlIjp7ImNvbW1pdCI6IjNlNDE3NWZlMjVjM2MwZWQ4ZDk4MDBmZmNmZTRhMjViODk1YTYxZGQiLCJyZXBvc2l0b3J5IjoibmFtYW5ubjA0L3Zlcm9uaWNhIn19",
+  "schema": 1,
+  "signatures": [
+    {
+      "algorithm": "ed25519",
+      "keyId": "ext-4401294f5a7a",
+      "signature": "O6B1+u/VCTMGpst8FLVoGrdHQAfH+y0fWVp5jcI5ffc9eIwGyZ1+yOOIBcA5YEI2PbPr70xwpjh4BJlYV1fJAw=="
+    }
+  ]
+}
