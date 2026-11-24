@@ -19,6 +19,7 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 jsonc-parser = { version = "0.34", features = ["cst"] }
 rustix = { version = "1", features = ["fs"] }
 tokio = { workspace = true }
+fastrand = "2"
 rustix = { version = "1", features = ["fs", "process"] }
 semver = "1"
 sha2 = "0.10"
