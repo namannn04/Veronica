@@ -1,108 +1,179 @@
 import { useCallback, useEffect, useState } from "react";
+import { ChevronRight, FolderGit2, GitBranch, RefreshCw } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
-import type { QuinjetBoard, QuinjetWorktree } from "../lib/types";
+import type { QuinjetBoard, QuinjetProject, QuinjetWorktree } from "../lib/types";
+import { Badge, Button, EmptyState, List, ListRow, Notice, Page, PageHeader, Section, SkeletonRows } from "../ui";
+import "./QuinjetPage.css";
 
-/**
- * Quinjet.
- *
- * Discovery and launch, over Quinjet's own JSON contract — the same one Edith
- * uses, so a machine with Quinjet installed behaves identically on both.
- *
- * Edith hosts the TUI in an embedded terminal, which is what gives it tabs and
- * a session switcher. Veronica has none and opens the installed terminal
- * instead: the same decision the Herdr page made, for the same reason. Quinjet
- * stays the owner of the review, and this page is how you get into one.
- */
+const ICON = { strokeWidth: 1.75 };
+
 export function QuinjetPage() {
   const [board, setBoard] = useState<QuinjetBoard | null>(null);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string> | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    setBusy(true); setError("");
-    try { setBoard(await ipc.quinjetProjects()); }
-    catch (reason) { setError(String(reason)); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setError("");
+    try {
+      setBoard(await ipc.quinjetProjects());
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy(false);
+    }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const open = async (worktree: QuinjetWorktree) => {
     setError("");
-    try { await ipc.quinjetOpen(worktree.path); }
-    catch (reason) { setError(String(reason)); }
+    try {
+      await ipc.quinjetOpen(worktree.path);
+    } catch (reason) {
+      setError(String(reason));
+    }
   };
 
-  if (board && !board.installed) {
-    return <div className="page">
-      <div className="page-head edith-head"><div><h1>Quinjet</h1><div className="page-sub">Review pull requests and live workspace changes</div></div></div>
-      <section className="settings-info">
-        <div className="info-glyph">◇</div>
-        <h2>Quinjet is not installed</h2>
-        <p>
-          Quinjet is its own tool. Veronica discovers your projects through it and opens its
-          review TUI in your terminal; nothing else in Veronica needs it. Install it, then
-          reopen this page.
-        </p>
-      </section>
-    </div>;
-  }
+  const openSet = expanded ?? new Set(board?.projects[0] ? [board.projects[0].commonDir] : []);
+  const toggle = (id: string) => {
+    const next = new Set(openSet);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpanded(next);
+  };
 
-  return <div className="page quinjet-page">
-    <div className="page-head edith-head">
-      <div><h1>Quinjet</h1><div className="page-sub">Review pull requests and live workspace changes</div></div>
-      <div className="head-actions">
-        <button className="button" disabled={busy} onClick={() => void load()}>{busy ? "Reading…" : "Refresh"}</button>
-      </div>
-    </div>
+  const installed = board?.installed !== false;
 
-    {error && <div className="banner error">{error}</div>}
+  return (
+    <Page
+      header={
+        <PageHeader
+          title="Quinjet"
+          subtitle="Review pull requests and live workspace changes"
+          actions={
+            installed && (
+              <Button icon={<RefreshCw {...ICON} />} busy={busy} onClick={() => void load()}>
+                {busy ? "Reading…" : "Refresh"}
+              </Button>
+            )
+          }
+        />
+      }
+    >
+      {error && (
+        <Notice tone="critical" title="Quinjet did not answer" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
 
-    {/* Before the first answer there is nothing to list yet: an empty
-        "Projects" card read as "you have no projects". The shimmer is the
-        same one Calendar uses while it reads. */}
-    {!board && !error && <div className="calendar-skeleton" aria-label="Reading Quinjet projects"><i /><i /></div>}
+      {board && !board.installed && (
+        <Notice
+          tone="neutral"
+          title="Quinjet is not installed"
+          actions={
+            <Button size="small" busy={busy} onClick={() => void load()}>
+              Check again
+            </Button>
+          }
+        >
+          Quinjet is its own tool. Veronica finds your projects through it and opens its review view in your terminal; nothing else in Veronica needs it.
+        </Notice>
+      )}
 
-    {!board ? null : board.projects.length === 0 && !busy
-      ? <div className="empty"><div className="empty-glyph">◈</div><h3>No recent projects</h3><p>Quinjet lists the repositories you have opened in it. Open one, then refresh.</p></div>
-      : <section className="card">
-        <div className="card-head"><h2>Projects</h2><span className="card-note">opens in your terminal</span></div>
-        <div className="list">
-          {board?.projects.map((project) => {
-            const worktrees = project.worktrees.filter((worktree) => !worktree.bare && worktree.prunable === null);
-            const current = worktrees.find((worktree) => worktree.current) ?? worktrees[0];
-            return <div key={project.commonDir}>
-              <div className="list-row">
-                <button className="quinjet-name" onClick={() => setExpanded(expanded === project.commonDir ? null : project.commonDir)}>
-                  <strong>{project.name}</strong>
-                  <small>{current ? branchOf(current) : "no openable worktree"} · {worktrees.length} worktree{worktrees.length === 1 ? "" : "s"}</small>
-                </button>
-                <button className="button primary" disabled={!current} onClick={() => current && void open(current)}>Review</button>
-              </div>
-              {expanded === project.commonDir && <div className="quinjet-worktrees">
-                {project.worktrees.map((worktree) => {
-                  const openable = !worktree.bare && worktree.prunable === null;
-                  return <div className="list-row" key={worktree.path}>
-                    <div>
-                      <strong>{branchOf(worktree)}{worktree.current ? " · on this one" : ""}</strong>
-                      <small>{worktree.path}</small>
-                    </div>
-                    {openable
-                      ? <button className="button" onClick={() => void open(worktree)}>Open</button>
-                      : <span className="pill">{worktree.bare ? "Bare" : "Prunable"}</span>}
-                  </div>;
-                })}
-              </div>}
-            </div>;
-          })}
+      {!board && !error && (
+        <Section title="Projects">
+          <List label="Reading Quinjet projects">
+            <SkeletonRows rows={4} label="Reading Quinjet projects" />
+          </List>
+        </Section>
+      )}
+
+      {board?.installed && board.projects.length === 0 && !busy && (
+        <div className="quinjet-empty">
+          <EmptyState icon={<FolderGit2 {...ICON} />} title="No recent projects" action={<Button onClick={() => void load()}>Refresh</Button>}>
+            Quinjet lists the repositories you have opened in it. Open one there, then refresh.
+          </EmptyState>
         </div>
-      </section>}
-  </div>;
+      )}
+
+      {board?.installed && board.projects.length > 0 && (
+        <Section title="Projects" description="Review and Open launch Quinjet in your terminal">
+          <List label="Quinjet projects" className="quinjet-list">
+            {board.projects.map((project) => (
+              <ProjectGroup key={project.commonDir} project={project} expanded={openSet.has(project.commonDir)} onToggle={() => toggle(project.commonDir)} onOpen={(worktree) => void open(worktree)} />
+            ))}
+          </List>
+        </Section>
+      )}
+    </Page>
+  );
 }
 
-/** The same rule `Worktree::label` applies in the core. */
+function ProjectGroup({
+  project,
+  expanded,
+  onToggle,
+  onOpen,
+}: {
+  project: QuinjetProject;
+  expanded: boolean;
+  onToggle: () => void;
+  onOpen: (worktree: QuinjetWorktree) => void;
+}) {
+  const worktrees = project.worktrees.filter((worktree) => !worktree.bare && worktree.prunable === null);
+  const current = worktrees.find((worktree) => worktree.current) ?? worktrees[0];
+  return (
+    <>
+      <ListRow
+        className="quinjet-project"
+        leading={<ChevronRight {...ICON} className="quinjet-chevron" data-open={expanded || undefined} aria-hidden="true" />}
+        title={project.name}
+        subtitle={
+          <>
+            {current ? <span className="ui-mono">{branchOf(current)}</span> : "No openable worktree"}
+            {` · ${worktrees.length} worktree${worktrees.length === 1 ? "" : "s"}`}
+          </>
+        }
+        onClick={onToggle}
+        trailing={
+          <Button size="small" disabled={!current} onClick={() => current && onOpen(current)}>
+            Review
+          </Button>
+        }
+      />
+      {expanded &&
+        project.worktrees.map((worktree) => {
+          const openable = !worktree.bare && worktree.prunable === null;
+          return (
+            <ListRow
+              key={worktree.path}
+              className="quinjet-worktree"
+              leading={<GitBranch {...ICON} aria-hidden="true" />}
+              title={branchOf(worktree)}
+              mono
+              subtitle={<span className="ui-mono">{worktree.path}</span>}
+              meta={worktree.current ? <Badge tone="accent">Current</Badge> : undefined}
+              trailing={
+                openable ? (
+                  <Button size="small" variant="plain" onClick={() => onOpen(worktree)}>
+                    Open
+                  </Button>
+                ) : (
+                  <Badge tone="warning">{worktree.bare ? "Bare" : "Prunable"}</Badge>
+                )
+              }
+            />
+          );
+        })}
+    </>
+  );
+}
+
 function branchOf(worktree: QuinjetWorktree) {
   if (worktree.branch) return worktree.branch;
   if (worktree.detached) return `detached at ${worktree.head.slice(0, 8)}`;
