@@ -14,6 +14,7 @@ pub mod focus_dim;
 pub mod fsutil;
 pub mod host;
 pub mod keystroke;
+pub mod packaging;
 pub mod paths;
 pub mod presenter;
 pub mod session;

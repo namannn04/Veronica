@@ -1,5 +1,6 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -20,6 +21,14 @@ fn temporary_for(path: &Path) -> PathBuf {
 }
 
 pub fn write_atomic(path: &Path, body: &[u8]) -> Result<()> {
+    replace(path, body, None)
+}
+
+pub fn write_atomic_with_mode(path: &Path, body: &[u8], mode: u32) -> Result<()> {
+    replace(path, body, Some(mode))
+}
+
+fn replace(path: &Path, body: &[u8], mode: Option<u32>) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("cannot create {}", parent.display()))?;
@@ -32,6 +41,9 @@ pub fn write_atomic(path: &Path, body: &[u8]) -> Result<()> {
             .open(&temporary)
             .with_context(|| format!("cannot create {}", temporary.display()))?;
         file.write_all(body)?;
+        if let Some(mode) = mode {
+            file.set_permissions(fs::Permissions::from_mode(mode))?;
+        }
         file.sync_all()?;
         fs::rename(&temporary, path).with_context(|| format!("cannot replace {}", path.display()))
     })();
@@ -71,6 +83,15 @@ mod tests {
             .filter(|entry| entry.file_name() != "settings.json")
             .collect();
         assert!(leftovers.is_empty(), "temporary files left behind");
+    }
+
+    #[test]
+    fn mode_is_applied_before_the_file_is_published() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("secret.json");
+        write_atomic_with_mode(&path, b"{}", 0o600).unwrap();
+        let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o7777;
+        assert_eq!(mode, 0o600);
     }
 
     #[test]

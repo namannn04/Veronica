@@ -16,11 +16,13 @@ chrono = { workspace = true }
 base64 = "0.22"
 ed25519-dalek = "2.1"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+jsonc-parser = { version = "0.34", features = ["cst"] }
 rustix = { version = "1", features = ["fs"] }
 semver = "1"
 sha2 = "0.10"
 tar = { version = "0.4", default-features = false }
 tempfile = "3"
+toml_edit = "0.25"
 walkdir = "2"
 zstd = { version = "0.13", default-features = false }
 

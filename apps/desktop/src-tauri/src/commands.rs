@@ -312,15 +312,17 @@ const FLATPAK_CLI_SHIM: &str =
 const SNAP_CLI_SHIM: &str = "#!/bin/sh\nexec /snap/bin/veronica.vr \"$@\"\n";
 
 fn bundled_shell_extension() -> Option<(std::path::PathBuf, &'static str)> {
-    match install_kind() {
-        "flatpak" => Some((FLATPAK_SHELL_EXTENSION.into(), FLATPAK_CLI_SHIM)),
-        "snap" => std::env::var_os("SNAP").map(|root| {
+    use veronica_core::packaging::Packaging;
+
+    match Packaging::detect() {
+        Packaging::Flatpak => Some((FLATPAK_SHELL_EXTENSION.into(), FLATPAK_CLI_SHIM)),
+        Packaging::Snap => std::env::var_os("SNAP").map(|root| {
             let source = std::path::Path::new(&root)
                 .join("usr/share/gnome-shell/extensions")
                 .join(SHELL_EXTENSION_UUID);
             (source, SNAP_CLI_SHIM)
         }),
-        _ => None,
+        Packaging::Deb | Packaging::AppImage => None,
     }
 }
 
@@ -1232,15 +1234,7 @@ pub(crate) struct UpdateInfo {
 }
 
 fn install_kind() -> &'static str {
-    if veronica_core::host::is_sandboxed() {
-        "flatpak"
-    } else if std::env::var_os("SNAP_NAME").is_some_and(|name| name == "veronica") {
-        "snap"
-    } else if std::env::var_os("APPIMAGE").is_some() {
-        "appimage"
-    } else {
-        "deb"
-    }
+    veronica_core::packaging::Packaging::detect().as_str()
 }
 
 #[derive(Deserialize)]
