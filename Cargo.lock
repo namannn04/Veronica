@@ -6117,6 +6117,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-sdk"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "futures-util",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "veronica-core",
+ "veronica-protocol",
+]
+
+[[package]]
 name = "veronica-system"
 version = "0.1.26"
 dependencies = [
