@@ -53,11 +53,18 @@ yaml_check() { uvx --quiet yamllint==1.37.1 --strict .; }
 markdown_check() { bunx --bun markdownlint-cli2@0.20.0 "**/*.md"; }
 
 workflows_check() {
-  uvx --quiet --from actionlint-py==1.7.8.24 actionlint
+  local shellcheck_bin
+  shellcheck_bin="$(uvx --quiet --from shellcheck-py==0.11.0.1 python -c 'import shutil; print(shutil.which("shellcheck"))')"
+  PATH="$(dirname "$shellcheck_bin"):$PATH" uvx --quiet --from actionlint-py==1.7.8.24 actionlint
   uvx --quiet zizmor@1.18.0 --persona=pedantic --min-severity=low .github/workflows
 }
 
 all_checks=(em_dash comments typos_check rust deps_check extensions_check web python_check shell_check yaml_check markdown_check workflows_check)
+
+if [ "${1:-}" = "--run-one" ]; then
+  "$2"
+  exit 0
+fi
 
 if [ "$#" -eq 0 ]; then
   set -- "${all_checks[@]}"
@@ -66,7 +73,7 @@ fi
 failed=()
 for check in "$@"; do
   echo "::group::$check"
-  if ! "$check"; then
+  if ! bash "${BASH_SOURCE[0]}" --run-one "$check"; then
     failed+=("$check")
   fi
   echo "::endgroup::"
