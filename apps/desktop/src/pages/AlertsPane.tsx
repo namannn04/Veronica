@@ -1,37 +1,50 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ipc, listenEvent } from "../lib/ipc";
-import type { AlertsView, WatchedWindow } from "../lib/types";
+import type { AlertsView, PacingZone, UsageLevel, WatchedWindow } from "../lib/types";
+import { Badge, Button, FormGroup, FormRow, Notice, SkeletonRows, Stack, type Tone } from "../ui";
+import { ChoiceRow, SwitchRow } from "./settingsRows";
 
-/**
- * Rate-limit alerts.
- *
- * Every alert is edge-triggered: it fires when a window crosses a level or a
- * pacing zone, and stays quiet while it sits there. That is why the switches are
- * per-crossing rather than per-threshold, and why "Forget current levels" exists
- * — after changing a threshold the old comparison point is meaningless.
- */
 const SESSION_OFFSETS = [
-  { minutes: 5, label: "5 min" },
-  { minutes: 15, label: "15 min" },
-  { minutes: 30, label: "30 min" },
-  { minutes: 60, label: "1 h" },
+  { value: 5, label: "5 minutes before" },
+  { value: 15, label: "15 minutes before" },
+  { value: 30, label: "30 minutes before" },
+  { value: 60, label: "1 hour before" },
 ];
 
 const WEEKLY_OFFSETS = [
-  { minutes: 60, label: "1 h" },
-  { minutes: 120, label: "2 h" },
-  { minutes: 360, label: "6 h" },
-  { minutes: 720, label: "12 h" },
+  { value: 60, label: "1 hour before" },
+  { value: 120, label: "2 hours before" },
+  { value: 360, label: "6 hours before" },
+  { value: 720, label: "12 hours before" },
 ];
 
 const MARGINS = [5, 10, 15, 20, 25];
 
+const POLL_CHOICES = [30, 60, 120, 300, 900].map((seconds) => ({ value: seconds, label: pollLabel(seconds) }));
+
+const LEVEL_TONES: Record<UsageLevel, Tone> = { green: "good", orange: "warning", red: "critical" };
+
+const ZONE_LABELS: Record<PacingZone, string> = { chill: "Relaxed", onTrack: "On track", warning: "Drifting fast", hot: "Burning hot" };
+
+const CHECK_FEEDBACK_MS = 5000;
+
+function pollLabel(seconds: number) {
+  return seconds >= 60 ? `Every ${seconds / 60} min` : `Every ${seconds} s`;
+}
+
+function offsetLabel(minutes: number) {
+  return minutes >= 60 && minutes % 60 === 0 ? `${minutes / 60} h before` : `${minutes} min before`;
+}
+
+type CheckFeedback = { row: "test" | "forget"; text: string } | null;
+
 export function AlertsPane() {
   const [view, setView] = useState<AlertsView | null>(null);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [checkFeedback, setCheckFeedback] = useState<CheckFeedback>(null);
   const [error, setError] = useState<string | null>(null);
+  const feedbackTimer = useRef<number | undefined>(undefined);
 
   const load = useCallback(async () => {
     try {
@@ -46,7 +59,6 @@ export function AlertsPane() {
     void load();
   }, [load]);
 
-  // A switch flipped from the CLI or the notch reaches this screen too.
   useEffect(() => {
     const changed = listenEvent("settings-updated", () => void load());
     const posted = listenEvent("alerts-posted", () => void load());
@@ -55,6 +67,14 @@ export function AlertsPane() {
       void posted.then((un) => un());
     };
   }, [load]);
+
+  useEffect(() => () => window.clearTimeout(feedbackTimer.current), []);
+
+  const showFeedback = (row: "test" | "forget", text: string) => {
+    setCheckFeedback({ row, text });
+    window.clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = window.setTimeout(() => setCheckFeedback(null), CHECK_FEEDBACK_MS);
+  };
 
   const set = async (key: string, value: unknown) => {
     setBusy(true);
@@ -71,8 +91,7 @@ export function AlertsPane() {
 
   const test = async () => {
     try {
-      setNotice(await ipc.alertsTest());
-      setTimeout(() => setNotice(null), 5000);
+      showFeedback("test", await ipc.alertsTest());
     } catch (reason) {
       setError(String(reason));
     }
@@ -81,21 +100,34 @@ export function AlertsPane() {
   const forget = async () => {
     try {
       await ipc.alertsReset();
-      setNotice("Levels forgotten — the next poll starts from where you are now.");
-      setTimeout(() => setNotice(null), 5000);
+      showFeedback("forget", "Levels forgotten. The next check starts from where you are now.");
       await load();
     } catch (reason) {
       setError(String(reason));
     }
   };
 
+  const errorNotice = error && (
+    <Notice
+      tone="critical"
+      title={view ? "That change was not saved" : "Alert settings did not load"}
+      actions={
+        <Button size="small" onClick={() => void load()}>
+          Retry
+        </Button>
+      }
+    >
+      {error}
+    </Notice>
+  );
+
   if (!view) {
-    return (
-      <section className="settings-info">
-        <div className="info-glyph">◔</div>
-        <h2>Alerts</h2>
-        <p>{error ?? "Reading the alert settings…"}</p>
-      </section>
+    return error ? (
+      errorNotice
+    ) : (
+      <FormGroup title="Alerts">
+        <SkeletonRows rows={3} label="Loading alert settings" />
+      </FormGroup>
     );
   }
 
@@ -103,318 +135,213 @@ export function AlertsPane() {
   const on = s.master;
 
   return (
-    <div className="settings-stack alerts-pane">
-      {error && <div className="banner error">{error}</div>}
-      {notice && !error && <div className="banner">{notice}</div>}
+    <Stack>
+      {errorNotice}
 
-      <SettingsGroup
+      <FormGroup
         title="Alerts"
-        subtitle="Each alert fires once when a window crosses a level or a pacing zone. Staying in the same zone will not page you again."
+        description="Each alert fires once when a window crosses a level or a pacing zone. Staying in the same zone will not page you again."
       >
-        <Toggle
+        <SwitchRow
           label="Enable alerts"
-          detail={
-            on
-              ? `Claude's limits are re-read every ${view.pollSeconds} s while this is on.`
-              : "Off means no banners and no requests to the provider."
-          }
+          description={on ? `Claude's limits are re-read every ${view.pollSeconds} s while this is on.` : "Off means no banners and no requests to the provider."}
           checked={on}
-          busy={busy}
+          disabled={busy}
           onChange={(value) => void set("notifyMaster", value)}
         />
-      </SettingsGroup>
+      </FormGroup>
 
       {on && (
         <>
-          <SettingsGroup title="What is being watched" subtitle="The two Claude windows the alerts follow, read live.">
-            {view.note && <div className="setting-row"><div><small>{view.note}</small></div></div>}
+          <FormGroup title="Watched windows" description="The two Claude windows the alerts follow, read live.">
+            {view.note && <FormRow label="No live reading" description={view.note} />}
             {view.session && <WindowRow label="Session (5h)" window={view.session} reminderAt={view.sessionReminderAt} />}
             {view.week && <WindowRow label="Weekly" window={view.week} reminderAt={view.weekReminderAt} />}
-            {!view.session && !view.week && !view.note && (
-              <div className="setting-row"><div><small>No windows reported yet.</small></div></div>
-            )}
-          </SettingsGroup>
+            {!view.session && !view.week && !view.note && <FormRow label="No windows reported yet" description="They appear after the first successful check." />}
+          </FormGroup>
 
-          <SettingsGroup title="Level crossings" subtitle="One alert when a window's level rises, and one when it falls back to green.">
-            <Toggle
+          <FormGroup title="Level crossings" description="One alert when a window's level rises, and one when it falls back to green.">
+            <SwitchRow
               label="Session (5h) alerts"
-              detail="Fires once when the session window crosses warn or critical — it will not repeat while you stay in that zone."
+              description="Fires once when the session window crosses warn or critical, then stays quiet while you remain in that zone."
               checked={s.trackSession}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyTrackSession", value)}
             />
-            <Toggle
+            <SwitchRow
               label="Weekly alerts"
-              detail="Same one-shot-per-zone behaviour as the session alerts."
+              description="The same once-per-zone behaviour as the session alerts."
               checked={s.trackWeekly}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyTrackWeekly", value)}
             />
-            <Toggle
+            <SwitchRow
               label="Back to green"
-              detail="A quiet note when a window resets and you have a fresh slate."
+              description="A quiet note when a window resets and you have a fresh slate."
               checked={s.recovery}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyRecovery", value)}
             />
-            <Toggle
+            <SwitchRow
               label="Time-aware levels"
-              detail="Blend how much time is left into the level, so 60% with minutes to go outranks 80% with a week."
+              description="Blend the time left into the level, so 60% with minutes to go outranks 80% with a week."
               checked={s.smartColor}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("smartColor", value)}
             />
-            <Choice
+            <ChoiceRow
               label="Warn at"
-              detail="The percentage that counts as the first level, when time-aware levels are off."
+              description="The first level, used when time-aware levels are off."
               value={s.thresholds.warningPercent}
-              // Only levels below Critical, so the warning level stays reachable.
               options={[40, 50, 60, 70, 80].filter((v) => v < s.thresholds.criticalPercent).map((v) => ({ value: v, label: `${v}%` }))}
-              busy={busy}
+              format={(v) => `${v}%`}
+              disabled={busy}
               onChange={(value) => void set("limitsWarnPercent", value)}
             />
-            <Choice
+            <ChoiceRow
               label="Critical at"
-              detail="The percentage that counts as the top level."
+              description="The top level."
               value={s.thresholds.criticalPercent}
               options={[70, 80, 85, 90, 95].filter((v) => v > s.thresholds.warningPercent).map((v) => ({ value: v, label: `${v}%` }))}
-              busy={busy}
+              format={(v) => `${v}%`}
+              disabled={busy}
               onChange={(value) => void set("limitsCritPercent", value)}
             />
-          </SettingsGroup>
+          </FormGroup>
 
-          <SettingsGroup title="Pace" subtitle="A separate signal from the levels above: how far ahead of an even burn you are, whatever the absolute figure.">
-            <Choice
+          <FormGroup title="Pace" description="A separate signal from the levels: how far ahead of an even burn you are, whatever the absolute figure.">
+            <ChoiceRow
               label="Pacing margin"
-              detail="How far ahead of a linear burn still counts as on track."
+              description="How far ahead of a linear burn still counts as on track."
               value={s.pacingMargin}
-              options={MARGINS.map((v) => ({ value: v, label: `±${v} pp` }))}
-              busy={busy}
+              options={MARGINS.map((v) => ({ value: v, label: `±${v} points` }))}
+              format={(v) => `±${v} points`}
+              disabled={busy}
               onChange={(value) => void set("limitsPacingMargin", value)}
             />
-            <Toggle
+            <SwitchRow
               label="Drifting fast"
-              detail="A touch faster than ideal — worth an eye, not a panic."
+              description="A little faster than ideal. Worth a glance, not a panic."
               checked={s.pacingWarning}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyPacingWarning", value)}
             />
-            <Toggle
+            <SwitchRow
               label="Burning hot"
-              detail="Well ahead of pace."
+              description="Well ahead of pace."
               checked={s.pacingHot}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyPacingHot", value)}
             />
-          </SettingsGroup>
+          </FormGroup>
 
-          <SettingsGroup title="Before a reset" subtitle="A single reminder a fixed time before each window resets.">
-            <Toggle
+          <FormGroup title="Before a reset" description="A single reminder a fixed time before each window resets.">
+            <SwitchRow
               label="Remind before the session resets"
-              detail={
+              description={
                 view.sessionReminderAt
                   ? `Next at ${new Date(view.sessionReminderAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}.`
                   : "Fires once per window."
               }
               checked={s.reminderSession}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyReminderSession", value)}
             />
             {s.reminderSession && (
-              <Choice
+              <ChoiceRow
                 label="Session lead time"
-                detail="How long before the reset."
+                description="How long before the reset."
                 value={s.reminderSessionOffsetMin}
-                options={SESSION_OFFSETS.map((o) => ({ value: o.minutes, label: o.label }))}
-                busy={busy}
+                options={SESSION_OFFSETS}
+                format={offsetLabel}
+                disabled={busy}
                 onChange={(value) => void set("notifyReminderSessionOffsetMin", value)}
               />
             )}
-            <Toggle
+            <SwitchRow
               label="Remind before the week resets"
-              detail={
+              description={
                 view.weekReminderAt
                   ? `Next at ${new Date(view.weekReminderAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}.`
                   : "Fires once per cycle."
               }
               checked={s.reminderWeekly}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyReminderWeekly", value)}
             />
             {s.reminderWeekly && (
-              <Choice
+              <ChoiceRow
                 label="Weekly lead time"
-                detail="How long before the reset."
+                description="How long before the reset."
                 value={s.reminderWeeklyOffsetMin}
-                options={WEEKLY_OFFSETS.map((o) => ({ value: o.minutes, label: o.label }))}
-                busy={busy}
+                options={WEEKLY_OFFSETS}
+                format={offsetLabel}
+                disabled={busy}
                 onChange={(value) => void set("notifyReminderWeeklyOffsetMin", value)}
               />
             )}
-          </SettingsGroup>
+          </FormGroup>
 
-          <SettingsGroup title="Sign-in" subtitle="The one provider failure you can act on.">
-            <Toggle
+          <FormGroup title="Sign-in" description="The one provider failure you can act on.">
+            <SwitchRow
               label="Token expired"
-              detail="Tells you when Claude's saved credentials need a fresh login. Debounced to once an hour."
+              description="Tells you when Claude's saved credentials need a fresh login. At most once an hour."
               checked={s.tokenExpired}
-              busy={busy}
+              disabled={busy}
               onChange={(value) => void set("notifyTokenExpired", value)}
             />
-          </SettingsGroup>
+          </FormGroup>
 
-          <SettingsGroup title="Checks" subtitle="Confirm banners arrive, and reset the comparison point after changing a threshold.">
-            <div className="setting-row">
-              <div>
-                <strong>Send a test alert</strong>
-                <small>Posts one sample banner. It does not consume a real alert.</small>
-              </div>
-              <button className="button" onClick={() => void test()}>
-                Send test
-              </button>
-            </div>
-            <div className="setting-row">
-              <div>
-                <strong>Forget current levels</strong>
-                <small>
-                  Alerts compare against the last level seen. After changing a threshold that
-                  comparison is against the old scale, so clearing it starts fresh.
-                </small>
-              </div>
-              <button className="button" onClick={() => void forget()}>
-                Forget
-              </button>
-            </div>
-            <Choice
+          <FormGroup title="Checks" description="Confirm banners arrive, and reset the comparison point after changing a threshold.">
+            <FormRow
+              label="Send a test alert"
+              description={checkFeedback?.row === "test" ? checkFeedback.text : "Posts one sample banner. It does not use up a real alert."}
+              control={
+                <Button size="small" onClick={() => void test()}>
+                  Send test
+                </Button>
+              }
+            />
+            <FormRow
+              label="Forget current levels"
+              description={
+                checkFeedback?.row === "forget"
+                  ? checkFeedback.text
+                  : "Alerts compare against the last level seen. After changing a threshold, clearing it starts fresh."
+              }
+              control={
+                <Button size="small" onClick={() => void forget()}>
+                  Forget levels
+                </Button>
+              }
+            />
+            <ChoiceRow
               label="Check every"
-              detail="How often the limits are re-read while alerts are on."
+              description="How often the limits are re-read while alerts are on."
               value={view.pollSeconds}
-              options={[30, 60, 120, 300, 900].map((v) => ({
-                value: v,
-                label: v >= 60 ? `${v / 60} min` : `${v} s`,
-              }))}
-              busy={busy}
+              options={POLL_CHOICES}
+              format={pollLabel}
+              disabled={busy}
               onChange={(value) => void set("notifyPollSeconds", value)}
             />
-          </SettingsGroup>
+          </FormGroup>
         </>
       )}
-    </div>
+    </Stack>
   );
 }
 
-function WindowRow({
-  label,
-  window: watched,
-  reminderAt,
-}: {
-  label: string;
-  window: WatchedWindow;
-  reminderAt: string | null;
-}) {
+function WindowRow({ label, window: watched, reminderAt }: { label: string; window: WatchedWindow; reminderAt: string | null }) {
   return (
-    <div className="setting-row watched-row">
-      <div>
-        <strong>{label}</strong>
-        <small>
-          {watched.resetsIn ? `Resets in ${watched.resetsIn}` : "No reset time reported"}
-          {reminderAt ? " · reminder armed" : ""}
-        </small>
-      </div>
-      <div className="watched-state">
-        <span className={`pill level-${watched.level}`}>{Math.round(watched.percent)}%</span>
-        <span className="card-note">{watched.zone}</span>
-      </div>
-    </div>
-  );
-}
-
-function SettingsGroup({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="settings-group">
-      <div>
-        <h2>{title}</h2>
-        <p>{subtitle}</p>
-      </div>
-      <div className="settings-box">{children}</div>
-    </section>
-  );
-}
-
-function Toggle({
-  label,
-  detail,
-  checked,
-  busy,
-  onChange,
-}: {
-  label: string;
-  detail: string;
-  checked: boolean;
-  busy: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <div className="setting-row">
-      <div>
-        <strong>{label}</strong>
-        <small>{detail}</small>
-      </div>
-      <button
-        className="switch"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        disabled={busy}
-        onClick={() => onChange(!checked)}
-      >
-        <span className="knob" />
-      </button>
-    </div>
-  );
-}
-
-function Choice({
-  label,
-  detail,
-  value,
-  options,
-  busy,
-  onChange,
-}: {
-  label: string;
-  detail: string;
-  value: number;
-  options: { value: number; label: string }[];
-  busy: boolean;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <div className="setting-row">
-      <div>
-        <strong>{label}</strong>
-        <small>{detail}</small>
-      </div>
-      <div className="segmented">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            aria-pressed={value === option.value}
-            disabled={busy}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
+    <FormRow
+      label={label}
+      description={`${watched.resetsIn ? `Resets in ${watched.resetsIn}` : "No reset time reported"}${reminderAt ? " · reminder armed" : ""}`}
+      control={
+        <span className="settings-watched">
+          <span className="settings-watched-zone">{ZONE_LABELS[watched.zone] ?? watched.zone}</span>
+          <Badge tone={LEVEL_TONES[watched.level] ?? "neutral"}>{Math.round(watched.percent)}%</Badge>
+        </span>
+      }
+    />
   );
 }

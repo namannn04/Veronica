@@ -1,0 +1,125 @@
+.settings-page .ui-page-header-row {
+  position: relative;
+}
+
+.settings-page .ui-page-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 28px;
+}
+
+.settings-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+  opacity: 0;
+  transition: opacity var(--duration-snap) var(--ease-out);
+}
+
+.settings-saved[data-visible] {
+  opacity: 1;
+  transition-duration: var(--duration-feedback);
+}
+
+.settings-saved svg {
+  width: 14px;
+  height: 14px;
+  color: var(--tone-good-text);
+}
+
+.settings-theme {
+  padding: var(--card-padding) calc(var(--card-padding) - var(--space-1-5));
+}
+
+.settings-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.settings-value {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.settings-path {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-code {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  background: var(--bg-inset);
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ui-form-group-body > .settings-code {
+  margin: var(--card-padding);
+}
+
+.settings-notes {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.settings-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--control-gap);
+  min-width: 0;
+}
+
+.settings-grow {
+  flex: 1;
+}
+
+.settings-watched {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-watched-zone {
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+.ui-form-group-description code,
+.ui-form-group-footer code {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-xs);
+  background: var(--fill-control);
+  color: var(--text-2);
+  font-size: 0.95em;
+}
+
+@container main (max-width: 560px) {
+  .settings-value {
+    text-align: left;
+  }
+
+  .settings-path {
+    max-width: 100%;
+  }
+}
+
+.ui-form-group-body > .ui-skeleton-rows {
+  padding: var(--card-padding);
+}

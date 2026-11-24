@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Check } from "lucide-react";
 
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
@@ -11,43 +12,78 @@ import {
   storedLimitProvider,
   type LimitProvider,
 } from "../lib/preferences";
-import type { Diagnostics, ExtensionReport, LaunchAtLoginStatus, PowerStatus, ShellExtensionStatus, UpdateInfo } from "../lib/types";
+import type { Diagnostics, ExtensionReport, LaunchAtLoginStatus, PowerStatus, ShellExtensionStatus } from "../lib/types";
+import {
+  Badge,
+  Button,
+  FormGroup,
+  FormRow,
+  Kbd,
+  Notice,
+  Page,
+  PageHeader,
+  Segmented,
+  Select,
+  Stack,
+  Tabs,
+  type Tone,
+} from "../ui";
 import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
-import { PresenterPane } from "./PresenterPane";
 import { DiagnosticsPage } from "./DiagnosticsPage";
+import { PresenterPane } from "./PresenterPane";
+import { ChoiceRow, SwitchRow } from "./settingsRows";
+import { UpdatePane } from "./UpdatePane";
+import "./Settings.css";
 
 type Tab = "general" | "alerts" | "presenter" | "desktop" | "permissions" | "shortcuts" | "terminal" | "backup" | "updates";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "general", label: "General" }, { id: "alerts", label: "Alerts" },
-  { id: "presenter", label: "Presenter" },
-  { id: "desktop", label: "Desktop" },
-  { id: "permissions", label: "Permissions" },
-  { id: "shortcuts", label: "Shortcuts" }, { id: "terminal", label: "Terminal" },
-  { id: "backup", label: "Backup" }, { id: "updates", label: "Updates" },
+
+const TABS: { id: Tab; label: string; subtitle: string }[] = [
+  { id: "general", label: "General", subtitle: "Appearance, usage collection, startup and power" },
+  { id: "alerts", label: "Alerts", subtitle: "Rate-limit alerts, pacing and reset reminders" },
+  { id: "presenter", label: "Presenter", subtitle: "Blur sensitive figures while you share your screen" },
+  { id: "desktop", label: "Desktop", subtitle: "Focus dim, keystroke highlight, emoji and color picking" },
+  { id: "permissions", label: "Permissions", subtitle: "What this session can do and where Veronica keeps its files" },
+  { id: "shortcuts", label: "Shortcuts", subtitle: "Global shortcuts handled by the desktop" },
+  { id: "terminal", label: "Terminal", subtitle: "The vr command line" },
+  { id: "backup", label: "Backup", subtitle: "Export, inspect and restore a local backup" },
+  { id: "updates", label: "Updates", subtitle: "Check for and install new versions" },
 ];
 
-/** Mirrors `usage_schedule` in the app: 0 is off, the default is 15 minutes. */
 const USAGE_REFRESH_CHOICES: [number, string][] = [
-  [5, "Every 5 minutes"], [15, "Every 15 minutes"], [30, "Every 30 minutes"],
-  [60, "Every hour"], [0, "Only when I press Refresh"],
+  [5, "Every 5 minutes"],
+  [15, "Every 15 minutes"],
+  [30, "Every 30 minutes"],
+  [60, "Every hour"],
+  [0, "Only when I press Refresh"],
 ];
+
+const SAVED_VISIBLE_MS = 1800;
 
 function usageRefreshMinutes(value: unknown): number {
   const minutes = typeof value === "number" ? value : 15;
   return USAGE_REFRESH_CHOICES.some(([choice]) => choice === minutes) ? minutes : 15;
 }
 
+type Feedback = { tone: "neutral" | "critical"; text: string } | null;
+
 export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null }) {
   const [tab, setTab] = useState<Tab>("general");
   const [values, setValues] = useState<Record<string, unknown>>({});
-  const [notice, setNotice] = useState("");
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+  const [savedVisible, setSavedVisible] = useState(false);
+  const savedTimer = useRef<number | undefined>(undefined);
   const [power, setPower] = useState<PowerStatus | null>(null);
   const [launchAtLogin, setLaunchAtLogin] = useState<LaunchAtLoginStatus | null>(null);
   const [shellExtension, setShellExtension] = useState<ShellExtensionStatus | null>(null);
 
   useEffect(() => {
-    const refresh = () => void ipc.settingsAll().then(setValues).catch(() => setNotice("Settings connect when Veronica runs as the desktop app."));
+    const refresh = () =>
+      void ipc
+        .settingsAll()
+        .then(setValues)
+        .catch(() => setFeedback({ tone: "neutral", text: "Settings connect when Veronica runs as the desktop app." }));
     refresh();
     void ipc.powerStatus().then(setPower).catch(() => {});
     void ipc.launchAtLoginStatus().then(setLaunchAtLogin).catch(() => {});
@@ -61,33 +97,49 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     };
   }, []);
 
+  useEffect(() => () => window.clearTimeout(savedTimer.current), []);
+
+  const confirm = (text: string) => {
+    setFeedback(null);
+    setSaved(text);
+    setSavedVisible(true);
+    window.clearTimeout(savedTimer.current);
+    savedTimer.current = window.setTimeout(() => setSavedVisible(false), SAVED_VISIBLE_MS);
+  };
+
+  const fail = (reason: unknown) => {
+    setSavedVisible(false);
+    setFeedback({ tone: "critical", text: String(reason) });
+  };
+
   const set = async (key: string, value: unknown) => {
     setValues((current) => ({ ...current, [key]: value }));
     if (key === "appearance") applyAppearance(value);
     try {
       await ipc.settingsSet(key, value);
-      setNotice("Saved");
+      confirm("Saved");
     } catch (reason) {
       if (!isDesktopApp()) {
-        setNotice("Preview only — open the installed desktop app to save.");
+        setFeedback({ tone: "neutral", text: "Preview only. Open the installed desktop app to save." });
         return;
       }
-      setNotice(String(reason));
-      // The switch moved before the save was attempted; put it back to what is actually stored.
+      fail(reason);
       try {
         const stored = await ipc.settingsAll();
         setValues(stored);
         if (key === "appearance") applyAppearance(stored.appearance);
-      } catch { /* the notice already explains the failure */ }
+      } catch {
+        return;
+      }
     }
   };
 
   const setStartup = async (enabled: boolean) => {
     try {
       setLaunchAtLogin(await ipc.launchAtLoginSet(enabled));
-      setNotice(enabled ? "Veronica will start after login" : "Launch at login disabled");
+      confirm(enabled ? "Starts after login" : "Launch at login off");
     } catch (reason) {
-      setNotice(String(reason));
+      fail(reason);
     }
   };
 
@@ -95,159 +147,394 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     try {
       const status = await ipc.shellExtensionEnable();
       setShellExtension(status);
-      setNotice(status.state === "active" ? "GNOME extension enabled" : status.detail);
+      if (status.state === "active") confirm("Extension enabled");
+      else setFeedback({ tone: "neutral", text: status.detail });
     } catch (reason) {
-      setNotice(String(reason));
+      fail(reason);
     }
   };
 
-
-  // A feature as the shortcuts tab needs it: the catalogue's entry, switched
-  // by the stored value this page keeps live rather than by diagnostics taken
-  // when the page opened.
   const feature = (id: string): ExtensionReport | undefined => {
     const entry = diagnostics?.extensions.find((candidate) => candidate.id === id);
     if (!entry) return undefined;
     const stored = values[entry.defaultsKey];
     return typeof stored === "boolean" ? { ...entry, enabled: stored } : entry;
   };
-  return <>
-    <div className="page-head"><div><h1>Settings</h1><div className="page-sub">Make Veronica work the way you do</div></div>{notice && <span className="save-note">{notice}</span>}</div>
-    <div className="settings-tabs" role="tablist">{TABS.map((item) => <button key={item.id} role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)}>{item.label}</button>)}</div>
-    {tab === "general" && <div className="settings-stack">
-      <SettingsGroup title="Appearance" subtitle="One shared theme for the Veronica app and the GNOME notch.">
-        <ThemePicker value={appearanceOf(values.appearance)} onChange={(appearance) => void set("appearance", appearance)} />
-      </SettingsGroup>
-      <SettingsGroup title="Rate limits" subtitle="Choose which provider the app and notch show by default.">
-        <div className="setting-row"><div><strong>Visible provider</strong><small>Switch it here, on the Usage page, or directly inside the notch.</small></div><ProviderSelector value={limitProviderOf(values.limitsProvider)} onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))} /></div>
-        <div className="setting-row"><div><strong>Collect usage</strong><small>How often the running app reads your agents' history, so Home, Agent Usage and the notch stay current.</small></div><select aria-label="Collect usage" value={String(usageRefreshMinutes(values.usageRefreshMinutes))} onChange={(event) => void set("usageRefreshMinutes", Number(event.target.value))}>{USAGE_REFRESH_CHOICES.map(([minutes, label]) => <option key={minutes} value={minutes}>{label}</option>)}</select></div>
-      </SettingsGroup>
-      <SettingsGroup title="Startup" subtitle="Keep alerts, global shortcuts and tray actions available after a reboot.">
-        <Toggle label="Launch at login" detail={launchAtLogin?.enabled ? "Starts quietly in the background; open it from the tray or a shortcut." : "Veronica will not run until you open it yourself."} checked={Boolean(launchAtLogin?.enabled)} onChange={(enabled) => void setStartup(enabled)} />
-      </SettingsGroup>
-      <SettingsGroup title="Ubuntu top bar" subtitle="Keep GNOME's Wi-Fi, Bluetooth, sound and battery controls in their original Quick Settings menu.">
-        <ShellExtensionRow status={shellExtension} onEnable={() => void enableShellExtension()} />
-        <Toggle label="CPU and memory indicator" detail="Show compact live system usage beside the clock." checked={Boolean(values.menuBarSystemStats)} onChange={(value) => void set("menuBarSystemStats", value)} />
-      </SettingsGroup>
-      <SettingsGroup title="Power" subtitle="Linux-native systemd/logind inhibitors. A timed session — `vr power lid-awake on --for 30m` — counts down here and ends itself.">
-        <Toggle label="Keep Awake" detail={power?.preventSleepActive ? `Active — systemd-logind is holding the idle inhibitor${sessionEnds(power.preventSleepRemainingSecs)}.` : "Prevent automatic sleep while enabled."} checked={Boolean(values.preventSleep)} onChange={(value) => void set("preventSleep", value).then(() => ipc.powerStatus().then(setPower))} />
-        <Toggle label="Lid Awake" detail={power && !power.hasLid ? "No laptop lid was detected on this computer." : power?.lidAwakeActive ? `Active — lid-close and idle sleep are both inhibited${sessionEnds(power.lidAwakeRemainingSecs)}.` : "Keep the session awake when a laptop lid closes."} checked={Boolean(values.lidAwakeEnabled)} onChange={(value) => void set("lidAwakeEnabled", value).then(() => ipc.powerStatus().then(setPower))} />
-      </SettingsGroup>
-    </div>}
-    {tab === "alerts" && <div className="settings-embedded"><AlertsPane /></div>}
-    {tab === "presenter" && <div className="settings-embedded"><PresenterPane /></div>}
-    {tab === "desktop" && <div className="settings-stack">
-      <SettingsGroup title="Focus Dim" subtitle="Darkens everything behind the window you are working in. Drawn by Veronica's GNOME Shell extension, because only the compositor can place a dim behind another app's window.">
-        <Toggle label="Dim behind the focused window" detail={diagnostics?.session.isGnome ? "Takes effect immediately." : "This desktop is not GNOME, so nothing draws the overlay."} checked={Boolean(values.focusDimEnabled)} onChange={(value) => void set("focusDimEnabled", value)} />
-        <Choice label="Intensity" detail="How dark to go. Capped below opaque, so the desktop is never hidden completely." value={Math.round(Number(values.focusDimIntensity ?? 0.45) * 100)} options={[15, 30, 45, 60, 75, 90].map((percent) => ({ value: percent, label: `${percent}%` }))} onChange={(percent) => void set("focusDimIntensity", percent / 100)} />
-        <Choice label="Fade" detail="How long the change takes as focus moves." value={Number(values.focusDimAnimationDuration ?? 0.25)} options={[{ value: 0.05, label: "Instant" }, { value: 0.15, label: "Quick" }, { value: 0.25, label: "Normal" }, { value: 0.5, label: "Slow" }]} onChange={(seconds) => void set("focusDimAnimationDuration", seconds)} />
-        <Modes value={String(values.focusDimOtherDisplaysMode ?? "perScreenFront")} onChange={(mode) => void set("focusDimOtherDisplaysMode", mode)} />
-      </SettingsGroup>
-      <SettingsGroup title="Keystroke Highlight" subtitle="Puts a keycap on screen for every key press, for demos and screen recordings. Read and drawn by Veronica's GNOME Shell extension, because on Wayland no app may observe input meant for another window. It never consumes a press, and records nothing while the shell holds a modal — the lock screen and password prompts.">
-        <Toggle label="Keystroke Highlight" detail={diagnostics?.session.isGnome ? "Adds the feature and its controls." : "This desktop is not GNOME, so nothing reads the presses."} checked={Boolean(values.keystrokeHighlightEnabled)} onChange={(value) => void set("keystrokeHighlightEnabled", value)} />
-        <Toggle label="Show key presses now" detail="Pausing hides the keycaps without disabling the feature." checked={Boolean(values.keystrokeHighlightActive)} onChange={(value) => void set("keystrokeHighlightActive", value)} />
-        <Choice label="Duration" detail="How long one keycap stays on screen." value={Number(values.keystrokeHighlightDuration ?? 1.5)} options={[{ value: 0.5, label: "0.5s" }, { value: 1, label: "1s" }, { value: 1.5, label: "1.5s" }, { value: 2, label: "2s" }, { value: 3, label: "3s" }]} onChange={(seconds) => void set("keystrokeHighlightDuration", seconds)} />
-        <Positions value={String(values.keystrokeHighlightPosition ?? "bottom")} onChange={(position) => void set("keystrokeHighlightPosition", position)} />
-      </SettingsGroup>
-      <SettingsGroup title="Emoji Picker" subtitle="Edith's catalogue and ranking, on Ctrl+Alt+E. The clipboard always works; typing the emoji into the app you were in needs the shell extension.">
-        <Toggle label="Emoji Picker" detail="Adds the page and its shortcut." checked={Boolean(values.emojiEnabled)} onChange={(value) => void set("emojiEnabled", value)} />
-        <Toggle label="Ctrl+Alt+E types into the app I was in" detail={diagnostics?.session.isGnome ? "The picker sends one Ctrl+V through the compositor after copying. Off, it only copies." : "This desktop is not GNOME; the picker copies."} checked={values.emojiInsertInPlace !== false} onChange={(value) => void set("emojiInsertInPlace", value)} />
-      </SettingsGroup>
-      <SettingsGroup title="Color Picker" subtitle="Sampling and the swatch history live on the Color Picker page; these are the switches behind them.">
-        <Toggle label="Color Picker" detail="Adds the page and the top bar's Pick Color action." checked={Boolean(values.colorPickerEnabled)} onChange={(value) => void set("colorPickerEnabled", value)} />
-        <Choice label="History size" detail="How many swatches to keep." value={Number(values.colorPickerHistorySize ?? 100)} options={[10, 25, 50, 100].map((count) => ({ value: count, label: String(count) }))} onChange={(count) => void set("colorPickerHistorySize", count)} />
-      </SettingsGroup>
-    </div>}
-    {tab === "permissions" && <div className="settings-embedded"><DiagnosticsPage diagnostics={diagnostics} /></div>}
-    {tab === "shortcuts" && <section className="settings-group"><div><h2>Global shortcuts</h2><p>Handled by the desktop shortcut service; Veronica never records arbitrary keys.</p></div><div className="settings-box"><ShortcutRow title="Show Veronica" detail="Open, unminimize and focus the app." keys="Ctrl + Alt + V"/><ShortcutRow feature={feature("clipboard")} title="Clipboard" detail="Open the notch clipboard, or the app as fallback." keys="Ctrl + Alt + B"/><ShortcutRow feature={feature("micMute")} title="Microphone mute" detail="Toggle the default PipeWire microphone system-wide." keys="Ctrl + Alt + M"/><ShortcutRow feature={feature("colorPicker")} title="Pick color" detail="Open GNOME's eyedropper and save the swatch." keys="Ctrl + Alt + P"/><ShortcutRow title="Clean keys" detail="Take a compositor modal grab until you click Done." keys="Ctrl + Alt + K"/><ShortcutRow feature={feature("emoji")} title="Emoji" detail="Open the picker; clicking one copies it." keys="Ctrl + Alt + E"/><div className="setting-row"><div><strong>Desktop backend</strong><small>{diagnostics?.session.hasGlobalShortcutsPortal ? "GNOME portal detected; X11-compatible backend is also available." : "Veronica uses its XWayland global-hotkey backend in this GNOME session."}</small></div><span className="pill good">Active</span></div></div></section>}
-    {tab === "terminal" && <Info title="Command line" body="The vr command uses the same Veronica data and settings as this app." code={`vr diagnose\nvr config list\nvr usage summary\nvr machines list\nvr clipboard list`} />}
-    {tab === "backup" && <div className="settings-embedded"><BackupPane /></div>}
-    {tab === "updates" && <UpdatePane current={diagnostics?.version ?? ""} />}
-  </>;
+
+  const current = TABS.find((item) => item.id === tab) ?? TABS[0];
+  const gnome = Boolean(diagnostics?.session.isGnome);
+
+  return (
+    <Page
+      width="form"
+      className="settings-page"
+      header={
+        <PageHeader
+          title="Settings"
+          subtitle={current.subtitle}
+          actions={
+            <span className="settings-saved" role="status" aria-live="polite" data-visible={savedVisible || undefined}>
+              {saved && <Check aria-hidden="true" />}
+              {savedVisible ? saved : ""}
+            </span>
+          }
+          accessory={<Tabs label="Settings sections" items={TABS} value={tab} onChange={setTab} />}
+        />
+      }
+    >
+      {feedback && (
+        <Notice
+          tone={feedback.tone}
+          actions={
+            <Button size="small" variant="plain" onClick={() => setFeedback(null)}>
+              Dismiss
+            </Button>
+          }
+        >
+          {feedback.text}
+        </Notice>
+      )}
+
+      {tab === "general" && (
+        <Stack>
+          <FormGroup title="Appearance" description="One shared theme for the app and the GNOME notch.">
+            <div className="settings-theme">
+              <ThemePicker value={appearanceOf(values.appearance)} onChange={(appearance) => void set("appearance", appearance)} />
+            </div>
+          </FormGroup>
+
+          <FormGroup title="Rate limits" description="Which provider the app and the notch show by default.">
+            <FormRow
+              label="Visible provider"
+              description="Switch it here, on the Usage page, or inside the notch."
+              control={
+                <ProviderSelector
+                  value={limitProviderOf(values.limitsProvider)}
+                  onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))}
+                />
+              }
+            />
+            <FormRow
+              label="Collect usage"
+              description="How often the app reads your agents' history for Home, Agent Usage and the notch."
+              control={
+                <Select
+                  aria-label="Collect usage"
+                  value={String(usageRefreshMinutes(values.usageRefreshMinutes))}
+                  onChange={(event) => void set("usageRefreshMinutes", Number(event.target.value))}
+                >
+                  {USAGE_REFRESH_CHOICES.map(([minutes, label]) => (
+                    <option key={minutes} value={minutes}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              }
+            />
+          </FormGroup>
+
+          <FormGroup title="Startup" description="Keep alerts, global shortcuts and tray actions available after a reboot.">
+            <SwitchRow
+              label="Launch at login"
+              description={
+                launchAtLogin?.enabled
+                  ? "Starts quietly in the background. Open it from the tray or a shortcut."
+                  : "Veronica will not run until you open it yourself."
+              }
+              checked={Boolean(launchAtLogin?.enabled)}
+              onChange={(enabled) => void setStartup(enabled)}
+            />
+          </FormGroup>
+
+          <FormGroup title="Top bar" description="GNOME's Wi-Fi, Bluetooth, sound and battery controls stay in their Quick Settings menu.">
+            <ShellExtensionRow status={shellExtension} onEnable={() => void enableShellExtension()} />
+            <SwitchRow
+              label="CPU and memory indicator"
+              description="Show compact live system usage beside the clock."
+              checked={Boolean(values.menuBarSystemStats)}
+              onChange={(value) => void set("menuBarSystemStats", value)}
+            />
+          </FormGroup>
+
+          <FormGroup
+            title="Power"
+            description={
+              <>
+                Uses systemd-logind inhibitors. A timed session started with <code className="ui-mono">vr power lid-awake on --for 30m</code> counts down here and ends itself.
+              </>
+            }
+          >
+            <SwitchRow
+              label="Keep awake"
+              description={
+                power?.preventSleepActive
+                  ? `Active. systemd-logind is holding the idle inhibitor${sessionEnds(power.preventSleepRemainingSecs)}.`
+                  : "Prevent automatic sleep while this is on."
+              }
+              checked={Boolean(values.preventSleep)}
+              onChange={(value) => void set("preventSleep", value).then(() => ipc.powerStatus().then(setPower))}
+            />
+            <SwitchRow
+              label="Lid awake"
+              description={
+                power && !power.hasLid
+                  ? "No laptop lid was detected on this computer."
+                  : power?.lidAwakeActive
+                    ? `Active. Lid-close and idle sleep are both inhibited${sessionEnds(power.lidAwakeRemainingSecs)}.`
+                    : "Keep the session awake when a laptop lid closes."
+              }
+              checked={Boolean(values.lidAwakeEnabled)}
+              onChange={(value) => void set("lidAwakeEnabled", value).then(() => ipc.powerStatus().then(setPower))}
+            />
+          </FormGroup>
+        </Stack>
+      )}
+
+      {tab === "alerts" && <AlertsPane />}
+      {tab === "presenter" && <PresenterPane />}
+
+      {tab === "desktop" && (
+        <Stack>
+          <FormGroup
+            title="Focus dim"
+            description="Darkens everything behind the window you are working in. Drawn by the GNOME Shell extension, since only the compositor can place a dim behind another app's window."
+          >
+            <SwitchRow
+              label="Dim behind the focused window"
+              description={gnome ? "Takes effect immediately." : "This desktop is not GNOME, so nothing draws the overlay."}
+              checked={Boolean(values.focusDimEnabled)}
+              onChange={(value) => void set("focusDimEnabled", value)}
+            />
+            <ChoiceRow
+              label="Intensity"
+              description="How dark to go. Capped below opaque, so the desktop never disappears."
+              value={Math.round(Number(values.focusDimIntensity ?? 0.45) * 100)}
+              options={[15, 30, 45, 60, 75, 90].map((percent) => ({ value: percent, label: `${percent}%` }))}
+              format={(percent) => `${percent}%`}
+              onChange={(percent) => void set("focusDimIntensity", percent / 100)}
+            />
+            <ChoiceRow
+              label="Fade"
+              description="How long the change takes as focus moves."
+              value={Number(values.focusDimAnimationDuration ?? 0.25)}
+              options={[
+                { value: 0.05, label: "Instant" },
+                { value: 0.15, label: "Quick" },
+                { value: 0.25, label: "Normal" },
+                { value: 0.5, label: "Slow" },
+              ]}
+              format={(seconds) => `${seconds}s`}
+              onChange={(seconds) => void set("focusDimAnimationDuration", seconds)}
+            />
+            <ModeRow
+              label="Other displays"
+              choices={DISPLAY_MODES}
+              value={String(values.focusDimOtherDisplaysMode ?? "perScreenFront")}
+              onChange={(mode) => void set("focusDimOtherDisplaysMode", mode)}
+            />
+          </FormGroup>
+
+          <FormGroup
+            title="Keystroke highlight"
+            description="Shows a keycap for every key press, for demos and recordings. The GNOME Shell extension reads and draws them, never consumes a press, and records nothing while the lock screen or a password prompt is up."
+          >
+            <SwitchRow
+              label="Keystroke highlight"
+              description={gnome ? "Adds the feature and its controls." : "This desktop is not GNOME, so nothing reads the presses."}
+              checked={Boolean(values.keystrokeHighlightEnabled)}
+              onChange={(value) => void set("keystrokeHighlightEnabled", value)}
+            />
+            <SwitchRow
+              label="Show key presses now"
+              description="Pausing hides the keycaps without turning the feature off."
+              checked={Boolean(values.keystrokeHighlightActive)}
+              onChange={(value) => void set("keystrokeHighlightActive", value)}
+            />
+            <ChoiceRow
+              label="Duration"
+              description="How long one keycap stays on screen."
+              value={Number(values.keystrokeHighlightDuration ?? 1.5)}
+              options={[0.5, 1, 1.5, 2, 3].map((seconds) => ({ value: seconds, label: `${seconds}s` }))}
+              format={(seconds) => `${seconds}s`}
+              onChange={(seconds) => void set("keystrokeHighlightDuration", seconds)}
+            />
+            <ModeRow
+              label="Position"
+              choices={KEYSTROKE_POSITIONS}
+              value={String(values.keystrokeHighlightPosition ?? "bottom")}
+              fallback={1}
+              onChange={(position) => void set("keystrokeHighlightPosition", position)}
+            />
+          </FormGroup>
+
+          <FormGroup
+            title="Emoji picker"
+            description="Search and insert emoji with Ctrl+Alt+E. Copying always works; typing into the app you were in needs the shell extension."
+          >
+            <SwitchRow
+              label="Emoji picker"
+              description="Adds the page and its shortcut."
+              checked={Boolean(values.emojiEnabled)}
+              onChange={(value) => void set("emojiEnabled", value)}
+            />
+            <SwitchRow
+              label="Type into the app I was in"
+              description={
+                gnome
+                  ? "After copying, the picker sends one Ctrl+V through the compositor. Off, it only copies."
+                  : "This desktop is not GNOME, so the picker only copies."
+              }
+              checked={values.emojiInsertInPlace !== false}
+              onChange={(value) => void set("emojiInsertInPlace", value)}
+            />
+          </FormGroup>
+
+          <FormGroup title="Color picker" description="Sampling and swatch history live on the Color Picker page.">
+            <SwitchRow
+              label="Color picker"
+              description="Adds the page and the top bar's Pick Color action."
+              checked={Boolean(values.colorPickerEnabled)}
+              onChange={(value) => void set("colorPickerEnabled", value)}
+            />
+            <ChoiceRow
+              label="History size"
+              description="How many swatches to keep."
+              value={Number(values.colorPickerHistorySize ?? 100)}
+              options={[10, 25, 50, 100].map((count) => ({ value: count, label: `${count} swatches` }))}
+              format={(count) => `${count} swatches`}
+              onChange={(count) => void set("colorPickerHistorySize", count)}
+            />
+          </FormGroup>
+        </Stack>
+      )}
+
+      {tab === "permissions" && <DiagnosticsPage diagnostics={diagnostics} />}
+
+      {tab === "shortcuts" && (
+        <FormGroup title="Global shortcuts" description="Handled by the desktop shortcut service. Veronica never records arbitrary keys.">
+          <ShortcutRow title="Show Veronica" detail="Open, unminimise and focus the app." keys={["Ctrl", "Alt", "V"]} />
+          <ShortcutRow feature={feature("clipboard")} title="Clipboard" detail="Open the notch clipboard, or the app as a fallback." keys={["Ctrl", "Alt", "B"]} />
+          <ShortcutRow feature={feature("micMute")} title="Microphone mute" detail="Toggle the default PipeWire microphone system-wide." keys={["Ctrl", "Alt", "M"]} />
+          <ShortcutRow feature={feature("colorPicker")} title="Pick color" detail="Open GNOME's eyedropper and save the swatch." keys={["Ctrl", "Alt", "P"]} />
+          <ShortcutRow title="Clean keys" detail="Take a compositor grab until you click Done." keys={["Ctrl", "Alt", "K"]} />
+          <ShortcutRow feature={feature("emoji")} title="Emoji" detail="Open the picker. Clicking an emoji copies it." keys={["Ctrl", "Alt", "E"]} />
+          <FormRow
+            label="Desktop backend"
+            description={
+              diagnostics?.session.hasGlobalShortcutsPortal
+                ? "GNOME portal detected. The X11-compatible backend is also available."
+                : "Veronica uses its XWayland global-hotkey backend in this GNOME session."
+            }
+            control={<Badge tone="good">Active</Badge>}
+          />
+        </FormGroup>
+      )}
+
+      {tab === "terminal" && (
+        <FormGroup title="Command line" description="The vr command reads and writes the same data and settings as this app.">
+          <pre className="settings-code ui-mono ui-selectable">{`vr diagnose\nvr config list\nvr usage summary\nvr machines list\nvr clipboard list`}</pre>
+        </FormGroup>
+      )}
+
+      {tab === "backup" && <BackupPane />}
+      {tab === "updates" && <UpdatePane current={diagnostics?.version ?? ""} />}
+    </Page>
+  );
 }
 
-/** The tail of a detail line for a timed session, or nothing when open-ended. */
 function sessionEnds(remainingSecs: number | null | undefined) {
   if (remainingSecs === null || remainingSecs === undefined) return "";
   return `, for another ${countdown(remainingSecs)}`;
 }
 
-function SettingsGroup({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) { return <section className="settings-group"><div><h2>{title}</h2><p>{subtitle}</p></div><div className="settings-box">{children}</div></section>; }
-function Toggle({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: (value: boolean) => void }) { return <div className="setting-row"><div><strong>{label}</strong><small>{detail}</small></div><button className="switch" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}><span className="knob" /></button></div>; }
+const SHELL_STATES: Record<ShellExtensionStatus["state"], { label: string; tone: Tone }> = {
+  active: { label: "Active", tone: "good" },
+  disabled: { label: "Disabled", tone: "warning" },
+  restartRequired: { label: "Log out once", tone: "warning" },
+  notInstalled: { label: "Not installed", tone: "warning" },
+  unsupported: { label: "Needs GNOME", tone: "warning" },
+  error: { label: "Error", tone: "critical" },
+};
+
 function ShellExtensionRow({ status, onEnable }: { status: ShellExtensionStatus | null; onEnable: () => void }) {
-  const label = status?.state === "active" ? "Active" : status?.state === "disabled" ? "Disabled" : status?.state === "restartRequired" ? "Log out once" : status?.state === "notInstalled" ? "Not installed" : status?.state === "unsupported" ? "Needs GNOME" : status?.state === "error" ? "Error" : "Checking…";
-  const tone = status?.state === "active" ? "good" : status?.state === "error" ? "critical" : "warn";
-  return <div className="setting-row"><div><strong>Compact Edith notch</strong><small>{status?.detail ?? "Checking the GNOME extension…"}</small></div>{status?.canEnable ? <button className="button" onClick={onEnable}>Enable</button> : <span className={`pill ${tone}`}>{label}</span>}</div>;
-}
-function Choice({ label, detail, value, options, onChange }: { label: string; detail: string; value: number; options: { value: number; label: string }[]; onChange: (value: number) => void }) {
-  return <div className="setting-row"><div><strong>{label}</strong><small>{detail}</small></div><div className="segmented">{options.map((option) => <button key={option.value} aria-pressed={value === option.value} onClick={() => onChange(option.value)}>{option.label}</button>)}</div></div>;
+  const state = status ? SHELL_STATES[status.state] : undefined;
+  return (
+    <FormRow
+      label="Top bar notch"
+      description={status?.detail ?? "Checking the GNOME extension…"}
+      control={
+        status?.canEnable ? (
+          <Button size="small" onClick={onEnable}>
+            Enable
+          </Button>
+        ) : (
+          <Badge tone={state?.tone ?? "neutral"}>{state?.label ?? "Checking…"}</Badge>
+        )
+      }
+    />
+  );
 }
 
-/** Matches `DisplayMode` in the core; the keys are what the extension reads. */
-const DISPLAY_MODES = [
+type ModeChoice = { id: string; label: string; detail: string };
+
+const DISPLAY_MODES: ModeChoice[] = [
   { id: "perScreenFront", label: "Per display", detail: "Each display keeps its own front window bright." },
   { id: "dimUnfocused", label: "Focused only", detail: "Every display but the focused window dims." },
 ];
 
-function Modes({ value, onChange }: { value: string; onChange: (mode: string) => void }) {
-  const active = DISPLAY_MODES.find((mode) => mode.id === value) ?? DISPLAY_MODES[0];
-  return <div className="setting-row"><div><strong>Other displays</strong><small>{active.detail}</small></div><div className="segmented">{DISPLAY_MODES.map((mode) => <button key={mode.id} aria-pressed={value === mode.id} onClick={() => onChange(mode.id)}>{mode.label}</button>)}</div></div>;
-}
-
-/** Matches `Position` in the core; the keys are what the extension reads. */
-const KEYSTROKE_POSITIONS = [
+const KEYSTROKE_POSITIONS: ModeChoice[] = [
   { id: "top", label: "Top", detail: "The row sits below the top bar." },
   { id: "bottom", label: "Bottom", detail: "The row sits above the bottom of the work area." },
 ];
 
-function Positions({ value, onChange }: { value: string; onChange: (position: string) => void }) {
-  const active = KEYSTROKE_POSITIONS.find((position) => position.id === value) ?? KEYSTROKE_POSITIONS[1];
-  return <div className="setting-row"><div><strong>Position</strong><small>{active.detail}</small></div><div className="segmented">{KEYSTROKE_POSITIONS.map((position) => <button key={position.id} aria-pressed={value === position.id} onClick={() => onChange(position.id)}>{position.label}</button>)}</div></div>;
+function ModeRow({
+  label,
+  choices,
+  value,
+  fallback = 0,
+  onChange,
+}: {
+  label: string;
+  choices: ModeChoice[];
+  value: string;
+  fallback?: number;
+  onChange: (value: string) => void;
+}) {
+  const active = choices.find((choice) => choice.id === value) ?? choices[fallback];
+  return (
+    <FormRow
+      label={label}
+      description={active.detail}
+      control={
+        <Segmented
+          label={label}
+          size="small"
+          value={active.id}
+          options={choices.map((choice) => ({ value: choice.id, label: choice.label }))}
+          onChange={onChange}
+        />
+      }
+    />
+  );
 }
 
-function Info({ title, body, code }: { title: string; body: string; code?: string }) { return <section className="settings-info"><div className="info-glyph">V</div><h2>{title}</h2><p>{body}</p>{code && <pre>{code}</pre>}</section>; }
-/**
- * A shortcut tied to a feature is registered only while that feature is on
- * (main.rs, `shortcut_enabled`), and Mic Mute, Color Picker and Emoji start
- * off: listing their keys without saying so promised shortcuts that did nothing.
- */
-function ShortcutRow({ title, detail, keys, feature }: { title: string; detail: string; keys: string; feature?: ExtensionReport }) {
+function ShortcutRow({ title, detail, keys, feature }: { title: string; detail: string; keys: string[]; feature?: ExtensionReport }) {
   const off = feature !== undefined && !feature.enabled;
-  return <div className="setting-row"><div><strong>{title}</strong><small>{off ? `Off — turn on ${feature.title} in Extensions to use this shortcut.` : detail}</small></div>{off ? <span className="pill">Off</span> : <kbd>{keys}</kbd>}</div>;
+  return (
+    <FormRow
+      label={title}
+      description={off ? `Turn on ${feature.title} in Extensions to use this shortcut.` : detail}
+      control={off ? <Badge>Off</Badge> : <KeyCombo keys={keys} />}
+    />
+  );
 }
 
-function UpdatePane({ current }: { current: string }) {
-  const [update, setUpdate] = useState<UpdateInfo | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [installing, setInstalling] = useState(false);
-  const [installed, setInstalled] = useState(false);
-  const [error, setError] = useState("");
-  const check = async () => {
-    setBusy(true); setError("");
-    try { setUpdate(await ipc.updateCheck()); } catch (reason) { setError(String(reason)); }
-    finally { setBusy(false); }
-  };
-  useEffect(() => { void check(); }, []);
-  const install = async () => {
-    if (!update) return;
-    setInstalling(true); setError("");
-    try { await ipc.updateInstall(update.latestVersion); setInstalled(true); } catch (reason) { setError(String(reason)); }
-    finally { setInstalling(false); }
-  };
-  const status = installed ? `Version ${update?.latestVersion} is installed. Restart Veronica to use it.` : update ? update.updateAvailable ? `Version ${update.latestVersion} is available.` : "You are up to date." : busy ? "Checking GitHub releases…" : "Check whenever you like; nothing runs in the background.";
-  const action = installed
-    ? <button className="button primary" onClick={() => void ipc.appRestart().catch((reason) => setError(String(reason)))}>Restart Veronica</button>
-    : update?.updateAvailable && update.canInstall
-      ? <button className="button primary" disabled={installing} onClick={() => void install()}>{installing ? "Installing…" : `Update to ${update.latestVersion}`}</button>
-      : update?.updateAvailable
-        ? <button className="button primary" onClick={() => void ipc.openExternal(update.packageUrl ?? update.releaseUrl)}>Download update</button>
-        : <button className="button" disabled={busy} onClick={() => void check()}>{busy ? "Checking…" : "Check for updates"}</button>;
-  const how = update?.installKind === "flatpak" ? "Updates through Flatpak." : update?.installKind === "appimage" ? "An AppImage is replaced by downloading the new file." : "Downloads the release, verifies its checksum, then Ubuntu asks for your password before installing.";
-  return <section className="settings-group"><div><h2>Software updates</h2><p>Checks Veronica's official GitHub releases. Nothing installs without your click.</p></div><div className="settings-box">
-    <div className="setting-row"><div><strong>Installed version</strong><small>{status}</small></div><span className={`pill ${update?.updateAvailable && !installed ? "warn" : "good"}`}>v{current}</span></div>
-    {error && <div className="banner error">{error}</div>}
-    <div className="setting-row"><div><strong>{installed ? "Finish updating" : update?.updateAvailable ? `Veronica ${update.latestVersion}` : "Latest release"}</strong><small>{update?.updateAvailable && !installed ? `${update.publishedAt ? `Published ${new Date(update.publishedAt).toLocaleDateString()}. ` : ""}${how}` : installed ? "Your settings and history stay in your home directory." : update ? `Latest is ${update.latestVersion}.` : "Uses a 12-second timeout and reports network errors."}</small></div>{action}</div>
-    {update?.updateAvailable && !installed && update.notes && <div className="setting-row"><div><strong>What's new</strong><small style={{ whiteSpace: "pre-wrap" }}>{update.notes}</small></div></div>}
-    {update?.updateAvailable && update.installKind !== "flatpak" && !installed && <div className="setting-row"><div><strong>Or update from a terminal</strong><small>Installs the latest release in one step.</small></div><code>curl -fsSL https://namannn04.github.io/Veronica/install | bash</code></div>}
-  </div></section>;
+function KeyCombo({ keys }: { keys: string[] }): ReactNode {
+  return (
+    <span className="settings-keys" aria-label={keys.join(" + ")}>
+      {keys.map((key) => (
+        <Kbd key={key}>{key}</Kbd>
+      ))}
+    </span>
+  );
 }
