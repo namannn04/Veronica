@@ -285,8 +285,20 @@ export function SystemPage() {
 
       {view === "apps" && (
         <Section
-          title={`${processes.length} running app${processes.length === 1 ? "" : "s"}`}
-          description={`${bytes(totalAppMemory)} resident · current user · updates live`}
+          title={
+            processesRead ? (
+              `${processes.length} running app${processes.length === 1 ? "" : "s"}`
+            ) : (
+              <SkeletonText width={120} />
+            )
+          }
+          description={
+            processesRead ? (
+              `${bytes(totalAppMemory)} resident · current user · updates live`
+            ) : (
+              <SkeletonText width={220} />
+            )
+          }
         >
           <Card padding="none" className="sys-process-card">
             {!processesRead ? (
