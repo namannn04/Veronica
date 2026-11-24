@@ -19,6 +19,8 @@ const XDG: [&str; 5] = [
     "XDG_RUNTIME_DIR",
 ];
 
+const LAUNCH: [&str; 4] = ["APPIMAGE", "SNAP_NAME", "CODEX_HOME", "FLATPAK_ID"];
+
 struct Home {
     root: TempDir,
 }
@@ -43,7 +45,7 @@ impl Home {
 
     fn command(&self, args: &[&str]) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_vr"));
-        for key in XDG {
+        for key in XDG.iter().chain(&LAUNCH) {
             command.env_remove(key);
         }
         command
@@ -62,6 +64,18 @@ impl Home {
             .unwrap()
             .code()
             .unwrap()
+    }
+
+    fn json(&self, args: &[&str]) -> (i32, Value) {
+        let output = self.command(args).stdin(Stdio::null()).output().unwrap();
+        let text = String::from_utf8(output.stdout).unwrap();
+        let document = serde_json::from_str(&text).unwrap_or_else(|error| {
+            panic!(
+                "{error}: {text:?} {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+        });
+        (output.status.code().unwrap(), document)
     }
 
     fn serve(&self, args: &[&str]) -> Session {
@@ -533,4 +547,77 @@ fn the_old_database_server_runs_the_new_one() {
     let listed = names(&session.tools());
     assert!(listed.contains(&"database_connections".to_string()));
     assert!(listed.contains(&"veronica_fixture_echo".to_string()));
+}
+
+#[test]
+fn registering_with_a_client_previews_until_confirmed() {
+    let home = Home::with_fixture();
+    std::fs::create_dir_all(home.root.path().join(".cursor")).unwrap();
+    let config = home.root.path().join(".cursor/mcp.json");
+
+    let (code, preview) = home.json(&["--json", "mcp", "install", "--client", "cursor"]);
+    assert_eq!(code, 5, "{preview}");
+    assert_eq!(preview["confirmationRequired"], true);
+    assert_eq!(preview["preview"]["dryRun"], true);
+    assert_eq!(preview["preview"]["clients"][0]["action"], "created");
+    assert!(!config.exists());
+
+    let (code, dry) = home.json(&[
+        "--json",
+        "mcp",
+        "install",
+        "--client",
+        "cursor",
+        "--dry-run",
+    ]);
+    assert_eq!(code, 0, "{dry}");
+    assert_eq!(dry["dryRun"], true);
+    assert!(!config.exists());
+
+    let (code, done) = home.json(&["--json", "--yes", "mcp", "install", "--client", "cursor"]);
+    assert_eq!(code, 0, "{done}");
+    assert_eq!(done["clients"][0]["action"], "created");
+    let written: Value = serde_json::from_str(&std::fs::read_to_string(&config).unwrap()).unwrap();
+    let entry = &written["mcpServers"]["veronica"];
+    assert_eq!(entry["args"], json!(["mcp"]));
+    assert!(entry["command"].as_str().unwrap().ends_with("/vr"));
+
+    let (code, status) = home.json(&["--json", "mcp", "status"]);
+    assert_eq!(code, 0, "{status}");
+    let cursor = status["clients"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|client| client["client"] == "cursor")
+        .unwrap();
+    assert_eq!(cursor["present"], true);
+    assert_eq!(cursor["matches"], true);
+
+    let (code, again) = home.json(&["--json", "--yes", "mcp", "install", "--client", "all"]);
+    assert_eq!(code, 0, "{again}");
+    let actions: Vec<&str> = again["clients"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|client| client["action"].as_str().unwrap())
+        .collect();
+    assert_eq!(actions, ["skipped", "skipped", "unchanged", "skipped"]);
+
+    let (code, preview) = home.json(&["--json", "mcp", "uninstall", "--client", "cursor"]);
+    assert_eq!(code, 5, "{preview}");
+    assert_eq!(preview["preview"]["clients"][0]["action"], "removed");
+    let (code, removed) = home.json(&["--json", "-y", "mcp", "uninstall", "--client", "cursor"]);
+    assert_eq!(code, 0, "{removed}");
+    let (_, status) = home.json(&["--json", "mcp", "status", "--client", "cursor"]);
+    assert_eq!(status["clients"][0]["present"], false);
+}
+
+#[test]
+fn a_missing_client_is_reported_not_created() {
+    let home = Home::with_fixture();
+    let (code, report) = home.json(&["--json", "--yes", "mcp", "install", "--client", "codex"]);
+    assert_eq!(code, 3, "{report}");
+    assert_eq!(report["error"]["code"], 3);
+    assert_eq!(report["clients"][0]["action"], "notFound");
+    assert!(!home.root.path().join(".codex").exists());
 }
