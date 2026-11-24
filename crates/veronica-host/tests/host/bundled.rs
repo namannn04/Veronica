@@ -285,9 +285,11 @@ fn the_packaging_installs_the_bundle_where_the_host_looks() {
         &fs::read_to_string(root.join("apps/desktop/src-tauri/tauri.conf.json")).unwrap(),
     )
     .unwrap();
-    assert!(config["bundle"]["linux"]["deb"]["files"]
-        .get(veronica_host::bundled::DEB_DIR)
-        .is_some());
+    for bundle in ["deb", "appimage"] {
+        assert!(config["bundle"]["linux"][bundle]["files"]
+            .get(veronica_host::bundled::DEB_DIR)
+            .is_some());
+    }
     let flatpak =
         fs::read_to_string(root.join("packaging/flatpak/io.github.namannn04.Veronica.yml"))
             .unwrap();

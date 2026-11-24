@@ -72,11 +72,13 @@ fn every_desktop_package_ships_the_bundled_extensions() {
     let config: serde_json::Value =
         serde_json::from_str(&read("apps/desktop/src-tauri/tauri.conf.json"))
             .expect("valid Tauri configuration");
-    assert_eq!(
-        config["bundle"]["linux"]["deb"]["files"]["/usr/share/veronica/extensions"],
-        "../../../packaging/bundled-extensions",
-        "the Debian package and the AppImage built from it carry the bundled extensions"
-    );
+    for bundle in ["deb", "appimage"] {
+        assert_eq!(
+            config["bundle"]["linux"][bundle]["files"]["/usr/share/veronica/extensions"],
+            "../../../packaging/bundled-extensions",
+            "the {bundle} bundle carries the bundled extensions"
+        );
+    }
     let command = config["build"]["beforeBuildCommand"]
         .as_str()
         .expect("beforeBuildCommand");

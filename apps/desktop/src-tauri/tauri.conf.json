@@ -107,7 +107,10 @@
         }
       },
       "appimage": {
-        "bundleMediaFramework": false
+        "bundleMediaFramework": false,
+        "files": {
+          "/usr/share/veronica/extensions": "../../../packaging/bundled-extensions"
+        }
       }
     },
     "publisher": "Naman Dadhich and Pulkit",
