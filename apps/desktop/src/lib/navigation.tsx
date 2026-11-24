@@ -45,7 +45,7 @@ export type BuiltinRoute =
   | "emoji"
   | "audit"
   | "companion"
-  | "extensions"
+  | "library"
   | "settings"
   | "about";
 
@@ -231,11 +231,12 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Veronica",
     items: [
       {
-        id: "extensions",
-        label: "Extensions",
+        id: "library",
+        label: "Library",
         icon: <ExtensionsIcon />,
-        hint: "Turn features on or off",
-        keywords: "features catalogue enable disable install tools notch",
+        hint: "Install, update and turn extensions on or off",
+        keywords:
+          "extensions features catalog catalogue enable disable install update remove tools notch",
       },
       {
         id: "settings",

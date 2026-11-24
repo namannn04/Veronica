@@ -29,9 +29,9 @@ import { ColorPickerPage } from "./pages/ColorPickerPage";
 import { CompanionPage } from "./pages/CompanionPage";
 import { DatabasePage } from "./pages/DatabasePage";
 import { EmojiPage } from "./pages/EmojiPage";
-import { ExtensionsPage } from "./pages/ExtensionsPage";
 import { HerdrPage } from "./pages/HerdrPage";
 import { HomePage } from "./pages/HomePage";
+import { LibraryPage } from "./pages/LibraryPage";
 import { MachinesPage } from "./pages/MachinesPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
 import { MediaPage } from "./pages/MediaPage";
@@ -240,8 +240,8 @@ export function App() {
           {route === "emoji" && <EmojiPage />}
           {route === "audit" && <AuditPage />}
           {route === "companion" && <CompanionPage />}
-          {route === "extensions" && (
-            <ExtensionsPage diagnostics={diagnostics} onChanged={loadDiagnostics} />
+          {route === "library" && (
+            <LibraryPage diagnostics={diagnostics} onChanged={loadDiagnostics} />
           )}
           {route === "settings" && <SettingsPage diagnostics={diagnostics} />}
           {route === "about" && <AboutPage diagnostics={diagnostics} />}

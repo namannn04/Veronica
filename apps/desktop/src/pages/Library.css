@@ -1,8 +1,8 @@
-.exts-toolbar .ui-search {
+.library-toolbar .ui-search {
   width: 260px;
 }
 
-.exts-icon {
+.library-icon {
   display: grid;
   place-items: center;
   width: 30px;
@@ -13,80 +13,76 @@
   transition: color var(--motion-feedback);
 }
 
-.exts-icon[data-enabled] {
+.library-icon[data-enabled] {
   color: var(--text-1);
 }
 
-.exts-title {
+.library-title {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
   max-width: 100%;
 }
 
-.exts-name {
+.library-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.exts-subtitle {
+.library-row {
+  align-items: flex-start;
+}
+
+.library-row .ui-list-row-main {
+  align-items: flex-start;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+
+.library-row .ui-list-row-subtitle {
+  white-space: normal;
+}
+
+.library-row .ui-list-row-trailing {
+  padding-top: var(--space-3);
+}
+
+.library-detail {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
 }
 
-.exts-summary {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.exts-row-detailed .ui-list-row-subtitle,
-.exts-row-detailed .exts-summary {
-  white-space: normal;
-}
-
-.exts-row-detailed {
-  align-items: flex-start;
-}
-
-.exts-row-detailed .ui-list-row-main {
-  align-items: flex-start;
-  padding-top: var(--space-3);
-  padding-bottom: var(--space-3);
-}
-
-.exts-row-detailed .ui-list-row-trailing {
-  padding-top: var(--space-3);
-}
-
-.exts-note {
+.library-note {
   color: var(--text-3);
   font-size: var(--text-callout);
   line-height: 1.45;
 }
 
-.exts-note-good {
+.library-note-good {
   color: var(--tone-good-text);
 }
 
-.exts-note-warn {
+.library-note-warn {
   color: var(--tone-warning-text);
 }
 
-.exts-note-critical {
+.library-note-critical {
   color: var(--tone-critical-text);
 }
 
-.exts-tools {
+.library-job {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  max-width: 320px;
 }
 
-.exts-tool {
+.library-tool {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -96,20 +92,16 @@
   background: var(--bg-inset);
 }
 
-.exts-tool .exts-note {
-  min-width: 0;
-}
-
-.exts-tool .ui-button {
+.library-tool .ui-button {
   flex: none;
 }
 
 @container main (max-width: 720px) {
-  .exts-toolbar .ui-search {
+  .library-toolbar .ui-search {
     width: 100%;
   }
 
-  .exts-tool {
+  .library-tool {
     flex-direction: column;
     align-items: flex-start;
   }
