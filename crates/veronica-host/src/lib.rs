@@ -6,6 +6,7 @@ pub mod layout;
 pub mod lock;
 pub mod registry;
 pub mod trust;
+pub mod update;
 
 pub use install::{HostIdentity, Installer};
 pub use layout::Layout;
