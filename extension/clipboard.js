@@ -29,16 +29,18 @@ export class ClipboardWatcher {
         this._selection = selection;
         this._ownerChangedId = selection.connect('owner-changed',
             (_selection, type) => {
-                if (type !== Meta.SelectionType.SELECTION_CLIPBOARD)
+                if (type !== Meta.SelectionType.SELECTION_CLIPBOARD) {
                     return;
+                }
                 this._onClipboardChanged();
             });
         return true;
     }
 
     disable() {
-        if (this._selection && this._ownerChangedId)
+        if (this._selection && this._ownerChangedId) {
             this._selection.disconnect(this._ownerChangedId);
+        }
         this._selection = null;
         this._ownerChangedId = 0;
         this._lastText = null;
@@ -47,23 +49,29 @@ export class ClipboardWatcher {
     }
 
     _onClipboardChanged() {
-        if (GLib.get_monotonic_time() / 1000 - this._lastWriteAt < SELF_WRITE_GRACE_MS)
+        if (GLib.get_monotonic_time() / 1000 - this._lastWriteAt < SELF_WRITE_GRACE_MS) {
             return;
-        if (this._pending)
+        }
+        if (this._pending) {
             return;
-        if (isSecretCopy(this._mimeTypes()))
+        }
+        if (isSecretCopy(this._mimeTypes())) {
             return;
+        }
         this._pending = true;
         const generation = this._generation;
 
         St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_clipboard, text) => {
-            if (generation !== this._generation)
+            if (generation !== this._generation) {
                 return;
+            }
             this._pending = false;
-            if (!text || !text.trim())
+            if (!text?.trim()) {
                 return;
-            if (text === this._lastText)
+            }
+            if (text === this._lastText) {
                 return;
+            }
             this._lastText = text;
             console.debug(`veronica: recording a copy of ${text.length} characters`);
             this._record(text);
@@ -81,8 +89,9 @@ export class ClipboardWatcher {
 
     _record(text) {
         const cli = findCli();
-        if (!cli)
+        if (!cli) {
             return;
+        }
         try {
             const proc = Gio.Subprocess.new(
                 [cli, 'clipboard', 'record', '--exact'],
@@ -104,8 +113,9 @@ export class ClipboardWatcher {
         this._lastWriteAt = GLib.get_monotonic_time() / 1000;
         this._lastText = text;
         St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, text);
-        if (notify)
+        if (notify) {
             Main.notify('Veronica', 'Copied to the clipboard');
+        }
     }
 }
 

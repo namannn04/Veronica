@@ -15,29 +15,34 @@ function asNumber(value) {
 
 export function clampIntensity(value) {
     const number = asNumber(value);
-    if (number === null)
+    if (number === null) {
         return DEFAULT_INTENSITY;
+    }
     return Math.min(Math.max(number, MIN_INTENSITY), MAX_INTENSITY);
 }
 
 export function clampAnimationSeconds(value) {
     const number = asNumber(value);
-    if (number === null)
+    if (number === null) {
         return DEFAULT_ANIMATION_SECONDS;
+    }
     return Math.min(Math.max(number, MIN_ANIMATION_SECONDS), MAX_ANIMATION_SECONDS);
 }
 
 export function parseDisplayMode(raw) {
-    if (typeof raw !== 'string')
+    if (typeof raw !== 'string') {
         return DEFAULT_DISPLAY_MODE;
+    }
     const match = DISPLAY_MODES.find(mode => mode.toLowerCase() === raw.toLowerCase());
     return match ?? DEFAULT_DISPLAY_MODE;
 }
 
 export function overlayPlacement(mode, hasBrightWindow, hasFocus) {
-    if (hasBrightWindow)
+    if (hasBrightWindow) {
         return 'below';
-    if (mode === 'dimUnfocused' && hasFocus)
+    }
+    if (mode === 'dimUnfocused' && hasFocus) {
         return 'top';
+    }
     return 'off';
 }

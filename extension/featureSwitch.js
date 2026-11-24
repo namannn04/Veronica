@@ -14,18 +14,22 @@ export class FeatureSwitch {
 
     update(values) {
         const wanted = booleanSetting(values, this._key, this._fallback);
-        if (wanted === this._wanted)
+        if (wanted === this._wanted) {
             return;
+        }
         this._wanted = wanted;
-        if (wanted)
+        if (wanted) {
             this._start();
-        else
+        }
+        else {
             this._stop();
+        }
     }
 
     disable() {
-        if (this._wanted)
+        if (this._wanted) {
             this._stop();
+        }
         this._wanted = false;
     }
 }

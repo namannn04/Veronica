@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import argparse
 import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tree_sitter_language_pack import get_parser
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 LANGUAGES = {
     ".rs": "rust",
@@ -39,7 +45,7 @@ def is_allowed(text: bytes, start: int) -> bool:
     return body.startswith("/*!") or bool(DIRECTIVE.search(body))
 
 
-def collect(node, source: bytes, found: list) -> None:
+def collect(node: Node, source: bytes, found: list) -> None:
     if node.type in COMMENT_TYPES:
         if not is_allowed(source[node.start_byte : node.end_byte], node.start_byte):
             found.append(removal_range(node))
@@ -48,14 +54,12 @@ def collect(node, source: bytes, found: list) -> None:
         collect(child, source, found)
 
 
-def removal_range(node):
+def removal_range(node: Node) -> tuple[int, int]:
     parent = node.parent
     if (
         parent is not None
         and parent.type in ("jsx_expression", "jsx_expression_container")
-        and all(
-            c.type in COMMENT_TYPES or c.type in ("{", "}") for c in parent.children
-        )
+        and all(c.type in COMMENT_TYPES or c.type in ("{", "}") for c in parent.children)
     ):
         return parent.start_byte, parent.end_byte
     end = node.end_byte
@@ -77,14 +81,14 @@ def strip(source: bytes, ranges: list) -> bytes:
         before = out[line_start:start]
         after = out[end:line_end]
         if before.strip() == b"" and after.strip() == b"":
-            prev_blank = line_start >= 2 and out[line_start - 2 : line_start] == b"\n\n"
+            prev_blank = out[max(line_start - 2, 0) : line_start] == b"\n\n"
             next_start = line_end + 1
             next_end = out.find(b"\n", next_start)
             next_line = out[next_start : next_end if next_end != -1 else len(out)]
             drop_end = line_end + 1 if line_end < len(out) else line_end
-            if prev_blank and next_line.strip() == b"" and next_end != -1:
-                drop_end = next_end + 1
-            elif line_start == 0 and next_line.strip() == b"" and next_end != -1:
+            if (prev_blank and next_line.strip() == b"" and next_end != -1) or (
+                line_start == 0 and next_line.strip() == b"" and next_end != -1
+            ):
                 drop_end = next_end + 1
             del out[line_start:drop_end]
         else:
@@ -114,9 +118,7 @@ def candidates(paths: list[str]) -> list[Path]:
     return [
         f
         for f in files
-        if f.suffix in LANGUAGES
-        and not str(f).startswith(EXCLUDED_PREFIXES)
-        and f.is_file()
+        if f.suffix in LANGUAGES and not str(f).startswith(EXCLUDED_PREFIXES) and f.is_file()
     ]
 
 

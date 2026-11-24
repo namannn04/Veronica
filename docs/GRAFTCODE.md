@@ -59,8 +59,8 @@ is not a separate hand-written MCP server. Tested with Gateway **1.5.0** and Nod
 **22.22.1**. Gateway is a separate third-party install, not a mandatory Veronica
 package dependency. Use official releases and inspect their license/setup:
 
-- https://github.com/grft-dev/graftcode-gateway
-- https://docs.graftcode.com/quick-start/expose-mcp/javascript
+- <https://github.com/grft-dev/graftcode-gateway>
+- <https://docs.graftcode.com/quick-start/expose-mcp/javascript>
 
 From a repository checkout (no npm install needed):
 

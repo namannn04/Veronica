@@ -30,12 +30,15 @@ export function presenterState(values) {
 }
 
 export function presenterClick(state) {
-    if (!state.active)
+    if (!state.active) {
         return ['start'];
+    }
     const commands = [];
-    if (state.manual)
+    if (state.manual) {
         commands.push('stop');
-    if (state.autoEffective)
+    }
+    if (state.autoEffective) {
         commands.push('dismiss');
+    }
     return commands;
 }

@@ -4,18 +4,16 @@ import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
-
+import { PopupAnimation } from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { PopupAnimation } from 'resource:///org/gnome/shell/ui/boxpointer.js';
-
 import { installNotchAnimation } from './notchAnimation.js';
 import { attachNotchBanners } from './notchBanners.js';
 import { NotchPanel } from './notchPanel.js';
-import { THEMES } from './themes.js';
 import { SystemStatsIndicator } from './systemStats.js';
+import { THEMES } from './themes.js';
 
 export const NotchButton = GObject.registerClass(
 class NotchButton extends PanelMenu.Button {
@@ -60,11 +58,13 @@ class NotchButton extends PanelMenu.Button {
 
         this.menu.connect('open-state-changed', (_menu, isOpen) => {
             if (isOpen) {
-                if (!this._motionCleanup)
+                if (!this._motionCleanup) {
                     this._queueOpenRefresh();
+                }
             } else {
-                if (this._openRefreshId)
+                if (this._openRefreshId) {
                     GLib.Source.remove(this._openRefreshId);
+                }
                 this._openRefreshId = 0;
                 this._notchPanel?.onMenuClosed();
             }
@@ -101,10 +101,12 @@ class NotchButton extends PanelMenu.Button {
         this._notchTheme = theme;
         this._bannerPresentation?.setTheme(theme);
         const actor = this.menu?.actor;
-        if (!actor)
+        if (!actor) {
             return;
-        for (const name of THEMES)
+        }
+        for (const name of THEMES) {
             actor.remove_style_class_name(`veronica-theme-${name}`);
+        }
         actor.add_style_class_name(`veronica-theme-${theme}`);
     }
 
@@ -119,12 +121,14 @@ class NotchButton extends PanelMenu.Button {
     }
 
     _queueOpenRefresh() {
-        if (this._openRefreshId)
+        if (this._openRefreshId) {
             GLib.Source.remove(this._openRefreshId);
+        }
         this._openRefreshId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this._openRefreshId = 0;
-            if (this.menu?.isOpen)
+            if (this.menu?.isOpen) {
                 this.refresh().catch(() => {});
+            }
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -138,8 +142,9 @@ class NotchButton extends PanelMenu.Button {
     }
 
     showClipboard() {
-        if (!this._notchPanel?.showTab('clipboard'))
+        if (!this._notchPanel?.showTab('clipboard')) {
             return false;
+        }
         this.menu.open();
         return true;
     }
@@ -162,8 +167,9 @@ class NotchButton extends PanelMenu.Button {
         this._bannerPresentation = null;
         this._motionCleanup?.();
         this._motionCleanup = null;
-        if (this._openRefreshId)
+        if (this._openRefreshId) {
             GLib.Source.remove(this._openRefreshId);
+        }
         this._openRefreshId = 0;
         if (this._wallClockId) {
             this._wallClock.disconnect(this._wallClockId);

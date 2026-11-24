@@ -9,7 +9,8 @@
       "!**/node_modules",
       "!**/bun.lock",
       "!**/package-lock.json",
-      "!apps/desktop/src-tauri/gen"
+      "!apps/desktop/src-tauri/gen",
+      "!resources/emoji-catalog.json"
     ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
@@ -45,6 +46,14 @@
           "correctness": { "noUnknownProperty": "off", "noUnknownTypeSelector": "off" }
         }
       }
+    },
+    {
+      "includes": ["extension/**/*.js", "extension/**/*.mjs", "extension/**/*.css"],
+      "formatter": { "enabled": false }
+    },
+    {
+      "includes": ["site/styles.css", "integrations/**/*.cjs", "scripts/**/*.cjs"],
+      "formatter": { "enabled": false }
     }
   ]
 }

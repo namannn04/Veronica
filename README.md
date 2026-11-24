@@ -97,7 +97,7 @@ GStreamer and PipeWire, which the Debian package would otherwise pull in.
 
 An AppImage is also published for other distributions:
 
-```
+```sh
 chmod +x Veronica_0.1.26_amd64.AppImage
 ./Veronica_0.1.26_amd64.AppImage
 ```
@@ -106,7 +106,7 @@ Ubuntu 24.04 and later no longer ship the FUSE 2 runtime an AppImage needs to
 mount itself. Either install it once with `sudo apt install libfuse2t64`, or run
 the image without it:
 
-```
+```sh
 ./Veronica_0.1.26_amd64.AppImage --appimage-extract
 ./squashfs-root/AppRun
 ```
@@ -139,7 +139,7 @@ it from Veronica. The process list only shows processes inside the sandbox.
 
 ## Features
 
-**Agent usage**
+### Agent usage
 
 - **Local accounting**: Claude, Codex, Cursor and Command Code activity
   attributed to the right machine, repository, worktree and chat, without
@@ -161,7 +161,7 @@ it from Veronica. The process list only shows processes inside the sandbox.
 - **Project drilldown**: spend by project and repository, expanding into the
   chats that produced it.
 
-**Alerts**
+### Alerts
 
 - **Every crossing, once**: a window rising past a level, falling back to green,
   drifting ahead of pace or burning hot each produce one banner when they happen,
@@ -178,7 +178,7 @@ it from Veronica. The process list only shows processes inside the sandbox.
 - **Nothing until asked**: off by default, and while off no request is made to
   any provider at all.
 
-**Quinjet**
+### Quinjet
 
 - **Your review workspaces**: the projects and worktrees Quinjet knows, on this
   computer or on any SSH machine, read through Quinjet's own JSON so the answer
@@ -187,7 +187,7 @@ it from Veronica. The process list only shows processes inside the sandbox.
   `vr quinjet open` prints the exact command for a terminal you already have.
   Quinjet stays the owner of the review.
 
-**Project Doctor and Graftcode**
+### Project Doctor and Graftcode
 
 - **Project Doctor** runs on-demand, read-only checks of project manifests,
   expected local TCP ports and named Docker containers, without running project
@@ -201,7 +201,7 @@ it from Veronica. The process list only shows processes inside the sandbox.
 See the [Project Doctor and Graftcode setup guide](docs/GRAFTCODE.md) for setup,
 authentication and limits.
 
-**Site Audit**
+### Site Audit
 
 - **Edith's rules, exactly**: the same eleven checks and the same thresholds,
   so a page that passes on macOS passes here. Titles, descriptions, canonicals,
@@ -213,7 +213,7 @@ authentication and limits.
 - **Every run stays local**: Veronica fetches the pages being audited and
   nothing else. No result is uploaded and no third-party service is consulted.
 
-**Herdr**
+### Herdr
 
 - **Live agent board**: every running Herdr agent grouped into Edith's Blocked,
   Working, Unknown, Done and Idle lanes, refreshed from Herdr's public JSON API.
@@ -222,13 +222,13 @@ authentication and limits.
 - **Attach anywhere**: copy the exact attach command or open a session or agent
   directly in GNOME Console, while Herdr remains the owner of terminal state.
 
-**This computer**
+### This computer
 
 - **Live metrics**: CPU, memory, load, disks and thermal sensors from procfs
   and sysfs, with snap and loop mounts filtered out.
 - **Microphone**: a system-wide mute switch through PipeWire.
 
-**Calendar**
+### Calendar
 
 - **Your agenda**: every calendar configured on the machine, local or from an
   online account, with recurrences already expanded. Grouped by day, all-day
@@ -236,7 +236,7 @@ authentication and limits.
 - **One-tap join**: meeting links recovered from the event's location,
   description or conference field, for Meet, Zoom, Teams, Jitsi, Webex and more.
 
-**Media**
+### Media
 
 - **One place for every player**: anything that speaks MPRIS, such as Spotify, a browser
   tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
@@ -245,7 +245,7 @@ authentication and limits.
   searchable by title, artist or album, and plays directly with queue, seeking,
   volume and hardware media-key support.
 
-**Machines**
+### Machines
 
 - **One fleet view**: this computer plus any host you can already reach over
   SSH, each with live CPU, memory, disks, load, uptime, temperatures, fan
@@ -266,14 +266,14 @@ authentication and limits.
 - **Honest failures**: an unreachable host says why, and never delays or hides
   the machines that answered.
 
-**Global shortcuts**
+### Global shortcuts
 
 - `Ctrl+Alt+V` opens Veronica, `Ctrl+Alt+B` opens Clipboard, `Ctrl+Alt+M`
   toggles the microphone, `Ctrl+Alt+P` picks a colour, `Ctrl+Alt+E` opens the
   emoji picker, and `Ctrl+Alt+K` enters keyboard-cleaning mode. GNOME Shell
   performs compositor-only actions.
 
-**Clipboard**
+### Clipboard
 
 - **Searchable history**: everything you copy, deduplicated so re-copying moves
   an entry up rather than adding a row, with a count of how often you have used
@@ -284,7 +284,7 @@ authentication and limits.
 - **Stays local**: a plain file under your data directory that you can inspect
   or delete; large copies are skipped rather than stored.
 
-**Color Picker**
+### Color Picker
 
 - **Sample any pixel**: the compositor's own eyedropper, through GNOME Shell or
   the desktop portal. Veronica never reads the screen without a click.
@@ -295,7 +295,7 @@ authentication and limits.
 - **sRGB or Display P3**: the compositor reports sRGB; Display P3 converts it
   properly, for a wide-gamut panel.
 
-**Emoji Picker**
+### Emoji Picker
 
 - **Edith's catalogue, exactly**: the same emojibase release, the same names,
   the same search terms and the same ranking, so a search for "shrug" returns
@@ -307,7 +307,7 @@ authentication and limits.
   into the app you were in goes through the shell extension, because only the
   compositor may synthesise input into a window Veronica does not own.
 
-**Keystroke Highlight**
+### Keystroke Highlight
 
 - **A keycap for every press**: for demos and screen recordings, at the top or
   bottom of the screen, six at a time, each fading after a configurable 0.5 to
@@ -319,7 +319,7 @@ authentication and limits.
   grab, the lock screen and authentication prompts included, nothing is
   recorded at all.
 
-**Audio**
+### Audio
 
 - **Per-application mixer**: every stream PipeWire holds, playing or recording,
   with its own volume and mute. A browser tab and a notification sound are two
@@ -328,7 +328,7 @@ authentication and limits.
   battery where it reports one. Read-only: Ubuntu's Quick Settings stays the
   only thing that pairs a device or switches the radio.
 
-**Database**
+### Database
 
 - **Six engines**: PostgreSQL, MySQL, MariaDB, SQLite, Redis and Valkey.
   Browse the objects, read a bounded page, run a statement that reads.
@@ -354,7 +354,7 @@ authentication and limits.
   tools. An agent learns which databases you have and what each can do; it never
   learns a host, a username or a credential.
 
-**App Maintenance**
+### App Maintenance
 
 - **One update inventory**: apt, snap and flatpak in one list, with what is
   installed and what is available side by side. Checking installs nothing.
@@ -367,7 +367,7 @@ authentication and limits.
   through `pkexec`, so the desktop's own dialog asks you to authenticate;
   Veronica never wraps anything in `sudo` on your behalf.
 
-**Disk cleaner**
+### Disk cleaner
 
 - **Measures before it touches anything**: the developer caches sitting in your
   home directory, per category, with what removing each one actually costs you,
@@ -379,7 +379,7 @@ authentication and limits.
 - **Your files only**: it walks your home directory with your own permissions,
   never asks for root, and never touches a system cache such as apt's.
 
-**Presenter**
+### Presenter
 
 - **Blurs what should not be shared**: spend, token counts, rate limits,
   calendar entries and track names, while navigation and controls stay usable.
@@ -389,7 +389,7 @@ authentication and limits.
 - **Category by category**: reveal the calendar for a demo while spend stays
   hidden.
 
-**Focus Dim**
+### Focus Dim
 
 - **Darkens everything behind your window**: drawn inside GNOME Shell, so it
   works on Wayland, where no application could place a dim behind another app's
@@ -397,7 +397,7 @@ authentication and limits.
 - **Per display or focused only**: keep each monitor's front window bright, or
   dim every monitor but the one you are typing in.
 
-**Appearance**
+### Appearance
 
 - **Thirteen themes, one setting**: System follows Ubuntu's own light/dark
   choice. Four light: Ivory, Sandstone, Mist and Paper. Eight dark: Graphite,
@@ -413,7 +413,7 @@ authentication and limits.
   hairlines for borders that clear the 3:1 non-text minimum on their own;
   Carbon paints an unlit `#000` page for OLED panels.
 
-**Getting around**
+### Getting around
 
 - **Ctrl+K**: search every page by name, by what it does, or by a word you
   would reach for: "ssh" finds Machines, "apt" finds App Maintenance, "theme"
@@ -421,7 +421,7 @@ authentication and limits.
 - **A grouped rail**: nineteen pages sorted into Agents, This computer, Tools
   and Veronica, rather than one column to read top to bottom.
 
-**Top bar**
+### Top bar
 
 - **CPU and memory beside the clock**: Edith's menu bar readout, in the position
   Ubuntu has for it, read straight from procfs rather than by running anything.
@@ -434,13 +434,13 @@ authentication and limits.
 - **No second panel**: the shell keeps owning the top bar; Veronica only adds
   what the shell has no idea about.
 
-**Media**
+### Media in the shell
 
 - **One place for every player**: anything that speaks MPRIS, such as Spotify, a browser
   tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
   progress bar that knows the difference between a track and a live stream.
 
-**Notch**
+### Notch
 
 - **The clock dropdown, upgraded**: click Ubuntu's center clock as usual. One
   panel holds now-playing with album art and transport, the notification
@@ -456,7 +456,7 @@ authentication and limits.
 
 Installing Veronica installs `vr`, which reaches the same operations as the UI.
 
-```
+```text
 vr diagnose                  the resolved session, capabilities and extensions
 vr usage summary             the same totals the dashboard shows
 vr usage projects --chats    spend by project, with its chats
@@ -574,7 +574,7 @@ directories, which `vr diagnose` prints.
 
 Needs Rust, Bun and the Tauri system dependencies:
 
-```
+```sh
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
   libayatana-appindicator3-dev libjavascriptcoregtk-4.1-dev \
   libsoup-3.0-dev libxdo-dev patchelf
@@ -606,4 +606,4 @@ Veronica or is based on it must stay under the same license, keep the NOTICE
 file, and visibly credit the project:
 
 > Based on Veronica by Naman Dadhich and Pulkit,
-> https://github.com/namannn04/Veronica
+> <https://github.com/namannn04/Veronica>

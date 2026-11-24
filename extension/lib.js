@@ -1,7 +1,7 @@
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
-import Clutter from 'gi://Clutter';
 
 const DesktopAppInfo = await import('gi://GioUnix')
     .then(module => module.default.DesktopAppInfo)
@@ -31,15 +31,17 @@ export function brandIcon() {
         GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]),
         'veronica-logo.png',
     ]);
-    if (!GLib.file_test(path, GLib.FileTest.EXISTS))
+    if (!GLib.file_test(path, GLib.FileTest.EXISTS)) {
         return null;
+    }
     return Gio.FileIcon.new(Gio.File.new_for_path(path));
 }
 
 let cachedCli = null;
 export function findCli() {
-    if (cachedCli !== null)
+    if (cachedCli !== null) {
         return cachedCli;
+    }
 
     const onPath = GLib.find_program_in_path('vr');
     if (onPath) {
@@ -61,10 +63,11 @@ export function resetCliCache() {
 }
 
 export async function runJson(args, cancellable = null, { terminateOnCancel = false } = {}) {
-    if (cancellable?.is_cancelled()) return null;
+    if (cancellable?.is_cancelled()) { return null; }
     const cli = findCli();
-    if (!cli)
+    if (!cli) {
         return null;
+    }
 
     let proc = null, cancelledId = 0, deadlineId = 0;
     try {
@@ -75,7 +78,7 @@ export async function runJson(args, cancellable = null, { terminateOnCancel = fa
         if (terminateOnCancel) {
             const stop = () => { try { proc.force_exit(); } catch {} };
             if (cancellable?.is_cancelled()) { stop(); return null; }
-            if (cancellable) cancelledId = cancellable.connect(stop);
+            if (cancellable) { cancelledId = cancellable.connect(stop); }
             deadlineId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => { deadlineId = 0; stop(); return GLib.SOURCE_REMOVE; });
         }
         const [stdout, stderr] = await proc.communicate_utf8_async(null, cancellable);
@@ -83,17 +86,19 @@ export async function runJson(args, cancellable = null, { terminateOnCancel = fa
             console.debug(`veronica: vr ${args.join(' ')} failed: ${stderr?.trim() ?? ''}`);
             return null;
         }
-        if (!stdout || !stdout.trim())
+        if (!stdout?.trim()) {
             return null;
+        }
         return JSON.parse(stdout);
     } catch (error) {
-        if (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED)
+        if (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED) {
             return null;
+        }
         console.debug(`veronica: cannot run vr ${args.join(' ')}: ${error}`);
         return null;
     } finally {
-        if (cancelledId) cancellable.disconnect(cancelledId);
-        if (deadlineId) GLib.Source.remove(deadlineId);
+        if (cancelledId) { cancellable.disconnect(cancelledId); }
+        if (deadlineId) { GLib.Source.remove(deadlineId); }
     }
 }
 
@@ -154,8 +159,9 @@ export function tokens(value) {
         if (value >= scale) {
             const scaled = value / scale;
             const rounded = round(scaled, decimals(scaled));
-            if (rounded >= 1000 && index > 0)
+            if (rounded >= 1000 && index > 0) {
                 return `1.00${units[index - 1][1]}`;
+            }
             return `${rounded.toFixed(decimals(rounded))}${suffix}`;
         }
     }
@@ -168,10 +174,12 @@ export function percent(value) {
 }
 
 export function band(value) {
-    if (value >= 85)
+    if (value >= 85) {
         return 'critical';
-    if (value >= 60)
+    }
+    if (value >= 60) {
         return 'warning';
+    }
     return 'good';
 }
 
@@ -247,17 +255,21 @@ export function emptyLabel(text) {
 }
 
 export function countdown(seconds) {
-    if (!Number.isFinite(seconds) || seconds <= 0)
+    if (!Number.isFinite(seconds) || seconds <= 0) {
         return 'now';
+    }
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    if (days > 0)
+    if (days > 0) {
         return `${days}d ${hours}h`;
-    if (hours > 0)
+    }
+    if (hours > 0) {
         return `${hours}h ${minutes}m`;
-    if (minutes > 0)
+    }
+    if (minutes > 0) {
         return `${minutes}m`;
+    }
     return `${Math.floor(seconds)}s`;
 }
 

@@ -7,8 +7,9 @@ const FRAME_WIDTH = 320;
 const DEFAULT_HEIGHT = 180;
 
 export function previewSize(width, height) {
-    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0)
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
         throw new Error('The camera returned invalid dimensions');
+    }
     const scale = Math.min(292 / width, 164 / height);
     return { width: width * scale, height: height * scale };
 }
@@ -19,8 +20,9 @@ export function rgbaFrame(info, byteLength) {
     const offset = info.offset[0];
     if (![width, height, stride, offset].every(Number.isInteger) ||
         width <= 0 || height <= 0 || offset < 0 || stride < width * 4 ||
-        offset + (height - 1) * stride + width * 4 > byteLength)
+        offset + (height - 1) * stride + width * 4 > byteLength) {
         throw new Error('The camera returned an incomplete RGBA frame');
+    }
     return { width, height, stride, offset };
 }
 
@@ -46,8 +48,9 @@ try {
 let gstInitialised = false;
 
 function ensureGst() {
-    if (gstInitialised)
+    if (gstInitialised) {
         return;
+    }
     Gst.init(null);
     gstInitialised = true;
 }
@@ -87,8 +90,9 @@ export class CameraPreview {
     }
 
     start() {
-        if (this.isRunning)
+        if (this.isRunning) {
             return;
+        }
         if (!Gst) {
             this._reportError(
                 'The camera preview needs GStreamer for GNOME Shell: install gir1.2-gst-plugins-base-1.0, then log out and back in.'
@@ -101,21 +105,24 @@ export class CameraPreview {
         try {
             this._pipeline = Gst.parse_launch(cameraPipeline(this._flipHorizontal));
             this._sink = this._pipeline.get_by_name('veronica_camera_sink');
-            if (!this._sink)
+            if (!this._sink) {
                 throw new Error('The camera preview sink could not be created');
+            }
 
             this._bus = this._pipeline.get_bus();
             this._bus.add_signal_watch();
             this._busSignalId = this._bus.connect('message', (_bus, message) => {
-                if (message.type !== Gst.MessageType.ERROR)
+                if (message.type !== Gst.MessageType.ERROR) {
                     return;
+                }
                 const [error] = message.parse_error();
                 this._reportError(error?.message || 'The camera could not be opened');
             });
 
             const result = this._pipeline.set_state(Gst.State.PLAYING);
-            if (result === Gst.StateChangeReturn.FAILURE)
+            if (result === Gst.StateChangeReturn.FAILURE) {
                 throw new Error('The camera refused to start');
+            }
             this._framePollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 67, () => {
                 this._pullFrame();
                 return this.isRunning ? GLib.SOURCE_CONTINUE : GLib.SOURCE_REMOVE;
@@ -125,8 +132,9 @@ export class CameraPreview {
                 8,
                 () => {
                     this._startupTimeoutId = 0;
-                    if (this.isRunning && !this._hasFrame)
+                    if (this.isRunning && !this._hasFrame) {
                         this._reportError('No camera frame arrived within 8 seconds');
+                    }
                     return GLib.SOURCE_REMOVE;
                 }
             );
@@ -137,14 +145,16 @@ export class CameraPreview {
     }
 
     _pullFrame() {
-        if (!this.isRunning)
+        if (!this.isRunning) {
             return;
+        }
 
         try {
             const sample = this._sink.try_pull_sample(0);
             const buffer = sample?.get_buffer();
-            if (!buffer)
+            if (!buffer) {
                 return;
+            }
             const data = buffer.extract_dup(0, buffer.get_size());
             const info = GstVideo.VideoInfo.new_from_caps(sample.get_caps());
             const { width, height, stride, offset } = rgbaFrame(info, data.length);
@@ -164,12 +174,14 @@ export class CameraPreview {
             ];
             if (this._content.set_bytes.length === 6) {
                 const context = global.stage?.context?.get_backend?.()?.get_cogl_context?.();
-                if (!context)
+                if (!context) {
                     throw new Error('GNOME could not provide a video rendering context');
+                }
                 args.unshift(context);
             }
-            if (this._content.set_bytes(...args) === false)
+            if (this._content.set_bytes(...args) === false) {
                 throw new Error('GNOME could not upload the camera frame');
+            }
             this._surface.queue_redraw();
             if (!this._hasFrame) {
                 this._hasFrame = true;
@@ -186,8 +198,9 @@ export class CameraPreview {
 
     _reportError(message) {
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            if (!this._surface)
+            if (!this._surface) {
                 return GLib.SOURCE_REMOVE;
+            }
             this.stop();
             this._onError?.(message);
             return GLib.SOURCE_REMOVE;
@@ -207,10 +220,12 @@ export class CameraPreview {
             this._bus.disconnect(this._busSignalId);
             this._busSignalId = 0;
         }
-        if (this._bus)
+        if (this._bus) {
             this._bus.remove_signal_watch();
-        if (this._pipeline)
+        }
+        if (this._pipeline) {
             this._pipeline.set_state(Gst.State.NULL);
+        }
         this._pipeline = null;
         this._sink = null;
         this._bus = null;

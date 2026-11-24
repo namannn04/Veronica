@@ -1,5 +1,6 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { NotchButton } from './notchClock.js';
+
 const REPLACED_CLOCK = 'dateMenu';
 const NOTCH_ROLE = 'veronica-notch';
 
@@ -15,20 +16,23 @@ export class PanelReplacement {
     }
 
     pickColor() {
-        if (!this._notch)
+        if (!this._notch) {
             return false;
+        }
         return this._notch.pickColor();
     }
 
     showClipboard() {
-        if (!this._notch)
+        if (!this._notch) {
             return false;
+        }
         return this._notch.showClipboard();
     }
 
     enable(clipboardWatcher, cancellable, settings, keyboardCleaner) {
-        if (this._active)
+        if (this._active) {
             return;
+        }
 
         this._hideStock(REPLACED_CLOCK);
 
@@ -43,8 +47,9 @@ export class PanelReplacement {
             this._notch = null;
             for (const [name, wasVisible] of this._hidden) {
                 const actor = Main.panel.statusArea[name];
-                if (actor)
+                if (actor) {
                     actor.visible = wasVisible;
+                }
             }
             this._hidden.clear();
             return;
@@ -65,24 +70,28 @@ export class PanelReplacement {
     }
 
     _restoreCalendar() {
-        if (!this._stockCalendar)
+        if (!this._stockCalendar) {
             return;
+        }
         const panel = Main.panel;
         for (const [name, descriptor] of [
             ['toggleCalendar', this._stockCalendar.toggle],
             ['closeCalendar', this._stockCalendar.close],
         ]) {
-            if (descriptor)
+            if (descriptor) {
                 Object.defineProperty(panel, name, descriptor);
-            else
+            }
+            else {
                 delete panel[name];
+            }
         }
         this._stockCalendar = null;
     }
 
     disable() {
-        if (!this._active)
+        if (!this._active) {
             return;
+        }
 
         this._restoreCalendar();
 
@@ -93,8 +102,9 @@ export class PanelReplacement {
 
         for (const [name, wasVisible] of this._hidden) {
             const actor = Main.panel.statusArea[name];
-            if (actor)
+            if (actor) {
                 actor.visible = wasVisible;
+            }
         }
         this._hidden.clear();
 

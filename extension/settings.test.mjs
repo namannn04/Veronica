@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 function harness() {
@@ -9,7 +9,7 @@ function harness() {
     let id = 0;
     let directoryWatches = 0;
     const monitor = { connect: (_s, fn) => { changed = fn; return 1; }, disconnect() {}, cancel() {} };
-    const file = { load_contents() { if (text === null) throw Error('replaced');
+    const file = { load_contents() { if (text === null) { throw Error('replaced'); }
         return [true, new TextEncoder().encode(text)]; },
         get_parent: () => ({ get_path: () => '/config/veronica', monitor_directory() {
             directoryWatches++; return monitor;
@@ -26,7 +26,7 @@ function harness() {
     return { watcher, timers, directoryWatches: () => directoryWatches,
         set: value => { text = value; },
         replace() { changed(monitor, { get_basename: () => '.settings.tmp' }, { get_basename: () => 'settings.json' }); },
-        flush() { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach(fn => fn()); } };
+        flush() { const callbacks = [...timers.values()]; timers.clear(); for (const fn of callbacks) { fn(); } } };
 }
 
 test('unreadable and invalid snapshots do not release an active awake switch', () => {

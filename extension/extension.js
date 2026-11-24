@@ -1,14 +1,13 @@
 import Gio from 'gi://Gio';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
-
-import { ClipboardWatcher } from './clipboard.js';
-import { FocusDim } from './focusDim.js';
 import { ActionBridge } from './actionBridge.js';
 import { AttentionTracker } from './attention.js';
-import { KeystrokeHighlight } from './keystrokeHighlight.js';
-import { FeatureSwitch, booleanSetting } from './featureSwitch.js';
+import { ClipboardWatcher } from './clipboard.js';
+import { booleanSetting, FeatureSwitch } from './featureSwitch.js';
+import { FocusDim } from './focusDim.js';
 import { KeyboardCleaner } from './keyboardCleaner.js';
+import { KeystrokeHighlight } from './keystrokeHighlight.js';
 import { findCli } from './lib.js';
 import { PanelReplacement } from './panelReplacement.js';
 import { SettingsWatcher } from './settings.js';
@@ -36,8 +35,9 @@ export default class VeronicaExtension extends Extension {
         this._clipboardSwitch = new FeatureSwitch(
             'clipboardEnabled', true,
             () => {
-                if (this._clipboard?.enable())
+                if (this._clipboard?.enable()) {
                     console.debug('veronica: watching the clipboard');
+                }
             },
             () => this._clipboard?.disable()
         );
@@ -52,20 +52,24 @@ export default class VeronicaExtension extends Extension {
         this._lifecycleUnsubscribe = this._settings.subscribe(values => {
             this._clipboardSwitch?.update(values);
             this._notchSwitch?.update(values);
-            if (booleanSetting(values, 'notchShelfEnabled', true))
+            if (booleanSetting(values, 'notchShelfEnabled', true)) {
                 this._standaloneStats?.hide();
-            else
+            }
+            else {
                 this._standaloneStats?.show();
+            }
         });
         this._actionBridge = new ActionBridge({
             cleanKeys: () => this._keyboardCleaner?.start(),
             pickColor: () => {
-                if (!this._panelReplacement?.pickColor())
+                if (!this._panelReplacement?.pickColor()) {
                     throw new Error('the color picker extension is disabled');
+                }
             },
             showClipboard: () => {
-                if (!this._panelReplacement?.showClipboard())
+                if (!this._panelReplacement?.showClipboard()) {
                     throw new Error('the clipboard shelf action is disabled');
+                }
             },
             writeClipboard: text => this._clipboard?.write(text, false),
         });

@@ -17,14 +17,16 @@ function asNumber(value) {
 
 export function clampDuration(value) {
     const number = asNumber(value);
-    if (number === null)
+    if (number === null) {
         return DEFAULT_DURATION_SECONDS;
+    }
     return Math.min(Math.max(number, MIN_DURATION_SECONDS), MAX_DURATION_SECONDS);
 }
 
 export function parsePosition(raw) {
-    if (typeof raw !== 'string')
+    if (typeof raw !== 'string') {
         return DEFAULT_POSITION;
+    }
     const match = POSITIONS.find(position => position === raw.toLowerCase());
     return match ?? DEFAULT_POSITION;
 }
@@ -66,14 +68,16 @@ const MODIFIER_KEYVALS = new Set([
 ]);
 
 function functionKeyLabel(keyval) {
-    if (keyval >= 0xffbe && keyval <= 0xffe0)
+    if (keyval >= 0xffbe && keyval <= 0xffe0) {
         return `F${keyval - 0xffbe + 1}`;
+    }
     return null;
 }
 
 function keypadLabel(keyval) {
-    if (keyval >= 0xffb0 && keyval <= 0xffb9)
+    if (keyval >= 0xffb0 && keyval <= 0xffb9) {
         return String(keyval - 0xffb0);
+    }
     const operators = new Map([
         [0xffaa, '*'], [0xffab, '+'], [0xffad, '-'], [0xffae, '.'], [0xffaf, '/'],
     ]);
@@ -81,28 +85,35 @@ function keypadLabel(keyval) {
 }
 
 export function keyLabel(keyval, unicode) {
-    if (typeof keyval !== 'number')
+    if (typeof keyval !== 'number') {
         return null;
-    if (MODIFIER_KEYVALS.has(keyval))
+    }
+    if (MODIFIER_KEYVALS.has(keyval)) {
         return null;
+    }
 
     const named = NAMED_KEYS.get(keyval);
-    if (named)
+    if (named) {
         return named;
+    }
 
     const fn = functionKeyLabel(keyval);
-    if (fn)
+    if (fn) {
         return fn;
+    }
 
     const keypad = keypadLabel(keyval);
-    if (keypad)
+    if (keypad) {
         return keypad;
+    }
 
-    if (isPrintable(unicode))
+    if (isPrintable(unicode)) {
         return String.fromCodePoint(unicode).toUpperCase();
+    }
 
-    if (keyval > 0x20 && keyval < 0x100 && keyval !== 0x7f)
+    if (keyval > 0x20 && keyval < 0x100 && keyval !== 0x7f) {
         return String.fromCodePoint(keyval).toUpperCase();
+    }
 
     return null;
 }
@@ -113,19 +124,24 @@ function isPrintable(unicode) {
 
 export function labelsFor(keyval, unicode, modifierState) {
     const key = keyLabel(keyval, unicode);
-    if (key === null)
+    if (key === null) {
         return [];
+    }
 
     const state = typeof modifierState === 'number' ? modifierState : 0;
     const labels = [];
-    if (state & CONTROL_MASK)
+    if (state & CONTROL_MASK) {
         labels.push('Ctrl');
-    if (state & ALT_MASK)
+    }
+    if (state & ALT_MASK) {
         labels.push('Alt');
-    if (state & SHIFT_MASK)
+    }
+    if (state & SHIFT_MASK) {
         labels.push('Shift');
-    if (state & SUPER_MASK)
+    }
+    if (state & SUPER_MASK) {
         labels.push('Super');
+    }
 
     labels.push(key);
     return labels;
@@ -147,16 +163,18 @@ export class KeystrokeQueue {
     }
 
     append(keys, nowMs, durationSeconds) {
-        if (!Array.isArray(keys) || keys.length === 0)
+        if (!Array.isArray(keys) || keys.length === 0) {
             return null;
+        }
         const entry = {
             id: this._nextId++,
             keys,
             expiresAtMs: nowMs + Math.round(clampDuration(durationSeconds) * 1000),
         };
         this._entries.push(entry);
-        if (this._entries.length > this._maximumVisible)
+        if (this._entries.length > this._maximumVisible) {
             this._entries.splice(0, this._entries.length - this._maximumVisible);
+        }
         return entry;
     }
 

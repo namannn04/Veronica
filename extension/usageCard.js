@@ -1,9 +1,8 @@
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
-
-import { fetchUsageData } from './sections.js';
 import { band, countdown, money, runJson, vbox } from './lib.js';
 import { RingGauge } from './ring.js';
+import { fetchUsageData } from './sections.js';
 
 const RING_WINDOWS = ['Session', 'Week'];
 const PROVIDERS = ['Claude', 'Codex'];
@@ -73,8 +72,9 @@ export class UsageCard {
 
     async refresh(cancellable) {
         const data = await fetchUsageData(cancellable);
-        if (!this.actor || cancellable?.is_cancelled())
+        if (!this.actor || cancellable?.is_cancelled()) {
             return;
+        }
 
         if (!data.summary && data.gauges.length === 0) {
             this.actor.visible = false;
@@ -88,8 +88,9 @@ export class UsageCard {
 
     setProvider(value) {
         this._provider = providerName(value);
-        if (this._providerLabel)
+        if (this._providerLabel) {
             this._providerLabel.text = `${this._provider}  ▾`;
+        }
         this._render();
     }
 
@@ -101,16 +102,18 @@ export class UsageCard {
     }
 
     _render() {
-        if (!this.actor || !this._lastData)
+        if (!this.actor || !this._lastData) {
             return;
+        }
         const data = this._lastData;
         const providerGauges = data.gauges.filter(gauge => gauge.provider === this._provider);
 
         for (const ring of this._rings) {
             const gauge = providerGauges.find(g => g.window === ring.windowName);
             ring.wrap.visible = !!gauge;
-            if (!gauge)
+            if (!gauge) {
                 continue;
+            }
             ring.gauge.setValue(gauge.percent ?? 0, band(gauge.percent ?? 0));
             ring.caption.text = gauge.window;
             ring.resets.text = Number.isFinite(gauge.resetsInSecs)
@@ -132,8 +135,9 @@ export class UsageCard {
 
     setPrivate(privateMode) {
         this._private = privateMode;
-        if (!this.actor)
+        if (!this.actor) {
             return;
+        }
         this._ringsBox.visible = !privateMode;
         this._spendLine.text = privateMode ? 'Private while presenting' : this._lastSpendText;
         this.actor.set_style_class_name(

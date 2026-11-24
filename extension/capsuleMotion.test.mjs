@@ -1,6 +1,7 @@
-import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {test} from 'node:test';
 import {installCapsule} from './capsuleMotion.js';
+
 function setup(animations=true) {
     const signals={}; let active=false;
     const label={width:-1,opacity:255,get_preferred_width:()=>[70,70],remove_all_transitions(){this.stops=(this.stops??0)+1;},ease(values){this.last=values;}};
@@ -21,7 +22,7 @@ test('reduced motion applies immediately and destroy clears transitions',()=>{
 });
 
 test('theme measurement waits for stage attachment',()=>{
-    const h=setup(); let measured=0;
+    setup(); let measured=0;
     const label={width:-1,opacity:255,get_preferred_width(){measured++;return [40,40];},remove_all_transitions(){}};
     const signals={}; let attached=false;
     const button={_veronicaLabel:label,get_stage:()=>attached?{}:null,has_key_focus:()=>false,connect(n,fn){signals[n]=fn;}};

@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 function harness() {
@@ -25,12 +25,12 @@ function harness() {
     const body = source.replace(/^import .*;\n/gm,'').replace('export class NotchPanel','class NotchPanel');
     const Panel = new Function('St','Clutter','Gio','GLib','installCapsule',...names,`${body}\nreturn NotchPanel;`)(
         {Settings:{get:()=>({enable_animations:false})},BoxLayout:Actor,Button:Actor,Widget:Actor,Icon:Actor,Label:Actor,ScrollView:class extends Actor {set_child(c){this.child=c;}}},
-        {AnimationMode:{EASE_OUT_CUBIC:0},Orientation:{VERTICAL:0},ActorAlign:{CENTER:0,START:1}}, {Cancellable:class {is_cancelled(){return false;}cancel(){}}}, {}, button=>()=>{}, ...names.map(n=>helpers[n]));
+        {AnimationMode:{EASE_OUT_CUBIC:0},Orientation:{VERTICAL:0},ActorAlign:{CENTER:0,START:1}}, {Cancellable:class {is_cancelled(){return false;}cancel(){}}}, {}, ()=>()=>{}, ...names.map(n=>helpers[n]));
     const panel = Object.create(Panel.prototype);
     panel._tabButtons=new Map(); panel._panels=new Map(); panel._activeTab='home';
     panel._closeMenu=()=>{closed++;};
     panel._fileRows=new Actor();
-    for (const id of ['home','notifications','files','clipboard','camera','tools','image','qr']) panel._panels.set(id,new Actor());
+    for (const id of ['home','notifications','files','clipboard','camera','tools','image','qr']) { panel._panels.set(id,new Actor()); }
     panel._header();
     return {panel,calls,closed:()=>closed,launched:()=>launched,tools:()=>tools,services:()=>services};
 }

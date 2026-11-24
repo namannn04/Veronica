@@ -7,17 +7,17 @@ import * as Calendar from 'resource:///org/gnome/shell/ui/calendar.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { AWAKE_SWITCHES, awakeState, nextDeadline } from './awakeState.js';
-import { installCapsule } from './capsuleMotion.js';
 import { CameraPreview } from './cameraPreview.js';
+import { installCapsule } from './capsuleMotion.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
-import { brandIcon, launchApp, launchFileShelf, launchNotchTools, launchServices, runJson, vbox } from './lib.js';
-import { NowPlayingCard } from './nowPlaying.js';
 import { PowerInhibitors } from './inhibitors.js';
+import { brandIcon, launchApp, launchFileShelf, launchServices, runJson, vbox } from './lib.js';
+import { NowPlayingCard } from './nowPlaying.js';
 import { presenterClick, presenterState } from './presenterGate.js';
-import { UtilityPanel } from './utilityPanel.js';
-import { UsageCard } from './usageCard.js';
 import { isTheme } from './themes.js';
+import { UsageCard } from './usageCard.js';
+import { UtilityPanel } from './utilityPanel.js';
 
 const TABS = [
     ['home', 'user-home-symbolic', 'Home'],
@@ -104,8 +104,9 @@ export class NotchPanel {
     }
 
     showTab(id) {
-        if (!this._panels.has(id) || (id === 'clipboard' && !this._clipboardEnabled))
+        if (!this._panels.has(id) || (id === 'clipboard' && !this._clipboardEnabled)) {
             return false;
+        }
         this._selectTab(id);
         return true;
     }
@@ -171,11 +172,12 @@ export class NotchPanel {
     }
 
     _selectTab(id) {
-        if (id !== this._activeTab) this._viewCancellable?.cancel();
-        if (this._activeTab === 'image' && id !== 'image') this._imageTool?.close();
-        if (this._activeTab === 'qr' && id !== 'qr') this._qrTool?.close();
-        if (this._activeTab === 'camera' && id !== 'camera')
+        if (id !== this._activeTab) { this._viewCancellable?.cancel(); }
+        if (this._activeTab === 'image' && id !== 'image') { this._imageTool?.close(); }
+        if (this._activeTab === 'qr' && id !== 'qr') { this._qrTool?.close(); }
+        if (this._activeTab === 'camera' && id !== 'camera') {
             this._stopCameraPreview();
+        }
         this._activeTab = id;
         for (const [tabId, button] of this._tabButtons) {
             const active = tabId === id;
@@ -192,13 +194,15 @@ export class NotchPanel {
             if (entering && St.Settings.get().enable_animations && panel.mapped) {
                 panel.opacity = 0;
                 panel.ease({ opacity: 255, duration: 120, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
-            } else panel.opacity = 255;
+            } else { panel.opacity = 255; }
         }
-        if (id === 'clipboard')
+        if (id === 'clipboard') {
             this._refreshClipboard().catch(() => {});
-        if (id === 'files')
+        }
+        if (id === 'files') {
             this._refreshFiles().catch(() => {});
-        if (id === 'home' && this.actor?.mapped) this.refresh().catch(() => {});
+        }
+        if (id === 'home' && this.actor?.mapped) { this.refresh().catch(() => {}); }
     }
 
     _homePanel() {
@@ -214,8 +218,9 @@ export class NotchPanel {
             x_expand: true,
         });
         this._nowPlaying = new NowPlayingCard(visible => {
-            if (this._emptyMusic)
+            if (this._emptyMusic) {
                 this._emptyMusic.visible = !visible;
+            }
         });
         musicWrap.add_child(this._nowPlaying.actor);
         this._emptyMusic = vbox({
@@ -398,8 +403,9 @@ export class NotchPanel {
             const next = !this._cameraFlipHorizontal;
             runJson(['config', 'set', 'cameraFlipHorizontal', String(next)], this._cancellable)
                 .then(result => {
-                    if (result !== null)
+                    if (result !== null) {
                         this._applyCameraOrientation(next);
+                    }
                 });
         });
         const controls = new St.BoxLayout({ style: 'spacing: 8px;', x_align: Clutter.ActorAlign.CENTER });
@@ -411,8 +417,9 @@ export class NotchPanel {
         this._cameraPreview = new CameraPreview(
             this._cameraSurface,
             () => {
-                if (this._cameraPlaceholder)
+                if (this._cameraPlaceholder) {
                     this._cameraPlaceholder.visible = false;
+                }
             },
             error => this._cameraPreviewFailed(error),
             size => {
@@ -510,28 +517,33 @@ export class NotchPanel {
         }
         runJson(['power', awakeSwitch.command, next ? 'on' : 'off'], this._cancellable)
             .then(result => {
-                if (!result && this.actor)
+                if (!result && this.actor) {
                     this._applyAwake(this._settings?.values ?? {});
+                }
             })
             .catch(() => {});
     }
 
     _applyAwake(values) {
-        if (!this.actor)
+        if (!this.actor) {
             return;
+        }
         const now = Date.now();
         for (const awakeSwitch of AWAKE_SWITCHES) {
             const button = awakeSwitch.key === 'preventSleep' ? this._keepAwake : this._lidAwake;
             const state = awakeState(values, awakeSwitch, now);
-            if (button)
+            if (button) {
                 this._setToggle(button, state.active);
+            }
             if (this._power?.set(awakeSwitch.key, state.active) === false && state.active) {
-                if (button)
+                if (button) {
                     this._setToggle(button, false);
+                }
                 Main.notify('Veronica', `${awakeSwitch.title} could not acquire its inhibitors.`);
             }
-            if (state.expired)
+            if (state.expired) {
                 runJson(['power', awakeSwitch.command, 'off'], this._cancellable).catch(() => {});
+            }
         }
         this._scheduleAwakeExpiry(nextDeadline(values, now));
     }
@@ -541,8 +553,9 @@ export class NotchPanel {
             GLib.Source.remove(this._awakeExpiryId);
             this._awakeExpiryId = 0;
         }
-        if (untilMs === null)
+        if (untilMs === null) {
             return;
+        }
         const delay = Math.min(Math.max(0, untilMs - Date.now()) + 50, 0x7fffffff);
         this._awakeExpiryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
             this._awakeExpiryId = 0;
@@ -553,11 +566,13 @@ export class NotchPanel {
 
     _powerInhibitorFailed(key) {
         const button = key === 'preventSleep' ? this._keepAwake : this._lidAwake;
-        if (button)
+        if (button) {
             this._setToggle(button, false);
+        }
         const awakeSwitch = AWAKE_SWITCHES.find(candidate => candidate.key === key);
-        if (awakeSwitch)
+        if (awakeSwitch) {
             runJson(['power', awakeSwitch.command, 'off'], this._cancellable).catch(() => {});
+        }
         Main.notify(
             key === 'preventSleep' ? 'Keep Awake stopped' : 'Lid Awake stopped',
             'systemd-logind did not keep the inhibitor active.'
@@ -572,13 +587,15 @@ export class NotchPanel {
     }
 
     async _fileAction(args) {
-        const request = this._filesRequest = (this._filesRequest ?? 0) + 1;
+        this._filesRequest = (this._filesRequest ?? 0) + 1;
+        const request = this._filesRequest;
         const reading = args[0] === 'list';
         const scope = reading ? this._readScope() : this._cancellable;
         const result = await runJson(['shelf', ...args], scope, { terminateOnCancel: reading });
-        if (reading && scope?.is_cancelled()) return;
-        if (!this._fileRows || request !== this._filesRequest)
+        if (reading && scope?.is_cancelled()) { return; }
+        if (!this._fileRows || request !== this._filesRequest) {
             return;
+        }
         this._fileRows.destroy_all_children();
         const entries = result?.entries;
         if (!Array.isArray(entries) || entries.length === 0) {
@@ -589,8 +606,9 @@ export class NotchPanel {
             }));
             return;
         }
-        for (const entry of entries)
+        for (const entry of entries) {
             this._fileRows.add_child(this._fileRow(entry));
+        }
     }
 
     async _chooseFiles() {
@@ -600,21 +618,24 @@ export class NotchPanel {
                 '--title=Park files in Veronica',
             ], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
             const [stdout] = await process.communicate_utf8_async(null, this._cancellable);
-            if (!process.get_successful() || !stdout?.trim())
+            if (!process.get_successful() || !stdout?.trim()) {
                 return;
+            }
             const selected = stdout.split('\n').map(path => path.trim()).filter(Boolean);
             await this._fileAction(['add', ...selected]);
         } catch (error) {
             console.debug(`veronica: file chooser failed: ${error}`);
         } finally {
-            if (this.actor)
+            if (this.actor) {
                 this._reopenFiles?.();
+            }
         }
     }
 
     async _refreshFiles() {
-        if (this._activeTab === 'files')
+        if (this._activeTab === 'files') {
             await this._fileAction(['list']);
+        }
     }
 
     _fileRow(entry) {
@@ -646,8 +667,9 @@ export class NotchPanel {
     _applyCameraOrientation(enabled) {
         this._cameraFlipHorizontal = enabled === true;
         this._cameraPreview?.setFlipHorizontal(this._cameraFlipHorizontal);
-        if (this._cameraFlipButton)
+        if (this._cameraFlipButton) {
             this._cameraFlipButton.label = `Flip horizontally: ${this._cameraFlipHorizontal ? 'On' : 'Off'}`;
+        }
     }
 
     _toggleCameraPreview() {
@@ -668,8 +690,9 @@ export class NotchPanel {
 
     _stopCameraPreview() {
         this._cameraPreview?.stop();
-        if (!this._cameraPlaceholder)
+        if (!this._cameraPlaceholder) {
             return;
+        }
         this._cameraPlaceholder.visible = true;
         this._cameraTitle.text = 'Camera preview';
         this._cameraDetail.text = 'Your camera stays on only while this preview is open.';
@@ -677,8 +700,9 @@ export class NotchPanel {
     }
 
     _cameraPreviewFailed(error) {
-        if (!this._cameraPlaceholder)
+        if (!this._cameraPlaceholder) {
             return;
+        }
         this._cameraPlaceholder.visible = true;
         this._cameraTitle.text = 'Camera unavailable';
         this._cameraDetail.text = `${error}`.replace(/^.*?:\s*/, '').slice(0, 92);
@@ -693,8 +717,9 @@ export class NotchPanel {
     }
 
     pickColor() {
-        if (!this._colorPickerEnabled)
+        if (!this._colorPickerEnabled) {
             return false;
+        }
         this._pickColor();
         return true;
     }
@@ -704,16 +729,20 @@ export class NotchPanel {
         this._clipboardEnabled = booleanSetting(values, 'clipboardEnabled', true);
         const clipboardButton = this._tabButtons.get('clipboard');
         const clipboardPanel = this._panels.get('clipboard');
-        if (clipboardButton)
+        if (clipboardButton) {
             clipboardButton.visible = this._clipboardEnabled;
-        if (!this._clipboardEnabled && this._activeTab === 'clipboard')
+        }
+        if (!this._clipboardEnabled && this._activeTab === 'clipboard') {
             this._selectTab('home');
-        else if (clipboardPanel && this._activeTab !== 'clipboard')
+        }
+        else if (clipboardPanel && this._activeTab !== 'clipboard') {
             clipboardPanel.visible = false;
+        }
 
         this._colorPickerEnabled = booleanSetting(values, 'colorPickerEnabled', false);
-        if (this._pickColorTile)
+        if (this._pickColorTile) {
             this._pickColorTile.visible = this._colorPickerEnabled;
+        }
     }
 
     _applyPresenter(state) {
@@ -728,10 +757,12 @@ export class NotchPanel {
 
     async _togglePresenter() {
         const state = this._presenterState;
-        if (!state?.enabled)
+        if (!state?.enabled) {
             return;
-        for (const command of presenterClick(state))
+        }
+        for (const command of presenterClick(state)) {
             await runJson(['presenter', command], this._cancellable);
+        }
     }
 
     async _pickColor() {
@@ -742,19 +773,23 @@ export class NotchPanel {
             return;
         }
         const value = picked.value ?? picked.hex;
-        if (picked.copiedVia)
+        if (picked.copiedVia) {
             Main.notify('Color copied', value);
-        else
+        }
+        else {
             Main.notify('Color picked, not copied', `${value}, saved in Color Picker's history`);
+        }
     }
 
     async _refreshClipboard() {
-        if (!this._clipboardRows)
+        if (!this._clipboardRows) {
             return;
+        }
         const scope = this._readScope();
         const rows = await recentEntries(30, scope);
-        if (!this._clipboardRows || scope.is_cancelled())
+        if (!this._clipboardRows || scope.is_cancelled()) {
             return;
+        }
         this._clipboardRows.destroy_all_children();
         if (rows.length === 0) {
             this._clipboardRows.add_child(new St.Label({
@@ -764,8 +799,9 @@ export class NotchPanel {
             }));
             return;
         }
-        for (const row of rows)
+        for (const row of rows) {
             this._clipboardRows.add_child(this._clipboardRow(row));
+        }
     }
 
     _clipboardRow(row) {
@@ -799,19 +835,19 @@ export class NotchPanel {
     }
 
     _readScope() {
-        if (!this._viewCancellable || this._viewCancellable.is_cancelled()) this._viewCancellable = new Gio.Cancellable();
+        if (!this._viewCancellable || this._viewCancellable.is_cancelled()) { this._viewCancellable = new Gio.Cancellable(); }
         return this._viewCancellable;
     }
 
     async refresh() {
-        if (!this.actor || this._refreshing) return;
+        if (!this.actor || this._refreshing) { return; }
         this._refreshing = true;
         try {
-            if (this._activeTab === 'home') await Promise.all([
+            if (this._activeTab === 'home') { await Promise.all([
                 this._usage?.refresh(this._readScope()), this._nowPlaying?.refresh(this._readScope()),
-            ]);
-            else if (this._activeTab === 'clipboard') await this._refreshClipboard();
-            else if (this._activeTab === 'files') await this._refreshFiles();
+            ]); }
+            else if (this._activeTab === 'clipboard') { await this._refreshClipboard(); }
+            else if (this._activeTab === 'files') { await this._refreshFiles(); }
         } finally { this._refreshing = false; }
     }
 
