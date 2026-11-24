@@ -36,8 +36,8 @@ pin the values Edith's Swift produces for the rate-limit maths.
 
 The shell extension's tests cover the parts that can run without a shell: the
 procfs arithmetic behind the top bar's CPU and memory readout, and Focus Dim's
-clamps. Those live in modules that import nothing from `gi://` — `procStats.js`
-and `focusDimMath.js` — precisely so they are testable; the widgets that use them
+clamps. Those live in modules that import nothing from `gi://` (`procStats.js`
+and `focusDimMath.js`) precisely so they are testable; the widgets that use them
 are not. `extension/package.json` exists to declare the directory as ES modules
 for node and editors, and is not installed.
 
@@ -81,8 +81,8 @@ embeds the built interface. If a release binary shows that error, this is why.
 The process asks GTK for the X11 backend before GTK starts, because the notch
 overlay has to position itself at the top centre of the display and stay above
 other windows. A Wayland client cannot do either: it may not place its own
-toplevel, and it may not raise itself. Under XWayland — which every GNOME
-session runs — both work, and the island lands where it should.
+toplevel, and it may not raise itself. Under XWayland, which every GNOME
+session runs, both work, and the island lands where it should.
 
 Set `VERONICA_GDK_BACKEND=wayland` to run natively on Wayland, accepting that
 the notch will appear wherever the compositor puts it. An existing `GDK_BACKEND`

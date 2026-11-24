@@ -13,8 +13,8 @@ target to compile against. An earlier attempt (the upstream `nd-ubuntu-fixes1` b
 build; its own notes record the result as "every extension reports
 `unavailable`, and `supportedCapabilities` is empty".
 
-Veronica instead keeps Edith's *models* — the capability map, the extension
-catalogue, the rate-limit maths, the usage schema — and reimplements the
+Veronica instead keeps Edith's *models* (the capability map, the extension
+catalogue, the rate-limit maths, the usage schema) and reimplements the
 platform layer against Linux services.
 
 ## Stack
@@ -41,7 +41,7 @@ platform layer against Linux services.
 | `crates/veronica-cli` | The `vr` binary. |
 | `apps/desktop` | Tauri application: Rust commands plus the React interface. |
 | `resources/refresh-usage` | The bundled usage collector. |
-| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture, Focus Dim's overlay, Keystroke Highlight and pasting in place — everything only the compositor can do. |
+| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture, Focus Dim's overlay, Keystroke Highlight and pasting in place: everything only the compositor can do. |
 | `packaging/` | Debian package, AppImage, desktop entry and AppStream metadata. |
 
 ## The usage collector is shared, not reimplemented
@@ -76,13 +76,13 @@ degraded or unavailable with a reason attached.
 Resolution depends on the session, because a Wayland compositor deliberately
 withholds capabilities that X11 grants:
 
-- **Clipboard history** — a Wayland compositor only hands the clipboard to the
+- **Clipboard history**: a Wayland compositor only hands the clipboard to the
   focused window, so continuous background history needs help from the shell.
-- **Window dimming** (Focus Dim) — dimming other windows is the compositor's
+- **Window dimming** (Focus Dim): dimming other windows is the compositor's
   job and cannot be done from outside it.
-- **Input suppression** (keyboard lock) — needs an exclusive evdev grab, which
+- **Input suppression** (keyboard lock): needs an exclusive evdev grab, which
   needs membership of the `input` group.
-- **Keystroke observation** (Keystroke Highlight) — a compositor hands key
+- **Keystroke observation** (Keystroke Highlight): a compositor hands key
   presses only to the focused window. Inside GNOME Shell that is still true for
   an extension: Mutter passes an application's keys straight to it, past the
   stage's signals and every Clutter event filter, so the extension sees only
@@ -91,7 +91,7 @@ withholds capabilities that X11 grants:
   would see them but serves only the Orca screen reader. The capability
   therefore resolves to `IntegrationRequired`; showing every key would need
   listen-only access to the keyboard device through the `input` group.
-- **Paste in place**, and the emoji picker's insert-in-place — synthesising
+- **Paste in place**, and the emoji picker's insert-in-place: synthesising
   input into a window Veronica does not own is the same problem in reverse. The
   extension sends one Ctrl+V through a virtual keyboard on the seat, which needs
   no per-session portal approval.
@@ -103,14 +103,14 @@ calendar, and the desktop portal for colour picking, camera, global shortcuts
 and screen-share detection. `vr diagnose` prints the resolved state
 with the backend each one talks to.
 
-Running headless — `vr` over SSH — marks the display-dependent capabilities
+Running headless (`vr` over SSH) marks the display-dependent capabilities
 `unsupported` rather than letting them fail later.
 
 ## The database guard
 
 Edith puts an XPC broker between the app and a database, because a sandboxed
 macOS app cannot hold a socket itself. Veronica has no sandbox to cross, so the
-boundary is `veronica-database::session::Session` instead — and the safety it
+boundary is `veronica-database::session::Session` instead, and the safety it
 enforces is the same, because the safety was never the process boundary.
 
 A change is described as a *plan*: what it does, to what, how far it reaches,
@@ -122,7 +122,7 @@ and returns a token:
 base64url(payload) . base64url(HMAC-SHA256(payload))
 ```
 
-The payload holds two keyed digests — one over what would *run* (the plan plus
+The payload holds two keyed digests: one over what would *run* (the plan plus
 the connection's policy), one over what was *shown* (the redacted request, the
 warnings, the required confirmation). `apply` verifies the signature, checks the
 clock, recomputes both digests from the plan it is handed, and requires them to
@@ -131,13 +131,13 @@ is sent.
 
 Three further properties: issuing a preview registers a receipt that authorising
 consumes, so a token works exactly once even with the app and the CLI both
-running — the `DELETE ... RETURNING` in the store is what makes that atomic. A
+running; the `DELETE ... RETURNING` in the store is what makes that atomic. A
 preview expires. And the signing key lives in the keyring, so a token cannot be
 forged without it.
 
 Values never reach a statement. Identifiers are quoted by the product's own
 rules, values are bound as parameters, and a preview shows a parameter's *type*
-rather than its value — because a preview is printed, logged and stored, and the
+rather than its value, because a preview is printed, logged and stored, and the
 value being written may be the password being rotated.
 
 ## Paths
@@ -151,7 +151,7 @@ falls back under the cache directory.
 ## Testing
 
 The portable crates are unit tested, with parity tests pinning the values
-Edith's Swift produces for the rate-limit maths — the smoothstep ramps, the
+Edith's Swift produces for the rate-limit maths: the smoothstep ramps, the
 risk blend, the zone hysteresis and the budget states. Run `cargo test
 --workspace`.
 
@@ -161,8 +161,8 @@ runs under plain node: `procStats.js` holds the procfs arithmetic behind the top
 bar readout, `focusDimMath.js` holds Focus Dim's clamps, and
 `keystrokeLabels.js` holds Keystroke Highlight's label resolution and queue.
 
-Where a rule is enforced on both sides — Focus Dim's clamps, Keystroke
-Highlight's duration and queue — the Rust and JavaScript tests are written to
+Where a rule is enforced on both sides (Focus Dim's clamps, Keystroke
+Highlight's duration and queue), the Rust and JavaScript tests are written to
 mirror each other. The two copies guard different moments (the core stops a bad
 value being *stored*; the extension stops a hand-edited file being *applied*)
 and must not drift.
@@ -185,7 +185,7 @@ desktop.
 
 So the top bar integration is a GNOME Shell extension, which runs inside the
 shell's own process and can add to its widgets directly. It contributes only
-what the shell has no notion of — agent usage, spend, machine state — and leaves
+what the shell has no notion of (agent usage, spend, machine state) and leaves
 the notifications, media controls and calendar to the shell, which already does
 them well.
 
@@ -205,7 +205,7 @@ change, both because freedesktop notifications are not
 - **Reminders are fired, not scheduled.** macOS lets Edith hand a future
   notification to the OS. There is no equivalent here, so the poll fires the
   reminder when its moment arrives, and the persisted state records which reset
-  instant has already been covered — otherwise a thirty-second poll would fire it
+  instant has already been covered; otherwise a thirty-second poll would fire it
   repeatedly for one window.
 - **Banners are replaced by numeric id.** macOS reuses a string identifier; the
   freedesktop server hands back a `u32`. The state remembers the last id per
@@ -217,8 +217,8 @@ two windows specifically, as Edith's notifier does. While the master switch is o
 it makes no provider request at all, which is why a fresh install is silent and
 costs nothing.
 
-The notifier state is persisted under `state/alerts.json`. Losing it is harmless —
-it re-alerts once — so a missing or corrupt file reads as a fresh state rather
+The notifier state is persisted under `state/alerts.json`. Losing it is harmless
+(it re-alerts once), so a missing or corrupt file reads as a fresh state rather
 than a failure.
 
 `vr usage alerts` is a dry run: it loads the same state and settings and reports
@@ -240,8 +240,8 @@ turning the feature off.
 
 Detection is the only part that differs from macOS. Edith watches for a display
 being captured or mirrored; on Ubuntu the equivalent signal is an active
-compositor screencast session. Every well-behaved sharing path on Wayland — a
-browser tab, Zoom, OBS, GNOME's own recorder — goes through xdg-desktop-portal,
+compositor screencast session. Every well-behaved sharing path on Wayland (a
+browser tab, Zoom, OBS, GNOME's own recorder) goes through xdg-desktop-portal,
 which asks Mutter for a session, and Mutter exports one object per live session
 under a collection:
 
@@ -269,7 +269,7 @@ which is what to run when presenter mode did not activate during a call.
 Edith stacks its own translucent windows beneath the focused one. A Wayland
 client cannot: it may not position itself, raise itself, or learn what else is on
 screen. The compositor can, so on Ubuntu the overlay is drawn by the shell
-extension — one actor per monitor inside `global.window_group`, with the window
+extension: one actor per monitor inside `global.window_group`, with the window
 that stays bright raised above it.
 
 That makes the capability depend on the *shell* rather than on the display
@@ -297,7 +297,7 @@ added.
 
 Remote machines are probed by running the `ssh` binary rather than linking an
 SSH library. That is a deliberate trade: it means the user's own configuration
-applies unchanged — aliases, keys, agent, jump hosts, known-hosts — so a machine
+applies unchanged (aliases, keys, agent, jump hosts, known-hosts), so a machine
 that works in a terminal works here with no further setup, and Veronica never
 handles a private key or a passphrase. `BatchMode=yes` is always passed, because
 a host that wants a password would otherwise block on a prompt nobody can see,
@@ -312,7 +312,7 @@ so a remote machine reports exactly what a local one does.
 CPU is the one figure that cannot come from a single reading: `/proc/stat` holds
 cumulative counters, so the snippet takes two samples with a short sleep between
 them and the parser works out the difference. A single sample reports zero rather
-than a fabricated number, and a counter reset between samples — a reboot — is
+than a fabricated number, and a counter reset between samples (a reboot) is
 detected instead of producing nonsense.
 
 ## The clipboard
@@ -320,13 +320,13 @@ detected instead of producing nonsense.
 Reading the clipboard is the clearest case of a feature that a Wayland session
 simply will not grant an ordinary application: only the focused window may see
 the selection, so no background process can keep a history. Setting it has the
-same restriction from the other side — a client needs a serial from a recent
+same restriction from the other side: a client needs a serial from a recent
 input event, which is why a windowless process cannot put anything on the
 clipboard at all.
 
 Both halves therefore live in the shell extension, which runs inside the
 compositor. It watches `owner-changed` on the display's selection, reads the
-text with `St.Clipboard`, and pipes it to `vr clipboard record` on stdin — on
+text with `St.Clipboard`, and pipes it to `vr clipboard record` on stdin, on
 stdin specifically, so no shell quoting is involved and the content can be
 anything, including newlines and quotes. Writing back uses
 `St.Clipboard.set_text`, and a short grace window after each write stops the
@@ -343,8 +343,8 @@ there because it happens in response to a click in a focused window.
 Rate-limit figures cannot be derived locally: only the provider knows them. The
 request goes straight from the machine to the provider using the token the
 agent's own CLI already holds; Veronica never proxies it. Other networked
-features are explicit in their purpose — update checks, site audits, remote
-machines and databases, and requested tool installs — while local usage history
+features are explicit in their purpose (update checks, site audits, remote
+machines and databases, and requested tool installs), while local usage history
 and telemetry never leave the machine.
 
 Claude's come from its usage endpoint over HTTPS. Codex's come from
@@ -423,22 +423,22 @@ still wrote to the real `enabled-extensions`; and `vr`'s own settings are a
 plain file under `XDG_CONFIG_HOME`, which the dconf fix does not cover at all.
 Verifying this feature safely needed `GSETTINGS_BACKEND=memory` plus all four
 XDG directories overridden to a scratch path for the disposable shell's own
-process — inherited by every `vr` subprocess the extension spawns — and the
+process (inherited by every `vr` subprocess the extension spawns) and the
 extension files copied into that scratch data directory, since once
 `XDG_DATA_HOME` no longer points at the real one, GNOME silently falls back to
 whatever is installed system-wide rather than the code being tested.
 
 `org.gnome.Shell.Eval` over D-Bus (the shell needs `--unsafe-mode` for this to
-return anything) can then walk the live actor tree — `Main.panel.statusArea`,
-a button's `.menu.box` — to confirm what actually got built, rather than
+return anything) can then walk the live actor tree (`Main.panel.statusArea`,
+a button's `.menu.box`) to confirm what actually got built, rather than
 inferring it from logs alone.
 
 One more thing this process caught: `gnome-extensions disable` followed by
 `enable` inside the *same* shell process does not reliably pick up a change to
-one of the extension's own submodules (confirmed directly — a fix to
+one of the extension's own submodules (confirmed directly: a fix to
 `notchClock.js` was invisible after a disable/enable cycle, and only took
 effect after the whole `gnome-shell` process was restarted). GJS caches ES
 modules by URL for the life of the process, and disable/enable does not evict
 that cache. A code change to any file under `extension/` needs the whole
-shell restarted to be certain it took — on Wayland that means logging out and
+shell restarted to be certain it took. On Wayland that means logging out and
 back in; there is no in-session substitute for real testing.

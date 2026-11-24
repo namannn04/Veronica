@@ -18,8 +18,8 @@ Free and open source under the [GPL-3.0](LICENSE) with an attribution term in
 no paid tier.
 
 Veronica is a port of [Edith](https://github.com/pulkitxm/edith), a macOS
-control center, to Linux. It keeps Edith's models — the capability map, the
-extension catalogue, the rate-limit maths, the usage schema — and reimplements
+control center, to Linux. It keeps Edith's models (the capability map, the
+extension catalogue, the rate-limit maths, the usage schema) and reimplements
 the platform layer against Linux services. The usage collector is shared
 verbatim, so the numbers are identical on both platforms.
 
@@ -101,49 +101,49 @@ it from Veronica. The process list only shows processes inside the sandbox.
 
 **Agent usage**
 
-- **Local accounting** — Claude, Codex, Cursor and Command Code activity
+- **Local accounting**: Claude, Codex, Cursor and Command Code activity
   attributed to the right machine, repository, worktree and chat, without
   sending history anywhere.
-- **Rate-limit rings** — Claude's session and weekly windows as live gauges,
+- **Rate-limit rings**: Claude's session and weekly windows as live gauges,
   with second-by-second countdowns, and any model-scoped window the account has.
   Codex's windows too, read from its own server rather than the network.
-- **Pace, not just percentage** — a window at 60% with minutes left matters more
+- **Pace, not just percentage**: a window at 60% with minutes left matters more
   than one at 80% with a week to go, so each ring reports how far ahead of a
   linear burn you are and blends that into one risk reading.
-- **Dashboard** — spend and token KPIs with per-day, model, source and hourly
+- **Dashboard**: spend and token KPIs with per-day, model, source and hourly
   charts, plus a sortable model table.
-- **Activity calendar** — a daily spend calendar across your whole history,
+- **Activity calendar**: a daily spend calendar across your whole history,
   ranked against your own busiest day.
-- **Share cards** — export the highlights, the calendar, the daily rhythm and
+- **Share cards**: export the highlights, the calendar, the daily rhythm and
   your busiest day as branded PNGs. A card never carries a repository name, a
   folder path, a chat title or a dollar cost: it exists to be posted, and those
   are the four fields that would leak a client, an employer or an income.
-- **Project drilldown** — spend by project and repository, expanding into the
+- **Project drilldown**: spend by project and repository, expanding into the
   chats that produced it.
 
 **Alerts**
 
-- **Every crossing, once** — a window rising past a level, falling back to green,
+- **Every crossing, once**: a window rising past a level, falling back to green,
   drifting ahead of pace or burning hot each produce one banner when they happen,
   and silence while nothing changes. Edith's wording, verbatim.
-- **Time-aware levels** — a session at 60% with minutes left outranks a week at
+- **Time-aware levels**: a session at 60% with minutes left outranks a week at
   80% with days to go, so the level follows the blended risk rather than the raw
   percentage.
-- **Before a reset** — an optional reminder a chosen time before either window
+- **Before a reset**: an optional reminder a chosen time before either window
   resets, fired by Veronica itself since freedesktop notifications cannot be
   scheduled.
-- **One banner, updated** — a rising threshold replaces its own notification
+- **One banner, updated**: a rising threshold replaces its own notification
   rather than stacking five, and the state survives a restart, so relaunching
   while a window sits at 90% does not re-announce it.
-- **Nothing until asked** — off by default, and while off no request is made to
+- **Nothing until asked**: off by default, and while off no request is made to
   any provider at all.
 
 **Quinjet**
 
-- **Your review workspaces** — the projects and worktrees Quinjet knows, on this
+- **Your review workspaces**: the projects and worktrees Quinjet knows, on this
   computer or on any SSH machine, read through Quinjet's own JSON so the answer
   is the one the tool itself would give.
-- **Opens where you work** — Quinjet's review TUI in the installed terminal, or
+- **Opens where you work**: Quinjet's review TUI in the installed terminal, or
   `vr quinjet open` prints the exact command for a terminal you already have.
   Quinjet stays the owner of the review.
 
@@ -163,67 +163,67 @@ authentication and limits.
 
 **Site Audit**
 
-- **Edith's rules, exactly** — the same eleven checks and the same thresholds,
+- **Edith's rules, exactly**: the same eleven checks and the same thresholds,
   so a page that passes on macOS passes here. Titles, descriptions, canonicals,
   headings, language, Open Graph, X cards and HTTPS.
-- **Sitemap first** — `robots.txt`, then `/sitemap.xml`, then the page you gave
+- **Sitemap first**: `robots.txt`, then `/sitemap.xml`, then the page you gave
   it, following a sitemap index into its children.
-- **A template problem, not a page problem** — the report counts each issue
+- **A template problem, not a page problem**: the report counts each issue
   across the site, so one missing `og:image` and forty read differently.
-- **Every run stays local** — Veronica fetches the pages being audited and
+- **Every run stays local**: Veronica fetches the pages being audited and
   nothing else. No result is uploaded and no third-party service is consulted.
 
 **Herdr**
 
-- **Live agent board** — every running Herdr agent grouped into Edith's Blocked,
+- **Live agent board**: every running Herdr agent grouped into Edith's Blocked,
   Working, Unknown, Done and Idle lanes, refreshed from Herdr's public JSON API.
-- **Session and kind filters** — focus the board by persistent session or agent
+- **Session and kind filters**: focus the board by persistent session or agent
   family, with a compact rail for agents and terminals.
-- **Attach anywhere** — copy the exact attach command or open a session or agent
+- **Attach anywhere**: copy the exact attach command or open a session or agent
   directly in GNOME Console, while Herdr remains the owner of terminal state.
 
 **This computer**
 
-- **Live metrics** — CPU, memory, load, disks and thermal sensors from procfs
+- **Live metrics**: CPU, memory, load, disks and thermal sensors from procfs
   and sysfs, with snap and loop mounts filtered out.
-- **Microphone** — a system-wide mute switch through PipeWire.
+- **Microphone**: a system-wide mute switch through PipeWire.
 
 **Calendar**
 
-- **Your agenda** — every calendar configured on the machine, local or from an
+- **Your agenda**: every calendar configured on the machine, local or from an
   online account, with recurrences already expanded. Grouped by day, all-day
   events first, with what is happening now called out.
-- **One-tap join** — meeting links recovered from the event's location,
+- **One-tap join**: meeting links recovered from the event's location,
   description or conference field, for Meet, Zoom, Teams, Jitsi, Webex and more.
 
 **Media**
 
-- **One place for every player** — anything that speaks MPRIS: Spotify, a browser
+- **One place for every player**: anything that speaks MPRIS, such as Spotify, a browser
   tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
   progress bar that knows the difference between a track and a live stream.
-- **Local library** — music under `~/Music` is indexed without uploading it,
+- **Local library**: music under `~/Music` is indexed without uploading it,
   searchable by title, artist or album, and plays directly with queue, seeking,
   volume and hardware media-key support.
 
 **Machines**
 
-- **One fleet view** — this computer plus any host you can already reach over
+- **One fleet view**: this computer plus any host you can already reach over
   SSH, each with live CPU, memory, disks, load, uptime, temperatures, fan
   speeds, GPUs and its busiest processes, from a single probe. One round trip,
   no agent on the far end, nothing installed beyond a POSIX shell.
-- **No new credentials** — remote machines are reached by running `ssh`, so your
+- **No new credentials**: remote machines are reached by running `ssh`, so your
   config aliases, keys, agent and jump hosts apply unchanged, and Veronica never
   handles a key or a passphrase.
-- **Discovery** — aliases in `~/.ssh/config` are offered as one-click additions.
-- **Files and terminals** — browse a local or remote home directory, download a
+- **Discovery**: aliases in `~/.ssh/config` are offered as one-click additions.
+- **Files and terminals**: browse a local or remote home directory, download a
   file safely through SFTP, or open the host in the installed terminal.
-- **Containers** — list Docker or Podman containers on any machine, read the
+- **Containers**: list Docker or Podman containers on any machine, read the
   last screenful of one's output, and start, stop or restart them without
   installing a Veronica agent on that host.
-- **Power** — restart or shut down a remote machine, or wake one that is off
+- **Power**: restart or shut down a remote machine, or wake one that is off
   with a Wake-on-LAN packet. Never on the computer Veronica is running on, and
   never escalated: the account it connects as has to be permitted already.
-- **Honest failures** — an unreachable host says why, and never delays or hides
+- **Honest failures**: an unreachable host says why, and never delays or hides
   the machines that answered.
 
 **Global shortcuts**
@@ -235,178 +235,178 @@ authentication and limits.
 
 **Clipboard**
 
-- **Searchable history** — everything you copy, deduplicated so re-copying moves
+- **Searchable history**: everything you copy, deduplicated so re-copying moves
   an entry up rather than adding a row, with a count of how often you have used
   it. One click copies it back.
-- **Captured from the compositor** — on Wayland only the focused window may read
+- **Captured from the compositor**: on Wayland only the focused window may read
   the clipboard, so the GNOME Shell extension does the watching and the last few
   entries are available straight from the top bar dropdown.
-- **Stays local** — a plain file under your data directory that you can inspect
+- **Stays local**: a plain file under your data directory that you can inspect
   or delete; large copies are skipped rather than stored.
 
 **Color Picker**
 
-- **Sample any pixel** — the compositor's own eyedropper, through GNOME Shell or
+- **Sample any pixel**: the compositor's own eyedropper, through GNOME Shell or
   the desktop portal. Veronica never reads the screen without a click.
-- **Every representation** — hex, `rgb()`, `rgba()`, `hsl()` and a `GdkRGBA`
+- **Every representation**: hex, `rgb()`, `rgba()`, `hsl()` and a `GdkRGBA`
   literal, from one pick. Choose which one lands on the clipboard.
-- **Swatch history** — every colour you have sampled, kept locally, with the hex
+- **Swatch history**: every colour you have sampled, kept locally, with the hex
   printed on the colour itself in whichever of black or white stays legible.
-- **sRGB or Display P3** — the compositor reports sRGB; Display P3 converts it
+- **sRGB or Display P3**: the compositor reports sRGB; Display P3 converts it
   properly, for a wide-gamut panel.
 
 **Emoji Picker**
 
-- **Edith's catalogue, exactly** — the same emojibase release, the same names,
+- **Edith's catalogue, exactly**: the same emojibase release, the same names,
   the same search terms and the same ranking, so a search for "shrug" returns
   the same three characters in the same order on both platforms.
-- **Skin tones and recents** — every tone variant, and a most-used list weighted
+- **Skin tones and recents**: every tone variant, and a most-used list weighted
   by a 21-day half-life, so an old habit fades rather than sitting at the top
   forever.
-- **Copy, or type it in place** — the clipboard always works; typing the emoji
+- **Copy, or type it in place**: the clipboard always works; typing the emoji
   into the app you were in goes through the shell extension, because only the
   compositor may synthesise input into a window Veronica does not own.
 
 **Keystroke Highlight**
 
-- **A keycap for every press** — for demos and screen recordings, at the top or
+- **A keycap for every press**: for demos and screen recordings, at the top or
   bottom of the screen, six at a time, each fading after a configurable 0.5 to
   3 seconds.
-- **Listen-only, inside the compositor** — Wayland hands key presses only to the
+- **Listen-only, inside the compositor**: Wayland hands key presses only to the
   focused window, so the shell extension reads them and never consumes one:
   typing is unaffected whether the overlay is running or paused.
-- **Nothing while a password is being typed** — while the shell holds a modal
+- **Nothing while a password is being typed**: while the shell holds a modal
   grab, the lock screen and authentication prompts included, nothing is
   recorded at all.
 
 **Audio**
 
-- **Per-application mixer** — every stream PipeWire holds, playing or recording,
+- **Per-application mixer**: every stream PipeWire holds, playing or recording,
   with its own volume and mute. A browser tab and a notification sound are two
   streams, and the mixer says so rather than pretending an app has one volume.
-- **Bluetooth** — the adapters and devices BlueZ knows about, with each device's
+- **Bluetooth**: the adapters and devices BlueZ knows about, with each device's
   battery where it reports one. Read-only: Ubuntu's Quick Settings stays the
   only thing that pairs a device or switches the radio.
 
 **Database**
 
-- **Six engines** — PostgreSQL, MySQL, MariaDB, SQLite, Redis and Valkey.
+- **Six engines**: PostgreSQL, MySQL, MariaDB, SQLite, Redis and Valkey.
   Browse the objects, read a bounded page, run a statement that reads.
-- **Nothing unbounded** — every page has a hard ceiling and asks for one row
+- **Nothing unbounded**: every page has a hard ceiling and asks for one row
   more than it shows, so "is there more" is known rather than guessed. `KEYS *`
   is never sent; Redis is scanned.
-- **A change is previewed, then confirmed, then applied** — the preview says
+- **A change is previewed, then confirmed, then applied**: the preview says
   what it would touch, what it cannot undo, and the exact text to type back. It
   hands you a token that is signed, expires, works once, and stops matching the
   moment anything about the plan changes. Edit the statement, a parameter, the
   table or the connection's policy after previewing and the apply is refused
   with nothing sent.
-- **`query` never writes** — the check recognises the verbs that read and
+- **`query` never writes**: the check recognises the verbs that read and
   refuses everything else, so a statement type nobody thought of fails closed.
   Comments cannot hide a second statement.
-- **Credentials in the keyring** — the Secret Service, the same place GNOME
+- **Credentials in the keyring**: the Secret Service, the same place GNOME
   keeps everything else. A connection definition holds a reference, never a
   password, so it can be printed, logged and synced safely.
-- **Read-only means read-only** — three separate switches refuse a change, and
+- **Read-only means read-only**: three separate switches refuse a change, and
   the refusal names which one. On PostgreSQL, MySQL and SQLite the server is
   told as well, so it is not only Veronica declining to send.
-- **An MCP server for agents** — `vr database mcp` offers exactly two read-only
+- **An MCP server for agents**: `vr database mcp` offers exactly two read-only
   tools. An agent learns which databases you have and what each can do; it never
   learns a host, a username or a credential.
 
 **App Maintenance**
 
-- **One update inventory** — apt, snap and flatpak in one list, with what is
+- **One update inventory**: apt, snap and flatpak in one list, with what is
   installed and what is available side by side. Checking installs nothing.
-- **What you asked for, not its dependencies** — the apt inventory is the
+- **What you asked for, not its dependencies**: the apt inventory is the
   packages you chose, not the three thousand pulled in behind them.
-- **Review-first removal** — apt's own simulation, so you see everything that
+- **Review-first removal**: apt's own simulation, so you see everything that
   would go with a package, and what would be left behind unused, before
   anything is removed.
-- **Never escalates** — reads run unprivileged. A change that needs root goes
+- **Never escalates**: reads run unprivileged. A change that needs root goes
   through `pkexec`, so the desktop's own dialog asks you to authenticate;
   Veronica never wraps anything in `sudo` on your behalf.
 
 **Disk cleaner**
 
-- **Measures before it touches anything** — the developer caches sitting in your
+- **Measures before it touches anything**: the developer caches sitting in your
   home directory, per category, with what removing each one actually costs you,
   and a sweep for `node_modules`, `target`, `.venv` and the rest inside any
   folder you point at.
-- **Moves to the Trash, never deletes** — through the freedesktop trash spec, so
+- **Moves to the Trash, never deletes**: through the freedesktop trash spec, so
   Files can restore it. The Trash keeps occupying the disk until you empty it,
   which every screen that offers a clean says.
-- **Your files only** — it walks your home directory with your own permissions,
+- **Your files only**: it walks your home directory with your own permissions,
   never asks for root, and never touches a system cache such as apt's.
 
 **Presenter**
 
-- **Blurs what should not be shared** — spend, token counts, rate limits,
+- **Blurs what should not be shared**: spend, token counts, rate limits,
   calendar entries and track names, while navigation and controls stay usable.
-- **Notices a screen share** — an app capturing the screen or controlling it
+- **Notices a screen share**: an app capturing the screen or controlling it
   remotely activates it automatically, detected from the compositor's own
   screencast sessions. Dismiss one share without switching detection off.
-- **Category by category** — reveal the calendar for a demo while spend stays
+- **Category by category**: reveal the calendar for a demo while spend stays
   hidden.
 
 **Focus Dim**
 
-- **Darkens everything behind your window** — drawn inside GNOME Shell, so it
+- **Darkens everything behind your window**: drawn inside GNOME Shell, so it
   works on Wayland, where no application could place a dim behind another app's
   window.
-- **Per display or focused only** — keep each monitor's front window bright, or
+- **Per display or focused only**: keep each monitor's front window bright, or
   dim every monitor but the one you are typing in.
 
 **Appearance**
 
-- **Thirteen themes, one setting** — System follows Ubuntu's own light/dark
+- **Thirteen themes, one setting**: System follows Ubuntu's own light/dark
   choice. Four light: Ivory, Sandstone, Mist and Paper. Eight dark: Graphite,
   Midnight, Aubergine, Forest, Nord, Ocean, Ember and Carbon.
-- **The app and the notch together** — one `appearance` setting themes the
+- **The app and the notch together**: one `appearance` setting themes the
   desktop window and the GNOME shelf, so the two never disagree, and anything
   Veronica launches with a theme of its own gets the light-or-dark answer
   rather than the theme's name.
-- **Charts follow the family** — every theme declares whether it is light or
+- **Charts follow the family**: every theme declares whether it is light or
   dark, and the categorical and sequential chart ramps are chosen from that,
   so a chart is readable on Carbon's true black and on Paper's white alike.
-- **Paper and Carbon are the accessibility pair** — Paper trades the soft
+- **Paper and Carbon are the accessibility pair**: Paper trades the soft
   hairlines for borders that clear the 3:1 non-text minimum on their own;
   Carbon paints an unlit `#000` page for OLED panels.
 
 **Getting around**
 
-- **Ctrl+K** — search every page by name, by what it does, or by a word you
+- **Ctrl+K**: search every page by name, by what it does, or by a word you
   would reach for: "ssh" finds Machines, "apt" finds App Maintenance, "theme"
   finds Settings.
-- **A grouped rail** — nineteen pages sorted into Agents, This computer, Tools
+- **A grouped rail**: nineteen pages sorted into Agents, This computer, Tools
   and Veronica, rather than one column to read top to bottom.
 
 **Top bar**
 
-- **CPU and memory beside the clock** — Edith's menu bar readout, in the position
+- **CPU and memory beside the clock**: Edith's menu bar readout, in the position
   Ubuntu has for it, read straight from procfs rather than by running anything.
-- **Compact Edith shelf** — while the extension is enabled, Veronica replaces
+- **Compact Edith shelf**: while the extension is enabled, Veronica replaces
   only the center date button with its 580px Home, Notifications, Files,
   Clipboard and Camera shelf. It does not lengthen GNOME's calendar dropdown.
-- **Ubuntu controls stay native** — Quick Settings remains the only owner of
+- **Ubuntu controls stay native**: Quick Settings remains the only owner of
   Wi-Fi, Bluetooth, volume and battery. Veronica adds neither copies of those
   indicators nor an agent-spend indicator to the right side of the panel.
-- **No second panel** — the shell keeps owning the top bar; Veronica only adds
+- **No second panel**: the shell keeps owning the top bar; Veronica only adds
   what the shell has no idea about.
 
 **Media**
 
-- **One place for every player** — anything that speaks MPRIS: Spotify, a browser
+- **One place for every player**: anything that speaks MPRIS, such as Spotify, a browser
   tab, Rhythmbox, VLC. Now-playing with album art, transport control, and a
   progress bar that knows the difference between a track and a live stream.
 
 **Notch**
 
-- **The clock dropdown, upgraded** — click Ubuntu's center clock as usual. One
+- **The clock dropdown, upgraded**: click Ubuntu's center clock as usual. One
   panel holds now-playing with album art and transport, the notification
   history, a month grid, the day's events, and the things the shell knows
   nothing about: agent spend and machine load.
-- **Edith's structure** — Home, Files, Clipboard, Audio and Camera use the same
+- **Edith's structure**: Home, Files, Clipboard, Audio and Camera use the same
   pill-tab order as Edith. Home has the paired now-playing and limit cards plus
   real Keep Awake and Lid Awake actions; Clipboard is a scrollable copy/delete
   history. Tabs whose Linux backend is still being ported identify that state
