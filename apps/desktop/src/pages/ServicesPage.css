@@ -1,0 +1,85 @@
+.svc-search {
+  width: min(360px, 100%);
+}
+
+.svc-pad {
+  padding: var(--space-2) var(--card-padding);
+}
+
+.svc-protocol {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  background: var(--fill-control);
+  color: var(--text-2);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.svc-endpoint {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+.svc-container-row .ui-list-row-leading {
+  width: 36px;
+}
+
+.svc-container-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.svc-container-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.svc-state {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-regular);
+}
+
+.svc-container-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.svc-container-meta > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.svc-footnote {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+@container main (max-width: 720px) {
+  .svc-search {
+    width: 100%;
+  }
+
+  .svc-page .ui-section-header {
+    flex-wrap: wrap;
+  }
+
+  .svc-endpoint {
+    max-width: 100%;
+  }
+}

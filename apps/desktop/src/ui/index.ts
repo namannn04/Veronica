@@ -16,3 +16,4 @@ export { Stat, StatGrid } from "./Stat";
 export { Tabs, type TabItem } from "./Tabs";
 export { Table, Toolbar } from "./Toolbar";
 export { Tooltip } from "./Tooltip";
+export { Slider } from "./Slider";
