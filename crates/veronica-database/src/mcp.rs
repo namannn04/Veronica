@@ -1,4 +1,3 @@
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as Json};
 
@@ -6,7 +5,6 @@ use crate::capabilities::{Capability, Report};
 use crate::connection::ConnectionDefinition;
 use crate::store::MetadataStore;
 
-pub const PROTOCOL_VERSION: &str = "2024-11-05";
 pub const MAX_CONNECTIONS: usize = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,7 +31,7 @@ impl Projection {
     }
 }
 
-fn tools() -> Json {
+pub fn tools() -> Json {
     json!([
         {
             "name": "database_connections",
@@ -180,75 +178,6 @@ pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
 
         other => text(json!({ "error": format!("no tool called {other}") }), true),
     }
-}
-
-pub fn handle(store: &MetadataStore, request: &Json) -> Option<Json> {
-    let id = request.get("id").cloned();
-    let method = request.get("method").and_then(Json::as_str).unwrap_or("");
-
-    id.as_ref()?;
-
-    let result = match method {
-        "initialize" => json!({
-            "protocolVersion": PROTOCOL_VERSION,
-            "capabilities": { "tools": {} },
-            "serverInfo": { "name": "veronica-database", "version": env!("CARGO_PKG_VERSION") }
-        }),
-        "tools/list" => json!({ "tools": tools() }),
-        "tools/call" => {
-            let params = request.get("params").cloned().unwrap_or_else(|| json!({}));
-            let name = params
-                .get("name")
-                .and_then(Json::as_str)
-                .unwrap_or_default();
-            let arguments = params
-                .get("arguments")
-                .cloned()
-                .unwrap_or_else(|| json!({}));
-            call_tool(store, name, &arguments)
-        }
-        "ping" => json!({}),
-        other => {
-            return Some(json!({
-                "jsonrpc": "2.0",
-                "id": id,
-                "error": { "code": -32601, "message": format!("no method called {other}") }
-            }));
-        }
-    };
-
-    Some(json!({ "jsonrpc": "2.0", "id": id, "result": result }))
-}
-
-pub fn serve(store: &MetadataStore) -> Result<()> {
-    use std::io::{BufRead, Write};
-
-    let stdin = std::io::stdin();
-    let mut stdout = std::io::stdout();
-    for line in stdin.lock().lines() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        let request: Json = match serde_json::from_str(&line) {
-            Ok(request) => request,
-            Err(error) => {
-                let reply = json!({
-                    "jsonrpc": "2.0",
-                    "id": Json::Null,
-                    "error": { "code": -32700, "message": error.to_string() }
-                });
-                writeln!(stdout, "{reply}")?;
-                stdout.flush()?;
-                continue;
-            }
-        };
-        if let Some(reply) = handle(store, &request) {
-            writeln!(stdout, "{reply}")?;
-            stdout.flush()?;
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -465,54 +394,5 @@ mod tests {
                 "a {name} tool would let an agent reach a database"
             );
         }
-    }
-
-    #[test]
-    fn initialize_reports_the_protocol_and_the_server() {
-        let store = store_with(&definition());
-        let reply = handle(
-            &store,
-            &json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }),
-        )
-        .unwrap();
-        assert_eq!(reply["result"]["protocolVersion"], json!(PROTOCOL_VERSION));
-        assert_eq!(
-            reply["result"]["serverInfo"]["name"],
-            json!("veronica-database")
-        );
-        assert_eq!(reply["id"], json!(1));
-    }
-
-    #[test]
-    fn a_notification_is_not_answered() {
-        let store = store_with(&definition());
-        assert!(handle(
-            &store,
-            &json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })
-        )
-        .is_none());
-    }
-
-    #[test]
-    fn an_unknown_method_gets_a_json_rpc_error_with_the_right_code() {
-        let store = store_with(&definition());
-        let reply = handle(
-            &store,
-            &json!({ "jsonrpc": "2.0", "id": 9, "method": "resources/list" }),
-        )
-        .unwrap();
-        assert_eq!(reply["error"]["code"], json!(-32601));
-        assert_eq!(reply["id"], json!(9));
-    }
-
-    #[test]
-    fn a_string_id_comes_back_unchanged() {
-        let store = store_with(&definition());
-        let reply = handle(
-            &store,
-            &json!({ "jsonrpc": "2.0", "id": "abc", "method": "ping" }),
-        )
-        .unwrap();
-        assert_eq!(reply["id"], json!("abc"));
     }
 }

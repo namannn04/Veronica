@@ -144,6 +144,27 @@ impl Session {
         reply
     }
 
+    fn notification(&mut self, method: &str) -> Value {
+        if let Some(index) = self
+            .notifications
+            .iter()
+            .position(|message| message["method"] == method)
+        {
+            return self.notifications.remove(index);
+        }
+        loop {
+            let message = self.receive();
+            if message["method"] == method {
+                return message;
+            }
+            self.notifications.push(message);
+        }
+    }
+
+    fn read(&mut self, uri: &str) -> Value {
+        self.request("resources/read", &json!({ "uri": uri }))
+    }
+
     fn tools(&mut self) -> Vec<Value> {
         self.request("tools/list", &json!({}))["result"]["tools"]
             .as_array()
@@ -388,4 +409,128 @@ fn disabled_extensions_have_no_tools() {
     assert!(!listed
         .iter()
         .any(|name| name.starts_with("veronica_fixture")));
+}
+
+#[test]
+fn resources_describe_the_guide_and_the_extensions() {
+    let home = Home::with_fixture();
+    let mut session = home.serve(&["mcp"]);
+    let reply = session.initialize("2025-11-25");
+    assert_eq!(
+        reply["result"]["capabilities"]["resources"]["listChanged"],
+        true
+    );
+    let listed = session.request("resources/list", &json!({}));
+    let uris: Vec<&str> = listed["result"]["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|resource| resource["uri"].as_str().unwrap())
+        .collect();
+    for uri in [
+        "veronica://guide",
+        "veronica://guide/agents",
+        "veronica://extensions/fixture",
+    ] {
+        assert!(uris.contains(&uri), "{uri} missing from {uris:?}");
+    }
+    let templates = session.request("resources/templates/list", &json!({}));
+    assert_eq!(
+        templates["result"]["resourceTemplates"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+
+    let guide = session.read("veronica://guide");
+    let text = guide["result"]["contents"][0]["text"].as_str().unwrap();
+    let guide: Value = serde_json::from_str(text).unwrap();
+    assert!(guide["commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|leaf| leaf["mcpTool"] == "veronica_fixture_echo"));
+
+    let topic = session.read("veronica://guide/agents");
+    assert_eq!(topic["result"]["contents"][0]["mimeType"], "text/plain");
+    assert!(topic["result"]["contents"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("vr mcp"));
+
+    let extension = session.read("veronica://extensions/fixture");
+    let text = extension["result"]["contents"][0]["text"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{extension}"));
+    assert!(text.contains("fixture"));
+
+    for uri in [
+        "veronica://nowhere",
+        "veronica://guide/nothing",
+        "veronica://extensions/absent",
+        "veronica://extensions/--yes",
+    ] {
+        let missing = session.read(uri);
+        assert_eq!(missing["error"]["code"], -32002, "{uri}: {missing}");
+        assert_eq!(missing["error"]["data"]["uri"], uri);
+    }
+}
+
+#[test]
+fn switching_an_extension_announces_new_lists() {
+    let home = Home::with_fixture();
+    let mut session = home.serve(&["mcp"]);
+    session.initialize("2025-11-25");
+    assert!(names(&session.tools()).contains(&"veronica_fixture_echo".to_string()));
+
+    assert_eq!(home.vr(&["extensions", "disable", "fixture"]), 0);
+    session.notification("notifications/tools/list_changed");
+    session.notification("notifications/resources/list_changed");
+    assert!(!names(&session.tools()).contains(&"veronica_fixture_echo".to_string()));
+
+    assert_eq!(home.vr(&["extensions", "enable", "fixture"]), 0);
+    session.notification("notifications/tools/list_changed");
+    assert!(names(&session.tools()).contains(&"veronica_fixture_echo".to_string()));
+}
+
+#[test]
+fn database_tools_are_folded_in_and_read_only() {
+    let home = Home::with_fixture();
+    let mut session = home.serve(&["mcp"]);
+    session.initialize("2025-11-25");
+    let tools = session.tools();
+    let database: Vec<&Value> = tools
+        .iter()
+        .filter(|tool| tool["name"].as_str().unwrap().contains("database"))
+        .collect();
+    let database_names: Vec<&str> = database
+        .iter()
+        .map(|tool| tool["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        database_names,
+        ["database_connections", "database_capabilities"]
+    );
+    for tool in database {
+        assert_eq!(tool["annotations"]["readOnlyHint"], true, "{tool}");
+        assert_eq!(tool["annotations"]["destructiveHint"], false, "{tool}");
+    }
+    let listed = session.call("database_connections", &json!({}));
+    assert_eq!(listed["result"]["isError"], false, "{listed}");
+    let text: Value =
+        serde_json::from_str(listed["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(text["total"], 0);
+}
+
+#[test]
+fn the_old_database_server_runs_the_new_one() {
+    let home = Home::with_fixture();
+    let mut session = home.serve(&["database", "mcp"]);
+    let reply = session.initialize("2024-11-05");
+    assert_eq!(reply["result"]["protocolVersion"], "2024-11-05");
+    assert_eq!(reply["result"]["serverInfo"]["name"], "veronica");
+    let listed = names(&session.tools());
+    assert!(listed.contains(&"database_connections".to_string()));
+    assert!(listed.contains(&"veronica_fixture_echo".to_string()));
 }

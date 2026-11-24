@@ -71,8 +71,8 @@ pub(crate) enum DatabaseCommand {
         limit: usize,
     },
     #[command(
-        about = "Serve the read-only MCP tools over stdin and stdout",
-        long_about = "Serve the read-only MCP tools over stdin and stdout.\n\nStays in the foreground and prints no banner: stdout carries protocol traffic and nothing else. An agent learns which databases you have saved and what each can do, but never a host, a username or a credential."
+        about = "Deprecated: runs `vr mcp`, which serves the read-only database tools",
+        long_about = "Deprecated: runs `vr mcp`, which serves the read-only database tools.\n\nAn agent learns which databases you have saved and what each can do, but never a host, a username or a credential. This command goes away in the next release."
     )]
     Mcp,
 }
@@ -390,10 +390,10 @@ pub(crate) async fn run(
         }
 
         DatabaseCommand::Mcp => {
-            let store = directories_store(directories)?;
-            tokio::task::spawn_blocking(move || veronica_database::mcp::serve(&store))
-                .await
-                .context("the MCP server stopped unexpectedly")?
+            eprintln!(
+                "vr: `vr database mcp` is deprecated and goes away in the next release; it now runs `vr mcp`, which serves the same read-only database tools"
+            );
+            crate::mcp_cmd::run(&crate::mcp_cmd::McpCommand::Serve).await
         }
 
         DatabaseCommand::Operations { limit } => {

@@ -316,7 +316,9 @@ the person. Commands that need the desktop session exit 4 when there is none.
 `vr mcp` serves the same commands as MCP tools over stdin and stdout, one tool
 per command, named veronica_<area>_<action>. A destructive tool changes nothing
 until it is called with confirm set, and veronica_catalog finds and installs
-extensions. `vr database mcp` serves read-only database tools.";
+extensions. The server also lists the read-only database tools
+database_connections and database_capabilities, and the resources
+veronica://guide, veronica://guide/<topic> and veronica://extensions/<id>.";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -391,6 +393,17 @@ pub(crate) fn catalog(routes: &Routes) -> Vec<Leaf> {
     }
     commands.sort_by(|left, right| left.path.cmp(&right.path));
     commands
+}
+
+pub(crate) fn topic(id: &str) -> Option<Value> {
+    let topic = Topic::ALL.into_iter().find(|topic| topic.id() == id)?;
+    Some(json!({ "id": topic.id(), "title": topic.title(), "text": topic.body() }))
+}
+
+pub(crate) fn topics() -> impl Iterator<Item = (&'static str, &'static str)> {
+    Topic::ALL
+        .into_iter()
+        .map(|topic| (topic.id(), topic.title()))
 }
 
 pub(crate) fn document(routes: &Routes) -> Value {

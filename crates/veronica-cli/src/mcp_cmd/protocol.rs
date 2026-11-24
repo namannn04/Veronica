@@ -5,6 +5,7 @@ pub(crate) const INVALID_REQUEST: i64 = -32600;
 pub(crate) const METHOD_NOT_FOUND: i64 = -32601;
 pub(crate) const INVALID_PARAMS: i64 = -32602;
 pub(crate) const INTERNAL_ERROR: i64 = -32603;
+pub(crate) const RESOURCE_NOT_FOUND: i64 = -32002;
 
 pub(crate) const LATEST_VERSION: &str = "2025-11-25";
 pub(crate) const SUPPORTED_VERSIONS: [&str; 4] =
@@ -24,6 +25,11 @@ impl RpcError {
             message: message.into(),
             data: None,
         }
+    }
+
+    pub(crate) fn with_data(mut self, data: Value) -> Self {
+        self.data = Some(data);
+        self
     }
 }
 
@@ -46,6 +52,10 @@ pub(crate) fn failure(id: &Value, error: &RpcError) -> Value {
         body["data"] = data.clone();
     }
     json!({ "jsonrpc": "2.0", "id": id, "error": body })
+}
+
+pub(crate) fn notification(method: &str) -> Value {
+    json!({ "jsonrpc": "2.0", "method": method })
 }
 
 #[derive(Debug, Clone, PartialEq)]
