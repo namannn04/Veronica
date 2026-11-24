@@ -79,10 +79,10 @@ export function CompanionPage() {
     );
   }, []);
 
-  const loadFailed = (reason: unknown) => {
+  const loadFailed = useCallback((reason: unknown) => {
     setError(String(reason));
     setLoaded(true);
-  };
+  }, []);
 
   useEffect(() => {
     queryRef.current = query;
@@ -105,12 +105,12 @@ export function CompanionPage() {
     return () => {
       void updated.then((unlisten) => unlisten());
     };
-  }, []);
+  }, [refresh, loadFailed]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(query).catch(loadFailed), 180);
     return () => window.clearTimeout(timer);
-  }, [query]);
+  }, [query, refresh, loadFailed]);
 
   useEffect(() => {
     if (!recording) {
@@ -121,19 +121,24 @@ export function CompanionPage() {
   }, [recording]);
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
+  const selectedTitle = selected?.title ?? "";
+  const selectedBody = selected?.body ?? "";
+  const selectedPinned = selected?.pinned ?? false;
+  const selectedVoiceId = selected?.kind === "voice" ? selected.id : null;
+  const selectedVersion = selected ? `${selected.id}:${selected.updatedAt}` : null;
   useEffect(() => {
-    setTitle(selected?.title ?? "");
-    setBody(selected?.body ?? "");
-    setPinned(selected?.pinned ?? false);
+    setTitle(selectedTitle);
+    setBody(selectedBody);
+    setPinned(selectedPinned);
     setAudio("");
     setSaved(false);
-    if (selected?.kind === "voice") {
+    if (selectedVersion !== null && selectedVoiceId !== null) {
       void ipc
-        .companionAudio(selected.id)
+        .companionAudio(selectedVoiceId)
         .then((path) => setAudio(convertFileSrc(path)))
         .catch((reason) => setError(String(reason)));
     }
-  }, [selectedId, selected?.updatedAt]);
+  }, [selectedVersion, selectedTitle, selectedBody, selectedPinned, selectedVoiceId]);
 
   const visible = useMemo(
     () =>
