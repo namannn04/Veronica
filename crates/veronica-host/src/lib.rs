@@ -5,6 +5,7 @@ pub mod install;
 pub mod launcher;
 pub mod layout;
 pub mod lock;
+pub mod mcp;
 pub mod registry;
 pub mod trust;
 pub mod update;
