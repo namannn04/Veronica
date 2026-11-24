@@ -520,3 +520,8 @@ fn collect_leaves<'a>(
     }
     path.pop();
 }
+
+pub fn json_schema() -> Value {
+    serde_json::to_value(schemars::schema_for!(Manifest))
+        .expect("a generated schema always serializes")
+}

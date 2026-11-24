@@ -1,0 +1,770 @@
+{
+  "$defs": {
+    "Activation": {
+      "additionalProperties": false,
+      "properties": {
+        "idleStopSeconds": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": ["integer", "null"]
+        },
+        "mode": {
+          "$ref": "#/$defs/ActivationMode",
+          "default": "onDemand"
+        }
+      },
+      "type": "object"
+    },
+    "ActivationMode": {
+      "enum": ["onDemand", "background"],
+      "type": "string"
+    },
+    "Arg": {
+      "additionalProperties": false,
+      "properties": {
+        "default": true,
+        "help": {
+          "type": ["string", "null"]
+        },
+        "kind": {
+          "$ref": "#/$defs/ArgKind"
+        },
+        "long": {
+          "type": ["string", "null"]
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "short": {
+          "maxLength": 1,
+          "minLength": 1,
+          "type": ["string", "null"]
+        },
+        "type": {
+          "$ref": "#/$defs/ArgType"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["name", "kind", "type"],
+      "type": "object"
+    },
+    "ArgKind": {
+      "enum": ["positional", "option", "flag"],
+      "type": "string"
+    },
+    "ArgType": {
+      "enum": ["string", "integer", "number", "boolean", "path"],
+      "type": "string"
+    },
+    "Backend": {
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "type": "string"
+        }
+      },
+      "required": ["entry"],
+      "type": "object"
+    },
+    "Command": {
+      "additionalProperties": false,
+      "properties": {
+        "about": {
+          "type": ["string", "null"]
+        },
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "args": {
+          "items": {
+            "$ref": "#/$defs/Arg"
+          },
+          "type": "array"
+        },
+        "effect": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Effect"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "json": {
+          "default": false,
+          "type": "boolean"
+        },
+        "mcp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/McpOptions"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "type": "string"
+        },
+        "stdin": {
+          "type": "boolean"
+        },
+        "subcommands": {
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "type": "array"
+        },
+        "timeoutSeconds": {
+          "format": "uint32",
+          "minimum": 1,
+          "type": ["integer", "null"]
+        }
+      },
+      "required": ["name"],
+      "type": "object"
+    },
+    "ContractId": {
+      "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*@[1-9][0-9]*$",
+      "type": "string"
+    },
+    "ContractKind": {
+      "enum": ["topic", "request"],
+      "type": "string"
+    },
+    "Contracts": {
+      "additionalProperties": false,
+      "properties": {
+        "provides": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ProvidedContract"
+          },
+          "type": "array"
+        },
+        "uses": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ContractId"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Data": {
+      "additionalProperties": false,
+      "properties": {
+        "migrate": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Migration"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "DbusGrants": {
+      "additionalProperties": false,
+      "properties": {
+        "session": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "system": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Effect": {
+      "enum": ["read", "write", "destructive"],
+      "type": "string"
+    },
+    "Engines": {
+      "additionalProperties": false,
+      "properties": {
+        "backendProtocol": {
+          "format": "uint32",
+          "minimum": 1,
+          "type": ["integer", "null"]
+        },
+        "host": {
+          "type": "string"
+        },
+        "hostApi": {
+          "format": "uint32",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["host", "hostApi"],
+      "type": "object"
+    },
+    "FilesystemAccess": {
+      "enum": ["read", "readWrite"],
+      "type": "string"
+    },
+    "FilesystemGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "access": {
+          "$ref": "#/$defs/FilesystemAccess"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": ["path", "access"],
+      "type": "object"
+    },
+    "HomeCard": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/SurfaceAction"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "opens": {
+          "type": ["string", "null"]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContractId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template": {
+          "$ref": "#/$defs/SurfaceTemplate"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "template", "title"],
+      "type": "object"
+    },
+    "HostPermission": {
+      "enum": [
+        "notifications",
+        "surfaces",
+        "contracts",
+        "settings:read",
+        "secrets",
+        "openExternal",
+        "clipboard:write",
+        "shortcuts"
+      ],
+      "type": "string"
+    },
+    "ManifestVersion": {
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "McpOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "expose": {
+          "type": "boolean"
+        },
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "type": ["string", "null"]
+        }
+      },
+      "type": "object"
+    },
+    "Migration": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": ["from", "to"],
+      "type": "object"
+    },
+    "Nav": {
+      "additionalProperties": false,
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "order": {
+          "default": 0,
+          "format": "int32",
+          "type": "integer"
+        }
+      },
+      "required": ["group"],
+      "type": "object"
+    },
+    "NotchActivity": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/SurfaceAction"
+          },
+          "type": "array"
+        },
+        "blurCategory": {
+          "type": ["string", "null"]
+        },
+        "id": {
+          "type": "string"
+        },
+        "priority": {
+          "default": 0,
+          "format": "int32",
+          "type": "integer"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ContractId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template": {
+          "$ref": "#/$defs/SurfaceTemplate"
+        }
+      },
+      "required": ["id", "template"],
+      "type": "object"
+    },
+    "Permissions": {
+      "additionalProperties": false,
+      "properties": {
+        "dbus": {
+          "$ref": "#/$defs/DbusGrants",
+          "default": {
+            "session": [],
+            "system": []
+          }
+        },
+        "filesystem": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FilesystemGrant"
+          },
+          "type": "array"
+        },
+        "host": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/HostPermission"
+          },
+          "type": "array"
+        },
+        "network": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "shell": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ShellService"
+          },
+          "type": "array"
+        },
+        "spawn": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Profile": {
+      "enum": ["simple", "developer"],
+      "type": "string"
+    },
+    "ProvidedContract": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/ContractId"
+        },
+        "kind": {
+          "$ref": "#/$defs/ContractKind"
+        }
+      },
+      "required": ["id", "kind"],
+      "type": "object"
+    },
+    "Requirements": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "optionalCapabilities": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "systemPackages": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "ShellService": {
+      "enum": [
+        "clipboard.watch",
+        "pasteInPlace",
+        "pickColor",
+        "focusDim",
+        "keystrokeOverlay",
+        "cleanKeys"
+      ],
+      "type": "string"
+    },
+    "Shortcut": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "default": null,
+          "type": ["string", "null"]
+        },
+        "id": {
+          "type": "string"
+        },
+        "run": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "title", "run"],
+      "type": "object"
+    },
+    "SuggestSignal": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "tool": {
+              "type": "string"
+            }
+          },
+          "required": ["tool"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": ["path"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "desktopEntry": {
+              "type": "string"
+            }
+          },
+          "required": ["desktopEntry"],
+          "type": "object"
+        }
+      ]
+    },
+    "SurfaceAction": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": ["string", "null"]
+        },
+        "run": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["id", "run"],
+      "type": "object"
+    },
+    "SurfaceTemplate": {
+      "enum": ["ring", "meter", "stat", "text", "list", "nowPlaying", "actions"],
+      "type": "string"
+    },
+    "Target": {
+      "enum": ["linux-x86_64", "linux-aarch64"],
+      "type": "string"
+    },
+    "Ui": {
+      "additionalProperties": false,
+      "properties": {
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/UiPage"
+          },
+          "type": "array"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": ["root", "pages"],
+      "type": "object"
+    },
+    "UiPage": {
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "type": "string"
+        },
+        "hint": {
+          "type": ["string", "null"]
+        },
+        "icon": {
+          "type": ["string", "null"]
+        },
+        "id": {
+          "type": "string"
+        },
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "nav": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Nav"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "title", "entry"],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation": {
+      "$ref": "#/$defs/Activation",
+      "default": {
+        "mode": "onDemand"
+      }
+    },
+    "backend": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Backend"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "commands": {
+      "items": {
+        "$ref": "#/$defs/Command"
+      },
+      "type": "array"
+    },
+    "contracts": {
+      "$ref": "#/$defs/Contracts",
+      "default": {
+        "provides": [],
+        "uses": []
+      }
+    },
+    "data": {
+      "$ref": "#/$defs/Data",
+      "default": {
+        "migrate": []
+      }
+    },
+    "engines": {
+      "$ref": "#/$defs/Engines"
+    },
+    "guide": {
+      "type": ["string", "null"]
+    },
+    "homeCards": {
+      "items": {
+        "$ref": "#/$defs/HomeCard"
+      },
+      "type": "array"
+    },
+    "icon": {
+      "type": ["string", "null"]
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9-]{1,31}$",
+      "type": "string"
+    },
+    "labs": {
+      "default": false,
+      "type": "boolean"
+    },
+    "notchActivities": {
+      "items": {
+        "$ref": "#/$defs/NotchActivity"
+      },
+      "type": "array"
+    },
+    "permissions": {
+      "$ref": "#/$defs/Permissions",
+      "default": {
+        "dbus": {
+          "session": [],
+          "system": []
+        },
+        "filesystem": [],
+        "host": [],
+        "network": [],
+        "shell": [],
+        "spawn": []
+      }
+    },
+    "profiles": {
+      "items": {
+        "$ref": "#/$defs/Profile"
+      },
+      "type": "array"
+    },
+    "requires": {
+      "$ref": "#/$defs/Requirements",
+      "default": {
+        "capabilities": [],
+        "optionalCapabilities": [],
+        "systemPackages": [],
+        "tools": []
+      }
+    },
+    "schema": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "shortcuts": {
+      "items": {
+        "$ref": "#/$defs/Shortcut"
+      },
+      "type": "array"
+    },
+    "suggestFor": {
+      "items": {
+        "$ref": "#/$defs/SuggestSignal"
+      },
+      "type": "array"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "targets": {
+      "items": {
+        "$ref": "#/$defs/Target"
+      },
+      "type": "array"
+    },
+    "title": {
+      "type": "string"
+    },
+    "ui": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Ui"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "version": {
+      "$ref": "#/$defs/ManifestVersion"
+    }
+  },
+  "required": ["schema", "id", "version", "title", "summary", "category", "engines", "targets"],
+  "title": "Veronica extension manifest",
+  "type": "object"
+}
