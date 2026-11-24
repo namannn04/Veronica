@@ -239,7 +239,12 @@ pub struct LaunchAtLoginStatus {
     pub entry_path: String,
 }
 
+const SNAP_LAUNCHER: &str = "/snap/bin/veronica";
+
 fn autostart_executable() -> CommandResult<std::path::PathBuf> {
+    if install_kind() == "snap" {
+        return Ok(SNAP_LAUNCHER.into());
+    }
     let current = std::env::current_exe()
         .map_err(|error| format!("cannot locate the running Veronica executable: {error}"))?;
     Ok(veronica_core::autostart::preferred_executable(
@@ -275,10 +280,25 @@ pub fn launch_at_login_set(
 
 const SHELL_EXTENSION_UUID: &str = "veronica@namannn04.github.io";
 
-const BUNDLED_SHELL_EXTENSION: &str = "/app/share/veronica/gnome-shell-extension";
+const FLATPAK_SHELL_EXTENSION: &str = "/app/share/veronica/gnome-shell-extension";
 
 const FLATPAK_CLI_SHIM: &str =
     "#!/bin/sh\nexec flatpak run --command=vr io.github.namannn04.Veronica \"$@\"\n";
+
+const SNAP_CLI_SHIM: &str = "#!/bin/sh\nexec /snap/bin/veronica.vr \"$@\"\n";
+
+fn bundled_shell_extension() -> Option<(std::path::PathBuf, &'static str)> {
+    match install_kind() {
+        "flatpak" => Some((FLATPAK_SHELL_EXTENSION.into(), FLATPAK_CLI_SHIM)),
+        "snap" => std::env::var_os("SNAP").map(|root| {
+            let source = std::path::Path::new(&root)
+                .join("usr/share/gnome-shell/extensions")
+                .join(SHELL_EXTENSION_UUID);
+            (source, SNAP_CLI_SHIM)
+        }),
+        _ => None,
+    }
+}
 
 pub fn install_bundled_shell_extension(
     directories: &veronica_core::AppDirectories,
@@ -286,8 +306,10 @@ pub fn install_bundled_shell_extension(
     use anyhow::Context;
     use std::os::unix::fs::PermissionsExt;
 
-    let source = std::path::Path::new(BUNDLED_SHELL_EXTENSION);
-    if !veronica_core::host::is_sandboxed() || !source.is_dir() {
+    let Some((source, cli_shim)) = bundled_shell_extension() else {
+        return Ok(());
+    };
+    if !source.is_dir() {
         return Ok(());
     }
     let target = directories
@@ -308,7 +330,7 @@ pub fn install_bundled_shell_extension(
         }
         Ok(())
     };
-    for entry in std::fs::read_dir(source)? {
+    for entry in std::fs::read_dir(&source)? {
         let entry = entry?;
         if entry.file_type()?.is_file() {
             write_if_changed(
@@ -318,7 +340,7 @@ pub fn install_bundled_shell_extension(
         }
     }
     let shim = target.join("vr");
-    write_if_changed(&shim, FLATPAK_CLI_SHIM.as_bytes())?;
+    write_if_changed(&shim, cli_shim.as_bytes())?;
     std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o755))?;
     if first_install {
         enable_at_next_login().map_err(anyhow::Error::msg)?;
@@ -1107,6 +1129,8 @@ pub struct UpdateInfo {
 fn install_kind() -> &'static str {
     if veronica_core::host::is_sandboxed() {
         "flatpak"
+    } else if std::env::var_os("SNAP_NAME").is_some_and(|name| name == "veronica") {
+        "snap"
     } else if std::env::var_os("APPIMAGE").is_some() {
         "appimage"
     } else {
@@ -1133,6 +1157,7 @@ fn package_asset<'a>(assets: &'a [GithubAsset], kind: &str) -> Option<&'a Github
     let suffix = match kind {
         "appimage" => ".AppImage",
         "flatpak" => ".flatpak",
+        "snap" => ".snap",
         _ => "_amd64.deb",
     };
     assets.iter().find(|asset| asset.name.ends_with(suffix))
@@ -1237,6 +1262,17 @@ pub async fn update_install(version: String) -> CommandResult<String> {
                 Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
             }
         }
+        "snap" => {
+            let output = std::process::Command::new("snap")
+                .args(["refresh", "veronica"])
+                .output()
+                .map_err(|error| format!("cannot run snap: {error}"))?;
+            if output.status.success() {
+                Ok(format!("Veronica {version} is installed."))
+            } else {
+                Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+            }
+        }
         "deb" => install_deb_release(&version),
         _ => Err(
             "An AppImage cannot update itself; download the new one from the release page.".into(),
@@ -1325,6 +1361,13 @@ fn restart_command(kind: &str, current_exe: Option<std::path::PathBuf>) -> Vec<S
             "sh".into(),
             "-c".into(),
             format!("{WAIT}; exec flatpak run io.github.namannn04.Veronica"),
+        ],
+        "snap" => vec![
+            "setsid".into(),
+            "sh".into(),
+            "-c".into(),
+            format!("{WAIT}; exec \"$0\""),
+            SNAP_LAUNCHER.into(),
         ],
         _ => {
             let program = std::env::var("APPIMAGE").ok().or_else(|| {
@@ -2733,6 +2776,7 @@ mod tests {
             "SHA256SUMS",
             "Veronica_0.1.15_amd64.AppImage",
             "Veronica_0.1.15_amd64.deb",
+            "Veronica_0.1.15_amd64.snap",
             "Veronica_0.1.15_x86_64.flatpak",
         ]
         .into_iter()
@@ -2745,6 +2789,17 @@ mod tests {
         assert_eq!(pick("deb"), Some("Veronica_0.1.15_amd64.deb"));
         assert_eq!(pick("appimage"), Some("Veronica_0.1.15_amd64.AppImage"));
         assert_eq!(pick("flatpak"), Some("Veronica_0.1.15_x86_64.flatpak"));
+        assert_eq!(pick("snap"), Some("Veronica_0.1.15_amd64.snap"));
+    }
+
+    #[test]
+    fn a_snap_restarts_through_its_stable_launcher() {
+        let command =
+            super::restart_command("snap", Some("/snap/veronica/12/usr/bin/veronica".into()));
+        assert_eq!(
+            command.last().map(String::as_str),
+            Some("/snap/bin/veronica")
+        );
     }
 
     #[test]
