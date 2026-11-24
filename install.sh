@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Install the latest verified Veronica Debian release on Ubuntu x86_64.
 set -euo pipefail
 
 repository="namannn04/Veronica"
@@ -28,8 +27,6 @@ for command in curl sha256sum; do
 done
 command -v apt >/dev/null 2>&1 || fail "apt is required; use the AppImage on non-Debian systems."
 
-# Retry transient TLS/connection failures. With --output curl discards the
-# failed partial body before retrying; checksum verification still gates apt.
 fetch() {
   curl --fail --silent --show-error --location \
     --proto '=https' --proto-redir '=https' \
@@ -37,7 +34,6 @@ fetch() {
     --retry 4 --retry-all-errors --retry-delay 1 --retry-max-time 600 "$@"
 }
 
-# Resume partial packages across attempts; reset if the server ignores Range.
 download_file() {
   local path="$1" url="$2" attempt code response remaining
   local deadline=$((SECONDS + 900))
@@ -96,9 +92,6 @@ fi
 
 uuid="veronica@namannn04.github.io"
 
-# GNOME only scans for extensions when the Shell starts, so a freshly installed
-# one cannot be enabled until the next login. Listing it in enabled-extensions
-# now makes that login start it, with nothing left to click.
 enable_notch() {
   [ "$(id -u)" -ne 0 ] || return 1
   command -v gsettings >/dev/null 2>&1 || return 1

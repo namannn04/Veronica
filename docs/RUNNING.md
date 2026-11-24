@@ -101,8 +101,8 @@ Disabling Veronica restores GNOME's stock date button and calendar dropdown.
 
 ## Developing the extension
 
-Wayland cannot restart the shell in place, so a code change needs a fresh login
-— or a disposable shell on its own bus, which is how this was built:
+Wayland cannot restart the shell in place, so a code change needs a fresh login,
+or a disposable shell on its own bus, which is how this was built:
 
 ```bash
 dbus-run-session -- bash -c 'echo $DBUS_SESSION_BUS_ADDRESS > /tmp/bus; \
@@ -174,7 +174,7 @@ vr alerts state                   # what the notifier is comparing against
 
 Every alert is edge-triggered: it fires when a window *crosses* a level or a
 pacing zone, not while it sits there. So the usual reason an expected alert did
-not appear is that the crossing already happened — `vr alerts state` shows the
+not appear is that the crossing already happened: `vr alerts state` shows the
 level being compared against, and `vr alerts clear` forgets it so the next poll
 starts from where you are now. That is also worth doing after changing a
 threshold, since the stored comparison is then against the old scale.
@@ -196,7 +196,7 @@ during a call:
 cargo run -p veronica-system --example detect-share
 ```
 
-That prints the session counts, or says why detection could not run at all — a
+That prints the session counts, or says why detection could not run at all. A
 desktop with no Mutter reports "cannot tell" rather than a quiet screen, so
 presenter mode still works by hand there.
 
@@ -228,8 +228,8 @@ dev server. Rebuild with `bunx tauri build`, or start the dev server.
 **The build fails with a path that no longer exists.** `target/` caches absolute
 paths. After moving the checkout, run `cargo clean`.
 
-**Push updates stop arriving** — usage finishing, notifications appearing, the
-collector's progress. Check `apps/desktop/src-tauri/capabilities/default.json`
+**Push updates stop arriving** (usage finishing, notifications appearing, the
+collector's progress). Check `apps/desktop/src-tauri/capabilities/default.json`
 still grants `core:default` to both windows. Custom commands are not gated by
 capabilities, but the event API is, so without it `listen()` is denied and the
 interface silently stops updating while everything else keeps working.

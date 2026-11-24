@@ -36,7 +36,6 @@ function preview({ brokenBuffer = false, upload = true, width = 320, height = 18
         return { get_caps: () => ({}), get_buffer: () => ({ get_size: () => stride * height,
             extract_dup: () => new Uint8Array(stride * height) }) };
     } };
-    // Avoid Gst teardown in this unit harness; check that the error path calls it.
     let stops = 0;
     camera.stop = () => { stops++; camera._pipeline = null; };
     return { camera, pipeline: cameraPipeline, errors, sizes, flips, flush: () => idles.forEach(fn => fn()),

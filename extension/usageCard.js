@@ -1,8 +1,3 @@
-/* The usage card: two rings plus a spend line, matching Edith's own notch —
- * a five-hour and a seven-day ring side by side, each showing a live
- * percentage and counting down to its reset.
- */
-
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 
@@ -10,8 +5,6 @@ import { fetchUsageData } from './sections.js';
 import { band, countdown, money, runJson, vbox } from './lib.js';
 import { RingGauge } from './ring.js';
 
-/** Ring gauges shown, in order. Matches the two windows Edith's own notch
- * shows (session, week) rather than every scoped window an account might have. */
 const RING_WINDOWS = ['Session', 'Week'];
 const PROVIDERS = ['Claude', 'Codex'];
 
@@ -81,7 +74,7 @@ export class UsageCard {
     async refresh(cancellable) {
         const data = await fetchUsageData(cancellable);
         if (!this.actor || cancellable?.is_cancelled())
-            return; // destroyed or hidden while the subprocess ran
+            return;
 
         if (!data.summary && data.gauges.length === 0) {
             this.actor.visible = false;
@@ -127,9 +120,6 @@ export class UsageCard {
 
         const totals = data.summary?.totals ?? {};
         const sessions = data.summary?.sessions ?? 0;
-        // The spend covers every agent, not the provider whose rings are
-        // shown, so it says so; and figures that have not been collected for
-        // a day or more say how old they are rather than passing for current.
         const generated = Date.parse(data.summary?.generatedAt ?? '');
         const ageSeconds = Number.isFinite(generated) ? (Date.now() - generated) / 1000 : 0;
         const stale = ageSeconds >= 86400 ? ` · ${countdown(ageSeconds).split(' ')[0]} old` : '';

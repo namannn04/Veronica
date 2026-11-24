@@ -1,22 +1,3 @@
-/* Small D-Bus bridge used by Veronica's desktop app quick actions.
- *
- * Clean Keys must execute inside GNOME Shell: only Shell can take the modal
- * keyboard grab. WriteClipboard is here for the same reason in reverse — on
- * Wayland only the compositor may set the selection without a focused window,
- * so the app and the CLI reach the clipboard through here rather than needing
- * wl-clipboard installed.
- *
- * Pick Color is exported too, so the notch and the app share one entry point,
- * but the pick itself is `vr color pick`, which records the swatch.
- *
- * PasteInPlace is here for the third variation on the same constraint: only the
- * compositor may synthesise input into a window it does not own. It creates a
- * virtual keyboard on the default seat and sends one Ctrl+V, which is what
- * "paste in place" means — the caller has already put the text on the clipboard.
- * Doing it through Clutter rather than the RemoteDesktop portal means it works
- * on Wayland with no per-session approval dialog.
- */
-
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -79,8 +60,6 @@ export class ActionBridge {
             return;
         if (focused.get_title() === 'Veronica Emoji Picker') {
             this._emojiWindow = focused;
-            // GTK's keep-above hint is ignored by native Wayland windows.
-            // Mutter owns stacking, so enforce the floating state here.
             focused.make_above();
         } else if (!this._pasteInvocation) {
             this._typingWindow = focused;
@@ -110,8 +89,6 @@ export class ActionBridge {
                 this._finishPaste(`${error}`);
                 return GLib.SOURCE_REMOVE;
             }
-            // Allow the target to consume the queued keyboard events before
-            // returning focus. The picker stays mapped and above throughout.
             this._pasteTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
                 this._pasteTimer = 0;
                 if (picker.get_compositor_private() && global.display.focus_window === target)
@@ -132,17 +109,6 @@ export class ActionBridge {
             invocation?.return_value(null);
     }
 
-    /**
-     * Send one Ctrl+V through a virtual keyboard on the default seat.
-     *
-     * The device is created per call and disposed straight after: holding one
-     * open for the session would keep a keyboard registered on the seat for a
-     * feature used once every few minutes.
-     *
-     * The release events are sent in the reverse order of the presses, and the
-     * modifier is released last, so a failure part-way cannot leave Ctrl stuck
-     * down — which would make the desktop unusable until the next key press.
-     */
     _pasteInPlace() {
         const seat = Clutter.get_default_backend().get_default_seat();
         const keyboard = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);

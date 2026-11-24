@@ -1,24 +1,12 @@
-/* Shared helpers: running `vr`, and small widget builders.
- *
- * The extension deliberately owns no domain logic. Everything it shows comes
- * from `vr ... --json`, so the shell and the app can never disagree about a
- * number, and the extension stays small enough to audit.
- */
-
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
 
-// GLib 2.86 moved DesktopAppInfo to GioUnix, and GJS warns on every use of
-// the old Gio name. Older releases may not ship GioUnix at all, so it is
-// loaded when present and Gio's copy is the fallback.
 const DesktopAppInfo = await import('gi://GioUnix')
     .then(module => module.default.DesktopAppInfo)
     .catch(() => Gio.DesktopAppInfo);
 
-// GJS async methods take a callback unless promisified. The shell promisifies a
-// handful of these itself, so this is guarded: promisifying twice throws.
 try {
     if (!Gio.Subprocess.prototype.communicate_utf8_async_promisified) {
         Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
@@ -28,30 +16,16 @@ try {
     console.debug(`veronica: communicate_utf8_async already promisified: ${error}`);
 }
 
-/**
- * Where the CLI may live, tried in order after PATH.
- *
- * A shell extension does not inherit a login shell's PATH, and Veronica may be
- * installed system-wide by the package or locally by a developer, so both are
- * checked.
- */
 const CLI_FALLBACKS = [
     '/usr/bin/vr',
     '/usr/local/bin/vr',
     `${GLib.get_home_dir()}/.local/bin/vr`,
-    // The Flatpak writes a launcher for its sandboxed `vr` next to the copy of
-    // this extension it installs; the Debian package has no such file.
     GLib.build_filenamev([
         GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]),
         'vr',
     ]),
 ];
 
-/**
- * The Veronica logo shipped next to this module, as an icon for St.Icon, or
- * null when the file is missing (a partial install), so callers can fall back
- * to a themed icon instead of showing nothing.
- */
 export function brandIcon() {
     const path = GLib.build_filenamev([
         GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]),
@@ -62,12 +36,6 @@ export function brandIcon() {
     return Gio.FileIcon.new(Gio.File.new_for_path(path));
 }
 
-/**
- * Locate the `vr` binary once.
- *
- * A shell extension does not inherit a login shell's PATH reliably, so an
- * absolute path is resolved up front and the result cached.
- */
 let cachedCli = null;
 export function findCli() {
     if (cachedCli !== null)
@@ -92,14 +60,6 @@ export function resetCliCache() {
     cachedCli = null;
 }
 
-/**
- * Run `vr` with the given arguments and parse its JSON.
- *
- * Never throws: the shell must not break because a subprocess failed, so a
- * failure resolves to null and the caller shows an empty state. `vr` writes
- * exactly one JSON document to stdout and logs to stderr, which is what makes
- * this safe to parse directly.
- */
 export async function runJson(args, cancellable = null, { terminateOnCancel = false } = {}) {
     if (cancellable?.is_cancelled()) return null;
     const cli = findCli();
@@ -127,7 +87,6 @@ export async function runJson(args, cancellable = null, { terminateOnCancel = fa
             return null;
         return JSON.parse(stdout);
     } catch (error) {
-        // A cancelled call during teardown is expected, not a fault.
         if (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED)
             return null;
         console.debug(`veronica: cannot run vr ${args.join(' ')}: ${error}`);
@@ -138,17 +97,13 @@ export async function runJson(args, cancellable = null, { terminateOnCancel = fa
     }
 }
 
-/** Launch the desktop application, preferring its desktop entry. */
 export function launchApp() {
-    // The Debian package installs Veronica.desktop; the Flatpak exports its
-    // entry under the application id.
     const app = DesktopAppInfo.new('Veronica.desktop') ??
         DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
     if (app) {
         app.launch([], null);
         return;
     }
-    // Installed without a desktop entry: fall back to the binary.
     try {
         Gio.Subprocess.new(['veronica'], Gio.SubprocessFlags.NONE);
     } catch (error) {
@@ -156,7 +111,6 @@ export function launchApp() {
     }
 }
 
-/** Native URI drop surface, opened from the notch Files tab. */
 export function launchFileShelf() {
     const app = DesktopAppInfo.new('Veronica.desktop') ??
         DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
@@ -171,7 +125,6 @@ export function launchFileShelf() {
     }
 }
 
-/** Desktop actions preserve the Flatpak launcher and its sandbox arguments. */
 export function launchNotchTools() {
     const app = DesktopAppInfo.new('Veronica.desktop') ??
         DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
@@ -182,14 +135,11 @@ export function launchNotchTools() {
     Gio.Subprocess.new(['veronica', '--notch-tools'], Gio.SubprocessFlags.NONE);
 }
 
-// -- formatting -------------------------------------------------------------
-
 export function money(value) {
     const amount = Number.isFinite(value) ? value : 0;
     return `$${amount.toFixed(2)}`;
 }
 
-/** Token counts, three significant figures, matching the app and the CLI. */
 export function tokens(value) {
     const units = [
         [1e12, 'T'],
@@ -197,8 +147,6 @@ export function tokens(value) {
         [1e6, 'M'],
         [1e3, 'K'],
     ];
-    // Precision is decided after rounding, as the app's formatter does:
-    // deciding first printed 999,999 as "1000K".
     const decimals = scaled => scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
     const round = (scaled, places) => Math.round(scaled * 10 ** places) / 10 ** places;
     for (let index = 0; index < units.length; index++) {
@@ -219,7 +167,6 @@ export function percent(value) {
     return `${Math.round(Number.isFinite(value) ? value : 0)}%`;
 }
 
-/** Status band for a 0-100 reading, matching the app's ring thresholds. */
 export function band(value) {
     if (value >= 85)
         return 'critical';
@@ -228,15 +175,6 @@ export function band(value) {
     return 'good';
 }
 
-// -- widgets ----------------------------------------------------------------
-
-/**
- * A vertical `St.BoxLayout`, on every supported shell.
- *
- * GNOME 48 added `orientation` to `St.BoxLayout` and deprecated `vertical`;
- * GNOME 46 and 47 have only `vertical`, and GJS throws on a property the class
- * does not have. Passing `orientation` there aborts the whole notch build.
- */
 const BOX_HAS_ORIENTATION = 'orientation' in St.BoxLayout.prototype;
 
 export function vbox(params = {}) {
@@ -249,12 +187,6 @@ export function heading(text) {
     return new St.Label({ text, style_class: 'veronica-heading' });
 }
 
-/**
- * A label / meter / value row.
- *
- * The meter's fill is sized as a fraction of the track. `St` has no percentage
- * width, so the fill is given an explicit pixel width against a fixed track.
- */
 export function meterRow(labelText, fraction, valueText, statusBand) {
     const row = new St.BoxLayout({
         style_class: 'veronica-row',
@@ -278,7 +210,6 @@ export function meterRow(labelText, fraction, valueText, statusBand) {
     const clamped = Math.max(0, Math.min(1, Number.isFinite(fraction) ? fraction : 0));
     const fill = new St.Widget({
         style_class: `veronica-meter-fill${statusBand ? ` ${statusBand}` : ''}`,
-        // Always a sliver, so "present but tiny" is distinguishable from zero.
         width: Math.max(3, Math.round(trackWidth * clamped)),
         x_align: Clutter.ActorAlign.START,
     });
@@ -296,7 +227,6 @@ export function meterRow(labelText, fraction, valueText, statusBand) {
     return row;
 }
 
-/** A plain label / value row with no meter. */
 export function textRow(labelText, valueText, dim = false) {
     const row = new St.BoxLayout({ style_class: 'veronica-row', x_expand: true });
     row.add_child(new St.Label({
@@ -316,7 +246,6 @@ export function emptyLabel(text) {
     return new St.Label({ text, style_class: 'veronica-empty' });
 }
 
-/** A duration as a compact countdown, e.g. "2h 14m". */
 export function countdown(seconds) {
     if (!Number.isFinite(seconds) || seconds <= 0)
         return 'now';
@@ -332,7 +261,6 @@ export function countdown(seconds) {
     return `${Math.floor(seconds)}s`;
 }
 
-/** Launch the developer-services route through the installed package. */
 export function launchServices() {
     const app = DesktopAppInfo.new('Veronica.desktop') ??
         DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');

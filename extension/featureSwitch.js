@@ -1,11 +1,3 @@
-/* Live on/off lifecycle for shell-owned extension features.
- *
- * Free of gi:// imports so the transition rules can be tested under Node. The
- * GNOME entry point supplies the real start and stop functions; this module
- * only makes them idempotent and applies the catalogue's default when a key is
- * absent from a first-launch settings file.
- */
-
 export function booleanSetting(values, key, fallback) {
     const value = values?.[key];
     return typeof value === 'boolean' ? value : fallback;

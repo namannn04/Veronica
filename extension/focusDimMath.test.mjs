@@ -1,9 +1,3 @@
-/* Tests for Focus Dim's clamps.
- *
- * These mirror the Rust tests in `focus_dim.rs`, deliberately: the two clamps
- * guard different moments and must not drift.
- */
-
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -28,8 +22,6 @@ test('the defaults match the core', () => {
 });
 
 test('intensity never reaches fully opaque', () => {
-    // A dim of 1.0 hides the desktop, leaving the user unable to see well
-    // enough to switch it off again.
     assert.ok(MAX_INTENSITY < 1);
     assert.equal(clampIntensity(1), MAX_INTENSITY);
     assert.equal(clampIntensity(50), MAX_INTENSITY);
@@ -40,7 +32,6 @@ test('a negative intensity clamps to transparent', () => {
 });
 
 test('a value that is not a number falls back rather than clamping', () => {
-    // Clamping would silently pick a bound; these are absent values.
     for (const absent of [undefined, null, 'dark', '', {}, [], true, NaN]) {
         assert.equal(clampIntensity(absent), DEFAULT_INTENSITY, `intensity ${String(absent)}`);
         assert.equal(

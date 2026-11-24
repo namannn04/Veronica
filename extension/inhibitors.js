@@ -1,16 +1,3 @@
-/* Process-owned inhibitors for notch power actions.
- *
- * The desktop app holds the same locks through zbus while it is running. The
- * Shell extension also owns a lock so a notch click takes effect immediately
- * and remains functional even when the app window/process has not been opened.
- *
- * Each switch is held by up to two processes. `systemd-inhibit` covers logind,
- * which is what the lid switch obeys. `gnome-session-inhibit` covers GNOME's
- * own idle handling: gsd-power blanks and suspends on gnome-session's
- * inhibitors and never reads logind's idle locks, so without it Keep Awake
- * left the screen to blank and the machine to suspend on schedule.
- */
-
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
@@ -27,13 +14,6 @@ const DEFINITIONS = {
     },
 };
 
-/**
- * Whether gnome-session is on the bus to take an inhibitor.
- *
- * Without it `gnome-session-inhibit` exits at once, and since either half
- * dying ends the switch, Keep Awake would lose its logind lock too. The app
- * treats the session half as best effort in the same way.
- */
 function sessionManagerPresent() {
     try {
         const [owned] = Gio.DBus.session.call_sync(
@@ -48,7 +28,6 @@ function sessionManagerPresent() {
     }
 }
 
-/** The argument vectors that hold a switch, one process each. */
 function commandsFor(definition) {
     const commands = [];
     const inhibit = GLib.find_program_in_path('systemd-inhibit');
@@ -113,12 +92,9 @@ export class PowerInhibitors {
                 try {
                     source.wait_check_finish(result);
                 } catch (_error) {
-                    // A forced exit while switching off is expected.
                 }
                 if (this._running.get(key) !== record)
                     return;
-                // Either half dying means the switch no longer holds: drop
-                // the other half too rather than claim a partial lock.
                 this._running.delete(key);
                 this._kill(record);
                 if (!record.intentional)
@@ -142,7 +118,6 @@ export class PowerInhibitors {
             try {
                 process.force_exit();
             } catch (_error) {
-                // It may already have exited.
             }
         }
     }

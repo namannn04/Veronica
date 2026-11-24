@@ -636,11 +636,6 @@ else
   ccu() { npx -y "ccusage@$CCUSAGE_VERSION" "$@"; }
 fi
 
-# ccusage's bundled (--offline) price table lags new models, e.g. Codex gpt-6.x
-# costs $0 there. Read offline first (fast, and enough to know whether there is
-# any usage), then re-read with current prices only when there is something to
-# price. Without a network ccusage falls back to the bundled table itself, and
-# a failed priced read keeps the offline result.
 ccu_priced() {
   local offline
   offline="$(ccu "$@" --offline)" || return 1
@@ -714,8 +709,6 @@ OFF=$((10#${Z:1:2} * 3600 + 10#${Z:3:2} * 60))
 
 _note "discovering sources"
 
-# ccusage refuses a config dir without projects/, which is every machine that has
-# never run Claude Code; that just means there is no Claude usage to collect.
 CLI_CFG="$HOME/.claude"
 if [ -d "$CLI_CFG/projects" ]; then
   if ! CLAUDE_CONFIG_DIR="$CLI_CFG" ccu claude daily --json >"$TMP/cli.daily.json" 2>/dev/null; then

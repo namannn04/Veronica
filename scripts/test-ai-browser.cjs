@@ -1,4 +1,3 @@
-/* Developer-only browser integration test. Uses isolated native controls + loopback API fixture. */
 const { chromium } = require(process.env.VERONICA_PLAYWRIGHT || 'playwright');
 const { spawn } = require('node:child_process');
 const { createServer } = require('node:http');

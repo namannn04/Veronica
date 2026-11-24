@@ -9,7 +9,6 @@ export function attachNotchBanners(tray, button, theme) {
         enabled: () => St.Settings.get().enable_animations,
         mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
         createMaterial(bin, banner) {
-            // St.Bin on older shells only supports its one native child.
             if (bin instanceof St.Bin) return null;
             const actor = new St.Widget({ reactive: false, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
             actor.set_pivot_point(0.5, 0);

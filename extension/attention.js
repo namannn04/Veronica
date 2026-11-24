@@ -31,9 +31,6 @@ export class AttentionTracker {
     }
 
     _pulse() {
-        // The feature (its page and this tracker) and tracking itself are two
-        // switches. Absent, tracking follows the feature, as it did when the
-        // two were one key.
         const tracking = this._settings?.bool('attentionTrackingEnabled', true);
         if (this._running || !this._settings?.bool('tabAttentionEnabled', false) || !tracking)
             return;
@@ -42,14 +39,10 @@ export class AttentionTracker {
             return;
         const window = global.display.focus_window;
         const idleMs = global.backend.get_core_idle_monitor().get_idletime();
-        // A hand-edited or damaged value would make this NaN, and nothing is
-        // ever ">= NaN": "Away" would never be recorded again.
         const seconds = Number(this._settings.get('attentionIdleSeconds', 300));
         const threshold = (Number.isFinite(seconds) && seconds > 0 ? seconds : 300) * 1000;
         const idle = !window || idleMs >= threshold;
         const application = idle ? 'Away' : (window.get_wm_class() || window.get_wm_class_instance() || 'Unknown');
-        // `--name=value` keeps a value that starts with '-' a value: a
-        // terminal titled "-bash: ~" was read as flags, and the pulse failed.
         const args = [cli, 'attention', 'record', `--application=${application}`, `--seconds=${PULSE_SECONDS}`];
         if (idle)
             args.push('--idle');
@@ -60,7 +53,7 @@ export class AttentionTracker {
             const process = Gio.Subprocess.new(args, Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE);
             process.wait_async(null, (source, result) => {
                 this._running = false;
-                try { source.wait_finish(result); } catch { /* next pulse retries */ }
+                try { source.wait_finish(result); } catch {}
             });
         } catch {
             this._running = false;

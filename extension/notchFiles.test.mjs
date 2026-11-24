@@ -15,8 +15,6 @@ function harness() {
         set_style_class_name(value) { this.style_class=value; }
     }
     const source = readFileSync(new URL('./notchPanel.js',import.meta.url),'utf8');
-    // Reproduce the module's actual lib bindings. A missing import must not
-    // be silently supplied by the mock (the old native-shelf handler did that).
     const names = source.match(/import \{([^}]+)\} from '\.\/lib.js';/)[1].split(',').map(n=>n.trim());
     const helpers = {
         vbox: props=>new Actor(props), brandIcon: ()=>null, launchApp() {}, launchFileShelf: ()=>{ launched++; },

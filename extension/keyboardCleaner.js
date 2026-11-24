@@ -1,5 +1,3 @@
-/* Keyboard-cleaning modal, independent of the optional top-bar shelf. */
-
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
@@ -8,12 +6,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { vbox } from './lib.js';
 
-/**
- * The mode ends on its own after this long. "Done" needs a pointer, and
- * someone whose mouse is flat or whose touchpad is off would otherwise be left
- * with a keyboard that answers nothing; no key can be the way out, because a
- * cloth presses any key at all.
- */
 const LIMIT_SECONDS = 120;
 
 export class KeyboardCleaner {

@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* Foreground, user-owned optional Gateway. No daemon or auto-download. */
 const { spawn, spawnSync } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { realpathSync, mkdtempSync, rmSync } = require('node:fs');

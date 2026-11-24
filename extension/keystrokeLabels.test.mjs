@@ -1,11 +1,3 @@
-/* Tests for Keystroke Highlight's labels and queue.
- *
- * The clamp and queue tests mirror the Rust ones in `keystroke.rs`,
- * deliberately: the two copies guard different moments and must not drift. The
- * label tests have no Rust counterpart, because the labels are the part that is
- * Linux's rather than Edith's.
- */
-
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -41,7 +33,6 @@ test('a duration outside the range is clamped into it', () => {
 });
 
 test('a value that is not a number falls back rather than clamping', () => {
-    // Mirrors `Settings::f64_or`: absent, not out of range.
     assert.equal(clampDuration(undefined), DEFAULT_DURATION_SECONDS);
     assert.equal(clampDuration('slow'), DEFAULT_DURATION_SECONDS);
     assert.equal(clampDuration(null), DEFAULT_DURATION_SECONDS);
@@ -60,7 +51,6 @@ test('a letter is shown upper case, the way a shortcut is written', () => {
 });
 
 test('a control character is not what belongs on the keycap', () => {
-    // Ctrl+C produces U+0003; the cap has to read "Ctrl C".
     assert.deepEqual(labelsFor(0x0063, 0x03, CONTROL_MASK), ['Ctrl', 'C']);
 });
 
@@ -72,7 +62,6 @@ test('modifiers are named in the order a shortcut is written', () => {
 });
 
 test('a modifier held on its own has nothing to show', () => {
-    // Otherwise every reach for a shortcut would flash a bare "Ctrl".
     assert.deepEqual(labelsFor(0xffe3, 0, 0), [], 'Control_L');
     assert.deepEqual(labelsFor(0xffe9, 0, ALT_MASK), [], 'Alt_L');
     assert.deepEqual(labelsFor(0xffeb, 0, SUPER_MASK), [], 'Super_L');

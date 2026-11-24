@@ -1,15 +1,8 @@
-/* Tests for the top bar's procfs arithmetic.
- *
- * Run with `node --test extension/`. The module under test imports nothing from
- * `gi://`, which is the whole reason it is a separate file from the widget.
- */
-
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { cpuPercent, memoryPercent, parseCpuTicks } from './procStats.js';
 
-/** A real /proc/stat, trimmed to the lines that matter. */
 const STAT = `cpu  1000 20 300 8000 100 0 40 0 0 0
 cpu0 500 10 150 4000 50 0 20 0 0 0
 intr 12345
@@ -18,16 +11,13 @@ ctxt 98765
 
 test('the aggregate cpu line is used, not the first core', () => {
     const ticks = parseCpuTicks(STAT);
-    // 1000+20+300+8000+100+0+40 = 9460 across every field present.
     assert.equal(ticks.total, 9460);
-    // idle + iowait.
     assert.equal(ticks.idle, 8100);
 });
 
 test('busy share is the non-idle part of the delta', () => {
     const before = { total: 1000, idle: 900 };
     const after = { total: 1100, idle: 950 };
-    // 100 jiffies passed, 50 of them idle.
     assert.equal(cpuPercent(before, after), 50);
 });
 
@@ -37,12 +27,8 @@ test('a fully idle interval reads as zero, a fully busy one as a hundred', () =>
 });
 
 test('a stalled or rewound counter reports nothing rather than zero', () => {
-    // Two identical readings: no time passed, so there is no load to report.
-    // Zero here would render an idle machine.
     assert.equal(cpuPercent({ total: 100, idle: 50 }, { total: 100, idle: 50 }), null);
-    // Counters reset across a suspend/resume.
     assert.equal(cpuPercent({ total: 500, idle: 400 }, { total: 100, idle: 50 }), null);
-    // Idle going backwards while total rises is equally incoherent.
     assert.equal(cpuPercent({ total: 100, idle: 90 }, { total: 200, idle: 80 }), null);
 });
 
@@ -65,7 +51,6 @@ MemFree:          500000 kB
 MemAvailable:    8000000 kB
 Buffers:          200000 kB
 `;
-    // Half of it is available, so half is used — not the 97% MemFree implies.
     assert.equal(memoryPercent(meminfo), 50);
 });
 
@@ -85,8 +70,6 @@ test('a meminfo without a usable total yields nothing', () => {
 });
 
 test('a prefix does not match a different field', () => {
-    // "MemTotal" must not be satisfied by "MemTotalHuge", nor MemAvailable by a
-    // similarly named field, or the percentage would be of the wrong quantity.
     const tricky = `MemTotalHuge:   99 kB
 MemTotal:       1000 kB
 MemAvailableFoo: 1 kB
@@ -96,7 +79,6 @@ MemAvailable:    400 kB
 });
 
 test('percentages are clamped into range', () => {
-    // A kernel reporting more available than total would otherwise go negative.
     assert.equal(memoryPercent('MemTotal: 100 kB\nMemAvailable: 200 kB'), 0);
 });
 
@@ -114,7 +96,6 @@ test('the real files on this machine parse', async () => {
 });
 
 test('guest time is not counted twice', () => {
-    // user=100 already includes guest=60.
     const ticks = parseCpuTicks('cpu  100 0 0 300 0 0 0 0 60 0\n');
     assert.equal(ticks.total, 400);
     assert.equal(ticks.idle, 300);

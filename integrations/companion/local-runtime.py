@@ -4,7 +4,6 @@ child=None
 owner=os.environ.get('VERONICA_OWNED_LOCAL_RUNTIME','')
 try:
     child=subprocess.Popen([sys.argv[1],'serve'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
-    # Only Veronica holds the write end. No polling or model generation here.
     sys.stdin.buffer.read()
 finally:
     if child and child.poll() is None:

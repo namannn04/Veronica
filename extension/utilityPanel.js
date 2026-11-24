@@ -1,4 +1,3 @@
-/* Inline image and QR tasks. Pixel work stays in a short-lived CLI subprocess. */
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -93,7 +92,6 @@ export class UtilityPanel {
                     try { source.replace_contents_finish(result); resolve(); } catch (error) { reject(error); }
                 }));
                 if (!this.actor) { GLib.unlink(path); return; }
-                // Keep just this panel's current clipboard input until replaced/destroyed.
                 if (this._pastePath) GLib.unlink(this._pastePath);
                 this._pastePath = path; this._path = path;
                 await this._run(['image', path]);

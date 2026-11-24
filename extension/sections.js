@@ -1,11 +1,3 @@
-/* Shared section widgets and data: usage, clipboard, and machine state.
- *
- * Both consumers use these: the default mode, which adds rows into the real
- * clock dropdown's own column, and the full-replacement notch, which renders
- * the same data as cards and rings. The fetch is shared so the two can never
- * disagree about a figure; only the presentation differs per surface.
- */
-
 import St from 'gi://St';
 
 import { entryText, recentEntries } from './clipboard.js';
@@ -22,7 +14,6 @@ import {
     vbox,
 } from './lib.js';
 
-/** A titled group of rows that rebuilds itself from a `vr` document. */
 export class Section {
     constructor(title) {
         this.actor = vbox({
@@ -45,7 +36,6 @@ export class Section {
         this._rows?.add_child(child);
     }
 
-    /** Whether this section is still live, for a refresh to check after an await. */
     get isLive() {
         return this.actor !== null;
     }
@@ -57,10 +47,6 @@ export class Section {
     }
 }
 
-/**
- * Fetch usage summary, rate-limit gauges and source breakdown in one shot.
- * Returns null fields rather than throwing when `vr` has nothing to say.
- */
 export async function fetchUsageData(cancellable) {
     const summary = await runJson(['usage', 'summary', '--days', '7'], cancellable, { terminateOnCancel: true });
     const limits = await runJson(['usage', 'limits'], cancellable, { terminateOnCancel: true });
@@ -78,7 +64,7 @@ export async function refreshUsageSection(section, cancellable) {
 
     const data = await fetchUsageData(cancellable);
     if (!section.isLive)
-        return; // torn down while the subprocess ran
+        return;
 
     section.clear();
     if (!data.summary) {
@@ -86,8 +72,6 @@ export async function refreshUsageSection(section, cancellable) {
         return;
     }
 
-    // Rate limits first: a window about to run out matters more than a
-    // month's spend.
     for (const gauge of data.gauges.slice(0, 4)) {
         const resets = Number.isFinite(gauge.resetsInSecs)
             ? ` · ${countdown(gauge.resetsInSecs)}`
@@ -119,11 +103,6 @@ export async function refreshUsageSection(section, cancellable) {
     }
 }
 
-/**
- * `closeMenu` is called after a row is clicked, so picking an entry also
- * dismisses whichever popup is currently showing it — the real dropdown's or
- * the notch's own.
- */
 export async function refreshClipboardSection(section, cancellable, clipboardWatcher, closeMenu) {
     if (!section?.isLive)
         return;
@@ -139,8 +118,6 @@ export async function refreshClipboardSection(section, cancellable, clipboardWat
     }
 
     for (const row of rows) {
-        // The list carries previews only; the full text is fetched on click,
-        // so a large copy is never held in the panel.
         const button = new St.Button({
             style_class: 'veronica-clip-row',
             x_expand: true,
@@ -190,13 +167,6 @@ export async function refreshMachineSection(section, cancellable) {
         section.add(textRow('Extensions', `${enabled} of ${extensions.length} on`, true));
 }
 
-/**
- * One line summarising machine state, for the compact notch layout.
- *
- * `getLabel` is called after the subprocess returns rather than the label
- * being passed directly, so a caller whose label was destroyed in the
- * meantime can simply return null instead of needing its own liveness flag.
- */
 export async function refreshMachineLine(getLabel, cancellable) {
     const diagnose = await runJson(['diagnose'], cancellable);
     const label = getLabel();

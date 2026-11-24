@@ -17,7 +17,6 @@ async function refreshRelease() {
     if (deb) document.querySelectorAll(".download-deb").forEach((link) => { link.href = deb; });
     if (appImage) document.querySelectorAll(".download-appimage").forEach((link) => { link.href = appImage; });
   } catch {
-    // Static release links remain usable if GitHub's API is unavailable.
   }
 }
 

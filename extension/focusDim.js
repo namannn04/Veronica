@@ -1,21 +1,3 @@
-/* Focus Dim: darken everything behind the window you are working in.
- *
- * Edith stacks its own translucent windows underneath the focused one. A Wayland
- * client cannot do that — it cannot position itself, raise itself, or learn what
- * else is on screen — so on Ubuntu the compositor draws the overlay instead.
- * That is also why this works on Wayland, where the X11 equivalent would not.
- *
- * How it works: one dim actor per monitor is added to `global.window_group`,
- * which holds every window actor. Raising the focused window's actor above the
- * dim leaves that window bright and everything below it darkened. The overlay is
- * inside the window group rather than over the whole stage, so the panel, the
- * overview and Veronica's own notch stay untouched.
- *
- * The ranges are clamped here as well as in `veronica-core`. The core stops a
- * bad value being *stored*; this stops a hand-edited file from blacking out the
- * screen, which is not a state a user could recover from by using the desktop.
- */
-
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
@@ -30,7 +12,6 @@ import {
 } from './focusDimMath.js';
 
 export class FocusDim {
-    /** @param {import('./settings.js').SettingsWatcher} settings */
     constructor(settings) {
         this._settings = settings;
         this._unsubscribe = null;
@@ -40,8 +21,6 @@ export class FocusDim {
         this._monitorsId = 0;
         this._restackId = 0;
         this._workspaceId = 0;
-        // Seeded with the defaults, via the same clamps, so there is no moment
-        // where the config is undefined.
         this._config = {
             intensity: clampIntensity(undefined),
             animation: clampAnimationSeconds(undefined),
@@ -62,9 +41,6 @@ export class FocusDim {
 
     _apply(values) {
         this._config = {
-            // The raw stored values, not coerced: the clamps decide what counts
-            // as a number, so a string like "dark" falls back rather than
-            // becoming NaN and then a bound.
             intensity: clampIntensity(values.focusDimIntensity),
             animation: clampAnimationSeconds(values.focusDimAnimationDuration),
             mode: parseDisplayMode(values.focusDimOtherDisplaysMode),
@@ -77,7 +53,6 @@ export class FocusDim {
                 this._stop();
             return;
         }
-        // Already in the right state; a changed intensity still has to land.
         if (this._active)
             this._update();
     }
@@ -90,13 +65,9 @@ export class FocusDim {
 
         this._focusId = global.display.connect(
             'notify::focus-window', () => this._update());
-        // A window opening, closing or being raised changes what is in front of
-        // the dim even when focus itself did not move.
         this._restackId = global.display.connect('restacked', () => this._update());
         this._monitorsId = Main.layoutManager.connect(
             'monitors-changed', () => { this._build(); this._update(); });
-        // What is on screen changes with the workspace even when no window
-        // restacks.
         this._workspaceId = global.workspace_manager.connect(
             'active-workspace-changed', () => this._update());
 
@@ -124,7 +95,6 @@ export class FocusDim {
         this._active = false;
     }
 
-    /** One overlay per monitor, sized to that monitor's work area. */
     _build() {
         this._destroyOverlays();
         for (const monitor of Main.layoutManager.monitors) {
@@ -168,15 +138,11 @@ export class FocusDim {
             const wanted = placement === 'off' ? 0 : target;
 
             if (placement === 'below') {
-                // Below the window that stays bright, above everything else.
                 const actor = bright.get_compositor_private();
                 if (actor && actor.get_parent() === global.window_group) {
                     global.window_group.set_child_below_sibling(overlay, actor);
                 }
             } else if (placement === 'top') {
-                // Nothing on this monitor stays bright, so the dim covers every
-                // window on it. Redone on each restack, which can put a newly
-                // mapped window above the overlay.
                 global.window_group.set_child_above_sibling(overlay, null);
             }
 
@@ -191,14 +157,6 @@ export class FocusDim {
         }
     }
 
-    /**
-     * Which window stays bright on one monitor.
-     *
-     * `dimUnfocused` keeps only the focused window bright, so every other
-     * monitor darkens entirely. `perScreenFront` keeps each monitor's own
-     * frontmost normal window bright, which is what a multi-monitor setup with
-     * reference material on the side wants.
-     */
     _brightWindowFor(monitorIndex, focus, focusMonitor) {
         if (this._config.mode === 'dimUnfocused')
             return monitorIndex === focusMonitor ? focus : null;
@@ -206,7 +164,6 @@ export class FocusDim {
         if (monitorIndex === focusMonitor && focus)
             return focus;
 
-        // Front-to-back among windows actually on this monitor.
         const stack = global.display.sort_windows_by_stacking(
             global.get_window_actors().map(actor => actor.meta_window)
         );
@@ -218,14 +175,6 @@ export class FocusDim {
         return null;
     }
 
-    /**
-     * Whether a window counts as content worth keeping bright.
-     *
-     * Docks, panels and notifications are chrome: raising one above the dim
-     * would leave a bright strip and defeat the effect. Minimised windows, and
-     * windows on another workspace, are not on screen at all; counting those
-     * dimmed an empty workspace's wallpaper because a hidden window "won".
-     */
     _isDimmable(window) {
         if (!window || window.minimized)
             return false;

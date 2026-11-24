@@ -1,6 +1,3 @@
-/* Animate the shell-painted material independently of full-size contents.
- * Pure orchestration: GPU actor transitions, with no per-frame JS or idle loop.
- */
 export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, onOpened }) {
     const surface = box?._border;
     const content = box?.bin;
@@ -68,7 +65,6 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         if (!animateNow) {
             reset(); finish(); return;
         }
-        // Only the material stretches; text and video stay at native scale.
         surface.ease({
             scale_x: 1, scale_y: 1, opacity: 255,
             duration, mode: modes.EASE_OUT_CUBIC,
