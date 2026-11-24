@@ -201,6 +201,10 @@
   min-width: 0;
 }
 
+.home-track > .home-lines {
+  flex: 1;
+}
+
 .home-track-art {
   display: grid;
   place-items: center;

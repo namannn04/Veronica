@@ -15,12 +15,14 @@ import {
   KeyValueList,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   Section,
   Select,
   Skeleton,
+  SkeletonText,
   Spinner,
   StatusDot,
   type Tone,
@@ -124,6 +126,7 @@ export function HerdrPage() {
 
   return (
     <Page
+      className="herdr-page"
       header={
         <PageHeader
           title="Agents & Herdr"
@@ -477,18 +480,56 @@ function SessionRow({
 
 function BoardSkeleton() {
   return (
-    <div className="herdr-lanes" role="status" aria-label="Reading Herdr sessions">
-      {STATUSES.map((status) => (
-        <div className="herdr-lane" key={status}>
-          <div className="herdr-lane-head">
-            <Skeleton width={64} height={11} />
-          </div>
-          <div className="herdr-lane-body">
-            <Skeleton height={84} radius={10} />
-            <Skeleton height={84} radius={10} />
-          </div>
+    <>
+      <Section title="Board" description="Agents grouped by what they are doing right now">
+        <Toolbar
+          className="herdr-toolbar"
+          leading={<Skeleton width={128} height={26} radius={13} />}
+          trailing={<SkeletonText width={48} className="herdr-live" />}
+        />
+        <div className="herdr-lanes" role="status" aria-label="Reading Herdr sessions">
+          {STATUSES.map((status, index) => (
+            <section
+              className="herdr-lane"
+              key={status}
+              aria-label={`${STATUS_LABEL[status]} agents`}
+            >
+              <header className="herdr-lane-head">
+                <StatusDot tone={STATUS_TONE[status]} />
+                <h3>{STATUS_LABEL[status]}</h3>
+              </header>
+              <div className="herdr-lane-body">
+                {(index < 2 ? [0, 1] : [0]).map((slot) => (
+                  <div className="herdr-card" key={slot} aria-hidden="true">
+                    <div className="herdr-card-main">
+                      <span className="herdr-card-top">
+                        <SkeletonText width="36%" className="herdr-card-kind" />
+                      </span>
+                      <span className="herdr-card-title">
+                        <SkeletonText width="82%" />
+                      </span>
+                      <span className="herdr-card-path">
+                        <SkeletonText width="64%" />
+                      </span>
+                    </div>
+                    <div className="herdr-card-actions">
+                      <Skeleton width={52} height={20} radius={4} />
+                      <span className="herdr-card-spacer" />
+                      <Skeleton width={48} height={26} radius={6} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
-      ))}
-    </div>
+      </Section>
+      <Section
+        title="Sessions"
+        description="Each session keeps its terminals alive between launches"
+      >
+        <ListSkeleton rows={2} leading={8} trailing={56} label="Reading Herdr sessions" />
+      </Section>
+    </>
   );
 }

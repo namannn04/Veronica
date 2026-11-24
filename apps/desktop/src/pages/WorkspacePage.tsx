@@ -13,11 +13,11 @@ import {
   Field,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   occurrenceKeys,
   Page,
   PageHeader,
-  SkeletonRows,
   Tabs,
   TextField,
 } from "../ui";
@@ -190,7 +190,7 @@ export function WorkspacePage() {
 
           <Card className="ws-pane ws-pane-result" padding="none" aria-live="polite">
             {busy ? (
-              <SkeletonRows rows={5} label="Checking project" />
+              <ListSkeleton rows={5} inset={false} leading={16} label="Checking project" />
             ) : error ? (
               <div className="ws-pane-pad">
                 <Notice

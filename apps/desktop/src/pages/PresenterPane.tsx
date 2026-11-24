@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ipc, listenEvent } from "../lib/ipc";
 import { BLUR_CATEGORIES, blurKey } from "../lib/preferences";
 import type { PresenterView } from "../lib/types";
-import { Badge, Button, FormGroup, FormRow, Notice, SkeletonRows, Stack } from "../ui";
+import { Badge, Button, FormGroup, FormRow, Notice, Skeleton, SkeletonText, Stack } from "../ui";
 import { SwitchRow } from "./settingsRows";
 
 export function PresenterPane() {
@@ -64,7 +64,14 @@ export function PresenterPane() {
       errorNotice
     ) : (
       <FormGroup title="Presenter">
-        <SkeletonRows rows={2} label="Loading presenter state" />
+        {[0, 1].map((slot) => (
+          <FormRow
+            key={slot}
+            label={<SkeletonText width={slot === 0 ? 140 : 180} />}
+            description={<SkeletonText width={260} />}
+            control={<Skeleton width={36} height={20} radius={10} />}
+          />
+        ))}
       </FormGroup>
     );
   }

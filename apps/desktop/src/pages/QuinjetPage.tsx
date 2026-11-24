@@ -9,11 +9,11 @@ import {
   EmptyState,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   Section,
-  SkeletonRows,
 } from "../ui";
 import "./QuinjetPage.css";
 
@@ -109,10 +109,8 @@ export function QuinjetPage() {
       )}
 
       {!board && !error && (
-        <Section title="Projects">
-          <List label="Reading Quinjet projects">
-            <SkeletonRows rows={4} label="Reading Quinjet projects" />
-          </List>
+        <Section title="Projects" description="Review and Open launch Quinjet in your terminal">
+          <ListSkeleton rows={4} leading={16} trailing={64} label="Reading Quinjet projects" />
         </Section>
       )}
 

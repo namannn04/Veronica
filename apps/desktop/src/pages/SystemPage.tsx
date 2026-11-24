@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   CardHeader,
+  CardSkeleton,
   Columns,
   ConfirmDialog,
   EmptyState,
@@ -23,17 +24,20 @@ import {
   KeyValueList,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   ProgressBar,
   Section,
   Skeleton,
-  SkeletonRows,
+  SkeletonText,
   Slider,
   Stat,
   StatGrid,
+  StatSkeleton,
   Table,
+  TableSkeleton,
   Tabs,
   type Tone,
 } from "../ui";
@@ -62,7 +66,7 @@ export function SystemPage() {
   const [attempt, setAttempt] = useState(0);
   const [processes, setProcesses] = useState<RunningProcess[]>([]);
   const [processesRead, setProcessesRead] = useState(false);
-  const [mic, setMic] = useState<VolumeState | null>(null);
+  const [mic, setMic] = useState<VolumeState | null | undefined>(undefined);
   const [streams, setStreams] = useState<AudioStream[]>([]);
   const [mixerError, setMixerError] = useState<string | null>(null);
   const [devicesRead, setDevicesRead] = useState(false);
@@ -226,13 +230,17 @@ export function SystemPage() {
           : "This computer"
       }
       actions={
-        <Button
-          icon={mic?.muted ? <MicOff strokeWidth={STROKE} /> : <Mic strokeWidth={STROKE} />}
-          disabled={!mic}
-          onClick={() => void toggleMic()}
-        >
-          {mic ? (mic.muted ? "Unmute microphone" : "Mute microphone") : "Microphone unavailable"}
-        </Button>
+        mic === undefined ? (
+          <Skeleton width={152} height={32} radius={8} />
+        ) : (
+          <Button
+            icon={mic?.muted ? <MicOff strokeWidth={STROKE} /> : <Mic strokeWidth={STROKE} />}
+            disabled={!mic}
+            onClick={() => void toggleMic()}
+          >
+            {mic ? (mic.muted ? "Unmute microphone" : "Mute microphone") : "Microphone unavailable"}
+          </Button>
+        )
       }
       accessory={<Tabs label="System views" items={VIEWS} value={view} onChange={setView} />}
     />
@@ -277,14 +285,30 @@ export function SystemPage() {
 
       {view === "apps" && (
         <Section
-          title={`${processes.length} running app${processes.length === 1 ? "" : "s"}`}
-          description={`${bytes(totalAppMemory)} resident · current user · updates live`}
+          title={
+            processesRead ? (
+              `${processes.length} running app${processes.length === 1 ? "" : "s"}`
+            ) : (
+              <SkeletonText width={120} />
+            )
+          }
+          description={
+            processesRead ? (
+              `${bytes(totalAppMemory)} resident · current user · updates live`
+            ) : (
+              <SkeletonText width={220} />
+            )
+          }
         >
           <Card padding="none" className="sys-process-card">
             {!processesRead ? (
-              <div className="sys-card-pad">
-                <SkeletonRows rows={6} label="Reading running apps" />
-              </div>
+              <TableSkeleton
+                columns={4}
+                rows={8}
+                twoLine
+                label="Reading running apps"
+                className="sys-process-table"
+              />
             ) : rows.length === 0 ? (
               <EmptyState size="compact" title="No running apps">
                 Apps you start appear here within a couple of seconds.
@@ -363,7 +387,13 @@ export function SystemPage() {
               }
             />
             {!devicesRead ? (
-              <SkeletonRows rows={3} label="Reading the mixer" />
+              <ListSkeleton
+                rows={3}
+                inset={false}
+                leading={26}
+                trailing={140}
+                label="Reading the mixer"
+              />
             ) : mixerError ? (
               <Notice tone="warning" title="The mixer cannot be read" compact>
                 {mixerError}
@@ -431,7 +461,13 @@ export function SystemPage() {
               subtitle={bluetooth ? bluetoothSummary(bluetooth) : "Reading…"}
             />
             {!bluetooth ? (
-              <SkeletonRows rows={3} label="Reading Bluetooth" />
+              <ListSkeleton
+                rows={3}
+                inset={false}
+                leading={0}
+                trailing={72}
+                label="Reading Bluetooth"
+              />
             ) : bluetooth.unavailable ? (
               <Notice tone="warning" title="Bluetooth cannot be read" compact>
                 {bluetooth.unavailable}
@@ -643,33 +679,37 @@ function OverviewSkeleton() {
   return (
     <>
       <StatGrid min={170}>
-        <div className="ui-stat" role="status" aria-label="Reading this computer">
-          <StatSkeleton />
-        </div>
-        {[1, 2, 3].map((slot) => (
-          <div className="ui-stat" key={slot}>
-            <StatSkeleton />
-          </div>
-        ))}
+        <StatSkeleton meter />
+        <StatSkeleton meter />
+        <StatSkeleton meter />
+        <StatSkeleton />
       </StatGrid>
       <Columns>
-        <Card>
-          <SkeletonRows rows={3} />
-        </Card>
-        <Card>
-          <SkeletonRows rows={3} />
-        </Card>
+        <CardSkeleton subtitle label="Reading this computer">
+          <div className="sys-disks">
+            {[0, 1, 2].map((slot) => (
+              <div className="sys-disk" key={slot}>
+                <div className="sys-disk-head">
+                  <SkeletonText width={slot === 0 ? 24 : 96} />
+                  <SkeletonText width={32} />
+                </div>
+                <ProgressBar value={0} size="thin" tone="neutral" />
+                <span className="sys-disk-note">
+                  <SkeletonText width="52%" />
+                </span>
+              </div>
+            ))}
+          </div>
+        </CardSkeleton>
+        <CardSkeleton subtitle>
+          <KeyValueList
+            items={["Processor", "Kernel", "Load average", "Battery"].map((label, index) => ({
+              label,
+              value: <SkeletonText width={`${70 - index * 12}%`} />,
+            }))}
+          />
+        </CardSkeleton>
       </Columns>
-    </>
-  );
-}
-
-function StatSkeleton() {
-  return (
-    <>
-      <Skeleton width={64} height={11} />
-      <Skeleton width={72} height={26} />
-      <Skeleton width="80%" height={9} />
     </>
   );
 }

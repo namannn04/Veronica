@@ -16,12 +16,12 @@ import {
   EmptyState,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   SearchField,
   Section,
-  SkeletonRows,
   StatusDot,
   type Tone,
   Toolbar,
@@ -284,11 +284,7 @@ export function ServicesPage() {
             {portsError}
           </Notice>
         ) : !ports ? (
-          <List label="Listening ports">
-            <div className="svc-pad">
-              <SkeletonRows rows={4} label="Reading listening ports" />
-            </div>
-          </List>
+          <ListSkeleton rows={6} leading={0} trailing={88} label="Reading listening ports" />
         ) : portRows.length === 0 ? (
           <List label="Listening ports">
             {query ? (
@@ -379,11 +375,7 @@ export function ServicesPage() {
             {dockerError}
           </Notice>
         ) : !docker ? (
-          <List label="Containers">
-            <div className="svc-pad">
-              <SkeletonRows rows={3} label="Checking Docker" />
-            </div>
-          </List>
+          <ListSkeleton rows={3} leading={8} trailing={112} label="Checking Docker" />
         ) : dockerProblem ? (
           <List label="Containers">
             <EmptyState

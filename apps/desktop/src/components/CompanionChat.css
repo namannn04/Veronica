@@ -151,3 +151,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.chat-skeleton {
+  display: contents;
+}

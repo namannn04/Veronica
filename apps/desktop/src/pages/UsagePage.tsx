@@ -18,8 +18,10 @@ import {
   PageHeader,
   Segmented,
   Skeleton,
+  SkeletonText,
   Stat,
   StatGrid,
+  StatSkeleton,
   Toolbar,
 } from "../ui";
 import "./UsagePage.css";
@@ -158,9 +160,13 @@ export function UsagePage() {
     <PageHeader
       title="Agent usage"
       subtitle={
-        generatedAt
-          ? `Collected ${timeAgo(generatedAt)}, stays on this computer`
-          : "Nothing collected yet"
+        generatedAt ? (
+          `Collected ${timeAgo(generatedAt)}, stays on this computer`
+        ) : view || error ? (
+          "Nothing collected yet"
+        ) : (
+          <SkeletonText width={240} />
+        )
       }
       actions={
         <>
@@ -253,6 +259,20 @@ export function UsagePage() {
     <Page header={header}>
       {messages}
 
+      {!view && !error && (
+        <Toolbar
+          className="usage-toolbar"
+          leading={
+            <div className="usage-sources" aria-hidden="true">
+              {[104, 72, 76, 128].map((width) => (
+                <Skeleton key={width} width={width} height={26} radius={13} />
+              ))}
+            </div>
+          }
+          trailing={<Skeleton width={150} height={26} radius={6} />}
+        />
+      )}
+
       {view && (
         <Toolbar
           className="usage-toolbar"
@@ -293,7 +313,7 @@ export function UsagePage() {
 
       <LimitRings />
 
-      {!view && !error && <UsageSkeleton />}
+      {!view && !error && <UsageSkeleton rangeLabel={rangeLabel} />}
 
       {board && (
         <div className="usage-sensitive usage-board">
@@ -366,32 +386,35 @@ export function UsagePage() {
   );
 }
 
-function UsageSkeleton() {
+function UsageSkeleton({ rangeLabel }: { rangeLabel: string }) {
   return (
     <div className="usage-board" role="status" aria-label="Loading usage">
       <StatGrid min={180}>
-        {[0, 1, 2, 3].map((index) => (
-          <Card key={index} className="usage-skeleton-stat">
-            <Skeleton width="55%" height={10} />
-            <Skeleton width="70%" height={26} />
-            <Skeleton width="40%" height={9} />
-          </Card>
-        ))}
+        <StatSkeleton />
+        <StatSkeleton />
+        <StatSkeleton />
+        <StatSkeleton />
       </StatGrid>
       <Columns ratio="wide-start">
         <Card className="usage-chart-card">
-          <Skeleton width="45%" height={12} />
-          <div className="usage-skeleton-bars">
-            {Array.from({ length: 18 }, (_, index) => index).map((bar) => (
-              <Skeleton key={bar} height={`${30 + ((bar * 37) % 60)}%`} radius={3} />
-            ))}
+          <CardHeader title="Estimated API cost per day" subtitle={rangeLabel} />
+          <div className="chart">
+            <div className="usage-skeleton-bars">
+              {Array.from({ length: 18 }, (_, index) => index).map((bar) => (
+                <Skeleton key={bar} height={`${30 + ((bar * 37) % 60)}%`} radius={3} />
+              ))}
+            </div>
+            <div className="usage-skeleton-axis" />
+            <p className="chart-caption">
+              <SkeletonText width={112} />
+            </p>
           </div>
         </Card>
         <Card className="usage-chart-card">
-          <Skeleton width="35%" height={12} />
+          <CardHeader title="By source" subtitle="Estimated cost per tool" />
           {[90, 64, 40, 22].map((width) => (
             <div className="usage-skeleton-ranked" key={width}>
-              <Skeleton width="50%" height={10} />
+              <SkeletonText width="50%" />
               <Skeleton width={`${width}%`} height={6} radius={3} />
             </div>
           ))}

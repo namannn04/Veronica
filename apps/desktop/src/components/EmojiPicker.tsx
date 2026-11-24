@@ -25,12 +25,14 @@ import {
 import { ipc } from "../lib/ipc";
 import { applyAppearance } from "../lib/preferences";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
-import { IconButton, Kbd, Notice, SearchField } from "../ui";
+import { IconButton, Kbd, Notice, SearchField, Skeleton } from "../ui";
 import "./EmojiPicker.css";
 
 const PAGE = 120;
 const WHOLE_GROUP = 2_000;
 const COLUMNS = 9;
+const GROUP_PLACEHOLDERS = Array.from({ length: 9 }, (_, index) => index);
+const CELL_PLACEHOLDERS = Array.from({ length: COLUMNS * 5 }, (_, index) => index);
 
 const GROUP_ICONS: Record<string, ReactNode> = {
   smileys: <SmilePlus />,
@@ -47,7 +49,7 @@ const GROUP_ICONS: Record<string, ReactNode> = {
 type Message = { tone: "neutral" | "critical"; text: string };
 
 export function EmojiPicker() {
-  const [groups, setGroups] = useState<EmojiGroup[]>([]);
+  const [groups, setGroups] = useState<EmojiGroup[] | null>(null);
   const [emoji, setEmoji] = useState<EmojiRow[] | null>(null);
   const [recents, setRecents] = useState<EmojiRow[]>([]);
   const [query, setQuery] = useState("");
@@ -68,7 +70,10 @@ export function EmojiPicker() {
     void ipc
       .emojiGroups()
       .then(setGroups)
-      .catch((reason) => setMessage({ tone: "critical", text: String(reason) }));
+      .catch((reason) => {
+        setGroups([]);
+        setMessage({ tone: "critical", text: String(reason) });
+      });
     void ipc
       .emojiRecents(18)
       .then(setRecents)
@@ -204,7 +209,7 @@ export function EmojiPicker() {
     ? "Results"
     : activeGroup === null
       ? "All emoji"
-      : groups[activeGroup]?.name;
+      : groups?.[activeGroup]?.name;
 
   return (
     <main className="emoji-picker" aria-label="Emoji picker">
@@ -231,7 +236,13 @@ export function EmojiPicker() {
           pressed={activeGroup === null && !query.trim()}
           onClick={() => selectGroup(null)}
         />
-        {groups.map((entry, index) => (
+        {groups === null &&
+          GROUP_PLACEHOLDERS.map((slot) => (
+            <span key={slot} className="emoji-picker-group-skeleton">
+              <Skeleton width={16} height={16} radius={4} />
+            </span>
+          ))}
+        {groups?.map((entry, index) => (
           <IconButton
             key={entry.id}
             size="small"
@@ -272,6 +283,18 @@ export function EmojiPicker() {
                   onPick={pick}
                   onFocus={setActive}
                 />
+              ))}
+            </div>
+          </section>
+        )}
+        {emoji === null && !message && (
+          <section role="status" aria-label="Reading emoji">
+            <h2 className="emoji-picker-label">{heading}</h2>
+            <div className="emoji-picker-grid">
+              {CELL_PLACEHOLDERS.map((slot) => (
+                <span key={slot} className="emoji-picker-cell-skeleton">
+                  <Skeleton width={26} height={26} radius={6} />
+                </span>
               ))}
             </div>
           </section>

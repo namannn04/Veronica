@@ -46,6 +46,7 @@ import {
   ProgressBar,
   SearchField,
   Skeleton,
+  SkeletonText,
 } from "../ui";
 import "./HomePage.css";
 
@@ -346,7 +347,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
         >
           {!loaded ? (
             <div className="home-heat-skeleton">
-              <Skeleton height={118} radius={8} />
+              <Skeleton height={164} radius={8} />
             </div>
           ) : heatmap.length > 0 ? (
             <SpendCalendar cells={heatmap} />
@@ -447,9 +448,17 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
           }
         >
           {!loaded ? (
-            <div className="home-limits">
-              {[0, 1, 2].map((index) => (
-                <Skeleton key={index} height={10} />
+            <div className="home-limits" role="status" aria-label="Reading rate limits">
+              {[56, 44, 72].map((width) => (
+                <div className="home-limit" key={width}>
+                  <span className="home-limit-name">
+                    <SkeletonText width={width} />
+                  </span>
+                  <ProgressBar value={0} tone="neutral" size="thin" />
+                  <span className="home-limit-value">
+                    <SkeletonText width={28} />
+                  </span>
+                </div>
               ))}
             </div>
           ) : gauges.length > 0 ? (
@@ -496,7 +505,10 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
           }
         >
           {!loaded ? (
-            <PrimaryLines loading />
+            <div className="home-track" role="status" aria-label="Reading what is playing">
+              <Skeleton className="home-track-art" width={48} height={48} radius={8} />
+              <PrimaryLines loading />
+            </div>
           ) : data.playing ? (
             <div className="home-track">
               <span className="home-track-art" aria-hidden="true">
@@ -533,13 +545,13 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
               label="CPU"
               value={data.system ? `${Math.round(data.system.cpu.usagePercent)}%` : null}
               loading={!loaded}
-              bar={data.system ? data.system.cpu.usagePercent / 100 : undefined}
+              bar={data.system ? data.system.cpu.usagePercent / 100 : loaded ? undefined : 0}
             />
             <Metric
               label="Memory"
               value={memoryPercent === null ? null : `${memoryPercent}%`}
               loading={!loaded}
-              bar={memoryPercent === null ? undefined : memoryPercent / 100}
+              bar={memoryPercent === null ? (loaded ? undefined : 0) : memoryPercent / 100}
             />
           </div>
         </Widget>
@@ -596,8 +608,12 @@ function PrimaryLines({
   if (loading) {
     return (
       <div className="home-lines">
-        <Skeleton width="70%" height={13} />
-        <Skeleton width="40%" height={10} />
+        <span className="home-lines-title">
+          <SkeletonText width="70%" />
+        </span>
+        <span className="home-lines-detail">
+          <SkeletonText width="40%" />
+        </span>
       </div>
     );
   }
@@ -624,7 +640,9 @@ function Metric({
     <div className="home-metric">
       <span className="home-metric-label">{label}</span>
       {loading ? (
-        <Skeleton width="60%" height={22} />
+        <span className="home-metric-value">
+          <SkeletonText width={96} />
+        </span>
       ) : value === null ? (
         <span className="home-metric-missing">Not available</span>
       ) : (

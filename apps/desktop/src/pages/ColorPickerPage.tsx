@@ -13,6 +13,7 @@ import {
   IconButton,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
@@ -20,6 +21,7 @@ import {
   Segmented,
   Select,
   Skeleton,
+  SkeletonText,
   Tooltip,
 } from "../ui";
 import "./ColorPickerPage.css";
@@ -33,7 +35,7 @@ const PROFILES = [
 
 export function ColorPickerPage() {
   const [swatches, setSwatches] = useState<SwatchRow[]>([]);
-  const [formats, setFormats] = useState<CopyFormatOption[]>([]);
+  const [formatOptions, setFormats] = useState<CopyFormatOption[] | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export function ColorPickerPage() {
     void ipc
       .colorFormats()
       .then(setFormats)
-      .catch(() => {});
+      .catch(() => setFormats([]));
     void ipc
       .settingsAll()
       .then(setSettings)
@@ -84,6 +86,7 @@ export function ColorPickerPage() {
     };
   }, [load]);
 
+  const formats = formatOptions ?? [];
   const format =
     typeof settings.colorPickerCopyFormat === "string" ? settings.colorPickerCopyFormat : "hex";
   const profile = settings.colorPickerProfile === "displayP3" ? "displayP3" : "srgb";
@@ -207,6 +210,8 @@ export function ColorPickerPage() {
 
       {!loaded && <CurrentSkeleton />}
 
+      {!loaded && <SwatchesSkeleton />}
+
       {loaded && swatches.length === 0 && !loadFailed && (
         <EmptyState icon={<Pipette />} title="No colors picked yet">
           Pick a color and it is copied and kept here. The same history is behind vr color pick and
@@ -321,6 +326,8 @@ export function ColorPickerPage() {
         </Section>
       )}
 
+      {(!loaded || formatOptions === null) && <PickingSkeleton />}
+
       {loaded && formats.length > 0 && (
         <FormGroup title="Picking">
           <FormRow
@@ -371,16 +378,65 @@ export function ColorPickerPage() {
 
 function CurrentSkeleton() {
   return (
-    <Card className="cp-current" aria-hidden="true">
-      <Skeleton className="cp-current-preview" radius={8} />
+    <Card className="cp-current" role="status" aria-label="Reading swatches">
+      <Skeleton className="cp-current-preview" height="auto" radius={8} />
       <div className="cp-current-body">
-        <Skeleton width={120} height={18} />
-        <Skeleton width={160} height={11} />
-        <Skeleton width="100%" height={11} />
-        <Skeleton width="80%" height={11} />
-        <Skeleton width="90%" height={11} />
+        <div className="cp-current-head">
+          <div className="cp-current-titles">
+            <p className="cp-current-hex">
+              <SkeletonText width={132} />
+            </p>
+            <p className="cp-current-meta">
+              <SkeletonText width={140} />
+            </p>
+          </div>
+        </div>
+        <ListSkeleton
+          rows={6}
+          inset={false}
+          leading={0}
+          subtitle={false}
+          trailing={26}
+          className="cp-formats"
+        />
       </div>
     </Card>
+  );
+}
+
+function SwatchesSkeleton() {
+  return (
+    <Section title="Swatches" description={<SkeletonText width={300} />}>
+      <ul className="cp-grid" aria-hidden="true">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((slot) => (
+          <li key={slot}>
+            <span className="cp-swatch">
+              <Skeleton width="100%" height={56} radius={8} />
+              <span className="cp-swatch-hex">
+                <SkeletonText width={52} />
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+function PickingSkeleton() {
+  return (
+    <FormGroup title="Picking">
+      <FormRow
+        label="Copy format"
+        description="What a pick puts on the clipboard. Every format stays available per swatch."
+        control={<Skeleton width={132} height={32} radius={8} />}
+      />
+      <FormRow
+        label="Color profile"
+        description="The compositor samples sRGB. Display P3 converts it for a wide-gamut panel."
+        control={<Skeleton width={164} height={32} radius={8} />}
+      />
+    </FormGroup>
   );
 }
 

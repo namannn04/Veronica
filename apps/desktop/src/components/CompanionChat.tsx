@@ -14,10 +14,17 @@ import {
   IconButton,
   Notice,
   Select,
+  SkeletonText,
   TextArea,
   TextField,
 } from "../ui";
 import "./CompanionChat.css";
+
+const CHAT_PLACEHOLDERS = [
+  { id: "first", role: "user", width: 200 },
+  { id: "second", role: "assistant", width: 320 },
+  { id: "third", role: "user", width: 160 },
+];
 
 const ICON = { strokeWidth: 1.75 };
 
@@ -32,6 +39,7 @@ type Confirmation = {
 
 export function CompanionChat() {
   const [view, setView] = useState<ChatView | null>(null);
+  const [viewRead, setViewRead] = useState(false);
   const [config, setConfig] = useState<ModelConfig>(DEFAULT_MODEL);
   const [memory, setMemory] = useState("");
   const [key, setKey] = useState("");
@@ -69,7 +77,12 @@ export function CompanionChat() {
           setMemory(v.document.memory);
         }
       })
-      .catch(fail);
+      .catch(fail)
+      .finally(() => {
+        if (live.current) {
+          setViewRead(true);
+        }
+      });
     return () => {
       live.current = false;
       void ipc.chatEnable(false).catch(() => {});
@@ -314,7 +327,13 @@ export function CompanionChat() {
           <Card padding="none" className="chat-transcript-card">
             <CardHeader
               title="Conversation"
-              subtitle={view ? `${view.totalMessages} of 1,000 messages stored` : undefined}
+              subtitle={
+                view ? (
+                  `${view.totalMessages} of 1,000 messages stored`
+                ) : viewRead ? undefined : (
+                  <SkeletonText width={180} />
+                )
+              }
               actions={
                 <Badge tone={active ? "good" : "neutral"} dot>
                   {active ? "On" : "Off"}
@@ -322,7 +341,17 @@ export function CompanionChat() {
               }
             />
             <div className="chat-transcript ui-selectable" aria-label="Conversation" role="log">
-              {messages.length === 0 && (
+              {!viewRead && (
+                <div className="chat-skeleton" role="status" aria-label="Reading the conversation">
+                  {CHAT_PLACEHOLDERS.map((placeholder) => (
+                    <div key={placeholder.id} className="chat-message" data-role={placeholder.role}>
+                      <SkeletonText width={56} className="chat-author" />
+                      <SkeletonText width={placeholder.width} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {viewRead && messages.length === 0 && (
                 <EmptyState
                   icon={<MessageCircle {...ICON} />}
                   title="Your space to talk"

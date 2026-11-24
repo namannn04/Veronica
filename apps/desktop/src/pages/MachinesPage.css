@@ -13,12 +13,8 @@
   min-width: 0;
 }
 
-.mach-sidebar > .ui-list {
+.mach-sidebar .ui-list {
   align-self: stretch;
-}
-
-.mach-pad {
-  padding: var(--space-2) var(--card-padding);
 }
 
 .mach-title {

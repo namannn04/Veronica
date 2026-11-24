@@ -1,0 +1,84 @@
+.ui-skeleton-text {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  overflow: hidden;
+  color: transparent;
+  user-select: none;
+}
+
+.ui-skeleton-text::before {
+  content: "";
+  position: absolute;
+  inset: 22% 0;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(
+    90deg,
+    var(--fill-control) 25%,
+    var(--fill-hover) 50%,
+    var(--fill-control) 75%
+  );
+  background-size: 300% 100%;
+  animation: ui-shimmer 1600ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton-text::before {
+    animation: none;
+  }
+}
+
+.ui-skeleton-block {
+  display: contents;
+}
+
+.ui-card > .ui-skeleton-block > .ui-list {
+  margin: 0 calc(var(--card-padding) * -1);
+}
+
+.ui-card > .ui-skeleton-block:last-child > .ui-list {
+  margin-bottom: calc(var(--card-padding) * -1);
+}
+
+.ui-skeleton-block .ui-list-row-leading .ui-skeleton,
+.ui-skeleton-block .ui-list-row-trailing .ui-skeleton {
+  flex: none;
+}
+
+.ui-stat-skeleton .ui-stat-label span:last-child {
+  flex: 1;
+}
+
+.ui-stat-skeleton .ui-stat-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ui-skeleton-meter {
+  display: block;
+  height: 4px;
+  margin-top: var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--fill-control);
+}
+
+.ui-skeleton-lines-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  line-height: 1.5;
+}
+
+.ui-skeleton-cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ui-skeleton-caption {
+  font-size: var(--text-caption);
+}

@@ -124,6 +124,10 @@
     flex-basis: 100%;
   }
 
+  .ui-page-subtitle {
+    white-space: normal;
+  }
+
   .ui-page-actions {
     max-width: none;
     justify-content: flex-start;

@@ -59,10 +59,6 @@
   height: 100%;
 }
 
-.usage-skeleton-stat {
-  gap: var(--space-2);
-}
-
 .usage-skeleton-bars {
   display: flex;
   align-items: flex-end;
@@ -74,8 +70,18 @@
   flex: 1;
 }
 
+.usage-skeleton-axis {
+  height: 18px;
+}
+
 .usage-skeleton-ranked {
   display: flex;
   flex-direction: column;
   gap: var(--space-1-5);
+}
+
+@container main (max-width: 820px) {
+  .usage-board .ui-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

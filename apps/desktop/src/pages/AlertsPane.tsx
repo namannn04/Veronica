@@ -2,7 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ipc, listenEvent } from "../lib/ipc";
 import type { AlertsView, PacingZone, UsageLevel, WatchedWindow } from "../lib/types";
-import { Badge, Button, FormGroup, FormRow, Notice, SkeletonRows, Stack, type Tone } from "../ui";
+import {
+  Badge,
+  Button,
+  FormGroup,
+  FormRow,
+  Notice,
+  Skeleton,
+  SkeletonText,
+  Stack,
+  type Tone,
+} from "../ui";
 import { ChoiceRow, SwitchRow } from "./settingsRows";
 
 const SESSION_OFFSETS = [
@@ -134,7 +144,14 @@ export function AlertsPane() {
       errorNotice
     ) : (
       <FormGroup title="Alerts">
-        <SkeletonRows rows={3} label="Loading alert settings" />
+        {[0, 1, 2].map((slot) => (
+          <FormRow
+            key={slot}
+            label={<SkeletonText width={slot === 0 ? 140 : 180} />}
+            description={<SkeletonText width={260} />}
+            control={<Skeleton width={36} height={20} radius={10} />}
+          />
+        ))}
       </FormGroup>
     );
   }

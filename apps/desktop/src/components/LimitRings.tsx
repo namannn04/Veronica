@@ -5,7 +5,7 @@ import { ipc, listenEvent } from "../lib/ipc";
 import { startVisiblePolling } from "../lib/polling";
 import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
 import type { Gauge, GaugeReport } from "../lib/types";
-import { Button, Card, CardHeader, IconButton, Notice, Skeleton } from "../ui";
+import { Button, Card, CardHeader, IconButton, Notice, Skeleton, SkeletonText } from "../ui";
 import { LimitRing } from "./charts";
 import { ProviderSelector } from "./ProviderSelector";
 import "./LimitRings.css";
@@ -133,12 +133,12 @@ export function LimitRings() {
       {firstLoad && (
         <div className="limits-grid" role="status" aria-label="Reading rate limits">
           {[0, 1, 2].map((index) => (
-            <div className="limits-skeleton" key={index}>
-              <Skeleton width={64} height={64} radius={32} />
-              <div className="limits-skeleton-lines">
-                <Skeleton width="60%" height={11} />
-                <Skeleton width="85%" height={9} />
-                <Skeleton width={56} height={16} radius={8} />
+            <div className="chart-ring" key={index}>
+              <span className="limits-skeleton-ring" aria-hidden="true" />
+              <div className="chart-ring-meta limits-skeleton-meta">
+                <SkeletonText width="48%" className="chart-ring-title" />
+                <SkeletonText width="82%" className="chart-ring-subtitle" />
+                <Skeleton width={64} height={20} radius={10} />
               </div>
             </div>
           ))}

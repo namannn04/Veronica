@@ -1,7 +1,3 @@
-.clean-pad {
-  padding: var(--space-2) var(--card-padding);
-}
-
 .clean-list {
   display: flex;
   flex-direction: column;

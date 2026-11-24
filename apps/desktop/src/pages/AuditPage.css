@@ -15,6 +15,7 @@
   color: var(--text-3);
   font-size: var(--text-callout);
   line-height: 1.45;
+  max-width: 72ch;
 }
 
 .audit-progress {

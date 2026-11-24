@@ -17,13 +17,13 @@ import {
   EmptyState,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   SearchField,
   Section,
   Skeleton,
-  SkeletonRows,
   Slider,
   Tabs,
 } from "../ui";
@@ -189,9 +189,7 @@ function LibraryView() {
         }
       >
         {loading ? (
-          <List label="Tracks">
-            <SkeletonRows rows={6} label="Reading ~/Music" />
-          </List>
+          <ListSkeleton rows={8} label="Reading ~/Music" />
         ) : visible.length === 0 ? (
           <List label="Tracks">
             <EmptyState size="compact" title={`Nothing matches “${query.trim()}”`}>

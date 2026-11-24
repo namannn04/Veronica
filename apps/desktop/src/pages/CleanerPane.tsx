@@ -9,9 +9,9 @@ import {
   Checkbox,
   ConfirmDialog,
   EmptyState,
+  ListSkeleton,
   Notice,
   Section,
-  SkeletonRows,
   Toolbar,
 } from "../ui";
 import "./CleanerPane.css";
@@ -119,9 +119,14 @@ export function CleanerPane() {
       ) : (
         <Card padding="none">
           {categories === null ? (
-            <div className="clean-pad">
-              <SkeletonRows rows={4} label="Reading cache categories" />
-            </div>
+            <ListSkeleton
+              rows={4}
+              inset={false}
+              leading={0}
+              meta={64}
+              trailing={72}
+              label="Reading cache categories"
+            />
           ) : categories.length === 0 ? (
             <EmptyState size="compact" title="No caches to clean">
               This system reports no developer caches Veronica knows how to sweep.

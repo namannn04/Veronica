@@ -1,7 +1,3 @@
-.mnt-pad {
-  padding: var(--space-2) var(--card-padding);
-}
-
 .mnt-busy {
   display: flex;
   align-items: center;
