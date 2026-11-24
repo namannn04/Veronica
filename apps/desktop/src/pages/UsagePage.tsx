@@ -1,25 +1,42 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BarChart3, RefreshCw, Share2 } from "lucide-react";
 
 import {
-  DayBars,
-  HourBars,
-  RankedBars,
-  SpendCalendar,
-  colorScale,
-} from "../components/charts";
+  Button,
+  Card,
+  CardHeader,
+  Columns,
+  EmptyState,
+  Notice,
+  Page,
+  PageHeader,
+  Segmented,
+  Skeleton,
+  Stat,
+  StatGrid,
+  Toolbar,
+} from "../ui";
+import { DayBars, HourBars, RankedBars, SpendCalendar, colorScale } from "../components/charts";
 import { LimitRings } from "../components/LimitRings";
 import { ProjectList } from "../components/ProjectList";
 import { ModelTable } from "../components/ModelTable";
 import { ipc, listenEvent } from "../lib/ipc";
 import { money, modelLabel, timeAgo, tokens } from "../lib/format";
 import type { CollectorEvent, UsageView } from "../lib/types";
+import "./UsagePage.css";
 
-const RANGES: { label: string; days: number | null }[] = [
-  { label: "7d", days: 7 },
-  { label: "30d", days: 30 },
-  { label: "90d", days: 90 },
-  { label: "All", days: null },
+type Range = "7" | "30" | "90" | "all";
+
+const RANGES: { value: Range; label: string; days: number | null }[] = [
+  { value: "7", label: "7d", days: 7 },
+  { value: "30", label: "30d", days: 30 },
+  { value: "90", label: "90d", days: 90 },
+  { value: "all", label: "All", days: null },
 ];
+
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
+type ExportResult = { tone: "good" | "critical"; text: string };
 
 export function UsagePage() {
   const [view, setView] = useState<UsageView | null>(null);
@@ -28,6 +45,9 @@ export function UsagePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState<ExportResult | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     try {
@@ -42,12 +62,10 @@ export function UsagePage() {
     void load();
   }, [load]);
 
-  // The collector streams its phases, and any surface can trigger a refresh, so
-  // this listens rather than only reacting to its own button.
   useEffect(() => {
     const phases = listenEvent<CollectorEvent>("usage-progress", (event) => {
       const payload = event.payload;
-      if (payload.kind === "phase") setProgress(`${payload.name} — ${payload.detail}`);
+      if (payload.kind === "phase") setProgress(`${payload.name}: ${payload.detail}`);
       else if (payload.kind === "note") setProgress(payload.message);
       else if (payload.kind === "error") setError(payload.message);
     });
@@ -60,10 +78,15 @@ export function UsagePage() {
     };
   }, [load]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const refresh = async () => {
     setRefreshing(true);
     setError(null);
-    setProgress("starting the collector…");
+    setProgress("Starting the collector…");
     try {
       await ipc.usageRefresh();
       await load();
@@ -76,278 +99,226 @@ export function UsagePage() {
     }
   };
 
+  const share = async () => {
+    setExporting(true);
+    setExported(null);
+    try {
+      const files = await ipc.usageExport([], days, sources);
+      setExported({ tone: "good", text: `Saved ${files.length} card${files.length === 1 ? "" : "s"} to ~/Pictures` });
+    } catch (reason) {
+      setExported({ tone: "critical", text: String(reason) });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const toggleSource = (id: string) => {
     setSources((current) => {
-      // An empty list means "all", so the first deselection has to become an
-      // explicit list of everything that stays.
       const all = view?.sources.map((s) => s.id) ?? [];
       const active = current.length === 0 ? all : current;
-      const next = active.includes(id)
-        ? active.filter((s) => s !== id)
-        : [...active, id];
-      // Deselecting the last source would show an empty dashboard with no way
-      // back, so treat that as reselecting everything.
+      const next = active.includes(id) ? active.filter((s) => s !== id) : [...active, id];
       if (next.length === 0) return [];
       return next.length === all.length ? [] : next;
     });
   };
 
   const board = view?.dashboard ?? null;
-  const isActive = useCallback(
-    (id: string) => sources.length === 0 || sources.includes(id),
-    [sources],
-  );
-
-  // Both scales come from document-wide lists, so narrowing the range or
-  // deselecting a source never repaints the series that remain.
-  const sourceColor = useMemo(
-    () => colorScale(view?.sources.map((s) => s.id) ?? []),
-    [view?.sources],
-  );
+  const isActive = useCallback((id: string) => sources.length === 0 || sources.includes(id), [sources]);
+  const sourceColor = useMemo(() => colorScale(view?.sources.map((s) => s.id) ?? []), [view?.sources]);
   const modelColor = useMemo(() => colorScale(view?.models ?? []), [view?.models]);
 
   const cacheHitRate = useMemo(() => {
     if (!board) return null;
-    const read = board.totals.cacheReadTokens;
     const total = board.totals.tokens;
-    return total > 0 ? (read / total) * 100 : null;
+    return total > 0 ? (board.totals.cacheReadTokens / total) * 100 : null;
   }, [board]);
+
+  const generatedAt = view?.generatedAt ?? null;
+  const stale = generatedAt !== null && now - new Date(generatedAt).getTime() > STALE_AFTER_MS;
+  const range = RANGES.find((item) => item.days === days)?.value ?? "all";
+  const rangeLabel = days === null ? "All time" : `Last ${days} days`;
+
+  const header = (
+    <PageHeader
+      title="Agent usage"
+      subtitle={generatedAt ? `Collected ${timeAgo(generatedAt)}, stays on this computer` : "Nothing collected yet"}
+      actions={
+        <>
+          <Button icon={<Share2 />} onClick={() => void share()} busy={exporting} disabled={!generatedAt} title="Branded PNGs with no repository, path, chat title or cost on them">
+            {exporting ? "Rendering…" : "Share cards"}
+          </Button>
+          <Button icon={<RefreshCw />} onClick={() => void refresh()} busy={refreshing}>
+            {refreshing ? "Collecting…" : "Refresh"}
+          </Button>
+        </>
+      }
+    />
+  );
+
+  const messages = (
+    <>
+      {error && (
+        <Notice tone="critical" title="Usage could not be loaded" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
+      {refreshing && progress && <Notice title="Collecting usage…">{progress}</Notice>}
+      {exported && (
+        <Notice tone={exported.tone} compact actions={<Button size="small" variant="plain" onClick={() => setExported(null)}>Dismiss</Button>}>
+          {exported.text}
+        </Notice>
+      )}
+      {stale && generatedAt && !refreshing && (
+        <Notice tone="warning" title="These figures are out of date" actions={<Button size="small" onClick={() => void refresh()}>Refresh</Button>}>
+          They were collected {timeAgo(generatedAt)}, so recent use is missing. Choose how often Veronica collects in Settings, General.
+        </Notice>
+      )}
+    </>
+  );
 
   if (view && !view.hasData) {
     return (
-      <>
-        <Head generatedAt={null} refreshing={refreshing} onRefresh={refresh} />
-        <div className="empty">
-          <h3>No usage collected yet</h3>
-          <p>
-            Veronica reads your local Claude, Codex, Cursor and Command Code history.
-            Nothing is sent anywhere. Run a collection to build the dashboard.
-          </p>
-          <button className="button primary" onClick={refresh} disabled={refreshing}>
-            {refreshing ? "Collecting…" : "Collect usage"}
-          </button>
-          {progress && <div className="progress-log">{progress}</div>}
-          {error && <div className="banner error">{error}</div>}
-        </div>
-      </>
+      <Page header={header}>
+        {messages}
+        <Card>
+          <EmptyState
+            icon={<BarChart3 />}
+            title="No usage collected yet"
+            action={
+              <Button variant="primary" onClick={() => void refresh()} busy={refreshing}>
+                {refreshing ? "Collecting…" : "Collect usage"}
+              </Button>
+            }
+          >
+            Veronica reads your local Claude, Codex, Cursor and Command Code history. Nothing is sent anywhere.
+          </EmptyState>
+        </Card>
+      </Page>
     );
   }
 
   return (
-    <>
-      <Head generatedAt={view?.generatedAt ?? null} refreshing={refreshing} onRefresh={refresh} days={days} sources={sources} />
+    <Page header={header}>
+      {messages}
 
-      {error && <div className="banner error">{error}</div>}
-      {refreshing && progress && (
-        <div className="banner">
-          <span className="progress-log">{progress}</span>
-        </div>
+      {view && (
+        <Toolbar
+          className="usage-toolbar"
+          leading={
+            <div className="usage-sources" role="group" aria-label="Sources">
+              {view.sources.map((source) => (
+                <button
+                  key={source.id}
+                  type="button"
+                  className="usage-source"
+                  aria-pressed={isActive(source.id)}
+                  onClick={() => toggleSource(source.id)}
+                  title={`Toggle ${source.label}`}
+                >
+                  <span className="chart-swatch" style={{ background: sourceColor(source.id) }} aria-hidden="true" />
+                  {source.label}
+                </button>
+              ))}
+            </div>
+          }
+          trailing={
+            <Segmented
+              label="Time range"
+              size="small"
+              options={RANGES}
+              value={range}
+              onChange={(value) => setDays(RANGES.find((item) => item.value === value)?.days ?? null)}
+            />
+          }
+        />
       )}
-
-      <div className="toolbar">
-        <div className="segmented" role="group" aria-label="Time range">
-          {RANGES.map((range) => (
-            <button
-              key={range.label}
-              aria-pressed={days === range.days}
-              onClick={() => setDays(range.days)}
-            >
-              {range.label}
-            </button>
-          ))}
-        </div>
-        <span style={{ width: 6 }} />
-        {view?.sources.map((source) => (
-          <button
-            key={source.id}
-            className="chip"
-            aria-pressed={isActive(source.id)}
-            onClick={() => toggleSource(source.id)}
-            title={`Toggle ${source.label}`}
-          >
-            <span className="swatch" style={{ background: sourceColor(source.id) }} />
-            {source.label}
-          </button>
-        ))}
-      </div>
 
       <LimitRings />
 
+      {!view && !error && <UsageSkeleton />}
+
       {board && (
-        <div className="usage-sensitive">
-          <div className="grid tiles">
-            <Tile
-              label="Estimated API cost"
-              value={money(board.totals.cost)}
-              note={`${board.activeDays} active ${board.activeDays === 1 ? "day" : "days"}`}
-            />
-            <Tile
-              label="Tokens"
-              value={tokens(board.totals.tokens)}
-              note={`${tokens(board.totals.outputTokens)} generated`}
-            />
-            <Tile label="Sessions" value={String(board.sessionCount)} note="chats collected" />
-            <Tile
-              label="Cache reads"
-              value={cacheHitRate === null ? "—" : `${cacheHitRate.toFixed(0)}%`}
-              note="of all tokens"
-            />
-          </div>
+        <div className="usage-sensitive usage-board">
+          <StatGrid min={180}>
+            <Stat label="Estimated API cost" value={money(board.totals.cost)} note={`${board.activeDays} active ${board.activeDays === 1 ? "day" : "days"}`} />
+            <Stat label="Tokens" value={tokens(board.totals.tokens)} note={`${tokens(board.totals.outputTokens)} generated`} />
+            <Stat label="Sessions" value={String(board.sessionCount)} note="Chats collected" />
+            <Stat label="Cache reads" value={cacheHitRate === null ? "None" : cacheHitRate.toFixed(0)} unit={cacheHitRate === null ? undefined : "%"} note="Of all tokens" />
+          </StatGrid>
 
-          <div className="grid two-col">
-            <section className="card">
-              <div className="card-head">
-                <h2>Estimated API cost per day</h2>
-                <span className="card-note">
-                  {board.days.length} {board.days.length === 1 ? "day" : "days"}
-                </span>
-              </div>
+          <Columns ratio="wide-start">
+            <Card className="usage-chart-card">
+              <CardHeader title="Estimated API cost per day" subtitle={rangeLabel} />
               <DayBars days={board.days} />
-            </section>
-
-            <section className="card">
-              <div className="card-head">
-                <h2>By source</h2>
-              </div>
+            </Card>
+            <Card className="usage-chart-card">
+              <CardHeader title="By source" subtitle="Estimated cost per tool" />
               <RankedBars rows={board.bySource} colorOf={sourceColor} />
-            </section>
-          </div>
+            </Card>
+          </Columns>
 
-          <div className="grid two-col" style={{ marginTop: 12 }}>
-            <section className="card">
-              <div className="card-head">
-                <h2>By hour of day</h2>
-              </div>
+          <Columns ratio="wide-start">
+            <Card className="usage-chart-card">
+              <CardHeader title="By hour of day" subtitle="Local time, estimated cost" />
               <HourBars hours={board.byHour} />
-            </section>
+            </Card>
+            <Card className="usage-chart-card">
+              <CardHeader title="By model" subtitle={`${board.byModel.length} ${board.byModel.length === 1 ? "model" : "models"}`} />
+              <RankedBars rows={board.byModel} colorOf={modelColor} labelOf={(row) => modelLabel(row.name)} />
+            </Card>
+          </Columns>
 
-            <section className="card">
-              <div className="card-head">
-                <h2>By model</h2>
-                <span className="card-note">{board.byModel.length} models</span>
-              </div>
-              <RankedBars
-                rows={board.byModel}
-                colorOf={modelColor}
-                labelOf={(row) => modelLabel(row.name)}
-              />
-            </section>
-          </div>
-
-          <section className="card" style={{ marginTop: 12 }}>
-            <div className="card-head">
-              <h2>Activity calendar</h2>
-              <span className="card-note">Ranked against your own busiest day</span>
-            </div>
+          <Card>
+            <CardHeader title="Activity calendar" subtitle="Ranked against your own busiest day" />
             <SpendCalendar cells={board.heatmap} />
-          </section>
+          </Card>
 
-          <section className="card" style={{ marginTop: 12 }}>
-            <div className="card-head">
-              <h2>Model detail</h2>
-              <span className="card-note">Sortable · every column</span>
-            </div>
+          <Card>
+            <CardHeader title="Model detail" subtitle="Select a column to sort" />
             <ModelTable rows={board.byModel} colorOf={modelColor} />
-          </section>
+          </Card>
 
-          <section className="card" style={{ marginTop: 12 }}>
-            <div className="card-head">
-              <h2>Projects</h2>
-              <span className="card-note">{board.projects.length} with spend</span>
-            </div>
+          <Card>
+            <CardHeader title="Projects" subtitle={`${board.projects.length} with spend`} />
             <ProjectList projects={board.projects} />
-          </section>
+          </Card>
         </div>
       )}
-    </>
+    </Page>
   );
 }
 
-/** Older than this, the page says the figures are out of date. */
-const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
-
-function Head({
-  generatedAt,
-  refreshing,
-  onRefresh,
-  days = null,
-  sources = [],
-}: {
-  generatedAt: string | null;
-  refreshing: boolean;
-  onRefresh: () => void;
-  /** The page's selection, which the share cards follow. */
-  days?: number | null;
-  sources?: string[];
-}) {
-  const [exporting, setExporting] = useState(false);
-  const [exported, setExported] = useState("");
-  // "Collected 3m ago" is relative to now, so it has to move while the page
-  // stays open rather than keep the moment it was first drawn.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const ageMs = generatedAt ? now - new Date(generatedAt).getTime() : 0;
-  const stale = ageMs > STALE_AFTER_MS;
-
-  // Cards are for posting, so they carry no repository, path, chat title or
-  // dollar cost. The button says so rather than leaving it to be discovered.
-  const share = async () => {
-    setExporting(true); setExported("");
-    try {
-      const files = await ipc.usageExport([], days, sources);
-      setExported(`Saved ${files.length} card${files.length === 1 ? "" : "s"} to ~/Pictures`);
-    } catch (reason) {
-      setExported(String(reason));
-    } finally {
-      setExporting(false);
-    }
-  };
-
+function UsageSkeleton() {
   return (
-    <>
-    <div className="page-head">
-      <div>
-        <h1>Agent Usage</h1>
-        <div className="page-sub">
-          {generatedAt
-            ? `Collected ${timeAgo(generatedAt)} · stays on this computer`
-            : "Nothing collected yet"}
-        </div>
-      </div>
-      <div className="head-actions">
-        {exported && <span className="card-note">{exported}</span>}
-        <button
-          className="button"
-          onClick={() => void share()}
-          disabled={exporting || !generatedAt}
-          title="Branded PNGs with no repository, path, chat title or cost on them"
-        >
-          {exporting ? "Rendering…" : "Share cards"}
-        </button>
-        <button className="button" onClick={onRefresh} disabled={refreshing}>
-          {refreshing ? "Collecting…" : "Refresh"}
-        </button>
-      </div>
-    </div>
-    {stale && generatedAt && !refreshing && (
-      <div className="banner warn">
-        These figures were collected {timeAgo(generatedAt)}, so recent use is missing. Press Refresh,
-        or choose how often Veronica collects in Settings › General.
-      </div>
-    )}
-    </>
-  );
-}
-
-function Tile({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <div className="card">
-      <div className="tile-label">{label}</div>
-      <div className="tile-value">{value}</div>
-      <div className="tile-note">{note}</div>
+    <div className="usage-board" role="status" aria-label="Loading usage">
+      <StatGrid min={180}>
+        {[0, 1, 2, 3].map((index) => (
+          <Card key={index} className="usage-skeleton-stat">
+            <Skeleton width="55%" height={10} />
+            <Skeleton width="70%" height={26} />
+            <Skeleton width="40%" height={9} />
+          </Card>
+        ))}
+      </StatGrid>
+      <Columns ratio="wide-start">
+        <Card className="usage-chart-card">
+          <Skeleton width="45%" height={12} />
+          <div className="usage-skeleton-bars">
+            {Array.from({ length: 18 }, (_, index) => (
+              <Skeleton key={index} height={`${30 + ((index * 37) % 60)}%`} radius={3} />
+            ))}
+          </div>
+        </Card>
+        <Card className="usage-chart-card">
+          <Skeleton width="35%" height={12} />
+          {[90, 64, 40, 22].map((width) => (
+            <div className="usage-skeleton-ranked" key={width}>
+              <Skeleton width="50%" height={10} />
+              <Skeleton width={`${width}%`} height={6} radius={3} />
+            </div>
+          ))}
+        </Card>
+      </Columns>
     </div>
   );
 }

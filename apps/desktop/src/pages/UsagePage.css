@@ -1,0 +1,78 @@
+.usage-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  min-width: 0;
+}
+
+.usage-toolbar {
+  align-items: center;
+}
+
+.usage-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.usage-source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--control-height-small);
+  padding: 0 var(--space-2-5);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  transition: background-color var(--motion-feedback), color var(--motion-feedback), border-color var(--motion-feedback);
+}
+
+.usage-source:hover {
+  background: var(--fill-hover);
+  color: var(--text-1);
+}
+
+.usage-source:active {
+  background: var(--fill-pressed);
+}
+
+.usage-source[aria-pressed="true"] {
+  background: var(--fill-control);
+  border-color: var(--separator-strong);
+  color: var(--text-1);
+}
+
+.usage-source[aria-pressed="false"] .chart-swatch {
+  opacity: 0.35;
+}
+
+.usage-chart-card {
+  align-self: stretch;
+  height: 100%;
+}
+
+.usage-skeleton-stat {
+  gap: var(--space-2);
+}
+
+.usage-skeleton-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  height: 168px;
+}
+
+.usage-skeleton-bars > .ui-skeleton {
+  flex: 1;
+}
+
+.usage-skeleton-ranked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}

@@ -1,13 +1,47 @@
-import { startVisiblePolling } from "../lib/polling";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Activity,
+  ArrowUpRight,
+  CalendarDays,
+  Coffee,
+  Cpu,
+  EyeOff,
+  Globe2,
+  Keyboard,
+  LaptopMinimal,
+  Music2,
+  Plus,
+  Sparkles,
+  Gauge as GaugeIcon,
+  X,
+  Zap,
+} from "lucide-react";
 
-import { SpendCalendar } from "../components/charts";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Dialog,
+  IconButton,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  ProgressBar,
+  SearchField,
+  Skeleton,
+} from "../ui";
+import { SpendCalendar, ringStatus } from "../components/charts";
 import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
 import { money, tokens } from "../lib/format";
 import { ipc, listenEvent } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
 import { limitProviderOf, storedLimitProvider, type LimitProvider } from "../lib/preferences";
 import type { AgendaView, GaugeReport, NowPlaying, PresenterView, SystemSnapshot, UsageView } from "../lib/types";
+import "./HomePage.css";
 
 type HomeRoute = "usage" | "media" | "calendar" | "system";
 type HomeData = {
@@ -26,6 +60,7 @@ const ZONE_SUGGESTIONS = [
   "Europe/London", "Europe/Berlin", "Asia/Kolkata", "Asia/Tokyo", "Asia/Singapore",
   "Australia/Sydney", "America/Chicago", "America/Sao_Paulo", "Asia/Dubai",
 ];
+const MAX_ZONES = 2;
 
 function greeting(hour: number) {
   if (hour >= 5 && hour < 12) return "Good morning";
@@ -50,12 +85,13 @@ function zonesFrom(value: unknown): string[] {
   return [...new Set(source)].filter((zone) => {
     try { new Intl.DateTimeFormat(undefined, { timeZone: zone }).format(); return true; }
     catch { return false; }
-  }).slice(0, 2);
+  }).slice(0, MAX_ZONES);
 }
 
 export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => void }) {
   const [now, setNow] = useState(() => new Date());
   const [data, setData] = useState<HomeData>(EMPTY);
+  const [loaded, setLoaded] = useState(false);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [desktopReady, setDesktopReady] = useState(true);
   const [actionError, setActionError] = useState("");
@@ -82,14 +118,11 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     });
     if (requests[5].status === "fulfilled") setSettings(requests[5].value);
     if (requests[6].status === "fulfilled") setPresenter(requests[6].value);
+    setLoaded(true);
   };
 
   useEffect(() => { void refresh(); }, []);
 
-  // The live cards poll on their own clocks: machine stats and the player at
-  // a glance-able pace, limits slowly because each read reaches the provider.
-  // A tick is skipped while the previous one is still waiting, so a slow
-  // reply can never land after (and overwrite) a newer one.
   useEffect(() => {
     let live = true;
     const every = (ms: number, read: () => Promise<void>) => startVisiblePolling(read, ms, document, false);
@@ -108,6 +141,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     });
     return () => { live = false; stopLive(); stopLimits(); };
   }, []);
+
   useEffect(() => {
     const changed = listenEvent("settings-updated", () => {
       void ipc.settingsAll().then(setSettings).catch(() => {});
@@ -127,12 +161,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     }
   };
 
-  /**
-   * The tile reflects the gate the core resolves, not the raw manual flag, and
-   * undoes whatever holds presenter mode on: the switch, a detected share, or
-   * both. Off, it turns the feature on as well, since that is what a click on
-   * "Presenter mode" means when the feature has never been enabled.
-   */
   const togglePresenter = async () => {
     if (!presenter) return;
     const sharing = presenter.autoActive && presenter.autoEnabled && !presenter.autoPaused;
@@ -151,66 +179,307 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     catch (error) { setActionError(String(error)); }
   };
 
-  const nextEvent = data.agenda?.happeningNow ?? data.agenda?.nextUp;
+  const nextEvent = data.agenda?.happeningNow ?? data.agenda?.nextUp ?? null;
+  const happeningNow = Boolean(data.agenda?.happeningNow);
   const totals = data.usage?.dashboard?.totals;
+  const heatmap = data.usage?.dashboard?.heatmap ?? [];
   const selectedProvider = limitProviderOf(settings.limitsProvider);
   const gauges = data.limits?.gauges.filter((gauge) => gauge.provider === selectedProvider).slice(0, 3) ?? [];
-  const localClock = useMemo(() => now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }), [now]);
+  const providerNeedsAttention = data.limits?.notes.some((note) => note.startsWith(selectedProvider)) ?? false;
+  const subtitle = useMemo(
+    () => `${now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}, ${now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+    [now],
+  );
+  const memoryPercent = data.system && data.system.memory.totalBytes > 0 ? Math.round((data.system.memory.usedBytes / data.system.memory.totalBytes) * 100) : null;
 
-  return <div className="home-page">
-    <header className="home-hero">
-      <div><h1>{greeting(now.getHours())}<span className="home-name">.</span></h1><div className="home-kicker">{now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}</div></div>
-      <div className="home-clock"><strong>{localClock}</strong><span>{now.getHours() < 12 ? "AM" : "PM"} · {Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div>
-    </header>
+  return (
+    <Page header={<PageHeader title={greeting(now.getHours())} subtitle={subtitle} />}>
+      {!desktopReady && <Notice title="Live information is unavailable">Live information appears when Veronica runs as the installed desktop app.</Notice>}
+      {actionError && (
+        <Notice tone="critical" title="That action did not finish" actions={<Button size="small" variant="plain" onClick={() => setActionError("")}>Dismiss</Button>}>
+          {actionError}
+        </Notice>
+      )}
 
-    {!desktopReady && <div className="banner">Live information appears when Veronica runs as the installed desktop app.</div>}
-    {actionError && <div className="banner error">{actionError}</div>}
+      <div className="home-grid">
+        <WorldClocks now={now} zones={zonesFrom(settings.homeClockZones)} onChange={(zones) => void set("homeClockZones", zones)} />
 
-    <div className="home-top-grid">
-      <WorldClocks now={now} zones={zonesFrom(settings.homeClockZones)} onChange={(zones) => void set("homeClockZones", zones)} />
-      <QuickActions settings={settings} presenterActive={Boolean(presenter?.active)} onToggle={(key) => void set(key, !Boolean(settings[key]))} onPresenter={() => void togglePresenter()} onCleanKeys={() => void cleanKeys()} />
+        <Widget className="home-span-3" icon={<Zap />} title="Quick actions">
+          <div className="home-actions">
+            <ActionTile icon={<Keyboard />} title="Clean keys" detail="Lock the keyboard to wipe it" onClick={() => void cleanKeys()} />
+            <ActionTile icon={<Coffee />} title="Keep awake" detail="Stop this computer from sleeping" active={Boolean(settings.preventSleep)} onClick={() => void set("preventSleep", !settings.preventSleep)} />
+            <ActionTile icon={<EyeOff />} title="Presenter mode" detail="Blur sensitive values on screen" active={Boolean(presenter?.active)} disabled={!presenter} onClick={() => void togglePresenter()} />
+            <ActionTile icon={<LaptopMinimal />} title="Lid awake" detail="Keep running with the lid closed" active={Boolean(settings.lidAwakeEnabled)} onClick={() => void set("lidAwakeEnabled", !settings.lidAwakeEnabled)} />
+          </div>
+        </Widget>
+
+        <Widget className="home-span-4 home-activity" icon={<Activity />} title="Activity" meta="Daily estimated spend" bodyClassName="blur-money">
+          {!loaded ? (
+            <div className="home-heat-skeleton"><Skeleton height={118} radius={8} /></div>
+          ) : heatmap.length > 0 ? (
+            <SpendCalendar cells={heatmap} />
+          ) : (
+            <Quiet>No activity collected yet. Agent usage fills this in after its first collection.</Quiet>
+          )}
+        </Widget>
+
+        <Widget
+          className="home-span-2"
+          icon={<Sparkles />}
+          title="Agent usage"
+          meta="All time"
+          bodyClassName="blur-money blur-usage"
+          actions={<IconButton size="small" label="Open agent usage" icon={<ArrowUpRight />} onClick={() => onNavigate("usage")} />}
+        >
+          <div className="home-metrics home-metrics-pair">
+            <Metric label="Spend" value={totals ? money(totals.cost) : null} loading={!loaded} />
+            <Metric label="Tokens" value={totals ? tokens(totals.tokens) : null} loading={!loaded} />
+          </div>
+        </Widget>
+
+        <Widget
+          className="home-span-2"
+          icon={<CalendarDays />}
+          title="Meetings"
+          meta={nextEvent ? happeningNow ? <Badge tone="accent" dot>Now</Badge> : "Next up" : undefined}
+          bodyClassName="blur-calendar"
+          actions={<IconButton size="small" label="Open calendar" icon={<ArrowUpRight />} onClick={() => onNavigate("calendar")} />}
+        >
+          {!loaded ? (
+            <PrimaryLines loading />
+          ) : nextEvent ? (
+            <PrimaryLines
+              title={nextEvent.summary}
+              detail={new Date(nextEvent.start).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+            />
+          ) : (
+            <Quiet>No meetings today.</Quiet>
+          )}
+        </Widget>
+
+        <Widget
+          className="home-span-2"
+          icon={<GaugeIcon />}
+          title="Rate limits"
+          bodyClassName="blur-agents"
+          actions={
+            <>
+              <ProviderSelector compact value={selectedProvider} onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))} />
+              <IconButton size="small" label="Open rate limits" icon={<ArrowUpRight />} onClick={() => onNavigate("usage")} />
+            </>
+          }
+        >
+          {!loaded ? (
+            <div className="home-limits">{[0, 1, 2].map((index) => <Skeleton key={index} height={10} />)}</div>
+          ) : gauges.length > 0 ? (
+            <div className="home-limits">
+              {gauges.map((gauge) => {
+                const status = ringStatus(gauge.percent);
+                const tone = status === "good" ? "good" : status === "critical" ? "critical" : "warning";
+                return (
+                  <div className="home-limit" key={`${gauge.provider}-${gauge.window}`}>
+                    <span className="home-limit-name">{gauge.window}</span>
+                    <ProgressBar value={gauge.percent / 100} tone={tone} size="thin" label={`${gauge.window} usage`} />
+                    <span className="home-limit-value ui-num">{Math.round(gauge.percent)}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Quiet>{providerNeedsAttention ? `${selectedProvider} needs attention. Open rate limits for details.` : "No limit data yet."}</Quiet>
+          )}
+        </Widget>
+
+        <Widget
+          className="home-span-2"
+          icon={<Music2 />}
+          title="Music"
+          bodyClassName="blur-music"
+          actions={<IconButton size="small" label="Open music" icon={<ArrowUpRight />} onClick={() => onNavigate("media")} />}
+        >
+          {!loaded ? (
+            <PrimaryLines loading />
+          ) : data.playing ? (
+            <div className="home-track">
+              <span className="home-track-art" aria-hidden="true">
+                {data.playing.artUrl ? <img src={data.playing.artUrl} alt="" /> : <Music2 />}
+              </span>
+              <PrimaryLines title={data.playing.title || "Untitled"} detail={data.playing.artist || data.playing.identity} />
+            </div>
+          ) : (
+            <Quiet>Nothing is playing.</Quiet>
+          )}
+        </Widget>
+
+        <NotificationList limit={4} className="home-card home-span-4" />
+
+        <Widget
+          className="home-span-2"
+          icon={<Cpu />}
+          title="This computer"
+          meta="Live"
+          actions={<IconButton size="small" label="Open system" icon={<ArrowUpRight />} onClick={() => onNavigate("system")} />}
+        >
+          <div className="home-metrics home-metrics-stacked">
+            <Metric label="CPU" value={data.system ? `${Math.round(data.system.cpu.usagePercent)}%` : null} loading={!loaded} bar={data.system ? data.system.cpu.usagePercent / 100 : undefined} />
+            <Metric label="Memory" value={memoryPercent === null ? null : `${memoryPercent}%`} loading={!loaded} bar={memoryPercent === null ? undefined : memoryPercent / 100} />
+          </div>
+        </Widget>
+      </div>
+    </Page>
+  );
+}
+
+function Widget({
+  icon,
+  title,
+  meta,
+  actions,
+  className,
+  bodyClassName,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  meta?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+  bodyClassName?: string;
+  children: ReactNode;
+}) {
+  const trailing = meta || actions ? (
+    <>
+      {meta && <span className="home-card-meta">{meta}</span>}
+      {actions}
+    </>
+  ) : undefined;
+  return (
+    <Card as="section" className={["home-card", className].filter(Boolean).join(" ")}>
+      <CardHeader icon={icon} title={title} actions={trailing} />
+      <div className={["home-card-body", bodyClassName].filter(Boolean).join(" ")}>{children}</div>
+    </Card>
+  );
+}
+
+function Quiet({ children }: { children: ReactNode }) {
+  return <p className="home-quiet">{children}</p>;
+}
+
+function PrimaryLines({ title, detail, loading = false }: { title?: string; detail?: string; loading?: boolean }) {
+  if (loading) {
+    return (
+      <div className="home-lines">
+        <Skeleton width="70%" height={13} />
+        <Skeleton width="40%" height={10} />
+      </div>
+    );
+  }
+  return (
+    <div className="home-lines">
+      <strong className="home-lines-title">{title}</strong>
+      {detail && <span className="home-lines-detail">{detail}</span>}
     </div>
+  );
+}
 
-    {data.usage?.dashboard && <section className="card home-card activity-card blur-money"><div className="card-head"><h2>Activity</h2><span className="card-note">daily cost</span></div><SpendCalendar cells={data.usage.dashboard.heatmap} /></section>}
-
-    <div className="home-grid">
-      <section className="card home-card blur-calendar"><div className="card-head"><h2>Today's meetings</h2><span className="card-note">{nextEvent ? "Next up" : ""}</span></div>{nextEvent ? <div className="meeting"><strong>{nextEvent.summary}</strong><span>{new Date(nextEvent.start).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</span></div> : <p className="quiet">No meetings today. Clear runway.</p>}<JumpLink label="Open Calendar" onClick={() => onNavigate("calendar")} /></section>
-
-      <section className="card home-card blur-money blur-usage"><div className="card-head"><h2>Agent usage</h2><span className="card-note">all time</span></div><div className="metric-row compact-metrics"><Metric label="Spend" value={totals ? money(totals.cost) : "—"} /><Metric label="Tokens" value={totals ? tokens(totals.tokens) : "—"} /></div><JumpLink label="Open Agent Usage" onClick={() => onNavigate("usage")} /></section>
-
-      <section className="card home-card blur-agents"><div className="card-head"><div className="limits-title"><h2>Rate limits</h2><ProviderSelector compact value={selectedProvider} onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))} /></div></div><div className="limit-list">{gauges.length ? gauges.map((gauge) => <div className="limit-row" key={`${gauge.provider}-${gauge.window}`}><span>{gauge.window}</span><div><i style={{ width: `${Math.min(100, gauge.percent)}%` }} /></div><b>{Math.round(gauge.percent)}%</b></div>) : <span className="card-note">{data.limits?.notes.some(note => note.startsWith(selectedProvider)) ? `${selectedProvider} needs attention — open limits for details` : "No limit data yet"}</span>}</div><JumpLink label="View limits" onClick={() => onNavigate("usage")} /></section>
-
-      <section className="card home-card blur-music"><div className="card-head"><h2>Music</h2><span className="card-note">MPRIS</span></div>{data.playing ? <div className="meeting"><strong>{data.playing.title || "Untitled"}</strong><span>{data.playing.artist || data.playing.identity}</span></div> : <p className="quiet">Nothing is playing.</p>}<JumpLink label="Open Music" onClick={() => onNavigate("media")} /></section>
-
-      <section className="card home-card notice-card"><NotificationList limit={4} /></section>
-
-      <section className="card home-card"><div className="card-head"><h2>This computer</h2><span className="card-note">Live</span></div><div className="metric-row compact-metrics"><Metric label="CPU" value={data.system ? `${Math.round(data.system.cpu.usagePercent)}%` : "—"} /><Metric label="Memory" value={data.system ? `${Math.round(data.system.memory.usedBytes / data.system.memory.totalBytes * 100)}%` : "—"} /></div><JumpLink label="Open System" onClick={() => onNavigate("system")} /></section>
+function Metric({ label, value, loading, bar }: { label: string; value: string | null; loading: boolean; bar?: number }) {
+  return (
+    <div className="home-metric">
+      <span className="home-metric-label">{label}</span>
+      {loading ? (
+        <Skeleton width="60%" height={22} />
+      ) : value === null ? (
+        <span className="home-metric-missing">Not available</span>
+      ) : (
+        <strong className="home-metric-value ui-num ui-selectable">{value}</strong>
+      )}
+      {bar !== undefined && <ProgressBar value={bar} tone="neutral" size="thin" label={`${label} usage`} />}
     </div>
-  </div>;
+  );
+}
+
+function ActionTile({
+  icon,
+  title,
+  detail,
+  active,
+  disabled,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const toggle = active !== undefined;
+  return (
+    <button type="button" className="home-action" aria-pressed={toggle ? active : undefined} disabled={disabled} onClick={onClick}>
+      <span className="home-action-top">
+        <span className="home-action-icon" aria-hidden="true">{icon}</span>
+        {toggle && <span className="home-action-state">{active ? "On" : "Off"}</span>}
+      </span>
+      <span className="home-action-title">{title}</span>
+      <span className="home-action-detail">{detail}</span>
+    </button>
+  );
 }
 
 function WorldClocks({ now, zones, onChange }: { now: Date; zones: string[]; onChange: (zones: string[]) => void }) {
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
-  const panel = useRef<HTMLDivElement>(null);
   const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const matches = useMemo(() => {
     const needle = query.trim().replaceAll(" ", "_").toLowerCase();
     return supportedZones().filter((zone) => !zones.includes(zone) && zone !== local && (!needle || zone.toLowerCase().includes(needle))).slice(0, 14);
   }, [local, query, zones]);
 
-  useEffect(() => {
-    if (!adding) return;
-    const close = (event: PointerEvent) => { if (!panel.current?.contains(event.target as Node)) setAdding(false); };
-    window.addEventListener("pointerdown", close);
-    return () => window.removeEventListener("pointerdown", close);
-  }, [adding]);
+  const close = () => {
+    setAdding(false);
+    setQuery("");
+  };
 
-  return <section className="card home-card world-card"><div className="card-head"><h2>World clocks</h2><span className="card-note">hover a clock to remove</span></div><div className="clock-row">
-    <ClockTile now={now} zone={local} label="Local" />
-    {zones.map((zone) => <ClockTile key={zone} now={now} zone={zone} label={zoneName(zone)} onRemove={() => onChange(zones.filter((item) => item !== zone))} />)}
-    {zones.length < 2 && <div className="clock-add-wrap" ref={panel}><button className="clock-add" aria-label="Add city" onClick={() => setAdding((value) => !value)}><span>+</span><b>Add city</b></button>{adding && <div className="zone-popover"><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search city or region" aria-label="Search city or region" /><div>{matches.map((zone) => <button key={zone} onClick={() => { onChange([...zones, zone]); setAdding(false); setQuery(""); }}><strong>{zoneName(zone)}</strong><span>{zone.split("/")[0]}</span></button>)}{matches.length === 0 && <p>No matching timezones</p>}</div></div>}</div>}
-  </div></section>;
+  return (
+    <Widget className="home-span-3" icon={<Globe2 />} title="World clocks">
+      <div className="home-clocks">
+        <ClockTile now={now} zone={local} label="Local" />
+        {zones.map((zone) => (
+          <ClockTile key={zone} now={now} zone={zone} label={zoneName(zone)} onRemove={() => onChange(zones.filter((item) => item !== zone))} />
+        ))}
+        {zones.length < MAX_ZONES && (
+          <button type="button" className="home-clock-add" onClick={() => setAdding(true)}>
+            <span className="home-clock-add-face" aria-hidden="true"><Plus /></span>
+            <span className="home-clock-label">Add city</span>
+          </button>
+        )}
+      </div>
+      <Dialog open={adding} onClose={close} title="Add a city" description="Show another time zone beside your local time." width={420}>
+        <div className="home-zone-picker">
+          <SearchField value={query} onChange={setQuery} placeholder="Search city or region" data-autofocus />
+          <div className="home-zone-results">
+            {matches.length > 0 ? (
+              <List label="Time zones">
+                {matches.map((zone) => (
+                  <ListRow
+                    key={zone}
+                    title={zoneName(zone)}
+                    meta={zone.split("/")[0]}
+                    onClick={() => {
+                      onChange([...zones, zone]);
+                      close();
+                    }}
+                  />
+                ))}
+              </List>
+            ) : (
+              <Quiet>No matching time zones.</Quiet>
+            )}
+          </div>
+        </div>
+      </Dialog>
+    </Widget>
+  );
 }
 
 function ClockTile({ now, zone, label, onRemove }: { now: Date; zone: string; label: string; onRemove?: () => void }) {
@@ -220,8 +489,27 @@ function ClockTile({ now, zone, label, onRemove }: { now: Date; zone: string; la
   const minute = number("minute");
   const second = number("second");
   const zoneOffset = offsetMinutes(now, zone) - offsetMinutes(now, Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const offset = zoneOffset === 0 ? "same time" : `${zoneOffset > 0 ? "+" : "−"}${Math.abs(zoneOffset / 60).toFixed(zoneOffset % 60 ? 1 : 0)}h`;
-  return <div className="clock-tile"><div className="clock-face" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} className={index % 3 === 0 ? "major" : ""} style={{ transform: `rotate(${index * 30}deg)` }} />)}<span className="clock-hand hour" style={{ transform: `translateX(-50%) rotate(${(hour + minute / 60) * 30}deg)` }} /><span className="clock-hand minute" style={{ transform: `translateX(-50%) rotate(${(minute + second / 60) * 6}deg)` }} /><span className="clock-hand second" style={{ transform: `translateX(-50%) rotate(${second * 6}deg)` }} />{onRemove && <button aria-label={`Remove ${label}`} onClick={onRemove}>×</button>}</div><strong>{label}</strong><span>{now.toLocaleTimeString([], { timeZone: zone, hour: "numeric", minute: "2-digit" })}</span><small>{offset}</small></div>;
+  const offset = zoneOffset === 0 ? "Same time" : `${zoneOffset > 0 ? "+" : "−"}${Math.abs(zoneOffset / 60).toFixed(zoneOffset % 60 ? 1 : 0)}h`;
+  return (
+    <div className="home-clock">
+      <div className="home-clock-face" aria-hidden="true">
+        {Array.from({ length: 12 }, (_, index) => (
+          <i key={index} className={index % 3 === 0 ? "home-clock-tick major" : "home-clock-tick"} style={{ transform: `rotate(${index * 30}deg)` }} />
+        ))}
+        <span className="home-clock-hand hour" style={{ transform: `translateX(-50%) rotate(${(hour + minute / 60) * 30}deg)` }} />
+        <span className="home-clock-hand minute" style={{ transform: `translateX(-50%) rotate(${(minute + second / 60) * 6}deg)` }} />
+        <span className="home-clock-hand second" style={{ transform: `translateX(-50%) rotate(${second * 6}deg)` }} />
+      </div>
+      {onRemove && (
+        <span className="home-clock-remove">
+          <IconButton size="small" variant="secondary" label={`Remove ${label}`} icon={<X />} onClick={onRemove} />
+        </span>
+      )}
+      <span className="home-clock-label">{label}</span>
+      <span className="home-clock-time ui-num">{now.toLocaleTimeString([], { timeZone: zone, hour: "numeric", minute: "2-digit" })}</span>
+      <span className="home-clock-offset ui-num">{offset}</span>
+    </div>
+  );
 }
 
 function offsetMinutes(date: Date, zone: string) {
@@ -229,14 +517,3 @@ function offsetMinutes(date: Date, zone: string) {
   const take = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
   return Math.round((Date.UTC(take("year"), take("month") - 1, take("day"), take("hour"), take("minute")) - date.getTime()) / 60_000);
 }
-
-function QuickActions({ settings, presenterActive, onToggle, onPresenter, onCleanKeys }: { settings: Record<string, unknown>; presenterActive: boolean; onToggle: (key: string) => void; onPresenter: () => void; onCleanKeys: () => void }) {
-  return <section className="card home-card actions-card"><div className="card-head"><h2>Quick actions</h2></div><div className="action-tiles"><Action icon="⌨" title="Clean keys" detail="Lock the keyboard to wipe it" onClick={onCleanKeys} /><Action icon="☾" title="Keep awake" detail="Stop this computer from sleeping" active={Boolean(settings.preventSleep)} onClick={() => onToggle("preventSleep")} /><Action icon="◯" title="Presenter mode" detail="Blur sensitive values on screen" active={presenterActive} onClick={onPresenter} /><Action icon="▰" title="Lid awake" detail="Keep running with the lid closed" active={Boolean(settings.lidAwakeEnabled)} onClick={() => onToggle("lidAwakeEnabled")} /></div></section>;
-}
-
-function Action({ icon, title, detail, active, onClick }: { icon: string; title: string; detail: string; active?: boolean; onClick: () => void }) {
-  return <button className="action-tile" aria-pressed={active} onClick={onClick}><span>{icon}</span><strong>{title}</strong><small>{detail}</small></button>;
-}
-
-function JumpLink({ label, onClick }: { label: string; onClick: () => void }) { return <button className="jump-link" onClick={onClick}>{label}<span>→</span></button>; }
-function Metric({ label, value }: { label: string; value: string }) { return <div className="home-metric"><span>{label}</span><strong>{value}</strong></div>; }

@@ -1,7 +1,7 @@
-import {
-  LIMIT_PROVIDERS,
-  type LimitProvider,
-} from "../lib/preferences";
+import { Segmented } from "../ui";
+import { LIMIT_PROVIDERS, type LimitProvider } from "../lib/preferences";
+
+const OPTIONS = LIMIT_PROVIDERS.map((provider) => ({ value: provider, label: provider }));
 
 export function ProviderSelector({
   value,
@@ -12,18 +12,5 @@ export function ProviderSelector({
   onChange: (provider: LimitProvider) => void;
   compact?: boolean;
 }) {
-  return (
-    <div className={`provider-selector${compact ? " compact" : ""}`} aria-label="Rate limit provider">
-      {LIMIT_PROVIDERS.map((provider) => (
-        <button
-          key={provider}
-          aria-pressed={value === provider}
-          onClick={() => onChange(provider)}
-        >
-          <span aria-hidden="true">{provider === "Claude" ? "C" : "⌘"}</span>
-          {provider}
-        </button>
-      ))}
-    </div>
-  );
+  return <Segmented options={OPTIONS} value={value} onChange={onChange} label="Rate limit provider" size={compact ? "small" : "regular"} />;
 }

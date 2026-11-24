@@ -1,0 +1,25 @@
+.limits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: var(--space-4) var(--space-6);
+  padding: var(--space-1) 0;
+}
+
+.limits-skeleton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.limits-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  flex: 1;
+}
+
+.limits-empty {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}

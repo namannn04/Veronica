@@ -1,25 +1,16 @@
-import { startVisiblePolling } from "../lib/polling";
 import { useCallback, useEffect, useState } from "react";
+import { RotateCw } from "lucide-react";
 
+import { Button, Card, CardHeader, IconButton, Notice, Skeleton } from "../ui";
+import { startVisiblePolling } from "../lib/polling";
 import { LimitRing } from "./charts";
 import { ProviderSelector } from "./ProviderSelector";
 import { ipc, listenEvent } from "../lib/ipc";
 import { countdown } from "../lib/format";
-import {
-  limitProviderOf,
-  storedLimitProvider,
-  type LimitProvider,
-} from "../lib/preferences";
+import { limitProviderOf, storedLimitProvider, type LimitProvider } from "../lib/preferences";
 import type { Gauge, GaugeReport } from "../lib/types";
+import "./LimitRings.css";
 
-/**
- * Rate-limit rings.
- *
- * The figures come from the provider, so this is a network read rather than a
- * local file: it refreshes on a slow timer and on demand, never on a tight poll.
- * The countdown ticks locally between reads so it stays honest without asking
- * the provider every second.
- */
 const REFRESH_MS = 5 * 60 * 1000;
 
 export function LimitRings() {
@@ -28,7 +19,6 @@ export function LimitRings() {
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<LimitProvider>("Claude");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  // Ticks once a second so the "resets in" text counts down between reads.
   const [, setTick] = useState(0);
 
   const load = useCallback(async () => {
@@ -73,60 +63,65 @@ export function LimitRings() {
   };
 
   const gauges = (report?.gauges ?? []).filter((gauge) => gauge.provider === provider);
-  // `resetsInSecs` is as of the read; the countdown subtracts the time since.
-  // Re-reading it unchanged every second froze "resets in" between reads and
-  // left "now" showing for minutes after a window had reset.
   const elapsedSecs = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : 0;
-  // Only a window that was counting down when read; one the provider already
-  // reported at zero would otherwise be re-read on every read.
-  // Never sooner than half a minute after the last read, so a provider whose
-  // reset keeps landing a second away is not asked every second.
   const reset = elapsedSecs >= 30 && gauges.some((gauge) => gauge.resetsInSecs !== null && gauge.resetsInSecs > 0 && gauge.resetsInSecs - elapsedSecs <= 0);
-
-  // A window that has just reset is read again rather than shown at 100%
-  // until the next slow refresh. Once per read: `lastUpdated` moves on.
   useEffect(() => {
     if (reset && !loading) void load();
   }, [reset, lastUpdated, loading, load]);
 
+  const notes = report?.notes.filter((note) => note.startsWith(provider)) ?? [];
+  const firstLoad = loading && !report && !error;
+
   return (
-    <section className="card" style={{ marginBottom: 12 }}>
-      <div className="card-head">
-        <div className="limits-title"><ProviderSelector value={provider} onChange={(next) => void selectProvider(next)} /><h2>Rate limits</h2></div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="card-note">{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Straight from your provider"}</span>
-          <button className="button" onClick={load} disabled={loading}>
-            {loading ? "Reading…" : "Refresh"}
-          </button>
-        </div>
-      </div>
+    <Card className="limits-card">
+      <CardHeader
+        title="Rate limits"
+        subtitle={lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Straight from your provider"}
+        actions={
+          <>
+            <ProviderSelector compact value={provider} onChange={(next) => void selectProvider(next)} />
+            <IconButton size="small" label="Refresh rate limits" icon={<RotateCw />} onClick={() => void load()} disabled={loading} />
+          </>
+        }
+      />
 
-      {error && <div className="banner error">{error}</div>}
+      {error && (
+        <Notice tone="critical" compact title="Rate limits could not be read" actions={<Button size="small" onClick={() => void load()} busy={loading}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
 
-      {gauges.length > 0 && (
-        <div className="rings">
-          {gauges.map((gauge) => (
-            <LimitRing
-              key={`${gauge.provider}-${gauge.window}`}
-              percent={gauge.percent}
-              title={`${gauge.provider} · ${gauge.window}`}
-              subtitle={subtitle(gauge, elapsedSecs)}
-            />
+      {firstLoad && (
+        <div className="limits-grid" role="status" aria-label="Reading rate limits">
+          {[0, 1, 2].map((index) => (
+            <div className="limits-skeleton" key={index}>
+              <Skeleton width={64} height={64} radius={32} />
+              <div className="limits-skeleton-lines">
+                <Skeleton width="60%" height={11} />
+                <Skeleton width="85%" height={9} />
+                <Skeleton width={56} height={16} radius={8} />
+              </div>
+            </div>
           ))}
         </div>
       )}
 
-      {!loading && gauges.length === 0 && !error && (
-        <p className="card-note">No rate limits available.</p>
+      {gauges.length > 0 && (
+        <div className="limits-grid">
+          {gauges.map((gauge) => (
+            <LimitRing key={`${gauge.provider}-${gauge.window}`} percent={gauge.percent} title={gauge.window} subtitle={subtitle(gauge, elapsedSecs)} />
+          ))}
+        </div>
       )}
 
-      {report?.notes.filter((note) => note.startsWith(provider)).map((note) => (
-        <div className="provider-diagnostic" key={note}>
-          <strong>{provider} needs attention</strong>
-          <span>{providerNote(note)}</span>
-        </div>
+      {!loading && gauges.length === 0 && !error && notes.length === 0 && <p className="limits-empty">No rate limits available for {provider}.</p>}
+
+      {notes.map((note) => (
+        <Notice key={note} tone="warning" compact title={`${provider} needs attention`}>
+          {providerNote(note)}
+        </Notice>
       ))}
-    </section>
+    </Card>
   );
 }
 
@@ -143,11 +138,6 @@ function providerNote(note: string): string {
   return detail;
 }
 
-/**
- * The line under a ring: when it resets, and how the burn compares with a
- * linear one. The pace is what turns a bare percentage into something
- * actionable — 80% with a week left is fine, 60% with an hour is not.
- */
 function subtitle(gauge: Gauge, elapsedSecs: number): string {
   const parts: string[] = [];
   if (gauge.resetsInSecs !== null) {
