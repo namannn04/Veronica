@@ -1,5 +1,5 @@
+import { useEffect, useState } from "react";
 import { Download, RefreshCw, RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import type { UpdateInfo } from "../lib/types";
@@ -14,7 +14,7 @@ export function UpdatePane({ current }: { current: string }) {
   const [installed, setInstalled] = useState(false);
   const [error, setError] = useState("");
 
-  const check = useCallback(async () => {
+  const check = async () => {
     setBusy(true);
     setError("");
     try {
@@ -24,16 +24,14 @@ export function UpdatePane({ current }: { current: string }) {
     } finally {
       setBusy(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     void check();
-  }, [check]);
+  }, []);
 
   const install = async () => {
-    if (!update) {
-      return;
-    }
+    if (!update) return;
     setInstalling(true);
     setError("");
     try {
@@ -68,11 +66,7 @@ export function UpdatePane({ current }: { current: string }) {
           : "Downloads the release and verifies its checksum, then Ubuntu asks for your password before installing.";
 
   const action = installed ? (
-    <Button
-      variant="primary"
-      icon={<RotateCcw />}
-      onClick={() => void ipc.appRestart().catch((reason) => setError(String(reason)))}
-    >
+    <Button variant="primary" icon={<RotateCcw />} onClick={() => void ipc.appRestart().catch((reason) => setError(String(reason)))}>
       Restart Veronica
     </Button>
   ) : update?.updateAvailable && update.canInstall ? (
@@ -80,11 +74,7 @@ export function UpdatePane({ current }: { current: string }) {
       {installing ? "Installing…" : `Update to ${update.latestVersion}`}
     </Button>
   ) : update?.updateAvailable ? (
-    <Button
-      variant="primary"
-      icon={<Download />}
-      onClick={() => void ipc.openExternal(update.packageUrl ?? update.releaseUrl)}
-    >
+    <Button variant="primary" icon={<Download />} onClick={() => void ipc.openExternal(update.packageUrl ?? update.releaseUrl)}>
       Download update
     </Button>
   ) : (
@@ -108,25 +98,14 @@ export function UpdatePane({ current }: { current: string }) {
           {error}
         </Notice>
       )}
-      <FormGroup
-        title="Software updates"
-        description="Checks Veronica's official releases. Nothing installs until you click."
-      >
+      <FormGroup title="Software updates" description="Checks Veronica's official releases. Nothing installs until you click.">
         <FormRow
           label="Installed version"
           description={status}
-          control={
-            current ? <Badge tone={available ? "warning" : "good"}>v{current}</Badge> : undefined
-          }
+          control={current ? <Badge tone={available ? "warning" : "good"}>v{current}</Badge> : undefined}
         />
         <FormRow
-          label={
-            installed
-              ? "Finish updating"
-              : available
-                ? `Veronica ${update?.latestVersion}`
-                : "Latest release"
-          }
+          label={installed ? "Finish updating" : available ? `Veronica ${update?.latestVersion}` : "Latest release"}
           description={
             available
               ? `${update?.publishedAt ? `Published ${new Date(update.publishedAt).toLocaleDateString()}. ` : ""}${how}`
@@ -144,11 +123,7 @@ export function UpdatePane({ current }: { current: string }) {
           </FormRow>
         )}
         {available && update?.installKind !== "flatpak" && update?.installKind !== "snap" && (
-          <FormRow
-            label="Or update from a terminal"
-            description="Installs the latest release in one step."
-            stacked
-          >
+          <FormRow label="Or update from a terminal" description="Installs the latest release in one step." stacked>
             <pre className="settings-code ui-mono ui-selectable">{INSTALL_COMMAND}</pre>
           </FormRow>
         )}

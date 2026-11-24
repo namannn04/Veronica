@@ -110,9 +110,7 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  transition:
-    background-color var(--motion-feedback),
-    color var(--motion-feedback);
+  transition: background-color var(--motion-feedback), color var(--motion-feedback);
 }
 
 .sys-sort:hover {

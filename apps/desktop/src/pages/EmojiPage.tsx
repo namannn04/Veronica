@@ -1,5 +1,5 @@
-import { SearchX, Smile } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SearchX, Smile } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
@@ -45,7 +45,6 @@ const SHORT_GROUP_NAMES: Record<string, string> = {
 const PAGE = 240;
 const WHOLE_GROUP = 2_000;
 const ALL = "all";
-const SKELETON_CELLS = Array.from({ length: 48 }, (_, cell) => cell);
 
 export function EmojiPage() {
   const [groups, setGroups] = useState<EmojiGroup[]>([]);
@@ -68,26 +67,17 @@ export function EmojiPage() {
     }
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt is the retry trigger: bumping it reloads groups and settings
   useEffect(() => {
-    void ipc
-      .emojiGroups()
-      .then(setGroups)
-      .catch((reason) => setError(String(reason)));
-    void ipc
-      .settingsAll()
-      .then(setSettings)
-      .catch(() => {});
+    void ipc.emojiGroups().then(setGroups).catch((reason) => setError(String(reason)));
+    void ipc.settingsAll().then(setSettings).catch(() => {});
   }, [attempt]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the backend applies the skin tone setting, so recents are reloaded whenever tone changes
   useEffect(() => {
     void loadRecents();
   }, [loadRecents, tone]);
 
   const activeGroup = query.trim() ? null : group;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the backend applies the skin tone setting and attempt is the retry trigger, so both refetch results
   useEffect(() => {
     let live = true;
     void ipc
@@ -99,9 +89,7 @@ export function EmojiPage() {
         }
       })
       .catch((reason) => {
-        if (live) {
-          setError(String(reason));
-        }
+        if (live) setError(String(reason));
       });
     return () => {
       live = false;
@@ -123,28 +111,19 @@ export function EmojiPage() {
       const result = await ipc.emojiCopy(row.character, false);
       setCopied(result.character);
       setError(null);
-      window.setTimeout(
-        () => setCopied((current) => (current === result.character ? null : current)),
-        1200,
-      );
+      window.setTimeout(() => setCopied((current) => (current === result.character ? null : current)), 1200);
       await loadRecents();
     } catch (reason) {
       setError(String(reason));
     }
   };
 
-  const groupName = useMemo(
-    () => new Map(groups.map((entry, index) => [index, entry.name])),
-    [groups],
-  );
+  const groupName = useMemo(() => new Map(groups.map((entry, index) => [index, entry.name])), [groups]);
 
   const tabs = useMemo(
     () => [
       { id: ALL, label: "All" },
-      ...groups.map((entry, index) => ({
-        id: String(index),
-        label: SHORT_GROUP_NAMES[entry.id] ?? entry.name,
-      })),
+      ...groups.map((entry, index) => ({ id: String(index), label: SHORT_GROUP_NAMES[entry.id] ?? entry.name })),
     ],
     [groups],
   );
@@ -155,17 +134,9 @@ export function EmojiPage() {
   };
 
   const searching = query.trim().length > 0;
-  const resultsTitle = searching
-    ? "Results"
-    : activeGroup === null
-      ? "All emoji"
-      : (groupName.get(activeGroup) ?? "Emoji");
+  const resultsTitle = searching ? "Results" : activeGroup === null ? "All emoji" : groupName.get(activeGroup) ?? "Emoji";
   const resultsNote =
-    emoji === null
-      ? undefined
-      : emoji.length === PAGE && activeGroup === null
-        ? `Showing the first ${PAGE}`
-        : `${emoji.length} emoji`;
+    emoji === null ? undefined : emoji.length === PAGE && activeGroup === null ? `Showing the first ${PAGE}` : `${emoji.length} emoji`;
 
   return (
     <Page
@@ -179,34 +150,16 @@ export function EmojiPage() {
           }
           accessory={
             groups.length > 0 && (
-              <Tabs
-                items={tabs}
-                value={activeGroup === null ? ALL : String(activeGroup)}
-                onChange={selectGroup}
-                label="Emoji categories"
-              />
+              <Tabs items={tabs} value={activeGroup === null ? ALL : String(activeGroup)} onChange={selectGroup} label="Emoji categories" />
             )
           }
         />
       }
     >
       <Toolbar
-        leading={
-          <SearchField
-            className="emoji-search"
-            value={query}
-            onChange={setQuery}
-            placeholder="Search by name or keyword"
-            autoFocus
-          />
-        }
+        leading={<SearchField className="emoji-search" value={query} onChange={setQuery} placeholder="Search by name or keyword" autoFocus />}
         trailing={
-          <Select
-            variant="chip"
-            value={tone}
-            onChange={(event) => void setTone(event.target.value)}
-            aria-label="Skin tone"
-          >
+          <Select variant="chip" value={tone} onChange={(event) => void setTone(event.target.value)} aria-label="Skin tone">
             {SKIN_TONES.map((item) => (
               <option key={item.key} value={item.key}>
                 {item.sample} {item.title}
@@ -217,15 +170,7 @@ export function EmojiPage() {
       />
 
       {error && (
-        <Notice
-          tone="critical"
-          title="The emoji catalogue did not load"
-          actions={
-            <Button size="small" onClick={() => setAttempt((value) => value + 1)}>
-              Retry
-            </Button>
-          }
-        >
+        <Notice tone="critical" title="The emoji catalogue did not load" actions={<Button size="small" onClick={() => setAttempt((value) => value + 1)}>Retry</Button>}>
           {error}
         </Notice>
       )}
@@ -233,13 +178,7 @@ export function EmojiPage() {
       {recents.length > 0 && !searching && activeGroup === null && (
         <Section title="Most used" description="Yours, kept on this computer">
           <Card padding="compact">
-            <EmojiGrid
-              rows={recents}
-              copied={copied}
-              groupName={groupName}
-              onPick={pick}
-              keyPrefix="recent-"
-            />
+            <EmojiGrid rows={recents} copied={copied} groupName={groupName} onPick={pick} keyPrefix="recent-" />
           </Card>
         </Section>
       )}
@@ -249,8 +188,8 @@ export function EmojiPage() {
           {emoji === null ? (
             <Card padding="compact" aria-label="Loading emoji">
               <div className="emoji-grid">
-                {SKELETON_CELLS.map((cell) => (
-                  <Skeleton key={cell} width={40} height={40} radius={8} />
+                {Array.from({ length: 48 }, (_, index) => (
+                  <Skeleton key={index} width={40} height={40} radius={8} />
                 ))}
               </div>
             </Card>
@@ -267,23 +206,16 @@ export function EmojiPage() {
                 </EmptyState>
               ) : (
                 <EmptyState size="compact" icon={<Smile />} title="No emoji loaded">
-                  The catalogue ships with Veronica and is read at launch. Run vr emoji search smile
-                  to see what it reports.
+                  The catalogue ships with Veronica and is read at launch. Run vr emoji search smile to see what it reports.
                 </EmptyState>
-              )}
-            </Card>
-          ) : (
-            <Card padding="compact">
-              <EmojiGrid
-                rows={emoji}
-                copied={copied}
-                groupName={groupName}
-                onPick={pick}
-                keyPrefix=""
-              />
-            </Card>
-          )}
-        </Section>
+      )}
+          </Card>
+        ) : (
+          <Card padding="compact">
+            <EmojiGrid rows={emoji} copied={copied} groupName={groupName} onPick={pick} keyPrefix="" />
+          </Card>
+        )}
+      </Section>
       )}
 
       <p className="ui-visually-hidden" role="status">
@@ -309,10 +241,7 @@ function EmojiGrid({
   return (
     <div className="emoji-grid">
       {rows.map((row) => (
-        <Tooltip
-          key={`${keyPrefix}${row.character}`}
-          content={[row.name, groupName.get(row.groupIndex)].filter(Boolean).join(" · ")}
-        >
+        <Tooltip key={`${keyPrefix}${row.character}`} content={[row.name, groupName.get(row.groupIndex)].filter(Boolean).join(" · ")}>
           <button
             type="button"
             className="emoji-cell"

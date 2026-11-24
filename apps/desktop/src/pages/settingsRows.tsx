@@ -15,13 +15,7 @@ export function SwitchRow({
   onChange: (value: boolean) => void;
   disabled?: boolean;
 }) {
-  return (
-    <FormRow
-      label={label}
-      description={description}
-      control={<Switch label={label} checked={checked} disabled={disabled} onChange={onChange} />}
-    />
-  );
+  return <FormRow label={label} description={description} control={<Switch label={label} checked={checked} disabled={disabled} onChange={onChange} />} />;
 }
 
 export type NumberChoice = { value: number; label: string };
@@ -43,20 +37,13 @@ export function ChoiceRow({
   onChange: (value: number) => void;
   disabled?: boolean;
 }) {
-  const listed = options.some((option) => option.value === value)
-    ? options
-    : [...options, { value, label: format(value) }].sort((a, b) => a.value - b.value);
+  const listed = options.some((option) => option.value === value) ? options : [...options, { value, label: format(value) }].sort((a, b) => a.value - b.value);
   return (
     <FormRow
       label={label}
       description={description}
       control={
-        <Select
-          aria-label={label}
-          value={String(value)}
-          disabled={disabled}
-          onChange={(event) => onChange(Number(event.target.value))}
-        >
+        <Select aria-label={label} value={String(value)} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))}>
           {listed.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

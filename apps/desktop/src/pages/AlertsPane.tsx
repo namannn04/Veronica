@@ -21,19 +21,11 @@ const WEEKLY_OFFSETS = [
 
 const MARGINS = [5, 10, 15, 20, 25];
 
-const POLL_CHOICES = [30, 60, 120, 300, 900].map((seconds) => ({
-  value: seconds,
-  label: pollLabel(seconds),
-}));
+const POLL_CHOICES = [30, 60, 120, 300, 900].map((seconds) => ({ value: seconds, label: pollLabel(seconds) }));
 
 const LEVEL_TONES: Record<UsageLevel, Tone> = { green: "good", orange: "warning", red: "critical" };
 
-const ZONE_LABELS: Record<PacingZone, string> = {
-  chill: "Relaxed",
-  onTrack: "On track",
-  warning: "Drifting fast",
-  hot: "Burning hot",
-};
+const ZONE_LABELS: Record<PacingZone, string> = { chill: "Relaxed", onTrack: "On track", warning: "Drifting fast", hot: "Burning hot" };
 
 const CHECK_FEEDBACK_MS = 5000;
 
@@ -152,11 +144,7 @@ export function AlertsPane() {
       >
         <SwitchRow
           label="Enable alerts"
-          description={
-            on
-              ? `Claude's limits are re-read every ${view.pollSeconds} s while this is on.`
-              : "Off means no banners and no requests to the provider."
-          }
+          description={on ? `Claude's limits are re-read every ${view.pollSeconds} s while this is on.` : "Off means no banners and no requests to the provider."}
           checked={on}
           disabled={busy}
           onChange={(value) => void set("notifyMaster", value)}
@@ -165,33 +153,14 @@ export function AlertsPane() {
 
       {on && (
         <>
-          <FormGroup
-            title="Watched windows"
-            description="The two Claude windows the alerts follow, read live."
-          >
+          <FormGroup title="Watched windows" description="The two Claude windows the alerts follow, read live.">
             {view.note && <FormRow label="No live reading" description={view.note} />}
-            {view.session && (
-              <WindowRow
-                label="Session (5h)"
-                window={view.session}
-                reminderAt={view.sessionReminderAt}
-              />
-            )}
-            {view.week && (
-              <WindowRow label="Weekly" window={view.week} reminderAt={view.weekReminderAt} />
-            )}
-            {!view.session && !view.week && !view.note && (
-              <FormRow
-                label="No windows reported yet"
-                description="They appear after the first successful check."
-              />
-            )}
+            {view.session && <WindowRow label="Session (5h)" window={view.session} reminderAt={view.sessionReminderAt} />}
+            {view.week && <WindowRow label="Weekly" window={view.week} reminderAt={view.weekReminderAt} />}
+            {!view.session && !view.week && !view.note && <FormRow label="No windows reported yet" description="They appear after the first successful check." />}
           </FormGroup>
 
-          <FormGroup
-            title="Level crossings"
-            description="One alert when a window's level rises, and one when it falls back to green."
-          >
+          <FormGroup title="Level crossings" description="One alert when a window's level rises, and one when it falls back to green.">
             <SwitchRow
               label="Session (5h) alerts"
               description="Fires once when the session window crosses warn or critical, then stays quiet while you remain in that zone."
@@ -224,9 +193,7 @@ export function AlertsPane() {
               label="Warn at"
               description="The first level, used when time-aware levels are off."
               value={s.thresholds.warningPercent}
-              options={[40, 50, 60, 70, 80]
-                .filter((v) => v < s.thresholds.criticalPercent)
-                .map((v) => ({ value: v, label: `${v}%` }))}
+              options={[40, 50, 60, 70, 80].filter((v) => v < s.thresholds.criticalPercent).map((v) => ({ value: v, label: `${v}%` }))}
               format={(v) => `${v}%`}
               disabled={busy}
               onChange={(value) => void set("limitsWarnPercent", value)}
@@ -235,19 +202,14 @@ export function AlertsPane() {
               label="Critical at"
               description="The top level."
               value={s.thresholds.criticalPercent}
-              options={[70, 80, 85, 90, 95]
-                .filter((v) => v > s.thresholds.warningPercent)
-                .map((v) => ({ value: v, label: `${v}%` }))}
+              options={[70, 80, 85, 90, 95].filter((v) => v > s.thresholds.warningPercent).map((v) => ({ value: v, label: `${v}%` }))}
               format={(v) => `${v}%`}
               disabled={busy}
               onChange={(value) => void set("limitsCritPercent", value)}
             />
           </FormGroup>
 
-          <FormGroup
-            title="Pace"
-            description="A separate signal from the levels: how far ahead of an even burn you are, whatever the absolute figure."
-          >
+          <FormGroup title="Pace" description="A separate signal from the levels: how far ahead of an even burn you are, whatever the absolute figure.">
             <ChoiceRow
               label="Pacing margin"
               description="How far ahead of a linear burn still counts as on track."
@@ -273,10 +235,7 @@ export function AlertsPane() {
             />
           </FormGroup>
 
-          <FormGroup
-            title="Before a reset"
-            description="A single reminder a fixed time before each window resets."
-          >
+          <FormGroup title="Before a reset" description="A single reminder a fixed time before each window resets.">
             <SwitchRow
               label="Remind before the session resets"
               description={
@@ -333,17 +292,10 @@ export function AlertsPane() {
             />
           </FormGroup>
 
-          <FormGroup
-            title="Checks"
-            description="Confirm banners arrive, and reset the comparison point after changing a threshold."
-          >
+          <FormGroup title="Checks" description="Confirm banners arrive, and reset the comparison point after changing a threshold.">
             <FormRow
               label="Send a test alert"
-              description={
-                checkFeedback?.row === "test"
-                  ? checkFeedback.text
-                  : "Posts one sample banner. It does not use up a real alert."
-              }
+              description={checkFeedback?.row === "test" ? checkFeedback.text : "Posts one sample banner. It does not use up a real alert."}
               control={
                 <Button size="small" onClick={() => void test()}>
                   Send test
@@ -379,15 +331,7 @@ export function AlertsPane() {
   );
 }
 
-function WindowRow({
-  label,
-  window: watched,
-  reminderAt,
-}: {
-  label: string;
-  window: WatchedWindow;
-  reminderAt: string | null;
-}) {
+function WindowRow({ label, window: watched, reminderAt }: { label: string; window: WatchedWindow; reminderAt: string | null }) {
   return (
     <FormRow
       label={label}
@@ -395,9 +339,7 @@ function WindowRow({
       control={
         <span className="settings-watched">
           <span className="settings-watched-zone">{ZONE_LABELS[watched.zone] ?? watched.zone}</span>
-          <Badge tone={LEVEL_TONES[watched.level] ?? "neutral"}>
-            {Math.round(watched.percent)}%
-          </Badge>
+          <Badge tone={LEVEL_TONES[watched.level] ?? "neutral"}>{Math.round(watched.percent)}%</Badge>
         </span>
       }
     />

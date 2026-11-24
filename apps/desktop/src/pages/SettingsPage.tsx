@@ -1,5 +1,5 @@
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
@@ -8,17 +8,11 @@ import { ipc, isDesktopApp, listenEvent } from "../lib/ipc";
 import {
   appearanceOf,
   applyAppearance,
-  type LimitProvider,
   limitProviderOf,
   storedLimitProvider,
+  type LimitProvider,
 } from "../lib/preferences";
-import type {
-  Diagnostics,
-  ExtensionReport,
-  LaunchAtLoginStatus,
-  PowerStatus,
-  ShellExtensionStatus,
-} from "../lib/types";
+import type { Diagnostics, ExtensionReport, LaunchAtLoginStatus, PowerStatus, ShellExtensionStatus } from "../lib/types";
 import {
   Badge,
   Button,
@@ -42,35 +36,14 @@ import { ChoiceRow, SwitchRow } from "./settingsRows";
 import { UpdatePane } from "./UpdatePane";
 import "./Settings.css";
 
-type Tab =
-  | "general"
-  | "alerts"
-  | "presenter"
-  | "desktop"
-  | "permissions"
-  | "shortcuts"
-  | "terminal"
-  | "backup"
-  | "updates";
+type Tab = "general" | "alerts" | "presenter" | "desktop" | "permissions" | "shortcuts" | "terminal" | "backup" | "updates";
 
 const TABS: { id: Tab; label: string; subtitle: string }[] = [
   { id: "general", label: "General", subtitle: "Appearance, usage collection, startup and power" },
   { id: "alerts", label: "Alerts", subtitle: "Rate-limit alerts, pacing and reset reminders" },
-  {
-    id: "presenter",
-    label: "Presenter",
-    subtitle: "Blur sensitive figures while you share your screen",
-  },
-  {
-    id: "desktop",
-    label: "Desktop",
-    subtitle: "Focus dim, keystroke highlight, emoji and color picking",
-  },
-  {
-    id: "permissions",
-    label: "Permissions",
-    subtitle: "What this session can do and where Veronica keeps its files",
-  },
+  { id: "presenter", label: "Presenter", subtitle: "Blur sensitive figures while you share your screen" },
+  { id: "desktop", label: "Desktop", subtitle: "Focus dim, keystroke highlight, emoji and color picking" },
+  { id: "permissions", label: "Permissions", subtitle: "What this session can do and where Veronica keeps its files" },
   { id: "shortcuts", label: "Shortcuts", subtitle: "Global shortcuts handled by the desktop" },
   { id: "terminal", label: "Terminal", subtitle: "The vr command line" },
   { id: "backup", label: "Backup", subtitle: "Export, inspect and restore a local backup" },
@@ -119,11 +92,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
           setFeedback(
             isDesktopApp()
               ? { tone: "critical", text: String(reason), load: true }
-              : {
-                  tone: "neutral",
-                  text: "Settings connect when Veronica runs as the desktop app.",
-                  load: true,
-                },
+              : { tone: "neutral", text: "Settings connect when Veronica runs as the desktop app.", load: true },
           ),
         ),
     [],
@@ -131,19 +100,9 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
   useEffect(() => {
     refresh();
-    void ipc
-      .powerStatus()
-      .then(setPower)
-      .catch(() => {});
-    void ipc
-      .launchAtLoginStatus()
-      .then(setLaunchAtLogin)
-      .catch(() => {});
-    const refreshShell = () =>
-      void ipc
-        .shellExtensionStatus()
-        .then(setShellExtension)
-        .catch(() => {});
+    void ipc.powerStatus().then(setPower).catch(() => {});
+    void ipc.launchAtLoginStatus().then(setLaunchAtLogin).catch(() => {});
+    const refreshShell = () => void ipc.shellExtensionStatus().then(setShellExtension).catch(() => {});
     refreshShell();
     const changed = listenEvent("settings-updated", refresh);
     const session = listenEvent("session-resolved", refreshShell);
@@ -170,27 +129,20 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
   const set = async (key: string, value: unknown) => {
     setValues((current) => ({ ...current, [key]: value }));
-    if (key === "appearance") {
-      applyAppearance(value);
-    }
+    if (key === "appearance") applyAppearance(value);
     try {
       await ipc.settingsSet(key, value);
       confirm("Saved");
     } catch (reason) {
       if (!isDesktopApp()) {
-        setFeedback({
-          tone: "neutral",
-          text: "Preview only. Open the installed desktop app to save.",
-        });
+        setFeedback({ tone: "neutral", text: "Preview only. Open the installed desktop app to save." });
         return;
       }
       fail(reason);
       try {
         const stored = await ipc.settingsAll();
         setValues(stored);
-        if (key === "appearance") {
-          applyAppearance(stored.appearance);
-        }
+        if (key === "appearance") applyAppearance(stored.appearance);
       } catch {
         return;
       }
@@ -210,11 +162,8 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     try {
       const status = await ipc.shellExtensionEnable();
       setShellExtension(status);
-      if (status.state === "active") {
-        confirm("Extension enabled");
-      } else {
-        setFeedback({ tone: "neutral", text: status.detail });
-      }
+      if (status.state === "active") confirm("Extension enabled");
+      else setFeedback({ tone: "neutral", text: status.detail });
     } catch (reason) {
       fail(reason);
     }
@@ -222,9 +171,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
   const feature = (id: string): ExtensionReport | undefined => {
     const entry = diagnostics?.extensions.find((candidate) => candidate.id === id);
-    if (!entry) {
-      return undefined;
-    }
+    if (!entry) return undefined;
     const stored = values[entry.defaultsKey];
     return typeof stored === "boolean" ? { ...entry, enabled: stored } : entry;
   };
@@ -241,12 +188,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
           title="Settings"
           subtitle={current.subtitle}
           actions={
-            <span
-              className="settings-saved"
-              role="status"
-              aria-live="polite"
-              data-visible={savedVisible || undefined}
-            >
+            <span className="settings-saved" role="status" aria-live="polite" data-visible={savedVisible || undefined}>
               {saved && <Check aria-hidden="true" />}
               {savedVisible ? saved : ""}
             </span>
@@ -258,9 +200,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       {feedback && (!feedback.load || TABS_USING_VALUES.includes(tab)) && (
         <Notice
           tone={feedback.tone}
-          title={
-            feedback.load && feedback.tone === "critical" ? "Settings did not load" : undefined
-          }
+          title={feedback.load && feedback.tone === "critical" ? "Settings did not load" : undefined}
           actions={
             feedback.load && feedback.tone === "critical" ? (
               <Button size="small" onClick={refresh}>
@@ -279,31 +219,20 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
       {tab === "general" && (
         <Stack>
-          <FormGroup
-            title="Appearance"
-            description="One shared theme for the app and the GNOME notch."
-          >
+          <FormGroup title="Appearance" description="One shared theme for the app and the GNOME notch.">
             <div className="settings-theme">
-              <ThemePicker
-                value={appearanceOf(values.appearance)}
-                onChange={(appearance) => void set("appearance", appearance)}
-              />
+              <ThemePicker value={appearanceOf(values.appearance)} onChange={(appearance) => void set("appearance", appearance)} />
             </div>
           </FormGroup>
 
-          <FormGroup
-            title="Rate limits"
-            description="Which provider the app and the notch show by default."
-          >
+          <FormGroup title="Rate limits" description="Which provider the app and the notch show by default.">
             <FormRow
               label="Visible provider"
               description="Switch it here, on the Usage page, or inside the notch."
               control={
                 <ProviderSelector
                   value={limitProviderOf(values.limitsProvider)}
-                  onChange={(provider: LimitProvider) =>
-                    void set("limitsProvider", storedLimitProvider(provider))
-                  }
+                  onChange={(provider: LimitProvider) => void set("limitsProvider", storedLimitProvider(provider))}
                 />
               }
             />
@@ -326,10 +255,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
             />
           </FormGroup>
 
-          <FormGroup
-            title="Startup"
-            description="Keep alerts, global shortcuts and tray actions available after a reboot."
-          >
+          <FormGroup title="Startup" description="Keep alerts, global shortcuts and tray actions available after a reboot.">
             <SwitchRow
               label="Launch at login"
               description={
@@ -342,14 +268,8 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
             />
           </FormGroup>
 
-          <FormGroup
-            title="Top bar"
-            description="GNOME's Wi-Fi, Bluetooth, sound and battery controls stay in their Quick Settings menu."
-          >
-            <ShellExtensionRow
-              status={shellExtension}
-              onEnable={() => void enableShellExtension()}
-            />
+          <FormGroup title="Top bar" description="GNOME's Wi-Fi, Bluetooth, sound and battery controls stay in their Quick Settings menu.">
+            <ShellExtensionRow status={shellExtension} onEnable={() => void enableShellExtension()} />
             <SwitchRow
               label="CPU and memory indicator"
               description="Show compact live system usage beside the clock."
@@ -362,9 +282,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
             title="Power"
             description={
               <>
-                Uses systemd-logind inhibitors. A timed session started with{" "}
-                <code className="ui-mono">vr power lid-awake on --for 30m</code> counts down here
-                and ends itself.
+                Uses systemd-logind inhibitors. A timed session started with <code className="ui-mono">vr power lid-awake on --for 30m</code> counts down here and ends itself.
               </>
             }
           >
@@ -376,9 +294,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
                   : "Prevent automatic sleep while this is on."
               }
               checked={Boolean(values.preventSleep)}
-              onChange={(value) =>
-                void set("preventSleep", value).then(() => ipc.powerStatus().then(setPower))
-              }
+              onChange={(value) => void set("preventSleep", value).then(() => ipc.powerStatus().then(setPower))}
             />
             <SwitchRow
               label="Lid awake"
@@ -390,9 +306,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
                     : "Keep the session awake when a laptop lid closes."
               }
               checked={Boolean(values.lidAwakeEnabled)}
-              onChange={(value) =>
-                void set("lidAwakeEnabled", value).then(() => ipc.powerStatus().then(setPower))
-              }
+              onChange={(value) => void set("lidAwakeEnabled", value).then(() => ipc.powerStatus().then(setPower))}
             />
           </FormGroup>
         </Stack>
@@ -409,11 +323,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
           >
             <SwitchRow
               label="Dim behind the focused window"
-              description={
-                gnome
-                  ? "Takes effect immediately."
-                  : "This desktop is not GNOME, so nothing draws the overlay."
-              }
+              description={gnome ? "Takes effect immediately." : "This desktop is not GNOME, so nothing draws the overlay."}
               checked={Boolean(values.focusDimEnabled)}
               onChange={(value) => void set("focusDimEnabled", value)}
             />
@@ -421,10 +331,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
               label="Intensity"
               description="How dark to go. Capped below opaque, so the desktop never disappears."
               value={Math.round(Number(values.focusDimIntensity ?? 0.45) * 100)}
-              options={[15, 30, 45, 60, 75, 90].map((percent) => ({
-                value: percent,
-                label: `${percent}%`,
-              }))}
+              options={[15, 30, 45, 60, 75, 90].map((percent) => ({ value: percent, label: `${percent}%` }))}
               format={(percent) => `${percent}%`}
               onChange={(percent) => void set("focusDimIntensity", percent / 100)}
             />
@@ -455,11 +362,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
           >
             <SwitchRow
               label="Keystroke highlight"
-              description={
-                gnome
-                  ? "Adds the feature and its controls."
-                  : "This desktop is not GNOME, so nothing reads the presses."
-              }
+              description={gnome ? "Adds the feature and its controls." : "This desktop is not GNOME, so nothing reads the presses."}
               checked={Boolean(values.keystrokeHighlightEnabled)}
               onChange={(value) => void set("keystrokeHighlightEnabled", value)}
             />
@@ -473,10 +376,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
               label="Duration"
               description="How long one keycap stays on screen."
               value={Number(values.keystrokeHighlightDuration ?? 1.5)}
-              options={[0.5, 1, 1.5, 2, 3].map((seconds) => ({
-                value: seconds,
-                label: `${seconds}s`,
-              }))}
+              options={[0.5, 1, 1.5, 2, 3].map((seconds) => ({ value: seconds, label: `${seconds}s` }))}
               format={(seconds) => `${seconds}s`}
               onChange={(seconds) => void set("keystrokeHighlightDuration", seconds)}
             />
@@ -511,10 +411,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
             />
           </FormGroup>
 
-          <FormGroup
-            title="Color picker"
-            description="Sampling and swatch history live on the Color Picker page."
-          >
+          <FormGroup title="Color picker" description="Sampling and swatch history live on the Color Picker page.">
             <SwitchRow
               label="Color picker"
               description="Adds the page and the top bar's Pick Color action."
@@ -525,10 +422,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
               label="History size"
               description="How many swatches to keep."
               value={Number(values.colorPickerHistorySize ?? 100)}
-              options={[10, 25, 50, 100].map((count) => ({
-                value: count,
-                label: `${count} swatches`,
-              }))}
+              options={[10, 25, 50, 100].map((count) => ({ value: count, label: `${count} swatches` }))}
               format={(count) => `${count} swatches`}
               onChange={(count) => void set("colorPickerHistorySize", count)}
             />
@@ -539,44 +433,13 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       {tab === "permissions" && <DiagnosticsPage diagnostics={diagnostics} />}
 
       {tab === "shortcuts" && (
-        <FormGroup
-          title="Global shortcuts"
-          description="Handled by the desktop shortcut service. Veronica never records arbitrary keys."
-        >
-          <ShortcutRow
-            title="Show Veronica"
-            detail="Open, unminimise and focus the app."
-            keys={["Ctrl", "Alt", "V"]}
-          />
-          <ShortcutRow
-            feature={feature("clipboard")}
-            title="Clipboard"
-            detail="Open the notch clipboard, or the app as a fallback."
-            keys={["Ctrl", "Alt", "B"]}
-          />
-          <ShortcutRow
-            feature={feature("micMute")}
-            title="Microphone mute"
-            detail="Toggle the default PipeWire microphone system-wide."
-            keys={["Ctrl", "Alt", "M"]}
-          />
-          <ShortcutRow
-            feature={feature("colorPicker")}
-            title="Pick color"
-            detail="Open GNOME's eyedropper and save the swatch."
-            keys={["Ctrl", "Alt", "P"]}
-          />
-          <ShortcutRow
-            title="Clean keys"
-            detail="Take a compositor grab until you click Done."
-            keys={["Ctrl", "Alt", "K"]}
-          />
-          <ShortcutRow
-            feature={feature("emoji")}
-            title="Emoji"
-            detail="Open the picker. Clicking an emoji copies it."
-            keys={["Ctrl", "Alt", "E"]}
-          />
+        <FormGroup title="Global shortcuts" description="Handled by the desktop shortcut service. Veronica never records arbitrary keys.">
+          <ShortcutRow title="Show Veronica" detail="Open, unminimise and focus the app." keys={["Ctrl", "Alt", "V"]} />
+          <ShortcutRow feature={feature("clipboard")} title="Clipboard" detail="Open the notch clipboard, or the app as a fallback." keys={["Ctrl", "Alt", "B"]} />
+          <ShortcutRow feature={feature("micMute")} title="Microphone mute" detail="Toggle the default PipeWire microphone system-wide." keys={["Ctrl", "Alt", "M"]} />
+          <ShortcutRow feature={feature("colorPicker")} title="Pick color" detail="Open GNOME's eyedropper and save the swatch." keys={["Ctrl", "Alt", "P"]} />
+          <ShortcutRow title="Clean keys" detail="Take a compositor grab until you click Done." keys={["Ctrl", "Alt", "K"]} />
+          <ShortcutRow feature={feature("emoji")} title="Emoji" detail="Open the picker. Clicking an emoji copies it." keys={["Ctrl", "Alt", "E"]} />
           <FormRow
             label="Desktop backend"
             description={
@@ -590,10 +453,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       )}
 
       {tab === "terminal" && (
-        <FormGroup
-          title="Command line"
-          description="The vr command reads and writes the same data and settings as this app."
-        >
+        <FormGroup title="Command line" description="The vr command reads and writes the same data and settings as this app.">
           <pre className="settings-code ui-mono ui-selectable">{`vr diagnose\nvr config list\nvr usage summary\nvr machines list\nvr clipboard list`}</pre>
         </FormGroup>
       )}
@@ -605,9 +465,7 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 }
 
 function sessionEnds(remainingSecs: number | null | undefined) {
-  if (remainingSecs === null || remainingSecs === undefined) {
-    return "";
-  }
+  if (remainingSecs === null || remainingSecs === undefined) return "";
   return `, for another ${countdown(remainingSecs)}`;
 }
 
@@ -620,13 +478,7 @@ const SHELL_STATES: Record<ShellExtensionStatus["state"], { label: string; tone:
   error: { label: "Error", tone: "critical" },
 };
 
-function ShellExtensionRow({
-  status,
-  onEnable,
-}: {
-  status: ShellExtensionStatus | null;
-  onEnable: () => void;
-}) {
+function ShellExtensionRow({ status, onEnable }: { status: ShellExtensionStatus | null; onEnable: () => void }) {
   const state = status ? SHELL_STATES[status.state] : undefined;
   return (
     <FormRow
@@ -648,16 +500,8 @@ function ShellExtensionRow({
 type ModeChoice = { id: string; label: string; detail: string };
 
 const DISPLAY_MODES: ModeChoice[] = [
-  {
-    id: "perScreenFront",
-    label: "Per display",
-    detail: "Each display keeps its own front window bright.",
-  },
-  {
-    id: "dimUnfocused",
-    label: "Focused only",
-    detail: "Every display but the focused window dims.",
-  },
+  { id: "perScreenFront", label: "Per display", detail: "Each display keeps its own front window bright." },
+  { id: "dimUnfocused", label: "Focused only", detail: "Every display but the focused window dims." },
 ];
 
 const KEYSTROKE_POSITIONS: ModeChoice[] = [
@@ -696,17 +540,7 @@ function ModeRow({
   );
 }
 
-function ShortcutRow({
-  title,
-  detail,
-  keys,
-  feature,
-}: {
-  title: string;
-  detail: string;
-  keys: string[];
-  feature?: ExtensionReport;
-}) {
+function ShortcutRow({ title, detail, keys, feature }: { title: string; detail: string; keys: string[]; feature?: ExtensionReport }) {
   const off = feature !== undefined && !feature.enabled;
   return (
     <FormRow
@@ -719,7 +553,7 @@ function ShortcutRow({
 
 function KeyCombo({ keys }: { keys: string[] }): ReactNode {
   return (
-    <span className="settings-keys">
+    <span className="settings-keys" aria-label={keys.join(" + ")}>
       {keys.map((key) => (
         <Kbd key={key}>{key}</Kbd>
       ))}

@@ -9,10 +9,7 @@ const STATE_BADGES: Record<string, { tone: Tone; label: string }> = {
 };
 
 function capabilityLabel(id: string): string {
-  const spaced = id
-    .replace(/([A-Z])/g, " $1")
-    .toLowerCase()
-    .trim();
+  const spaced = id.replace(/([A-Z])/g, " $1").toLowerCase().trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
@@ -53,35 +50,18 @@ export function DiagnosticsPage({ diagnostics }: { diagnostics: Diagnostics | nu
 
   return (
     <Stack>
-      <FormGroup
-        title="Capabilities"
-        description={`${available} of ${entries.length} available in this session. Each feature talks to one of these.`}
-      >
+      <FormGroup title="Capabilities" description={`${available} of ${entries.length} available in this session. Each feature talks to one of these.`}>
         {entries.map(([id, state]) => (
-          <FormRow
-            key={id}
-            label={capabilityLabel(id)}
-            description={"reason" in state ? state.reason : undefined}
-            control={<StateBadge state={state} />}
-          />
+          <FormRow key={id} label={capabilityLabel(id)} description={"reason" in state ? state.reason : undefined} control={<StateBadge state={state} />} />
         ))}
       </FormGroup>
 
-      <FormGroup
-        title="Session"
-        description="Which session is running decides whether a feature can work at all."
-      >
-        <KeyValueList
-          className="settings-kv"
-          items={sessionRows.map(([label, value]) => ({ label, value }))}
-        />
+      <FormGroup title="Session" description="Which session is running decides whether a feature can work at all.">
+        <KeyValueList className="settings-kv" items={sessionRows.map(([label, value]) => ({ label, value }))} />
       </FormGroup>
 
       <FormGroup title="Directories" description="Where Veronica keeps its configuration and data.">
-        <KeyValueList
-          className="settings-kv"
-          items={directoryRows.map(([label, value]) => ({ label, value, mono: true }))}
-        />
+        <KeyValueList className="settings-kv" items={directoryRows.map(([label, value]) => ({ label, value, mono: true }))} />
       </FormGroup>
     </Stack>
   );

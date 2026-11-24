@@ -29,10 +29,7 @@
   font-size: var(--text-callout);
   font-weight: var(--weight-medium);
   white-space: nowrap;
-  transition:
-    background-color var(--motion-feedback),
-    color var(--motion-feedback),
-    border-color var(--motion-feedback);
+  transition: background-color var(--motion-feedback), color var(--motion-feedback), border-color var(--motion-feedback);
 }
 
 .usage-source:hover {

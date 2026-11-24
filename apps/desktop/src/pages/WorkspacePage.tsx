@@ -1,25 +1,10 @@
-import { AlertTriangle, CheckCircle2, Stethoscope } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, CheckCircle2, Stethoscope } from "lucide-react";
 
 import { GraftPlayground } from "../components/GraftPlayground";
 import { ipc } from "../lib/ipc";
 import type { DoctorReport } from "../lib/workspace";
-import {
-  Badge,
-  Button,
-  Card,
-  CardHeader,
-  EmptyState,
-  Field,
-  List,
-  ListRow,
-  Notice,
-  Page,
-  PageHeader,
-  SkeletonRows,
-  Tabs,
-  TextField,
-} from "../ui";
+import { Badge, Button, Card, CardHeader, EmptyState, Field, List, ListRow, Notice, Page, PageHeader, SkeletonRows, Tabs, TextField } from "../ui";
 import "./WorkspacePage.css";
 
 type Tool = "doctor" | "graft";
@@ -53,9 +38,7 @@ export function WorkspacePage() {
   }, []);
 
   const run = async () => {
-    if (running.current) {
-      return;
-    }
+    if (running.current) return;
     running.current = true;
     setBusy(true);
     setError("");
@@ -63,29 +46,17 @@ export function WorkspacePage() {
     try {
       const selected = ports.trim()
         ? ports.split(",").map((p) => {
-            if (!/^\s*\d+\s*$/.test(p)) {
-              throw new Error("Use comma-separated port numbers.");
-            }
+            if (!/^\s*\d+\s*$/.test(p)) throw new Error("Use comma-separated port numbers.");
             return Number(p);
           })
         : [];
-      const result = await ipc.workspaceDoctor({
-        root: root.trim(),
-        ports: selected,
-        containers: containers.trim() ? containers.split(",").map((s) => s.trim()) : [],
-      });
-      if (live.current) {
-        setReport(result);
-      }
+      const result = await ipc.workspaceDoctor({ root: root.trim(), ports: selected, containers: containers.trim() ? containers.split(",").map((s) => s.trim()) : [] });
+      if (live.current) setReport(result);
     } catch (e) {
-      if (live.current) {
-        setError(String(e));
-      }
+      if (live.current) setError(String(e));
     } finally {
       running.current = false;
-      if (live.current) {
-        setBusy(false);
-      }
+      if (live.current) setBusy(false);
     }
   };
 
@@ -100,14 +71,7 @@ export function WorkspacePage() {
         <PageHeader
           title="Developer Workspace"
           subtitle={SUBTITLES[tab]}
-          accessory={
-            <Tabs
-              items={TOOLS}
-              value={tab}
-              onChange={(next) => !busy && setTab(next)}
-              label="Workspace tools"
-            />
-          }
+          accessory={<Tabs items={TOOLS} value={tab} onChange={(next) => !busy && setTab(next)} label="Workspace tools" />}
         />
       }
     >
@@ -116,17 +80,12 @@ export function WorkspacePage() {
       ) : (
         <div className="ws-panes">
           <Card className="ws-pane ws-pane-form">
-            <CardHeader
-              title="Project"
-              subtitle="Project scripts and .env files are never opened or run."
-            />
+            <CardHeader title="Project" subtitle="Project scripts and .env files are never opened or run." />
             <form
               className="ws-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (root.trim()) {
-                  void run();
-                }
+                if (root.trim()) void run();
               }}
             >
               <Field label="Project directory">
@@ -180,10 +139,7 @@ export function WorkspacePage() {
                 </Button>
               </div>
             </form>
-            <p className="ws-footnote">
-              Up to 16 ports and 16 containers. An open port confirms a TCP listener, not
-              application health. Nothing runs in the background.
-            </p>
+            <p className="ws-footnote">Up to 16 ports and 16 containers. An open port confirms a TCP listener, not application health. Nothing runs in the background.</p>
           </Card>
 
           <Card className="ws-pane ws-pane-result" padding="none" aria-live="polite">
@@ -191,15 +147,7 @@ export function WorkspacePage() {
               <SkeletonRows rows={5} label="Checking project" />
             ) : error ? (
               <div className="ws-pane-pad">
-                <Notice
-                  tone="critical"
-                  title="The check did not finish"
-                  actions={
-                    <Button size="small" disabled={!root.trim()} onClick={() => void run()}>
-                      Retry
-                    </Button>
-                  }
-                >
+                <Notice tone="critical" title="The check did not finish" actions={<Button size="small" disabled={!root.trim()} onClick={() => void run()}>Retry</Button>}>
                   {error}
                 </Notice>
               </div>
@@ -216,26 +164,16 @@ export function WorkspacePage() {
                   }
                 />
                 <List inset={false} label="Checks" className="ws-checks">
-                  {report.checks.map((check) => {
+                  {report.checks.map((check, index) => {
                     const pass = check.status === "pass";
                     return (
                       <ListRow
-                        key={check.name}
+                        key={index}
                         className={pass ? "ws-check-pass" : "ws-check-warn"}
-                        leading={
-                          pass ? (
-                            <CheckCircle2 {...ICON} aria-hidden="true" />
-                          ) : (
-                            <AlertTriangle {...ICON} aria-hidden="true" />
-                          )
-                        }
+                        leading={pass ? <CheckCircle2 {...ICON} aria-hidden="true" /> : <AlertTriangle {...ICON} aria-hidden="true" />}
                         title={check.name}
                         subtitle={check.detail}
-                        trailing={
-                          <Badge tone={pass ? "good" : "warning"}>
-                            {pass ? "Ready" : "Check needed"}
-                          </Badge>
-                        }
+                        trailing={<Badge tone={pass ? "good" : "warning"}>{pass ? "Ready" : "Check needed"}</Badge>}
                       />
                     );
                   })}

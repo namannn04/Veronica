@@ -124,13 +124,11 @@
     gap: var(--space-4);
   }
 
-  /* biome-ignore-start lint/complexity/noImportantStyles: overrides the inline size the Skeleton component sets */
   .media-art,
   .media-art-skeleton {
     width: 88px !important;
     height: 88px !important;
   }
-  /* biome-ignore-end lint/complexity/noImportantStyles: overrides the inline size the Skeleton component sets */
 
   .media-search {
     width: 160px;

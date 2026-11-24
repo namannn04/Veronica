@@ -1,8 +1,9 @@
-import { CalendarCheck, CalendarDays, ExternalLink, RefreshCw, Video } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { eventSlot, untilLabel } from "../lib/format";
-import { ipc } from "../lib/ipc";
+import { CalendarCheck, CalendarDays, ExternalLink, RefreshCw, Video } from "lucide-react";
+
 import { startVisiblePolling } from "../lib/polling";
+import { ipc } from "../lib/ipc";
+import { eventSlot, untilLabel } from "../lib/format";
 import type { AgendaView, CalendarEvent } from "../lib/types";
 import {
   Badge,
@@ -31,24 +32,17 @@ export function CalendarPage() {
   const [error, setError] = useState<string | null>(null);
   const [, setTick] = useState(0);
 
-  const load = useCallback(
-    async (quiet = false) => {
-      if (!quiet) {
-        setLoading(true);
-      }
-      try {
-        setView(await ipc.calendarAgenda(days, true));
-        setError(null);
-      } catch (reason) {
-        setError(String(reason));
-      } finally {
-        if (!quiet) {
-          setLoading(false);
-        }
-      }
-    },
-    [days],
-  );
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    try {
+      setView(await ipc.calendarAgenda(days, true));
+      setError(null);
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      if (!quiet) setLoading(false);
+    }
+  }, [days]);
 
   useEffect(() => {
     void load();
@@ -57,9 +51,7 @@ export function CalendarPage() {
   useEffect(() => {
     const stop = startVisiblePolling(() => load(true), RELOAD_MS, document, false);
     const tick = window.setInterval(() => {
-      if (!document.hidden) {
-        setTick((value) => value + 1);
-      }
+      if (!document.hidden) setTick((value) => value + 1);
     }, TICK_MS);
     return () => {
       stop();
@@ -69,9 +61,7 @@ export function CalendarPage() {
 
   const openCalendar = () => void ipc.calendarOpen().catch((reason) => setError(String(reason)));
   const nextUp = view?.nextUp ?? null;
-  const subtitle = nextUp
-    ? `Next: ${nextUp.summary} ${untilLabel(nextUp.start)}`
-    : `Today and the next ${days} days`;
+  const subtitle = nextUp ? `Next: ${nextUp.summary} ${untilLabel(nextUp.start)}` : `Today and the next ${days} days`;
 
   return (
     <Page
@@ -93,15 +83,7 @@ export function CalendarPage() {
       }
     >
       {error && (
-        <Notice
-          tone="critical"
-          title="Could not read your calendars"
-          actions={
-            <Button size="small" onClick={() => void load()}>
-              Retry
-            </Button>
-          }
-        >
+        <Notice tone="critical" title="Could not read your calendars" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
           {error}
         </Notice>
       )}
@@ -115,17 +97,8 @@ export function CalendarPage() {
       )}
 
       {view && !view.hasCalendars && (
-        <EmptyState
-          icon={<CalendarDays />}
-          title="No calendars yet"
-          action={
-            <Button variant="primary" onClick={openCalendar}>
-              Open Calendar
-            </Button>
-          }
-        >
-          Add an account in Settings › Online Accounts, or create a local calendar. Every configured
-          calendar appears here.
+        <EmptyState icon={<CalendarDays />} title="No calendars yet" action={<Button variant="primary" onClick={openCalendar}>Open Calendar</Button>}>
+          Add an account in Settings › Online Accounts, or create a local calendar. Every configured calendar appears here.
         </EmptyState>
       )}
 
@@ -137,31 +110,21 @@ export function CalendarPage() {
 
       {view?.happeningNow && <HappeningNow event={view.happeningNow} />}
 
-      {view?.days.some((day) => day.events.length > 0) && (
+      {view && view.days.some((day) => day.events.length > 0) && (
         <Stack className="cal-agenda blur-calendar">
-          {view.days
-            .filter((day) => day.events.length > 0)
-            .map((day) => (
-              <Section
-                key={day.date}
-                title={day.label}
-                description={dayDescription(day.date, day.label)}
-              >
-                <List label={day.label}>
-                  {day.events.map((event) => (
-                    <EventRow
-                      key={`${event.eventUid}-${event.start}`}
-                      event={event}
-                      next={
-                        nextUp !== null &&
-                        nextUp.eventUid === event.eventUid &&
-                        nextUp.start === event.start
-                      }
-                    />
-                  ))}
-                </List>
-              </Section>
-            ))}
+          {view.days.filter((day) => day.events.length > 0).map((day) => (
+            <Section key={day.date} title={day.label} description={dayDescription(day.date, day.label)}>
+              <List label={day.label}>
+                {day.events.map((event) => (
+                  <EventRow
+                    key={`${event.eventUid}-${event.start}`}
+                    event={event}
+                    next={nextUp !== null && nextUp.eventUid === event.eventUid && nextUp.start === event.start}
+                  />
+                ))}
+              </List>
+            </Section>
+          ))}
         </Stack>
       )}
 
@@ -185,15 +148,7 @@ function HappeningNow({ event }: { event: CalendarEvent }) {
         <p className="cal-now-slot ui-num">{eventSlot(event.start, event.end, event.allDay)}</p>
       </div>
       {event.joinUrl && (
-        <Button
-          variant="primary"
-          icon={<Video />}
-          onClick={() => {
-            if (event.joinUrl) {
-              void ipc.openExternal(event.joinUrl);
-            }
-          }}
-        >
+        <Button variant="primary" icon={<Video />} onClick={() => void ipc.openExternal(event.joinUrl!)}>
           Join meeting
         </Button>
       )}
@@ -204,12 +159,8 @@ function HappeningNow({ event }: { event: CalendarEvent }) {
 function EventRow({ event, next }: { event: CalendarEvent; next: boolean }) {
   const start = new Date(event.start);
   const end = new Date(event.end);
-  const time = event.allDay
-    ? "All day"
-    : start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  const until = event.allDay
-    ? null
-    : end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const time = event.allDay ? "All day" : start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const until = event.allDay ? null : end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return (
     <ListRow
       className={next ? "cal-event cal-event-next" : "cal-event"}
@@ -224,16 +175,7 @@ function EventRow({ event, next }: { event: CalendarEvent; next: boolean }) {
       meta={next ? <Badge tone="accent">Up next</Badge> : undefined}
       trailing={
         event.joinUrl ? (
-          <Button
-            size="small"
-            icon={<Video />}
-            title={event.joinUrl}
-            onClick={() => {
-              if (event.joinUrl) {
-                void ipc.openExternal(event.joinUrl);
-              }
-            }}
-          >
+          <Button size="small" icon={<Video />} title={event.joinUrl} onClick={() => void ipc.openExternal(event.joinUrl!)}>
             Join
           </Button>
         ) : undefined
@@ -251,12 +193,8 @@ function dayDescription(date: string, label: string): string {
 
 function durationLabel(start: Date, end: Date): string {
   const minutes = Math.round((end.getTime() - start.getTime()) / 60_000);
-  if (!Number.isFinite(minutes) || minutes <= 0) {
-    return "No duration";
-  }
-  if (minutes < 60) {
-    return `${minutes} min`;
-  }
+  if (!Number.isFinite(minutes) || minutes <= 0) return "No duration";
+  if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest ? `${hours} h ${rest} min` : `${hours} h`;
