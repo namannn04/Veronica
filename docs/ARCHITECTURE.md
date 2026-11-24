@@ -13,36 +13,36 @@ target to compile against. An earlier attempt (the upstream `nd-ubuntu-fixes1` b
 build; its own notes record the result as "every extension reports
 `unavailable`, and `supportedCapabilities` is empty".
 
-Veronica instead keeps Edith's *models* (the capability map, the extension
+Veronica instead keeps Edith's _models_ (the capability map, the extension
 catalogue, the rate-limit maths, the usage schema) and reimplements the
 platform layer against Linux services.
 
 ## Stack
 
-| Layer | Choice | Why |
-| --- | --- | --- |
-| System integration | Rust | Direct access to procfs, D-Bus (`zbus`), PipeWire, SSH and Docker, with no runtime |
-| Presentation | Tauri v2 + React/TypeScript | Uses the system WebKitGTK, so the package stays small; the dashboard, charts and heatmap are far cheaper to build than in a widget toolkit |
-| CLI | Rust, shared crates | `vr` reaches the same operations as the UI, exactly as Edith's `ed` does |
-| Usage collection | Edith's `refresh-usage` script, verbatim | Identical numbers on both platforms, see below |
+| Layer              | Choice                                   | Why                                                                                                                                        |
+| ------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| System integration | Rust                                     | Direct access to procfs, D-Bus (`zbus`), PipeWire, SSH and Docker, with no runtime                                                         |
+| Presentation       | Tauri v2 + React/TypeScript              | Uses the system WebKitGTK, so the package stays small; the dashboard, charts and heatmap are far cheaper to build than in a widget toolkit |
+| CLI                | Rust, shared crates                      | `vr` reaches the same operations as the UI, exactly as Edith's `ed` does                                                                   |
+| Usage collection   | Edith's `refresh-usage` script, verbatim | Identical numbers on both platforms, see below                                                                                             |
 
 ## Crate layout
 
-| Path | Responsibility |
-| --- | --- |
-| `crates/veronica-core` | XDG paths, capability model, extension catalogue, settings, presenter, Focus Dim and Keystroke Highlight models, the emoji catalogue and its ranking, timed awake sessions, clipboard and swatch history. No GUI or toolkit dependency. |
-| `crates/veronica-usage` | Collector driver, `usage.json` schema 8 decoding, dashboard rollups, rate-limit maths, alert decisions, share cards. |
-| `crates/veronica-system` | procfs metrics, logind inhibitors, PipeWire audio and the per-application mixer, BlueZ, apt/snap/flatpak maintenance, D-Bus notifications, portal probing, screen colour sampling, clipboard writing and pasting in place, screen-share detection. |
-| `crates/veronica-media` | MPRIS control and local playback. |
-| `crates/veronica-calendar` | Agenda from GNOME's calendar server, join links from Evolution Data Server. |
-| `crates/veronica-machines` | The fleet: host model, the probe, and running it locally or over SSH. |
-| `crates/veronica-audit` | Site Audit: sitemap discovery, page metadata, and Edith's eleven checks. |
-| `crates/veronica-database` | The database client: connection definitions, the capability map, six adapters, the confirmation guard, the SQLite metadata store, and the read-only MCP server. |
-| `crates/veronica-cli` | The `vr` binary. |
-| `apps/desktop` | Tauri application: Rust commands plus the React interface. |
-| `resources/refresh-usage` | The bundled usage collector. |
-| `extension/` | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture, Focus Dim's overlay, Keystroke Highlight and pasting in place: everything only the compositor can do. |
-| `packaging/` | Debian package, AppImage, desktop entry and AppStream metadata. |
+| Path                       | Responsibility                                                                                                                                                                                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `crates/veronica-core`     | XDG paths, capability model, extension catalogue, settings, presenter, Focus Dim and Keystroke Highlight models, the emoji catalogue and its ranking, timed awake sessions, clipboard and swatch history. No GUI or toolkit dependency.               |
+| `crates/veronica-usage`    | Collector driver, `usage.json` schema 8 decoding, dashboard rollups, rate-limit maths, alert decisions, share cards.                                                                                                                                  |
+| `crates/veronica-system`   | procfs metrics, logind inhibitors, PipeWire audio and the per-application mixer, BlueZ, apt/snap/flatpak maintenance, D-Bus notifications, portal probing, screen colour sampling, clipboard writing and pasting in place, screen-share detection.    |
+| `crates/veronica-media`    | MPRIS control and local playback.                                                                                                                                                                                                                     |
+| `crates/veronica-calendar` | Agenda from GNOME's calendar server, join links from Evolution Data Server.                                                                                                                                                                           |
+| `crates/veronica-machines` | The fleet: host model, the probe, and running it locally or over SSH.                                                                                                                                                                                 |
+| `crates/veronica-audit`    | Site Audit: sitemap discovery, page metadata, and Edith's eleven checks.                                                                                                                                                                              |
+| `crates/veronica-database` | The database client: connection definitions, the capability map, six adapters, the confirmation guard, the SQLite metadata store, and the read-only MCP server.                                                                                       |
+| `crates/veronica-cli`      | The `vr` binary.                                                                                                                                                                                                                                      |
+| `apps/desktop`             | Tauri application: Rust commands plus the React interface.                                                                                                                                                                                            |
+| `resources/refresh-usage`  | The bundled usage collector.                                                                                                                                                                                                                          |
+| `extension/`               | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture, Focus Dim's overlay, Keystroke Highlight and pasting in place: everything only the compositor can do. |
+| `packaging/`               | Debian package, AppImage, desktop entry and AppStream metadata.                                                                                                                                                                                       |
 
 ## The usage collector is shared, not reimplemented
 
@@ -113,7 +113,7 @@ macOS app cannot hold a socket itself. Veronica has no sandbox to cross, so the
 boundary is `veronica-database::session::Session` instead, and the safety it
 enforces is the same, because the safety was never the process boundary.
 
-A change is described as a *plan*: what it does, to what, how far it reaches,
+A change is described as a _plan_: what it does, to what, how far it reaches,
 whether it can be undone. `preview` validates the plan against the connection's
 policy, measures the impact against the server, derives the warnings it earns,
 and returns a token:
@@ -122,8 +122,8 @@ and returns a token:
 base64url(payload) . base64url(HMAC-SHA256(payload))
 ```
 
-The payload holds two keyed digests: one over what would *run* (the plan plus
-the connection's policy), one over what was *shown* (the redacted request, the
+The payload holds two keyed digests: one over what would _run_ (the plan plus
+the connection's policy), one over what was _shown_ (the redacted request, the
 warnings, the required confirmation). `apply` verifies the signature, checks the
 clock, recomputes both digests from the plan it is handed, and requires them to
 match. Editing anything between the two steps invalidates the token, and nothing
@@ -136,7 +136,7 @@ preview expires. And the signing key lives in the keyring, so a token cannot be
 forged without it.
 
 Values never reach a statement. Identifiers are quoted by the product's own
-rules, values are bound as parameters, and a preview shows a parameter's *type*
+rules, values are bound as parameters, and a preview shows a parameter's _type_
 rather than its value, because a preview is printed, logged and stored, and the
 value being written may be the password being rotated.
 
@@ -164,7 +164,7 @@ bar readout, `focusDimMath.js` holds Focus Dim's clamps, and
 Where a rule is enforced on both sides (Focus Dim's clamps, Keystroke
 Highlight's duration and queue), the Rust and JavaScript tests are written to
 mirror each other. The two copies guard different moments (the core stops a bad
-value being *stored*; the extension stops a hand-edited file being *applied*)
+value being _stored_; the extension stops a hand-edited file being _applied_)
 and must not drift.
 
 Two things are worth verifying against the running desktop rather than in a test,
@@ -251,7 +251,7 @@ under a collection:
 ```
 
 So the count of that collection's children is the number of sessions.
-Introspecting the *service root* is not enough: it gains a single `Session` child
+Introspecting the _service root_ is not enough: it gains a single `Session` child
 whatever the number beneath it, which would under-report every time.
 `veronica-system/src/screencast.rs` reads the collection, and a test pins that
 distinction so the shortcut is not reintroduced.
@@ -272,7 +272,7 @@ screen. The compositor can, so on Ubuntu the overlay is drawn by the shell
 extension: one actor per monitor inside `global.window_group`, with the window
 that stays bright raised above it.
 
-That makes the capability depend on the *shell* rather than on the display
+That makes the capability depend on the _shell_ rather than on the display
 protocol: available on GNOME Wayland, where no client could do it, and
 unavailable on a non-GNOME X11 desktop, where a client could but nothing has been
 written. `capabilities.rs` resolves it that way and a test pins it.
@@ -434,7 +434,7 @@ a button's `.menu.box`) to confirm what actually got built, rather than
 inferring it from logs alone.
 
 One more thing this process caught: `gnome-extensions disable` followed by
-`enable` inside the *same* shell process does not reliably pick up a change to
+`enable` inside the _same_ shell process does not reliably pick up a change to
 one of the extension's own submodules (confirmed directly: a fix to
 `notchClock.js` was invisible after a disable/enable cycle, and only took
 effect after the whole `gnome-shell` process was restarted). GJS caches ES

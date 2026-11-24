@@ -79,7 +79,7 @@ show its path under `/usr/share/gnome-shell/extensions/`.
   extension does not inherit a login shell's `PATH`, so the extension checks
   `/usr/bin/vr`, `/usr/local/bin/vr` and `~/.local/bin/vr` in that order.
 - On some Ubuntu installs `disable-user-extensions` is `true`, which makes the
-  shell ignore *user* extensions entirely and looks identical to a broken
+  shell ignore _user_ extensions entirely and looks identical to a broken
   extension. The packaged system-wide install is unaffected, but if you used
   `install.sh`:
 
@@ -172,7 +172,7 @@ vr alerts test                    # post one banner, to check they arrive
 vr alerts state                   # what the notifier is comparing against
 ```
 
-Every alert is edge-triggered: it fires when a window *crosses* a level or a
+Every alert is edge-triggered: it fires when a window _crosses_ a level or a
 pacing zone, not while it sits there. So the usual reason an expected alert did
 not appear is that the crossing already happened: `vr alerts state` shows the
 level being compared against, and `vr alerts clear` forgets it so the next poll
