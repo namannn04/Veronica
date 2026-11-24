@@ -154,21 +154,45 @@ pub(crate) async fn usage_export(
 
 #[tauri::command]
 pub(crate) async fn usage_refresh(app: AppHandle) -> CommandResult<String> {
-    {
-        let state = app.state::<AppState>();
-        let mut refreshing = state.refreshing.lock().expect("refresh lock");
-        if *refreshing {
-            return Err("A refresh is already running.".to_string());
-        }
-        *refreshing = true;
+    let claimed = app
+        .state::<AppState>()
+        .refreshing
+        .send_if_modified(|running| !std::mem::replace(running, true));
+    if !claimed {
+        return join_running_refresh(&app).await;
     }
 
+    let _ = app.emit("usage-refresh-started", ());
     let result = run_refresh(&app).await;
-
-    let state = app.state::<AppState>();
-    *state.refreshing.lock().expect("refresh lock") = false;
+    app.state::<AppState>().refreshing.send_replace(false);
+    let _ = app.emit("usage-refresh-finished", result.is_ok());
 
     result
+}
+
+#[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn usage_refreshing(state: State<'_, AppState>) -> bool {
+    *state.refreshing.borrow()
+}
+
+async fn join_running_refresh(app: &AppHandle) -> CommandResult<String> {
+    let mut running = app.state::<AppState>().refreshing.subscribe();
+    running
+        .wait_for(|running| !*running)
+        .await
+        .map_err(|_| "the usage collector stopped unexpectedly".to_string())?;
+    let state = app.state::<AppState>();
+    let generated_at = state
+        .usage
+        .lock()
+        .expect("usage lock")
+        .as_ref()
+        .map(|document| document.generated_at.clone());
+    generated_at.ok_or_else(|| "The collection finished without any usage to show.".to_string())
 }
 
 async fn run_refresh(app: &AppHandle) -> CommandResult<String> {
