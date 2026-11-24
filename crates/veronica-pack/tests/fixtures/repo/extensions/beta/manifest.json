@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "id": "beta",
+  "version": "0.3",
+  "title": "Beta",
+  "summary": "A fixture without a backend.",
+  "category": "desk",
+  "labs": true,
+  "engines": { "host": ">=0.2.0", "hostApi": 1 },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "contracts": { "uses": ["alpha.status@1", "host.session@1"] }
+}

@@ -1,0 +1,207 @@
+{
+  "categories": [
+    {
+      "hidden": false,
+      "id": "agents",
+      "title": "Agents"
+    },
+    {
+      "hidden": false,
+      "id": "desk",
+      "title": "Desk"
+    },
+    {
+      "hidden": true,
+      "id": "labs",
+      "title": "Labs"
+    }
+  ],
+  "expiresAt": "2026-12-25T00:00:00Z",
+  "extensions": [
+    {
+      "category": "agents",
+      "contracts": {
+        "provides": [
+          {
+            "id": "alpha.status@1",
+            "kind": "topic"
+          }
+        ],
+        "uses": [
+          "host.presenter@1"
+        ]
+      },
+      "icon": "assets/icon.svg",
+      "id": "alpha",
+      "labs": false,
+      "latest": "1.2.5",
+      "permissions": {
+        "dbus": {
+          "session": [
+            "org.example.Alpha"
+          ],
+          "system": []
+        },
+        "filesystem": [],
+        "host": [],
+        "network": [],
+        "shell": [],
+        "spawn": []
+      },
+      "profiles": [
+        "simple",
+        "developer"
+      ],
+      "requires": {
+        "capabilities": [],
+        "optionalCapabilities": [],
+        "systemPackages": [],
+        "tools": []
+      },
+      "suggestFor": [],
+      "summary": "A fixture with a backend and an interface.",
+      "title": "Alpha",
+      "versions": [
+        {
+          "engines": {
+            "backendProtocol": 1,
+            "host": ">=0.2.0",
+            "hostApi": 1
+          },
+          "fingerprint": "sha256:alpha-1.2.5",
+          "publishedAt": "2026-11-25T00:00:00Z",
+          "targets": {
+            "linux-x86_64": {
+              "sha256": "alpha-1.2.5-sha",
+              "size": 100,
+              "unpackedSize": 400,
+              "url": "https://github.com/namannn04/veronica/releases/download/ext/alpha/v1.2.5/veronica-ext-alpha-1.2.5-linux-x86_64.tar.zst"
+            }
+          },
+          "version": "1.2.5",
+          "yanked": false
+        },
+        {
+          "engines": {
+            "backendProtocol": 1,
+            "host": ">=0.2.0",
+            "hostApi": 1
+          },
+          "fingerprint": "sha256:alpha-1.2.4",
+          "publishedAt": "2026-11-25T00:00:00Z",
+          "targets": {
+            "linux-x86_64": {
+              "sha256": "alpha-1.2.4-sha",
+              "size": 100,
+              "unpackedSize": 400,
+              "url": "https://github.com/namannn04/veronica/releases/download/ext/alpha/v1.2.4/veronica-ext-alpha-1.2.4-linux-x86_64.tar.zst"
+            }
+          },
+          "version": "1.2.4",
+          "yanked": false
+        },
+        {
+          "engines": {
+            "backendProtocol": 1,
+            "host": ">=0.2.0",
+            "hostApi": 1
+          },
+          "fingerprint": "sha256:alpha-1.2.3",
+          "publishedAt": "2026-11-25T00:00:00Z",
+          "targets": {
+            "linux-x86_64": {
+              "sha256": "alpha-1.2.3-sha",
+              "size": 100,
+              "unpackedSize": 400,
+              "url": "https://github.com/namannn04/veronica/releases/download/ext/alpha/v1.2.3/veronica-ext-alpha-1.2.3-linux-x86_64.tar.zst"
+            }
+          },
+          "version": "1.2.3",
+          "yanked": false
+        }
+      ]
+    },
+    {
+      "category": "desk",
+      "contracts": {
+        "provides": [],
+        "uses": [
+          "alpha.status@1",
+          "host.session@1"
+        ]
+      },
+      "id": "beta",
+      "labs": true,
+      "latest": "0.3.1",
+      "permissions": {
+        "dbus": {
+          "session": [],
+          "system": []
+        },
+        "filesystem": [],
+        "host": [],
+        "network": [],
+        "shell": [],
+        "spawn": []
+      },
+      "profiles": [
+        "developer"
+      ],
+      "requires": {
+        "capabilities": [],
+        "optionalCapabilities": [],
+        "systemPackages": [],
+        "tools": []
+      },
+      "suggestFor": [],
+      "summary": "A fixture without a backend.",
+      "title": "Beta",
+      "versions": [
+        {
+          "engines": {
+            "host": ">=0.2.0",
+            "hostApi": 1
+          },
+          "fingerprint": "sha256:beta-0.3.1",
+          "publishedAt": "2026-11-25T00:00:00Z",
+          "targets": {
+            "linux-x86_64": {
+              "sha256": "beta-0.3.1-sha",
+              "size": 100,
+              "unpackedSize": 400,
+              "url": "https://github.com/namannn04/veronica/releases/download/ext/beta/v0.3.1/veronica-ext-beta-0.3.1-linux-x86_64.tar.zst"
+            }
+          },
+          "version": "0.3.1",
+          "yanked": false
+        }
+      ]
+    }
+  ],
+  "generatedAt": "2026-11-25T00:00:00Z",
+  "profiles": [
+    {
+      "description": "Everyday tools",
+      "extensions": [
+        "alpha"
+      ],
+      "id": "simple",
+      "title": "Simple"
+    },
+    {
+      "description": "Agents, machines and services",
+      "extensions": [
+        "alpha",
+        "beta"
+      ],
+      "id": "developer",
+      "title": "Developer"
+    }
+  ],
+  "revision": 1795564800,
+  "schema": 1,
+  "source": {
+    "commit": "feedbeef",
+    "repository": "namannn04/veronica"
+  }
+}
