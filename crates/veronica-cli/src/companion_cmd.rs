@@ -19,35 +19,33 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum CompanionCommand {
-    /// Everything, newest first, optionally filtered.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "Everything, newest first, optionally filtered")]
     List {
-        /// Match the title or the body.
-        #[arg(default_value = "")]
+        #[arg(default_value = "", help = "Match the title or the body")]
         query: String,
-        /// Only notes, or only voice memos.
-        #[arg(long)]
+        #[arg(long, help = "Only notes, or only voice memos")]
         kind: Option<String>,
     },
-    /// Print one item in full, for piping onward.
+    #[command(about = "Print one item in full, for piping onward")]
     Show { id: u64 },
-    /// Write a note. The body is read from stdin when it is not given.
+    #[command(about = "Write a note. The body is read from stdin when it is not given")]
     Add {
         title: String,
-        /// The note's text. Omit it to read stdin, so a file can be piped in.
+        #[arg(help = "The note's text. Omit it to read stdin, so a file can be piped in")]
         body: Option<String>,
         #[arg(long)]
         pinned: bool,
     },
-    /// Pin or unpin an item, so it sorts to the top.
+    #[command(about = "Pin or unpin an item, so it sorts to the top")]
     Pin {
         id: u64,
-        /// Unpin instead.
-        #[arg(long)]
+        #[arg(long, help = "Unpin instead")]
         off: bool,
     },
-    /// Delete an item, and its recording if it has one.
-    #[command(alias = "rm")]
+    #[command(
+        alias = "rm",
+        about = "Delete an item, and its recording if it has one"
+    )]
     Remove { id: u64 },
 }
 

@@ -24,32 +24,34 @@ const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
 pub enum QuinjetCommand {
-    /// Recent projects and their worktrees.
+    #[command(about = "Recent projects and their worktrees")]
     Projects {
-        /// Which machine to look on. Defaults to this computer.
-        #[arg(long, default_value = "local")]
+        #[arg(
+            long,
+            default_value = "local",
+            help = "Which machine to look on. Defaults to this computer"
+        )]
         machine: String,
     },
-    /// Every worktree of one project.
+    #[command(about = "Every worktree of one project")]
     Worktrees {
-        /// A project path, or a path inside one.
+        #[arg(help = "A project path, or a path inside one")]
         path: String,
         #[arg(long, default_value = "local")]
         machine: String,
     },
-    /// Print the command that opens a worktree, without running it.
+    #[command(about = "Print the command that opens a worktree, without running it")]
     Open {
-        /// A worktree, or a project — its current worktree is chosen.
+        #[arg(help = "A worktree, or a project — its current worktree is chosen")]
         path: String,
         #[arg(long)]
         theme: Option<String>,
-        /// light or dark.
-        #[arg(long)]
+        #[arg(long, help = "light or dark")]
         appearance: Option<String>,
         #[arg(long, default_value = "local")]
         machine: String,
     },
-    /// Open a worktree in the installed terminal.
+    #[command(about = "Open a worktree in the installed terminal")]
     Launch {
         path: String,
         #[arg(long)]

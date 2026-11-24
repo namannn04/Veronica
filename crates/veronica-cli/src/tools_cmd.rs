@@ -21,16 +21,19 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum ToolCommand {
-    /// Every tool, with whether it is installed, its version, and why.
-    #[command(alias = "list")]
+    #[command(
+        alias = "list",
+        about = "Every tool, with whether it is installed, its version, and why"
+    )]
     Ls,
-    /// Fetch one tool, when Veronica has a route it can drive.
+    #[command(about = "Fetch one tool, when Veronica has a route it can drive")]
     Install {
-        /// A tool id, as `ls` prints it.
+        #[arg(help = "A tool id, as `ls` prints it")]
         tool: String,
-        /// Authenticate through the desktop's own dialog for a route that
-        /// needs root. Without it, that command is printed rather than run.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Authenticate through the desktop's own dialog for a route that needs root. Without it, that command is printed rather than run"
+        )]
         yes: bool,
     },
 }

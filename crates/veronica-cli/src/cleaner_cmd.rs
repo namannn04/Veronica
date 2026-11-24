@@ -14,32 +14,37 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum CleanerCommand {
-    /// Measure what could be reclaimed. Reads only.
+    #[command(about = "Measure what could be reclaimed. Reads only")]
     Scan {
-        /// Also sweep this folder for project directories such as
-        /// `node_modules`. Without it, only the fixed caches are measured.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Also sweep this folder for project directories such as `node_modules`. Without it, only the fixed caches are measured"
+        )]
         root: Option<String>,
-        /// Restrict to these category ids. Repeatable.
-        #[arg(long = "category")]
+        #[arg(long = "category", help = "Restrict to these category ids. Repeatable")]
         categories: Vec<String>,
     },
-    /// List the categories the cleaner knows, and what each one costs.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "List the categories the cleaner knows, and what each one costs"
+    )]
     Categories,
-    /// Re-scan, then move everything found to the Trash.
-    ///
-    /// Does nothing without `--yes`.
+    #[command(
+        about = "Re-scan, then move everything found to the Trash",
+        long_about = "Re-scan, then move everything found to the Trash.\n\nDoes nothing without `--yes`."
+    )]
     Clean {
         #[arg(long)]
         root: Option<String>,
         #[arg(long = "category")]
         categories: Vec<String>,
-        /// Required. Without it the command reports what it would move.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Required. Without it the command reports what it would move"
+        )]
         yes: bool,
     },
-    /// The mounted volumes and how full they are.
+    #[command(about = "The mounted volumes and how full they are")]
     Drives,
 }
 

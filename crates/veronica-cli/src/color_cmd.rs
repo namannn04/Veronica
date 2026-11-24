@@ -20,33 +20,29 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum ColorCommand {
-    /// Open the screen colour sampler and record what is picked.
+    #[command(about = "Open the screen colour sampler and record what is picked")]
     Pick {
-        /// Which representation to copy. Defaults to the configured format.
-        #[arg(long, value_parser = parse_format)]
+        #[arg(long, value_parser = parse_format, help = "Which representation to copy. Defaults to the configured format")]
         format: Option<CopyFormat>,
-        /// Record the colour without putting it on the clipboard.
-        #[arg(long)]
+        #[arg(long, help = "Record the colour without putting it on the clipboard")]
         no_copy: bool,
     },
-    /// Print the swatch history, newest first.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "Print the swatch history, newest first")]
     List {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Copy one swatch back to the clipboard.
+    #[command(about = "Copy one swatch back to the clipboard")]
     Copy {
         id: u64,
         #[arg(long, value_parser = parse_format)]
         format: Option<CopyFormat>,
     },
-    /// Print one swatch in every format, for piping onward.
+    #[command(about = "Print one swatch in every format, for piping onward")]
     Show { id: u64 },
-    /// Forget one swatch.
-    #[command(alias = "rm")]
+    #[command(alias = "rm", about = "Forget one swatch")]
     Remove { id: u64 },
-    /// Forget every swatch.
+    #[command(about = "Forget every swatch")]
     Clear,
 }
 

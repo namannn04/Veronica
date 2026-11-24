@@ -13,76 +13,82 @@ const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
 pub enum MachineCommand {
-    /// List the fleet and whether each machine answers.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "List the fleet and whether each machine answers"
+    )]
     List {
-        /// Skip probing and just show what is configured.
-        #[arg(long)]
+        #[arg(long, help = "Skip probing and just show what is configured")]
         offline: bool,
     },
-    /// Add a machine reached over SSH.
+    #[command(about = "Add a machine reached over SSH")]
     Add {
-        /// The ssh target: a config alias, or user@host.
+        #[arg(help = "The ssh target: a config alias, or user@host")]
         target: String,
-        /// What to call it; defaults to the target.
-        #[arg(long)]
+        #[arg(long, help = "What to call it; defaults to the target")]
         name: Option<String>,
         #[arg(long)]
         port: Option<u16>,
-        /// The MAC address to wake this machine at, e.g. aa:bb:cc:dd:ee:ff.
-        /// Only needed for `vr machines wake`.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "The MAC address to wake this machine at, e.g. aa:bb:cc:dd:ee:ff. Only needed for `vr machines wake`"
+        )]
         mac: Option<String>,
     },
-    /// Remove a machine.
-    #[command(alias = "rm")]
+    #[command(alias = "rm", about = "Remove a machine")]
     Remove { id: String },
-    /// Show one machine's vital signs.
+    #[command(about = "Show one machine's vital signs")]
     Stats {
-        /// Machine id; defaults to this computer.
-        #[arg(default_value = "local")]
+        #[arg(
+            default_value = "local",
+            help = "Machine id; defaults to this computer"
+        )]
         id: String,
     },
-    /// Host aliases found in ~/.ssh/config that are not yet added.
+    #[command(about = "Host aliases found in ~/.ssh/config that are not yet added")]
     Discover,
-    /// The containers on a machine, from Docker or Podman.
-    #[command(alias = "ps")]
+    #[command(
+        alias = "ps",
+        about = "The containers on a machine, from Docker or Podman"
+    )]
     Containers {
         #[arg(default_value = "local")]
         id: String,
     },
-    /// A container's recent output.
+    #[command(about = "A container's recent output")]
     Logs {
         id: String,
-        /// The container's id or name, from `vr machines containers`.
+        #[arg(help = "The container's id or name, from `vr machines containers`")]
         container: String,
         #[arg(long, default_value = "docker")]
         engine: String,
         #[arg(long, default_value_t = 200)]
         lines: usize,
     },
-    /// Start, stop or restart a container.
+    #[command(about = "Start, stop or restart a container")]
     Container {
         id: String,
         container: String,
-        /// start, stop or restart.
+        #[arg(help = "start, stop or restart")]
         action: String,
         #[arg(long, default_value = "docker")]
         engine: String,
     },
-    /// Restart or shut down a machine.
-    ///
-    /// Refused for this computer, and never escalated: the account Veronica
-    /// connects as has to be permitted to do it already.
+    #[command(
+        about = "Restart or shut down a machine",
+        long_about = "Restart or shut down a machine.\n\nRefused for this computer, and never escalated: the account Veronica connects as has to be permitted to do it already."
+    )]
     Power {
         id: String,
-        /// restart or shutdown.
+        #[arg(help = "restart or shutdown")]
         action: String,
-        /// Required. Without it the command reports what it would do and stops.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Required. Without it the command reports what it would do and stops"
+        )]
         confirm: bool,
     },
-    /// Send a Wake-on-LAN packet to a machine that is powered off.
+    #[command(about = "Send a Wake-on-LAN packet to a machine that is powered off")]
     Wake { id: String },
 }
 

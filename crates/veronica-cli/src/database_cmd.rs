@@ -30,104 +30,104 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum DatabaseCommand {
-    /// Saved connections.
-    #[command(subcommand, alias = "conn")]
+    #[command(subcommand, alias = "conn", about = "Saved connections")]
     Connections(ConnectionCommand),
-    /// What this server can be asked to do.
+    #[command(about = "What this server can be asked to do")]
     Capabilities { connection: String },
-    /// Reach the server and report what it turned out to be. Reads only.
+    #[command(about = "Reach the server and report what it turned out to be. Reads only")]
     Test { connection: String },
-    /// List what is inside a database: schemas, tables, columns, keys.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "List what is inside a database: schemas, tables, columns, keys"
+    )]
     Browse {
         connection: String,
-        /// A dotted path, e.g. `public` or `public.orders`. Omit for the top.
+        #[arg(help = "A dotted path, e.g. `public` or `public.orders`. Omit for the top")]
         path: Option<String>,
     },
-    /// Read a bounded page of one object's records.
+    #[command(about = "Read a bounded page of one object's records")]
     Read {
         connection: String,
-        /// A dotted path to a table, collection or key.
+        #[arg(help = "A dotted path to a table, collection or key")]
         path: String,
         #[arg(long, default_value_t = 50)]
         limit: u32,
         #[arg(long, default_value_t = 0)]
         offset: u64,
     },
-    /// Run one statement that reads. A write is refused.
+    #[command(about = "Run one statement that reads. A write is refused")]
     Query {
         connection: String,
-        /// The statement. For Redis, a key pattern.
+        #[arg(help = "The statement. For Redis, a key pattern")]
         statement: String,
         #[arg(long, default_value_t = 50)]
         limit: u32,
         #[arg(long, default_value_t = 0)]
         offset: u64,
     },
-    /// Queries you kept.
-    #[command(subcommand, name = "saved-queries")]
+    #[command(subcommand, name = "saved-queries", about = "Queries you kept")]
     SavedQueries(SavedQueryCommand),
-    /// Change data, previewed first.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Change data, previewed first")]
     Mutations(MutationCommand),
-    /// What Veronica has done, newest first.
+    #[command(about = "What Veronica has done, newest first")]
     Operations {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Serve the read-only MCP tools over stdin and stdout.
-    ///
-    /// Stays in the foreground and prints no banner: stdout carries protocol
-    /// traffic and nothing else. An agent learns which databases you have saved
-    /// and what each can do — never a host, a username or a credential.
+    #[command(
+        about = "Serve the read-only MCP tools over stdin and stdout",
+        long_about = "Serve the read-only MCP tools over stdin and stdout.\n\nStays in the foreground and prints no banner: stdout carries protocol traffic and nothing else. An agent learns which databases you have saved and what each can do — never a host, a username or a credential."
+    )]
     Mcp,
 }
 
 #[derive(clap::Subcommand)]
 pub enum ConnectionCommand {
-    /// Every saved connection. No credential is printed.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "Every saved connection. No credential is printed"
+    )]
     List,
-    /// One connection in full.
+    #[command(about = "One connection in full")]
     Get { connection: String },
-    /// Save a connection.
-    ///
-    /// The password is read from stdin, never from an argument, so it does not
-    /// land in your shell history or in the process list.
+    #[command(
+        about = "Save a connection",
+        long_about = "Save a connection.\n\nThe password is read from stdin, never from an argument, so it does not land in your shell history or in the process list."
+    )]
     Add {
-        /// What to call it.
+        #[arg(help = "What to call it")]
         name: String,
-        /// postgresql, mysql, mariadb, sqlite, redis, valkey.
+        #[arg(help = "postgresql, mysql, mariadb, sqlite, redis, valkey")]
         product: String,
-        /// `host:port`, or a path for SQLite.
+        #[arg(help = "`host:port`, or a path for SQLite")]
         target: String,
         #[arg(long)]
         username: Option<String>,
-        /// The database, schema or logical database to default to.
-        #[arg(long)]
+        #[arg(long, help = "The database, schema or logical database to default to")]
         database: Option<String>,
-        /// local, development, testing, staging, production, other.
-        #[arg(long, default_value = "local")]
+        #[arg(
+            long,
+            default_value = "local",
+            help = "local, development, testing, staging, production, other"
+        )]
         environment: String,
-        /// Refuse every change on this connection.
-        #[arg(long)]
+        #[arg(long, help = "Refuse every change on this connection")]
         read_only: bool,
-        /// Read a password from stdin.
-        #[arg(long)]
+        #[arg(long, help = "Read a password from stdin")]
         password_stdin: bool,
     },
-    /// Change a connection's safety policy.
+    #[command(about = "Change a connection's safety policy")]
     Policy {
         connection: String,
-        /// Refuse every change on this connection.
-        #[arg(long)]
+        #[arg(long, help = "Refuse every change on this connection")]
         read_only: Option<bool>,
-        /// local, development, testing, staging, production, other.
-        #[arg(long)]
+        #[arg(long, help = "local, development, testing, staging, production, other")]
         environment: Option<String>,
     },
-    /// Forget a connection, its saved queries and its password.
-    #[command(alias = "rm")]
+    #[command(
+        alias = "rm",
+        about = "Forget a connection, its saved queries and its password"
+    )]
     Remove {
         connection: String,
         #[arg(long)]
@@ -139,14 +139,14 @@ pub enum ConnectionCommand {
 pub enum SavedQueryCommand {
     #[command(alias = "ls")]
     List,
-    /// Keep a query. The text is read from stdin when not given.
+    #[command(about = "Keep a query. The text is read from stdin when not given")]
     Save {
         name: String,
         text: Option<String>,
         #[arg(long)]
         connection: Option<String>,
     },
-    /// Print one saved query's text.
+    #[command(about = "Print one saved query's text")]
     Get { id: String },
     #[command(alias = "rm")]
     Remove { id: String },
@@ -154,48 +154,48 @@ pub enum SavedQueryCommand {
 
 #[derive(clap::Subcommand)]
 pub enum MutationCommand {
-    /// Describe a change without making it, and issue a token.
-    ///
-    /// Prints the plan, what it would affect, the warnings it earns, and the
-    /// exact text you have to type back. Nothing is sent to the server.
+    #[command(
+        about = "Describe a change without making it, and issue a token",
+        long_about = "Describe a change without making it, and issue a token.\n\nPrints the plan, what it would affect, the warnings it earns, and the exact text you have to type back. Nothing is sent to the server."
+    )]
     Preview {
         connection: String,
-        /// The statement, with `?1`, `$1` or `?` placeholders for every value.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "The statement, with `?1`, `$1` or `?` placeholders for every value"
+        )]
         sql: Option<String>,
-        /// A Redis command from the allowed list.
-        #[arg(long)]
+        #[arg(long, help = "A Redis command from the allowed list")]
         command: Option<String>,
-        /// One value, as JSON. Repeat, in order.
-        #[arg(long = "param")]
+        #[arg(long = "param", help = "One value, as JSON. Repeat, in order")]
         params: Vec<String>,
-        /// insert, update, updateMany, delete, deleteMany, truncate, dropObject.
-        #[arg(long, default_value = "update")]
+        #[arg(
+            long,
+            default_value = "update",
+            help = "insert, update, updateMany, delete, deleteMany, truncate, dropObject"
+        )]
         action: String,
-        /// The object this touches, e.g. `public.orders`.
-        #[arg(long)]
+        #[arg(long, help = "The object this touches, e.g. `public.orders`")]
         target: String,
-        /// singleRecord, selectedRecords, predicate, entireObject.
-        #[arg(long, default_value = "singleRecord")]
+        #[arg(
+            long,
+            default_value = "singleRecord",
+            help = "singleRecord, selectedRecords, predicate, entireObject"
+        )]
         scope: String,
-        /// How long the token is good for.
-        #[arg(long, default_value_t = 120)]
+        #[arg(long, default_value_t = 120, help = "How long the token is good for")]
         lifetime: i64,
-        /// Write the plan here so `apply` can read it back.
-        #[arg(long)]
+        #[arg(long, help = "Write the plan here so `apply` can read it back")]
         save_plan: Option<String>,
     },
-    /// Make a previewed change.
+    #[command(about = "Make a previewed change")]
     Apply {
         connection: String,
-        /// The plan `preview --save-plan` wrote. `-` reads stdin.
-        #[arg(long)]
+        #[arg(long, help = "The plan `preview --save-plan` wrote. `-` reads stdin")]
         plan: String,
-        /// The token from the preview.
-        #[arg(long)]
+        #[arg(long, help = "The token from the preview")]
         token: String,
-        /// Exactly the text the preview asked for.
-        #[arg(long)]
+        #[arg(long, help = "Exactly the text the preview asked for")]
         confirm: String,
     },
 }

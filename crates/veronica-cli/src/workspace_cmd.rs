@@ -5,18 +5,26 @@ use clap::Subcommand;
 use veronica_system::workspace::{self, DoctorRequest};
 #[derive(Subcommand)]
 pub enum WorkspaceCommand {
-    /// Discover or explicitly call a local Graftcode Gateway.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "Discover or explicitly call a local Graftcode Gateway"
+    )]
     Graft(GraftCommand),
-    /// Inspect a project without executing its code or reading .env files.
+    #[command(about = "Inspect a project without executing its code or reading .env files")]
     Doctor {
         #[arg(long)]
         root: String,
-        /// Expected IPv4 loopback TCP listeners (not application health checks).
-        #[arg(long, value_delimiter = ',')]
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "Expected IPv4 loopback TCP listeners (not application health checks)"
+        )]
         ports: Vec<u16>,
-        /// Exact local Docker container names expected to be running.
-        #[arg(long, value_delimiter = ',')]
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "Exact local Docker container names expected to be running"
+        )]
         containers: Vec<String>,
     },
 }

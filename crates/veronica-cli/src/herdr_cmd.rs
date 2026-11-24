@@ -14,28 +14,24 @@ const LANES: [&str; 5] = ["blocked", "working", "unknown", "done", "idle"];
 
 #[derive(clap::Subcommand)]
 pub enum HerdrCommand {
-    /// The board: every agent, in Edith's lanes.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "The board: every agent, in Edith's lanes")]
     Board {
-        /// Only agents in this session.
-        #[arg(long)]
+        #[arg(long, help = "Only agents in this session")]
         session: Option<String>,
-        /// Only agents of this kind, e.g. `claude`.
-        #[arg(long)]
+        #[arg(long, help = "Only agents of this kind, e.g. `claude`")]
         kind: Option<String>,
-        /// Only agents in this lane.
-        #[arg(long)]
+        #[arg(long, help = "Only agents in this lane")]
         status: Option<String>,
     },
-    /// The persistent sessions Herdr knows about.
+    #[command(about = "The persistent sessions Herdr knows about")]
     Sessions,
-    /// Print the command that attaches to a session or agent.
-    ///
-    /// Printed rather than run, so it works over SSH and can be piped into
-    /// whatever terminal you actually want it in.
+    #[command(
+        about = "Print the command that attaches to a session or agent",
+        long_about = "Print the command that attaches to a session or agent.\n\nPrinted rather than run, so it works over SSH and can be piped into whatever terminal you actually want it in."
+    )]
     Attach {
         session: String,
-        /// A pane id, to attach to one agent rather than the session.
+        #[arg(help = "A pane id, to attach to one agent rather than the session")]
         pane_id: Option<String>,
     },
 }

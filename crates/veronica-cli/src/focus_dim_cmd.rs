@@ -17,22 +17,22 @@ use crate::format::Output;
 
 #[derive(clap::Subcommand)]
 pub enum FocusDimCommand {
-    /// Report the current settings and whether the shell can apply them.
+    #[command(about = "Report the current settings and whether the shell can apply them")]
     Status,
-    /// Turn dimming on.
+    #[command(about = "Turn dimming on")]
     On,
-    /// Turn dimming off.
+    #[command(about = "Turn dimming off")]
     Off,
-    /// How dark to go, 0 to 90 percent.
+    #[command(about = "How dark to go, 0 to 90 percent")]
     Intensity {
-        /// A percentage. Values outside the range are clamped, not rejected.
+        #[arg(help = "A percentage. Values outside the range are clamped, not rejected")]
         percent: f64,
     },
-    /// How long the fade takes, in seconds.
+    #[command(about = "How long the fade takes, in seconds")]
     Fade { seconds: f64 },
-    /// What to do with displays other than the focused one.
+    #[command(about = "What to do with displays other than the focused one")]
     Mode {
-        /// perScreenFront or dimUnfocused.
+        #[arg(help = "perScreenFront or dimUnfocused")]
         mode: String,
     },
 }

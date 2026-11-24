@@ -8,22 +8,23 @@ use crate::format::{self, Output};
 
 #[derive(Subcommand)]
 pub enum MediaCommand {
-    /// What is playing right now.
+    #[command(about = "What is playing right now")]
     Status,
-    /// Every MPRIS player registered on the session bus.
+    #[command(about = "Every MPRIS player registered on the session bus")]
     Players,
-    /// The local music library under ~/Music, searchable.
-    #[command(alias = "lib")]
+    #[command(
+        alias = "lib",
+        about = "The local music library under ~/Music, searchable"
+    )]
     Library {
-        /// Match the title, artist or album.
-        #[arg(default_value = "")]
+        #[arg(default_value = "", help = "Match the title, artist or album")]
         query: String,
         #[arg(long, default_value_t = 40)]
         limit: usize,
     },
     Play,
     Pause,
-    /// Play if paused, pause if playing.
+    #[command(about = "Play if paused, pause if playing")]
     Toggle,
     Next,
     #[command(alias = "prev")]

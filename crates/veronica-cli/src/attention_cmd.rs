@@ -8,22 +8,21 @@ use crate::format::{countdown, table, Output};
 
 #[derive(clap::Subcommand)]
 pub enum AttentionCommand {
-    /// Show the active timer and completed focus total.
+    #[command(about = "Show the active timer and completed focus total")]
     Status,
-    /// Start, stop or inspect a focus session.
-    #[command(subcommand)]
+    #[command(subcommand, about = "Start, stop or inspect a focus session")]
     Focus(FocusCommand),
-    /// List completed focus sessions, newest first.
+    #[command(about = "List completed focus sessions, newest first")]
     History {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Summarise application activity for recent days.
+    #[command(about = "Summarise application activity for recent days")]
     Summary {
         #[arg(long, default_value_t = 1)]
         days: i64,
     },
-    /// Enable/disable tracking and choose its privacy level.
+    #[command(about = "Enable/disable tracking and choose its privacy level")]
     Configure {
         #[arg(long)]
         enabled: Option<bool>,
@@ -32,8 +31,10 @@ pub enum AttentionCommand {
         #[arg(long)]
         idle_seconds: Option<i64>,
     },
-    /// Record one compositor pulse. Used by Veronica's GNOME extension.
-    #[command(hide = true)]
+    #[command(
+        hide = true,
+        about = "Record one compositor pulse. Used by Veronica's GNOME extension"
+    )]
     Record {
         #[arg(long)]
         application: String,
@@ -48,16 +49,16 @@ pub enum AttentionCommand {
 
 #[derive(clap::Subcommand)]
 pub enum FocusCommand {
-    /// Show the current focus session.
+    #[command(about = "Show the current focus session")]
     Status,
-    /// Start a timer such as `--for 45m` or `--for 2h`.
+    #[command(about = "Start a timer such as `--for 45m` or `--for 2h`")]
     Start {
         #[arg(long, default_value = "Focus")]
         name: String,
         #[arg(long = "for", default_value = "45m", value_parser = parse_duration)]
         duration_seconds: i64,
     },
-    /// Finish the active session and preserve it in history.
+    #[command(about = "Finish the active session and preserve it in history")]
     Stop,
 }
 

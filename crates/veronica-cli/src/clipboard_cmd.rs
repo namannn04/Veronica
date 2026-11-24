@@ -16,36 +16,31 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum ClipboardCommand {
-    /// Record a copy, reading the text from stdin.
-    ///
-    /// Used by the shell extension. Silent and idempotent by design: re-copying
-    /// something moves it to the front rather than adding a duplicate.
+    #[command(
+        about = "Record a copy, reading the text from stdin",
+        long_about = "Record a copy, reading the text from stdin.\n\nUsed by the shell extension. Silent and idempotent by design: re-copying something moves it to the front rather than adding a duplicate."
+    )]
     Record {
-        /// Keep at most this many entries.
-        #[arg(long, default_value_t = DEFAULT_LIMIT)]
+        #[arg(long, default_value_t = DEFAULT_LIMIT, help = "Keep at most this many entries")]
         limit: usize,
-        /// Keep the text byte for byte. Without it one trailing newline is
-        /// dropped, since `echo text | vr clipboard record` adds one; the
-        /// shell extension passes the copy exactly and uses this.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Keep the text byte for byte. Without it one trailing newline is dropped, since `echo text | vr clipboard record` adds one; the shell extension passes the copy exactly and uses this"
+        )]
         exact: bool,
     },
-    /// List the history, newest first.
-    #[command(alias = "ls")]
+    #[command(alias = "ls", about = "List the history, newest first")]
     List {
-        /// Only entries containing this text.
-        #[arg(long, default_value = "")]
+        #[arg(long, default_value = "", help = "Only entries containing this text")]
         query: String,
-        /// Show at most this many.
-        #[arg(long, default_value_t = 20)]
+        #[arg(long, default_value_t = 20, help = "Show at most this many")]
         limit: usize,
     },
-    /// Print one entry's full text, for piping onward.
+    #[command(about = "Print one entry's full text, for piping onward")]
     Get { id: u64 },
-    /// Forget one entry.
-    #[command(alias = "rm")]
+    #[command(alias = "rm", about = "Forget one entry")]
     Remove { id: u64 },
-    /// Forget everything.
+    #[command(about = "Forget everything")]
     Clear,
 }
 

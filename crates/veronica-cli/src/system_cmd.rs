@@ -14,50 +14,58 @@ use crate::format::{self, Output};
 
 #[derive(Subcommand)]
 pub enum SystemCommand {
-    /// Read CPU, memory, disks, temperatures and battery state.
+    #[command(about = "Read CPU, memory, disks, temperatures and battery state")]
     Snapshot,
-    /// Sample CPU, memory and load for this computer.
+    #[command(about = "Sample CPU, memory and load for this computer")]
     Stats,
-    /// Mounted volumes and their free space.
+    #[command(about = "Mounted volumes and their free space")]
     Disks,
-    /// Running processes, by CPU or memory.
-    #[command(alias = "ps")]
+    #[command(alias = "ps", about = "Running processes, by CPU or memory")]
     Processes {
-        /// Sort by `cpu`, `memory` or `name`.
-        #[arg(long, default_value = "cpu")]
+        #[arg(
+            long,
+            default_value = "cpu",
+            help = "Sort by `cpu`, `memory` or `name`"
+        )]
         sort: ProcessSort,
-        /// How many rows to print. Ignored with `--json`, which emits them all.
-        #[arg(long, default_value_t = 15)]
+        #[arg(
+            long,
+            default_value_t = 15,
+            help = "How many rows to print. Ignored with `--json`, which emits them all"
+        )]
         limit: usize,
     },
-    /// The per-application audio mixer: every stream and its volume.
-    #[command(subcommand)]
+    #[command(
+        subcommand,
+        about = "The per-application audio mixer: every stream and its volume"
+    )]
     Audio(AudioCommand),
-    /// Bluetooth adapters and the devices BlueZ knows about.
+    #[command(about = "Bluetooth adapters and the devices BlueZ knows about")]
     Bluetooth,
 }
 
 #[derive(Subcommand)]
 pub enum AudioCommand {
-    /// List every application stream, playing or recording.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "List every application stream, playing or recording"
+    )]
     List,
-    /// Set one stream's volume, as a percentage or a fraction.
+    #[command(about = "Set one stream's volume, as a percentage or a fraction")]
     Volume {
-        /// The PipeWire node id, as printed by `vr system audio list`.
+        #[arg(help = "The PipeWire node id, as printed by `vr system audio list`")]
         id: u32,
-        /// `40`, `40%` or `0.4` — all the same volume.
+        #[arg(help = "`40`, `40%` or `0.4` — all the same volume")]
         level: String,
     },
-    /// Mute one stream, or every stream at once with `--all`.
+    #[command(about = "Mute one stream, or every stream at once with `--all`")]
     Mute {
-        /// The PipeWire node id. Omit it with `--all`.
+        #[arg(help = "The PipeWire node id. Omit it with `--all`")]
         id: Option<u32>,
-        /// Apply to every application stream.
-        #[arg(long)]
+        #[arg(long, help = "Apply to every application stream")]
         all: bool,
     },
-    /// Unmute one stream, or every stream at once with `--all`.
+    #[command(about = "Unmute one stream, or every stream at once with `--all`")]
     Unmute {
         id: Option<u32>,
         #[arg(long)]

@@ -22,24 +22,24 @@ use crate::format::Output;
 
 #[derive(clap::Subcommand)]
 pub enum KeystrokeCommand {
-    /// Report the current settings and whether the shell can apply them.
+    #[command(about = "Report the current settings and whether the shell can apply them")]
     Status,
-    /// Start the overlay.
+    #[command(about = "Start the overlay")]
     On,
-    /// Pause the overlay, keeping the extension enabled.
+    #[command(about = "Pause the overlay, keeping the extension enabled")]
     Off,
-    /// Enable the extension.
+    #[command(about = "Enable the extension")]
     Enable,
-    /// Disable the extension, which also stops the overlay.
+    #[command(about = "Disable the extension, which also stops the overlay")]
     Disable,
-    /// How long a keycap stays on screen, in seconds.
+    #[command(about = "How long a keycap stays on screen, in seconds")]
     Duration {
-        /// 0.5 to 3. Values outside the range are clamped, not rejected.
+        #[arg(help = "0.5 to 3. Values outside the range are clamped, not rejected")]
         seconds: f64,
     },
-    /// Where the row of keycaps sits.
+    #[command(about = "Where the row of keycaps sits")]
     Position {
-        /// top or bottom.
+        #[arg(help = "top or bottom")]
         position: String,
     },
 }

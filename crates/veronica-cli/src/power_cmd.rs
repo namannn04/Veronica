@@ -15,26 +15,33 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum PowerCommand {
-    /// Report both switches, their countdowns and the battery.
+    #[command(about = "Report both switches, their countdowns and the battery")]
     Status,
-    /// Prevent the idle sleep timer.
-    #[command(subcommand, name = "keep-awake")]
+    #[command(
+        subcommand,
+        name = "keep-awake",
+        about = "Prevent the idle sleep timer"
+    )]
     KeepAwake(SwitchCommand),
-    /// Keep running with the lid shut, which also prevents idle sleep.
-    #[command(subcommand, name = "lid-awake")]
+    #[command(
+        subcommand,
+        name = "lid-awake",
+        about = "Keep running with the lid shut, which also prevents idle sleep"
+    )]
     LidAwake(SwitchCommand),
 }
 
 #[derive(clap::Subcommand)]
 pub enum SwitchCommand {
-    /// Turn it on, open-ended or for a while.
+    #[command(about = "Turn it on, open-ended or for a while")]
     On {
-        /// How long to keep it on, e.g. `30m`, `2h`, `1h30m`. A bare number is
-        /// minutes. Without this the session is open-ended.
-        #[arg(long = "for")]
+        #[arg(
+            long = "for",
+            help = "How long to keep it on, e.g. `30m`, `2h`, `1h30m`. A bare number is minutes. Without this the session is open-ended"
+        )]
         duration: Option<String>,
     },
-    /// Turn it off, cancelling any timed session.
+    #[command(about = "Turn it off, cancelling any timed session")]
     Off,
 }
 

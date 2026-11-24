@@ -17,41 +17,43 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum MaintenanceCommand {
-    /// What is installed, from every source on this computer.
-    #[command(alias = "ls")]
+    #[command(
+        alias = "ls",
+        about = "What is installed, from every source on this computer"
+    )]
     Inventory {
-        /// Restrict to one source: apt, snap or flatpak.
-        #[arg(long)]
+        #[arg(long, help = "Restrict to one source: apt, snap or flatpak")]
         source: Option<String>,
     },
-    /// What has a newer version available. Installs nothing.
+    #[command(about = "What has a newer version available. Installs nothing")]
     Updates {
         #[arg(long)]
         source: Option<String>,
     },
-    /// Apply updates.
-    ///
-    /// With no names, everything from that source. Prints the plan and stops
-    /// unless `--yes` is given.
+    #[command(
+        about = "Apply updates",
+        long_about = "Apply updates.\n\nWith no names, everything from that source. Prints the plan and stops unless `--yes` is given."
+    )]
     Update {
-        /// Which source to update. Required, because the three take different
-        /// commands and "everything everywhere" is rarely what is meant.
+        #[arg(
+            help = "Which source to update. Required, because the three take different commands and \"everything everywhere\" is rarely what is meant"
+        )]
         source: String,
-        /// Specific packages. Omit for every update from that source.
+        #[arg(help = "Specific packages. Omit for every update from that source")]
         names: Vec<String>,
         #[arg(long)]
         yes: bool,
     },
-    /// What removing a package would take with it.
-    ///
-    /// Prints the plan and stops unless `--yes` is given. apt only: snap and
-    /// flatpak have no equivalent simulation to review first.
+    #[command(
+        about = "What removing a package would take with it",
+        long_about = "What removing a package would take with it.\n\nPrints the plan and stops unless `--yes` is given. apt only: snap and flatpak have no equivalent simulation to review first."
+    )]
     Remove {
         package: String,
         #[arg(long)]
         yes: bool,
     },
-    /// Which package sources this computer has.
+    #[command(about = "Which package sources this computer has")]
     Sources,
 }
 

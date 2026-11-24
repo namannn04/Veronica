@@ -10,18 +10,20 @@ use crate::format::Output;
 
 #[derive(clap::Subcommand)]
 pub enum BackupCommand {
-    /// Export settings, persistent data and state to one checked archive.
+    #[command(about = "Export settings, persistent data and state to one checked archive")]
     Export {
-        /// Destination. Defaults to ./Veronica-backup-YYYY-MM-DD.veronica-backup.
+        #[arg(help = "Destination. Defaults to ./Veronica-backup-YYYY-MM-DD.veronica-backup")]
         path: Option<PathBuf>,
     },
-    /// Inspect an archive without changing anything.
+    #[command(about = "Inspect an archive without changing anything")]
     Inspect { path: PathBuf },
-    /// Restore an archive after validating every file and digest.
+    #[command(about = "Restore an archive after validating every file and digest")]
     Import {
         path: PathBuf,
-        /// Required acknowledgement that existing matching files are replaced.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Required acknowledgement that existing matching files are replaced"
+        )]
         confirm: bool,
     },
 }

@@ -19,14 +19,16 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum ExtensionCommand {
-    /// Every extension, its group, switch and availability.
-    #[command(alias = "list")]
+    #[command(
+        alias = "list",
+        about = "Every extension, its group, switch and availability"
+    )]
     Ls,
-    /// Turn one extension on, even when setup still remains.
+    #[command(about = "Turn one extension on, even when setup still remains")]
     Enable { id: String },
-    /// Turn one extension off.
+    #[command(about = "Turn one extension off")]
     Disable { id: String },
-    /// Describe one extension and everything it needs.
+    #[command(about = "Describe one extension and everything it needs")]
     Info { id: String },
 }
 

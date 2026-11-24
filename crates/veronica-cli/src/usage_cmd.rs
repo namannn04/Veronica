@@ -11,88 +11,94 @@ use crate::format::{self, countdown, money, tokens, Output};
 
 #[derive(Subcommand)]
 pub enum UsageCommand {
-    /// Totals, day count and model spread for a window.
+    #[command(about = "Totals, day count and model spread for a window")]
     Summary {
-        /// How many recent days to include; omit for the full history.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "How many recent days to include; omit for the full history"
+        )]
         days: Option<usize>,
-        /// Restrict to these collector ids, e.g. --source cli --source codex.
-        #[arg(long = "source")]
+        #[arg(
+            long = "source",
+            help = "Restrict to these collector ids, e.g. --source cli --source codex"
+        )]
         sources: Vec<String>,
     },
-    /// Spend per collector.
+    #[command(about = "Spend per collector")]
     Sources {
         #[arg(long)]
         days: Option<usize>,
     },
-    /// Spend per model.
+    #[command(about = "Spend per model")]
     Models {
         #[arg(long)]
         days: Option<usize>,
         #[arg(long = "source")]
         sources: Vec<String>,
     },
-    /// Spend per project, with its chats.
+    #[command(about = "Spend per project, with its chats")]
     Projects {
         #[arg(long)]
         days: Option<usize>,
         #[arg(long = "source")]
         sources: Vec<String>,
-        /// Show the chats inside each project.
-        #[arg(long)]
+        #[arg(long, help = "Show the chats inside each project")]
         chats: bool,
     },
-    /// The daily spend calendar.
+    #[command(about = "The daily spend calendar")]
     Calendar {
         #[arg(long)]
         days: Option<usize>,
     },
-    /// Rate limits for Claude and Codex, as live gauges.
+    #[command(about = "Rate limits for Claude and Codex, as live gauges")]
     Limits {
-        /// Warn above this utilisation.
-        #[arg(long, default_value_t = 60)]
+        #[arg(long, default_value_t = 60, help = "Warn above this utilisation")]
         warn: i64,
-        /// Treat above this as critical.
-        #[arg(long, default_value_t = 85)]
+        #[arg(long, default_value_t = 85, help = "Treat above this as critical")]
         critical: i64,
     },
-    /// What the alert notifier would do right now.
-    ///
-    /// A dry run: it reads the live windows and the stored notifier state, then
-    /// reports which alerts a poll at this instant would post. Nothing is
-    /// posted and no state is written, so it is safe to run repeatedly.
+    #[command(
+        about = "What the alert notifier would do right now",
+        long_about = "What the alert notifier would do right now.\n\nA dry run: it reads the live windows and the stored notifier state, then reports which alerts a poll at this instant would post. Nothing is posted and no state is written, so it is safe to run repeatedly."
+    )]
     Alerts {
-        /// Also print every switch, so a misfiring alert can be traced to one.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Also print every switch, so a misfiring alert can be traced to one"
+        )]
         settings: bool,
     },
-    /// Render usage as branded PNG cards, for sharing.
-    ///
-    /// A card never shows a repository name, a folder path, a chat title or a
-    /// dollar cost: it exists to be posted somewhere public, and those are the
-    /// four fields that would leak a client, an employer or an income.
+    #[command(
+        about = "Render usage as branded PNG cards, for sharing",
+        long_about = "Render usage as branded PNG cards, for sharing.\n\nA card never shows a repository name, a folder path, a chat title or a dollar cost: it exists to be posted somewhere public, and those are the four fields that would leak a client, an employer or an income."
+    )]
     Export {
-        /// Which card. Repeat for several; `all` is every one. Defaults to all.
-        #[arg(long = "card")]
+        #[arg(
+            long = "card",
+            help = "Which card. Repeat for several; `all` is every one. Defaults to all"
+        )]
         cards: Vec<String>,
-        /// A directory, or — with exactly one card — the destination file.
-        /// Defaults to the current directory.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "A directory, or — with exactly one card — the destination file. Defaults to the current directory"
+        )]
         output: Option<String>,
-        /// How many recent days to include; omit for the full history.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "How many recent days to include; omit for the full history"
+        )]
         days: Option<usize>,
         #[arg(long = "source")]
         sources: Vec<String>,
-        /// Write the SVG rather than a PNG. Useful with no fonts installed,
-        /// and for editing a card before posting it.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Write the SVG rather than a PNG. Useful with no fonts installed, and for editing a card before posting it"
+        )]
         svg: bool,
     },
-    /// Run the collector and rewrite usage.json.
+    #[command(about = "Run the collector and rewrite usage.json")]
     Refresh {
-        /// Print each collector phase as it completes.
-        #[arg(long)]
+        #[arg(long, help = "Print each collector phase as it completes")]
         progress: bool,
     },
 }

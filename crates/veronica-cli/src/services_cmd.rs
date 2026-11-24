@@ -5,12 +5,12 @@ use veronica_system::{docker, ports};
 
 #[derive(clap::Subcommand)]
 pub enum PortsCommand {
-    /// TCP listeners and bound, unconnected UDP sockets, IPv4 and IPv6.
+    #[command(about = "TCP listeners and bound, unconnected UDP sockets, IPv4 and IPv6")]
     List {
         #[arg(long)]
         port: Option<u16>,
     },
-    /// Send SIGTERM after verifying the process and socket identity.
+    #[command(about = "Send SIGTERM after verifying the process and socket identity")]
     Stop {
         #[arg(long)]
         pid: u32,
@@ -24,9 +24,9 @@ pub enum PortsCommand {
 }
 #[derive(clap::Subcommand)]
 pub enum DockerCommand {
-    /// Local daemon availability, containers and published ports.
+    #[command(about = "Local daemon availability, containers and published ports")]
     Status,
-    /// Start, stop or restart a container from a status reading.
+    #[command(about = "Start, stop or restart a container from a status reading")]
     Action {
         #[arg(value_enum)]
         action: ContainerAction,

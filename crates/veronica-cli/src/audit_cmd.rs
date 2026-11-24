@@ -16,25 +16,23 @@ use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
 pub enum AuditCommand {
-    /// Crawl a site and report every page's issues.
+    #[command(about = "Crawl a site and report every page's issues")]
     Site {
-        /// A URL, a bare hostname, or a sitemap. `https://` is assumed.
+        #[arg(help = "A URL, a bare hostname, or a sitemap. `https://` is assumed")]
         site: String,
-        /// How many pages to fetch at most.
-        #[arg(long, default_value_t = 50)]
+        #[arg(long, default_value_t = 50, help = "How many pages to fetch at most")]
         limit: usize,
-        /// How many pages to fetch at once. Kept low so an audit does not read
-        /// as a load test against someone else's server.
-        #[arg(long, default_value_t = DEFAULT_CONCURRENCY)]
+        #[arg(long, default_value_t = DEFAULT_CONCURRENCY, help = "How many pages to fetch at once. Kept low so an audit does not read as a load test against someone else's server")]
         concurrency: usize,
-        /// Only show pages that have at least one issue of this severity or
-        /// worse: `error`, `warning` or `notice`.
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Only show pages that have at least one issue of this severity or worse: `error`, `warning` or `notice`"
+        )]
         severity: Option<String>,
     },
-    /// Audit one page, without crawling anything.
+    #[command(about = "Audit one page, without crawling anything")]
     Page { url: String },
-    /// The pages a site's sitemap lists, without auditing them.
+    #[command(about = "The pages a site's sitemap lists, without auditing them")]
     Sitemap {
         site: String,
         #[arg(long, default_value_t = 100)]
