@@ -75,8 +75,10 @@ pub fn encode(source: &Source, format: &str) -> Result<Vec<u8>> {
             for (out, pixel) in rgb.pixels_mut().zip(source.pixels.to_rgba8().pixels()) {
                 let alpha = u32::from(pixel[3]);
                 for c in 0..3 {
-                    out[c] =
-                        ((u32::from(pixel[c]) * alpha + 255 * (255 - alpha) + 127) / 255) as u8;
+                    out[c] = u8::try_from(
+                        (u32::from(pixel[c]) * alpha + 255 * (255 - alpha) + 127) / 255,
+                    )
+                    .unwrap_or(u8::MAX);
                 }
             }
             image::codecs::jpeg::JpegEncoder::new_with_quality(&mut bytes, 92)
@@ -115,18 +117,15 @@ pub fn qr_source(link: &str) -> Result<Source> {
     let code = qr_code(link)?;
     let width = code.width();
     let scale = 320_usize.div_ceil(width + 8);
-    let side = ((width + 8) * scale) as u32;
+    let side = u32::try_from((width + 8) * scale)?;
+    let coordinate = |module: usize, offset: usize| u32::try_from((module + 4) * scale + offset);
     let mut pixels = image::GrayImage::from_pixel(side, side, image::Luma([255]));
     for y in 0..width {
         for x in 0..width {
             if code[(x, y)] == qrcode::Color::Dark {
                 for dy in 0..scale {
                     for dx in 0..scale {
-                        pixels.put_pixel(
-                            ((x + 4) * scale + dx) as u32,
-                            ((y + 4) * scale + dy) as u32,
-                            image::Luma([0]),
-                        );
+                        pixels.put_pixel(coordinate(x, dx)?, coordinate(y, dy)?, image::Luma([0]));
                     }
                 }
             }

@@ -1,6 +1,7 @@
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::os::unix::process::CommandExt as _;
 use std::{
     path::PathBuf,
     sync::{
@@ -177,8 +178,10 @@ impl ChatRuntime {
                 }
                 stop_runners(&owner);
                 if matches!(child.try_wait(), Ok(None)) {
-                    unsafe {
-                        libc::kill(-(child.id() as i32), libc::SIGKILL);
+                    if let Ok(pid) = libc::pid_t::try_from(child.id()) {
+                        unsafe {
+                            libc::kill(-pid, libc::SIGKILL);
+                        }
                     }
                 }
                 let _ = child.kill();
@@ -274,7 +277,6 @@ impl ChatRuntime {
         let address = listener.local_addr()?;
         drop(listener);
         let endpoint = format!("http://{address}");
-        use std::os::unix::process::CommandExt;
         let python = crate::agents::resolve("python3")
             .context("Python 3 is required for the owned local runtime")?;
         let owner = uuid::Uuid::new_v4().to_string();
@@ -713,6 +715,7 @@ async fn generate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::PermissionsExt as _;
     #[test]
     fn defaults_off_private_and_context_bounded() {
         let temp = tempfile::tempdir().unwrap();
@@ -730,7 +733,6 @@ mod tests {
             doc.messages.push(message("user", "x".repeat(1000)));
         }
         assert!(super::context(&doc, "hi", true, false).len() <= 22);
-        use std::os::unix::fs::PermissionsExt;
         assert_eq!(
             std::fs::metadata(runtime.path())
                 .unwrap()
@@ -906,7 +908,7 @@ mod provider_tests {
             let worker = runtime.clone();
             let task = tokio::spawn(async move {
                 if download {
-                    worker.pull(config, true).await.map(|()| ())
+                    worker.pull(config, true).await
                 } else {
                     worker.models(config).await.map(|_| ())
                 }

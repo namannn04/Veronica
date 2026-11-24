@@ -179,6 +179,14 @@ impl MachineStats {
     }
 }
 
+fn whole_number(text: &str) -> Option<u64> {
+    let text = text.trim();
+    text.split_once('.')
+        .map_or(text, |(whole, _)| whole)
+        .parse()
+        .ok()
+}
+
 fn is_uninteresting_mount(mount_point: &str) -> bool {
     mount_point.starts_with("/sys")
         || mount_point.starts_with("/proc")
@@ -203,14 +211,13 @@ pub fn parse(output: &str) -> MachineStats {
             "kernel" => stats.kernel = rest.to_string(),
             "os" => stats.os = rest.to_string(),
             "uptime" => {
-                stats.uptime_secs = rest.parse::<f64>().map_or(0, |v| v as u64);
+                stats.uptime_secs = whole_number(rest).unwrap_or(0);
             }
             "load" => {
-                let values: Vec<f64> = rest
+                let values = rest
                     .split_whitespace()
-                    .filter_map(|v| v.parse().ok())
-                    .collect();
-                for (index, value) in values.into_iter().take(3).enumerate() {
+                    .filter_map(|v| v.parse::<f64>().ok());
+                for (index, value) in values.take(3).enumerate() {
                     stats.load_average[index] = value;
                 }
             }
@@ -288,11 +295,14 @@ pub fn parse(output: &str) -> MachineStats {
                     continue;
                 }
                 let number = |index: usize| fields.get(index).and_then(|v| v.parse::<f64>().ok());
+                let mebibytes = |index: usize| {
+                    fields.get(index).and_then(|v| whole_number(v)).unwrap_or(0) * 1024 * 1024
+                };
                 stats.gpus.push(Gpu {
                     name: fields[0].to_string(),
                     utilization_percent: number(1).unwrap_or(0.0),
-                    memory_used_bytes: number(2).unwrap_or(0.0) as u64 * 1024 * 1024,
-                    memory_total_bytes: number(3).unwrap_or(0.0) as u64 * 1024 * 1024,
+                    memory_used_bytes: mebibytes(2),
+                    memory_total_bytes: mebibytes(3),
                     temperature_celsius: number(4),
                 });
             }
@@ -555,7 +565,7 @@ proc bad line here
     fn processes_carry_their_pid_cpu_and_resident_memory() {
         let stats = parse(EXTRAS);
         assert_eq!(stats.processes.len(), 2, "the malformed line is skipped");
-        assert_eq!(stats.processes[0].pid, 428936);
+        assert_eq!(stats.processes[0].pid, 428_936);
         assert_eq!(stats.processes[0].name, "chrome");
         assert_eq!(stats.processes[0].cpu_percent, 8.8);
         assert_eq!(stats.processes[0].memory_bytes, 496_640 * 1024);

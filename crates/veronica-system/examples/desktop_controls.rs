@@ -9,7 +9,7 @@ struct Controls {
 async fn main() -> anyhow::Result<()> {
     let root = tempfile::tempdir()?;
     let controls = Arc::new(Controls {
-        agents: Default::default(),
+        agents: veronica_system::agents::AgentManager::default(),
         chat: veronica_system::companion_ai::ChatRuntime::new(root.path().join("chat")),
     });
     controls.agents.open();
@@ -62,8 +62,14 @@ async fn dispatch(state: &Controls, r: &Value) -> anyhow::Result<Value> {
         "agent_resize" => {
             state.agents.resize(
                 &text("id"),
-                a["cols"].as_u64().unwrap_or(80) as u16,
-                a["rows"].as_u64().unwrap_or(24) as u16,
+                a["cols"]
+                    .as_u64()
+                    .and_then(|v| u16::try_from(v).ok())
+                    .unwrap_or(80),
+                a["rows"]
+                    .as_u64()
+                    .and_then(|v| u16::try_from(v).ok())
+                    .unwrap_or(24),
             )?;
             Value::Null
         }

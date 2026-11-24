@@ -12,7 +12,9 @@ pub(crate) fn stop(key: &str, owner: &str) {
         let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() else {
             continue;
         };
-        let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) as i32 };
+        let Ok(fd) = i32::try_from(unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) }) else {
+            continue;
+        };
         if fd < 0 {
             continue;
         }
