@@ -147,6 +147,7 @@ jobs:
 
   package:
     name: Debian package
+    needs: extensions
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -163,6 +164,12 @@ jobs:
       - name: Install interface dependencies exactly
         working-directory: apps/desktop
         run: bun install --frozen-lockfile
+      - name: Fetch the extension packages to bundle
+        if: needs.extensions.outputs.matrix != '[]'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: ext-*
+          path: target/ext
       - name: Build the Debian package
         working-directory: apps/desktop
         run: bunx tauri build --bundles deb --ci
@@ -179,6 +186,9 @@ jobs:
           test -f "$audit_dir/usr/share/veronica/graftcode/index.cjs"
           test -f "$audit_dir/usr/share/veronica/graftcode/start.cjs"
           test -f "$audit_dir/usr/share/doc/veronica/GRAFTCODE.md"
+          bundled="$audit_dir/usr/share/veronica/extensions/index.json"
+          jq -e '.schema == 1' "$bundled"
+          jq -e '[.extensions[].id] | index("fixture") == null' "$bundled"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: Veronica-amd64-deb
@@ -214,6 +224,7 @@ jobs:
           /snap/bin/veronica.vr extensions --help | grep -q enable
           test -f /snap/veronica/current/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/metadata.json
           test -f /snap/veronica/current/usr/share/doc/veronica/NOTICE
+          test -f /snap/veronica/current/usr/share/veronica/extensions/index.json
           test -x /snap/veronica/current/usr/bin/jq
           /snap/veronica/current/usr/bin/jq --version
           grep -q '^Icon=/snap/veronica/' /var/lib/snapd/desktop/applications/veronica_veronica.desktop

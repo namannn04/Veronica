@@ -5,7 +5,7 @@
   "identifier": "io.github.namannn04.Veronica",
   "build": {
     "beforeDevCommand": "bun run dev",
-    "beforeBuildCommand": "cargo build --release -p veronica-cli && bun run build",
+    "beforeBuildCommand": "cargo build --release -p veronica-cli && cargo run --release -q -p veronica-pack -- bundle --packages ../../target/ext --out ../../packaging/bundled-extensions && bun run build",
     "devUrl": "http://127.0.0.1:5183",
     "frontendDist": "../dist"
   },
@@ -95,6 +95,7 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/focusDimMath.js": "../../../extension/focusDimMath.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/keystrokeHighlight.js": "../../../extension/keystrokeHighlight.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/keystrokeLabels.js": "../../../extension/keystrokeLabels.js",
+          "/usr/share/veronica/extensions": "../../../packaging/bundled-extensions",
           "/usr/share/veronica/graftcode/index.cjs": "../../../integrations/graftcode/index.cjs",
           "/usr/share/veronica/graftcode/start.cjs": "../../../integrations/graftcode/start.cjs",
           "/usr/share/veronica/graftcode/package.json": "../../../integrations/graftcode/package.json",

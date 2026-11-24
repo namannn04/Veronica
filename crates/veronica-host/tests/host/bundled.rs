@@ -277,3 +277,27 @@ fn an_unreachable_catalog_falls_back_to_the_bundled_copy() {
     )
     .is_err());
 }
+
+#[test]
+fn the_packaging_installs_the_bundle_where_the_host_looks() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let config: Value = serde_json::from_str(
+        &fs::read_to_string(root.join("apps/desktop/src-tauri/tauri.conf.json")).unwrap(),
+    )
+    .unwrap();
+    assert!(config["bundle"]["linux"]["deb"]["files"]
+        .get(veronica_host::bundled::DEB_DIR)
+        .is_some());
+    let flatpak =
+        fs::read_to_string(root.join("packaging/flatpak/io.github.namannn04.Veronica.yml"))
+            .unwrap();
+    assert!(flatpak.contains(&format!(
+        "cp -r {} {}",
+        veronica_host::bundled::PACKAGED_DIR,
+        veronica_host::bundled::FLATPAK_DIR
+    )));
+    assert_eq!(
+        format!("/{}", veronica_host::bundled::PACKAGED_DIR),
+        veronica_host::bundled::DEB_DIR
+    );
+}

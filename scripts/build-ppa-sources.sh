@@ -22,6 +22,10 @@ done
   echo "build the interface first: (cd apps/desktop && bun run build)" >&2
   exit 1
 }
+[ -s "$repository/packaging/bundled-extensions/index.json" ] || {
+  echo "gather the bundled extensions first: cargo run -p veronica-pack -- bundle --packages target/ext --out packaging/bundled-extensions" >&2
+  exit 1
+}
 
 work="$(mktemp -d)"
 trap 'rm -rf -- "$work"' EXIT
@@ -29,6 +33,7 @@ source_dir="$work/veronica-$version"
 
 git -C "$repository" archive --format=tar --prefix="veronica-$version/" HEAD | tar -x -C "$work"
 cp -R "$repository/apps/desktop/dist" "$source_dir/apps/desktop/dist"
+cp -R "$repository/packaging/bundled-extensions" "$source_dir/packaging/bundled-extensions"
 (cd "$repository" && cargo vendor-filterer --platform=x86_64-unknown-linux-gnu "$source_dir/vendor" >/dev/null)
 for checksum in "$source_dir"/vendor/*/.cargo-checksum.json; do
   jq -c '.files = {}' "$checksum" >"$checksum.new"

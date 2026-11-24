@@ -38,6 +38,10 @@ trap 'rm -rf -- "$audit_dir"' EXIT
 dpkg-deb -x "$deb" "$audit_dir"
 "$audit_dir/usr/bin/vr" extensions --help | grep -q enable
 dpkg-deb -f "$deb" Depends | grep -q curl
+jq -e '.schema == 1' "$audit_dir/usr/share/veronica/extensions/index.json" >/dev/null
+(cd "$audit_dir" && "$repository/$appimage" --appimage-extract >/dev/null)
+cmp "$audit_dir/usr/share/veronica/extensions/index.json" \
+  "$audit_dir/squashfs-root/usr/share/veronica/extensions/index.json"
 
 checksums="target/release/bundle/SHA256SUMS"
 (

@@ -7,7 +7,12 @@ config=apps/desktop/src-tauri/tauri.conf.json
 install -Dm755 target/release/veronica "$destination/usr/bin/veronica"
 jq -r '.bundle.linux.deb.files | to_entries[] | "\(.key)\t\(.value)"' "$config" |
   while IFS="$(printf '\t')" read -r target source; do
-    install -Dm644 "apps/desktop/src-tauri/$source" "$destination$target"
+    if [ -d "apps/desktop/src-tauri/$source" ]; then
+      mkdir -p "$destination$target"
+      cp -R "apps/desktop/src-tauri/$source/." "$destination$target/"
+    else
+      install -Dm644 "apps/desktop/src-tauri/$source" "$destination$target"
+    fi
   done
 chmod 755 "$destination/usr/bin/vr"
 install -Dm644 packaging/linux/veronica.desktop "$destination/usr/share/applications/Veronica.desktop"
