@@ -1,34 +1,19 @@
-//! Turning a flat event list into an agenda.
-//!
-//! All of this is pure so it can be tested without a session bus. The shell's
-//! calendar server hands back already-expanded instances in no particular
-//! order, spanning whatever range was requested; the agenda groups them by
-//! local day, marks all-day events, and orders everything the way a person
-//! reads a schedule.
-
 use chrono::{DateTime, Duration, Local, NaiveDate, TimeZone};
 use serde::Serialize;
 
-/// One calendar event instance.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
-    /// Calendar this came from.
     pub source_uid: String,
-    /// Event identifier within that calendar.
     pub event_uid: String,
     pub summary: String,
     pub start: DateTime<Local>,
     pub end: DateTime<Local>,
-    /// True when the event occupies whole days rather than a time slot.
     pub all_day: bool,
-    /// A meeting URL, when one could be recovered.
     pub join_url: Option<String>,
 }
 
 impl Event {
-    /// Stable key for deduplication: the same instance can be delivered twice
-    /// when the server re-emits a range.
     pub fn key(&self) -> (String, String, i64) {
         (
             self.source_uid.clone(),
@@ -41,10 +26,6 @@ impl Event {
         self.end - self.start
     }
 
-    /// Whether the event is over at `now`.
-    ///
-    /// An all-day event counts as current for the whole day, which is why the
-    /// comparison is against its end rather than its start.
     pub fn has_ended(&self, now: DateTime<Local>) -> bool {
         self.end <= now
     }
@@ -54,12 +35,6 @@ impl Event {
     }
 }
 
-/// Decode the shell's composite event id.
-///
-/// The server packs the calendar and event identifiers into one string
-/// separated by newlines, with a trailing newline: `"source\nuid\n"`. Splitting
-/// naively leaves an empty third field, and using the whole string as a key
-/// makes two different events in the same calendar look related.
 pub fn parse_event_id(raw: &str) -> (String, String) {
     let mut parts = raw.split('\n');
     let source = parts.next().unwrap_or_default().to_string();
@@ -67,45 +42,31 @@ pub fn parse_event_id(raw: &str) -> (String, String) {
     (source, uid)
 }
 
-/// Whether a span covers whole local days.
-///
-/// The server reports all-day events as midnight to midnight in local time
-/// rather than flagging them, so the only way to tell is to check the boundaries
-/// and that the span is at least a day.
 pub fn is_all_day(start: DateTime<Local>, end: DateTime<Local>) -> bool {
     let at_midnight = |value: DateTime<Local>| value.time() == chrono::NaiveTime::MIN;
     at_midnight(start) && at_midnight(end) && (end - start) >= Duration::days(1)
 }
 
-/// Events for one local day.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgendaDay {
-    /// `YYYY-MM-DD`, local.
     pub date: String,
-    /// "Today", "Tomorrow", or a formatted date.
     pub label: String,
     pub is_today: bool,
     pub events: Vec<Event>,
 }
 
-/// Human label for a day relative to today.
 pub fn day_label(date: NaiveDate, today: NaiveDate) -> String {
     let delta = (date - today).num_days();
     match delta {
         0 => "Today".to_string(),
         1 => "Tomorrow".to_string(),
         -1 => "Yesterday".to_string(),
-        // Within the coming week the weekday alone is unambiguous and shorter.
         2..=6 => date.format("%A").to_string(),
         _ => date.format("%a %-d %b").to_string(),
     }
 }
 
-/// Group events into days, ordered earliest first.
-///
-/// A multi-day event appears on each day it covers, because an agenda that only
-/// listed it on its first day would leave the following days looking empty.
 pub fn group_by_day(events: &[Event], now: DateTime<Local>) -> Vec<AgendaDay> {
     use std::collections::BTreeMap;
 
@@ -113,13 +74,8 @@ pub fn group_by_day(events: &[Event], now: DateTime<Local>) -> Vec<AgendaDay> {
     let mut days: BTreeMap<NaiveDate, Vec<Event>> = BTreeMap::new();
 
     for event in events {
-        // An event that began before today is listed from today: the agenda
-        // looks forward, and an ongoing conference otherwise put "Yesterday"
-        // and older days above Today.
         let start_day = event.start.date_naive();
         let first = start_day.max(today);
-        // Every end is exclusive. A midnight end, whether an all-day event's
-        // or a 23:00-00:00 meeting's, would otherwise add a spurious next day.
         let last_instant = if event.end > event.start {
             event.end - Duration::seconds(1)
         } else {
@@ -136,8 +92,6 @@ pub fn group_by_day(events: &[Event], now: DateTime<Local>) -> Vec<AgendaDay> {
 
     days.into_iter()
         .map(|(date, mut events)| {
-            // All-day events lead the day, then by start time, then by name so
-            // the order never depends on delivery order.
             events.sort_by(|a, b| {
                 b.all_day
                     .cmp(&a.all_day)
@@ -154,7 +108,6 @@ pub fn group_by_day(events: &[Event], now: DateTime<Local>) -> Vec<AgendaDay> {
         .collect()
 }
 
-/// Drop events that already finished, keeping anything still running.
 pub fn upcoming(events: &[Event], now: DateTime<Local>) -> Vec<Event> {
     events
         .iter()
@@ -163,10 +116,6 @@ pub fn upcoming(events: &[Event], now: DateTime<Local>) -> Vec<Event> {
         .collect()
 }
 
-/// Remove duplicate instances, keeping the last delivered version.
-///
-/// The server re-emits an event when it is edited, so a naive append would show
-/// both the old and the new copy.
 pub fn deduplicate(events: Vec<Event>) -> Vec<Event> {
     use std::collections::HashMap;
     let mut latest: HashMap<(String, String, i64), Event> = HashMap::new();
@@ -182,7 +131,6 @@ pub fn deduplicate(events: Vec<Event>) -> Vec<Event> {
     list
 }
 
-/// The next event that has not started yet, for the notch's one-line readout.
 pub fn next_up(events: &[Event], now: DateTime<Local>) -> Option<&Event> {
     events
         .iter()
@@ -190,7 +138,6 @@ pub fn next_up(events: &[Event], now: DateTime<Local>) -> Option<&Event> {
         .min_by_key(|event| event.start)
 }
 
-/// The event happening right now, if any.
 pub fn happening_now(events: &[Event], now: DateTime<Local>) -> Option<&Event> {
     events
         .iter()
@@ -198,18 +145,14 @@ pub fn happening_now(events: &[Event], now: DateTime<Local>) -> Option<&Event> {
         .min_by_key(|event| event.end)
 }
 
-/// Convert a unix timestamp from the server into local time.
 pub fn from_unix(seconds: i64) -> Option<DateTime<Local>> {
     match Local.timestamp_opt(seconds, 0) {
         chrono::offset::LocalResult::Single(value) => Some(value),
-        // An ambiguous local time across a DST boundary resolves to the earlier
-        // reading rather than being discarded.
         chrono::offset::LocalResult::Ambiguous(earlier, _) => Some(earlier),
         chrono::offset::LocalResult::None => None,
     }
 }
 
-/// Local midnight today, and `days` later: the range the agenda asks for.
 pub fn default_range(now: DateTime<Local>, days: i64) -> (i64, i64) {
     let start = now
         .date_naive()
@@ -246,7 +189,6 @@ mod tests {
 
     #[test]
     fn parses_the_newline_packed_event_id() {
-        // The server sends "source\nuid\n", trailing newline included.
         assert_eq!(
             parse_event_id("veronica-test\nveronica-test-1\n"),
             ("veronica-test".to_string(), "veronica-test-1".to_string())
@@ -265,7 +207,6 @@ mod tests {
     #[test]
     fn recognises_a_midnight_to_midnight_span_as_all_day() {
         assert!(is_all_day(at("2026-08-20", 0, 0), at("2026-08-21", 0, 0)));
-        // A multi-day all-day event too.
         assert!(is_all_day(at("2026-08-20", 0, 0), at("2026-08-23", 0, 0)));
     }
 
@@ -276,7 +217,6 @@ mod tests {
             at("2026-08-20", 9, 30),
             at("2026-08-20", 10, 0)
         ));
-        // A zero-length midnight event is not a day.
         assert!(!is_all_day(at("2026-08-20", 0, 0), at("2026-08-20", 0, 0)));
     }
 
@@ -286,12 +226,10 @@ mod tests {
         assert_eq!(day_label(today, today), "Today");
         assert_eq!(day_label(today + Duration::days(1), today), "Tomorrow");
         assert_eq!(day_label(today - Duration::days(1), today), "Yesterday");
-        // Two to six days out reads as a weekday.
         assert_eq!(
             day_label(today + Duration::days(3), today),
             (today + Duration::days(3)).format("%A").to_string()
         );
-        // Beyond a week a weekday would be ambiguous, so show the date.
         assert!(day_label(today + Duration::days(20), today).contains("Sep"));
     }
 
@@ -368,7 +306,6 @@ mod tests {
 
     #[test]
     fn an_all_day_event_does_not_leak_into_the_following_day() {
-        // Its end is an exclusive midnight, so a naive range would add a day.
         let now = at("2026-08-20", 9, 0);
         let events = vec![event(
             "Holiday",
@@ -435,7 +372,6 @@ mod tests {
 
     #[test]
     fn deduplicate_keeps_separate_instances_of_a_recurring_event() {
-        // Same uid, different start: two occurrences, both real.
         let monday = event("Standup", at("2026-08-20", 9, 30), at("2026-08-20", 10, 0));
         let tuesday = event("Standup", at("2026-08-21", 9, 30), at("2026-08-21", 10, 0));
         assert_eq!(deduplicate(vec![monday, tuesday]).len(), 2);
@@ -495,7 +431,6 @@ mod tests {
         assert!(!e.is_current(at("2026-08-20", 9, 29)));
         assert!(e.is_current(at("2026-08-20", 9, 30)));
         assert!(e.is_current(at("2026-08-20", 9, 59)));
-        // The end is exclusive, so it is over at exactly 10:00.
         assert!(!e.is_current(at("2026-08-20", 10, 0)));
         assert!(e.has_ended(at("2026-08-20", 10, 0)));
     }
