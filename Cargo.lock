@@ -5986,6 +5986,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+ "veronica-sdk",
  "walkdir",
 ]
 
@@ -6115,6 +6116,10 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
 ]
+
+[[package]]
+name = "veronica-sdk"
+version = "0.1.26"
 
 [[package]]
 name = "veronica-system"

@@ -12,6 +12,7 @@ members = [
     "crates/veronica-protocol",
     "crates/veronica-pack",
     "crates/veronica-host",
+    "crates/veronica-sdk",
     "crates/veronica-cli",
     "apps/desktop/src-tauri",
 ]
@@ -35,6 +36,7 @@ veronica-calendar = { path = "crates/veronica-calendar" }
 veronica-audit = { path = "crates/veronica-audit" }
 veronica-database = { path = "crates/veronica-database" }
 veronica-protocol = { path = "crates/veronica-protocol" }
+veronica-sdk = { path = "crates/veronica-sdk" }
 
 anyhow = "1.0"
 thiserror = "2.0"
