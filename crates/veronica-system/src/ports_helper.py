@@ -7,12 +7,14 @@ import signal
 import sys
 from pathlib import Path
 
+PROC_NET_FIELDS = 10
 
-def parse_table(text, protocol, ipv6=False):
+
+def parse_table(text: str, protocol: str, *, ipv6: bool = False) -> list[dict]:
     rows = []
     for line in text.splitlines()[1:]:
         fields = line.split()
-        if len(fields) < 10 or fields[3] != ("0A" if protocol == "TCP" else "07"):
+        if len(fields) < PROC_NET_FIELDS or fields[3] != ("0A" if protocol == "TCP" else "07"):
             continue
         try:
             raw, port = fields[1].split(":")
@@ -35,7 +37,7 @@ def parse_table(text, protocol, ipv6=False):
     return rows
 
 
-def identity(pid):
+def identity(pid: int) -> dict:
     root = Path("/proc") / str(pid)
     stat = (root / "stat").read_text().rsplit(")", 1)[1].split()
     uid = next(
@@ -51,11 +53,11 @@ def identity(pid):
     }
 
 
-def sockets(pid):
+def sockets(pid: int) -> set[str]:
     found = set()
     for fd in (Path("/proc") / str(pid) / "fd").iterdir():
         try:
-            link = os.readlink(fd)
+            link = str(fd.readlink())
             if link.startswith("socket:[") and link.endswith("]"):
                 found.add(link[8:-1])
         except OSError:
@@ -63,7 +65,7 @@ def sockets(pid):
     return found
 
 
-def snapshot():
+def read_tables() -> tuple[list[dict], list[str]]:
     rows, warnings = [], []
     for name, protocol, ipv6 in [
         ("tcp", "TCP", False),
@@ -72,12 +74,16 @@ def snapshot():
         ("udp6", "UDP", True),
     ]:
         try:
-            rows.extend(parse_table((Path("/proc/net") / name).read_text(), protocol, ipv6))
+            rows.extend(parse_table((Path("/proc/net") / name).read_text(), protocol, ipv6=ipv6))
         except FileNotFoundError:
             if not ipv6:
                 warnings.append(f"{protocol} socket information is unavailable")
         except OSError as error:
             warnings.append(f"Cannot read {name}: {error.strerror}")
+    return rows, warnings
+
+
+def attach_owners(rows: list[dict]) -> bool:
     indexed = {}
     for row in rows:
         indexed.setdefault(row["inode"], []).append(row)
@@ -105,9 +111,16 @@ def snapshot():
             restricted = True
         except (OSError, ValueError, IndexError, StopIteration):
             pass
+    return restricted
+
+
+def snapshot() -> dict:
+    rows, warnings = read_tables()
+    restricted = attach_owners(rows)
     if restricted or any(not row["owners"] for row in rows):
         warnings.append(
-            "Linux permissions may hide some process owners. Hidden or other-user processes cannot be stopped here."
+            "Linux permissions may hide some process owners. "
+            "Hidden or other-user processes cannot be stopped here."
         )
     for row in rows:
         row["owners"].sort(key=lambda owner: owner["pid"])
@@ -119,28 +132,33 @@ def snapshot():
     }
 
 
-def stop(request):
+def stop(request: dict) -> dict:
     pid = request["pid"]
     if not isinstance(pid, int) or pid <= 1 or pid == os.getpid():
-        raise ValueError("This process cannot be stopped")
+        message = "This process cannot be stopped"
+        raise ValueError(message)
     if not hasattr(os, "pidfd_open") or not hasattr(signal, "pidfd_send_signal"):
-        raise ValueError("Safe process stopping requires Linux pidfd support")
+        message = "Safe process stopping requires Linux pidfd support"
+        raise ValueError(message)
     fd = os.pidfd_open(pid)
     try:
         owner = identity(pid)
         if owner["uid"] != os.getuid() or os.getuid() != os.geteuid():
-            raise PermissionError("Only your own processes can be stopped")
+            message = "Only your own processes can be stopped"
+            raise PermissionError(message)
         if owner["startedAt"] != request["startedAt"]:
-            raise ValueError("The process changed. Refresh before trying again")
+            message = "The process changed. Refresh before trying again"
+            raise ValueError(message)
         if request["inode"] not in sockets(pid):
-            raise ValueError("This process no longer owns that port. Refresh first")
+            message = "This process no longer owns that port. Refresh first"
+            raise ValueError(message)
         signal.pidfd_send_signal(fd, signal.SIGTERM)
     finally:
         os.close(fd)
     return {"message": "Stop requested. A supervisor may restart the process; refresh to check."}
 
 
-def main():
+def main() -> None:
     try:
         request = json.loads(sys.argv[1])
         result = stop(request) if request.get("action") == "stop" else snapshot()
