@@ -38,7 +38,7 @@ fn notch_commands_share_persistent_copies_and_do_not_resurrect_removed_legacy_pa
             .len(),
         1
     );
-    assert!(vr(root, &["shelf", "remove", id])["entries"]
+    assert!(vr(root, &["shelf", "remove", id, "--yes"])["entries"]
         .as_array()
         .unwrap()
         .is_empty());
@@ -59,7 +59,7 @@ fn notch_commands_share_persistent_copies_and_do_not_resurrect_removed_legacy_pa
             .len(),
         1
     );
-    vr(root, &["shelf", "clear"]);
+    vr(root, &["shelf", "clear", "--yes"]);
     assert!(vr(root, &["shelf", "list"])["entries"]
         .as_array()
         .unwrap()

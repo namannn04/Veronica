@@ -1,8 +1,8 @@
+mod common;
+
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
-use std::sync::OnceLock;
 
 use serde_json::{json, Value};
 use tempfile::TempDir;
@@ -11,7 +11,6 @@ use veronica_host::trust::DEVELOPMENT_KEY;
 use veronica_host::{HostIdentity, Installer, Layout};
 use veronica_protocol::canonical;
 use veronica_protocol::catalog::Catalog;
-
 const XDG: [&str; 5] = [
     "XDG_CONFIG_HOME",
     "XDG_DATA_HOME",
@@ -19,31 +18,6 @@ const XDG: [&str; 5] = [
     "XDG_STATE_HOME",
     "XDG_RUNTIME_DIR",
 ];
-
-fn fixture_backend() -> &'static PathBuf {
-    static PATH: OnceLock<PathBuf> = OnceLock::new();
-    PATH.get_or_init(|| {
-        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-        let output = Command::new(cargo)
-            .args([
-                "build",
-                "--quiet",
-                "--package",
-                "veronica-ext-fixture",
-                "--message-format=json",
-            ])
-            .stderr(Stdio::inherit())
-            .output()
-            .expect("cargo runs");
-        assert!(output.status.success(), "building the fixture failed");
-        String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-            .filter(|message| message["target"]["name"] == "veronica-ext-fixture")
-            .find_map(|message| message["executable"].as_str().map(PathBuf::from))
-            .expect("cargo reports the fixture executable")
-    })
-}
 
 struct Home {
     root: TempDir,
@@ -57,15 +31,7 @@ impl Home {
     }
 
     fn source(&self) -> PathBuf {
-        let source = self.root.path().join("fixture-source");
-        fs::create_dir_all(source.join("bin")).unwrap();
-        let manifest =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../extensions/fixture/manifest.json");
-        fs::copy(manifest, source.join("manifest.json")).unwrap();
-        let backend = source.join("bin/backend");
-        fs::copy(fixture_backend(), &backend).unwrap();
-        fs::set_permissions(&backend, fs::Permissions::from_mode(0o755)).unwrap();
-        source
+        common::fixture_source(self.root.path())
     }
 
     fn with_fixture() -> Self {

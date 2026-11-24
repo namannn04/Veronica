@@ -16,14 +16,7 @@ pub(crate) enum BackupCommand {
     #[command(about = "Inspect an archive without changing anything")]
     Inspect { path: PathBuf },
     #[command(about = "Restore an archive after validating every file and digest")]
-    Import {
-        path: PathBuf,
-        #[arg(
-            long,
-            help = "Required acknowledgement that existing matching files are replaced"
-        )]
-        confirm: bool,
-    },
+    Import { path: PathBuf },
 }
 
 pub(crate) fn run(
@@ -81,12 +74,7 @@ pub(crate) fn run(
                 ),
             )
         }
-        BackupCommand::Import { path, confirm } => {
-            if !confirm {
-                anyhow::bail!(
-                    "import replaces matching settings and data; rerun with --confirm after inspecting it"
-                );
-            }
+        BackupCommand::Import { path } => {
             let archive = BackupArchive::load(path)?;
             let report = archive.restore(directories)?;
             output.emit(&report, || {

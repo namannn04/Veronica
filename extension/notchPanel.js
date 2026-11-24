@@ -359,7 +359,7 @@ export class NotchPanel {
         toolbar.add_child(this._smallButton('view-grid-symbolic', 'Open drag-and-drop shelf', () => launchFileShelf()));
         toolbar.add_child(
             this._smallButton('edit-clear-all-symbolic', 'Clear shelf', () => {
-                this._fileAction(['clear']).catch(() => {});
+                this._fileAction(['clear', '--yes']).catch(() => {});
             })
         );
         panel.add_child(toolbar);
@@ -715,7 +715,7 @@ export class NotchPanel {
         row.add_child(open);
         row.add_child(
             this._smallButton('user-trash-symbolic', `Remove ${path}`, () => {
-                this._fileAction(['remove', id]).catch(() => {});
+                this._fileAction(['remove', id, '--yes']).catch(() => {});
             })
         );
         return row;
@@ -883,7 +883,7 @@ export class NotchPanel {
             child: new St.Icon({ icon_name: 'user-trash-symbolic' }),
         });
         remove.connect('clicked', () => {
-            runJson(['clipboard', 'remove', String(row.id)], this._cancellable)
+            runJson(['clipboard', 'remove', String(row.id), '--yes'], this._cancellable)
                 .then(() => this._refreshClipboard())
                 .catch(() => {});
         });

@@ -39,6 +39,31 @@ impl std::fmt::Display for Failure {
 
 impl std::error::Error for Failure {}
 
+pub(crate) fn confirmation<T: Serialize>(
+    output: Output,
+    preview: &T,
+    text: impl FnOnce() -> String,
+) -> anyhow::Error {
+    let rerun = crate::routes::rerun(&crate::routes::arguments());
+    match output {
+        Output::Json => match serde_json::to_value(preview) {
+            Ok(preview) => document(&json!({
+                "confirmationRequired": true,
+                "preview": preview,
+                "rerun": rerun,
+            })),
+            Err(error) => return error.into(),
+        },
+        Output::Text => {
+            println!(
+                "{}\n\nNothing was changed. To go ahead, run:\n  {rerun}",
+                text()
+            );
+        }
+    }
+    Failure::new(ExitCode::ConfirmationRequired, "confirmation required").into()
+}
+
 pub(crate) fn fail(json: bool, code: ExitCode, message: &str) -> ExitCode {
     eprintln!("vr: {message}");
     if json && !DOCUMENT_WRITTEN.load(Ordering::Relaxed) {

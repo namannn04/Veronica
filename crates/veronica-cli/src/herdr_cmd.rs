@@ -6,7 +6,7 @@ const LANES: [&str; 5] = ["blocked", "working", "unknown", "done", "idle"];
 
 #[derive(clap::Subcommand)]
 pub(crate) enum HerdrCommand {
-    #[command(alias = "ls", about = "The board: every agent, in Edith's lanes")]
+    #[command(alias = "ls", about = "The board: every agent, grouped into lanes by state")]
     Board {
         #[arg(long, help = "Only agents in this session")]
         session: Option<String>,

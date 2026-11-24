@@ -21,7 +21,7 @@ vr machines ls               the fleet, with live CPU, memory and disk
 vr machines stats <id>       one machine's vital signs in full
 vr machines add <ssh-host>   add a machine; discover finds config aliases
 vr machines containers <id>  Docker or Podman containers; logs tails one
-vr machines power <id> restart --confirm   restart or shut down a machine
+vr machines power <id> restart --yes   restart or shut down a machine
 vr machines wake <id>        a Wake-on-LAN packet, for a machine that is off
 vr clipboard list            the clipboard history, searchable
 vr clipboard get <id>        one entry's full text, for piping onward
@@ -56,7 +56,7 @@ vr cleaner scan              what could be reclaimed, per category
 vr cleaner clean --yes       move it to the Trash; --root sweeps a project tree
 vr backup export             back up settings and persistent app data
 vr backup inspect <file>     verify and describe an archive without restoring
-vr backup import <file> --confirm  validate and restore an archive atomically
+vr backup import <file> --yes  validate and restore an archive atomically
 vr extensions                every extension, where it came from, and what it can run
 vr extensions install <id>   preview an install; --yes downloads, verifies and installs
 vr extensions doctor         exec permission, backends, tools and the catalog

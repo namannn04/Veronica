@@ -16,15 +16,10 @@ pub(crate) enum ToolCommand {
     Install {
         #[arg(help = "A tool id, as `ls` prints it")]
         tool: String,
-        #[arg(
-            long,
-            help = "Authenticate through the desktop's own dialog for a route that needs root. Without it, that command is printed rather than run"
-        )]
-        yes: bool,
     },
 }
 
-pub(crate) async fn run(command: &ToolCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &ToolCommand, output: Output, yes: bool) -> Result<()> {
     match command {
         ToolCommand::Ls => {
             let reports = veronica_system::tools::catalogue().await;
@@ -51,7 +46,7 @@ pub(crate) async fn run(command: &ToolCommand, output: Output) -> Result<()> {
             })
         }
 
-        ToolCommand::Install { tool, yes } => {
+        ToolCommand::Install { tool } => {
             let spec = veronica_core::tools::spec(tool).with_context(|| {
                 let known: Vec<&str> = veronica_core::tools::CATALOG
                     .iter()
@@ -59,7 +54,7 @@ pub(crate) async fn run(command: &ToolCommand, output: Output) -> Result<()> {
                     .collect();
                 format!("no tool called '{tool}'; try one of {}", known.join(", "))
             })?;
-            let outcome = veronica_system::tools::install(spec, *yes).await?;
+            let outcome = veronica_system::tools::install(spec, yes).await?;
             output.emit(&outcome, || match &outcome {
                 Outcome::AlreadyInstalled { path, version } => {
                     format!(

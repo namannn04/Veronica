@@ -81,11 +81,6 @@ pub(crate) enum MachineCommand {
         id: String,
         #[arg(help = "restart or shutdown")]
         action: String,
-        #[arg(
-            long,
-            help = "Required. Without it the command reports what it would do and stops"
-        )]
-        confirm: bool,
     },
     #[command(about = "Send a Wake-on-LAN packet to a machine that is powered off")]
     Wake { id: String },
@@ -415,21 +410,10 @@ pub(crate) async fn run(
             })
         }
 
-        MachineCommand::Power {
-            id,
-            action,
-            confirm,
-        } => {
+        MachineCommand::Power { id, action } => {
             let machine = find(&settings, id)?;
             let action = veronica_machines::manage::PowerAction::parse(action)
                 .with_context(|| format!("unknown action {action:?}; try restart or shutdown"))?;
-            if !*confirm {
-                anyhow::bail!(
-                    "this would {} {}; rerun with --confirm",
-                    action.title(),
-                    machine.name
-                );
-            }
             veronica_machines::manage::power(&machine, action, DEFAULT_TIMEOUT).await?;
             output.emit(
                 &json!({ "machine": machine.id, "action": action.key() }),

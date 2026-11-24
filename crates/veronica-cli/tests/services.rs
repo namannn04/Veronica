@@ -53,8 +53,8 @@ fn real_listener_can_be_found_but_not_stopped_without_confirmation_or_matching_i
         row["inode"].as_str().unwrap(),
     ];
     let refused = vr(temp.path(), &args);
-    assert!(!refused.status.success());
-    assert!(String::from_utf8_lossy(&refused.stderr).contains("--confirm"));
+    assert_eq!(refused.status.code(), Some(5));
+    assert!(String::from_utf8_lossy(&refused.stdout).contains("--yes"));
     let stale = vr(
         temp.path(),
         &[
@@ -66,7 +66,7 @@ fn real_listener_can_be_found_but_not_stopped_without_confirmation_or_matching_i
             "stale",
             "--inode",
             row["inode"].as_str().unwrap(),
-            "--confirm",
+            "--yes",
         ],
     );
     assert!(!stale.status.success());
@@ -87,6 +87,6 @@ fn docker_mutations_require_confirmation_before_contacting_the_engine() {
             "unix:///var/run/docker.sock",
         ],
     );
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("--confirm"));
+    assert_eq!(output.status.code(), Some(5));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("--yes"));
 }

@@ -23,6 +23,7 @@ veronica-calendar = { workspace = true }
 veronica-machines = { workspace = true }
 veronica-host = { path = "../veronica-host" }
 veronica-protocol = { workspace = true }
+veronica-sdk = { workspace = true }
 zbus = { workspace = true }
 clap = { workspace = true, features = ["string"] }
 anyhow = { workspace = true }
@@ -34,6 +35,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 tempfile = "3"
 veronica-pack = { path = "../veronica-pack" }
 

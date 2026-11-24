@@ -121,7 +121,7 @@ export function BackupPane() {
             <>
               From a terminal: <code className="ui-mono">vr backup export</code>,{" "}
               <code className="ui-mono">vr backup inspect &lt;file&gt;</code> and{" "}
-              <code className="ui-mono">vr backup import &lt;file&gt; --confirm</code>.
+              <code className="ui-mono">vr backup import &lt;file&gt; --yes</code>.
             </>
           )
         }
