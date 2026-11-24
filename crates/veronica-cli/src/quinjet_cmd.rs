@@ -222,7 +222,7 @@ async fn resolve(machine: &Machine, path: &str) -> Result<String> {
     let chosen = openable
         .iter()
         .find(|entry| entry.current)
-        .or(openable.first())
+        .or_else(|| openable.first())
         .with_context(|| format!("every worktree at {path} is bare or prunable"))?;
     Ok(chosen.path.clone())
 }

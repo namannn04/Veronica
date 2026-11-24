@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::{AppDirectories, Settings};
@@ -171,7 +173,7 @@ pub(crate) async fn run(
                                 || "-".into(),
                                 |disk| format!("{:.0}%", disk.used_percent()),
                             ),
-                            countdown(stats.uptime_secs as i64),
+                            countdown(i64::try_from(stats.uptime_secs).unwrap_or(i64::MAX)),
                         ],
                         None => vec![
                             report.machine.id.clone(),
@@ -187,7 +189,7 @@ pub(crate) async fn run(
                     format::table(&["id", "name", "cpu", "mem", "disk", "up"], &rows);
                 for report in &reports {
                     if let Some(error) = &report.error {
-                        rendered.push_str(&format!("\n{}: {error}", report.machine.id));
+                        let _ = write!(rendered, "\n{}: {error}", report.machine.id);
                     }
                 }
                 rendered
@@ -247,12 +249,15 @@ pub(crate) async fn run(
             let machine = find(&settings, id)?;
             let stats = veronica_machines::probe_machine(&machine, DEFAULT_TIMEOUT).await?;
             output.emit(&stats, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let _ = writeln!(out, "Host       {}", stats.host_name);
                 let _ = writeln!(out, "OS         {}", stats.os);
                 let _ = writeln!(out, "Kernel     {}", stats.kernel);
-                let _ = writeln!(out, "Up         {}", countdown(stats.uptime_secs as i64));
+                let _ = writeln!(
+                    out,
+                    "Up         {}",
+                    countdown(i64::try_from(stats.uptime_secs).unwrap_or(i64::MAX))
+                );
                 let _ = writeln!(out, "CPU        {:.1}%", stats.cpu_percent);
                 let _ = writeln!(
                     out,

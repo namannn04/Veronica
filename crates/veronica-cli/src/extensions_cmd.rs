@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -218,8 +220,6 @@ fn capability_reports(
 }
 
 fn render_info(report: &Info) -> String {
-    use std::fmt::Write;
-
     let mut out = format!(
         "{} ({})\n{}\n\nsetting       {}\ngroup         {}\nenabled       {}\navailability  {}",
         report.title,

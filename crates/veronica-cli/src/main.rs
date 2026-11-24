@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 mod alerts_cmd;
 mod attention_cmd;
 mod audit_cmd;
@@ -283,7 +285,7 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Ports(command) => services_cmd::ports(command, output).await,
         Command::Docker(command) => services_cmd::docker(command, output).await,
         Command::System(command) => system_cmd::run(command, output).await,
-        Command::Power(command) => power_cmd::run(&directories, command, output).await,
+        Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
         Command::FocusDim(command) => focus_dim_cmd::run(&directories, command, output).await,
         Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
@@ -295,7 +297,7 @@ async fn run(cli: &Cli) -> Result<()> {
         }
         Command::Calendar(command) => calendar_cmd::run(command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
-        Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output).await,
+        Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output),
         Command::Cleaner(command) => cleaner_cmd::run(command, output),
         Command::Maintenance(command) => maintenance_cmd::run(command, output).await,
         Command::Audit(command) => audit_cmd::run(command, output).await,
@@ -313,7 +315,6 @@ fn diagnose(directories: &AppDirectories, session: DesktopSession, output: Outpu
     let report = Diagnostics::collect(directories, session, &settings);
 
     output.emit(&report, || {
-        use std::fmt::Write;
         let mut out = String::new();
         let _ = writeln!(out, "Veronica {}", report.version);
         let _ = writeln!(

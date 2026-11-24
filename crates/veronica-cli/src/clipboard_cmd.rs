@@ -38,7 +38,7 @@ pub(crate) enum ClipboardCommand {
     Clear,
 }
 
-pub(crate) async fn run(
+pub(crate) fn run(
     directories: &AppDirectories,
     command: &ClipboardCommand,
     output: Output,
@@ -69,13 +69,6 @@ pub(crate) async fn run(
         }
 
         ClipboardCommand::List { query, limit } => {
-            let matches: Vec<_> = history
-                .search(query)
-                .into_iter()
-                .take(*limit)
-                .cloned()
-                .collect();
-
             #[derive(serde::Serialize)]
             #[serde(rename_all = "camelCase")]
             struct Row {
@@ -86,6 +79,14 @@ pub(crate) async fn run(
                 count: u32,
                 last_seen: String,
             }
+
+            let matches: Vec<_> = history
+                .search(query)
+                .into_iter()
+                .take(*limit)
+                .cloned()
+                .collect();
+
             let rows: Vec<Row> = matches
                 .iter()
                 .map(|entry| Row {

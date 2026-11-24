@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::json;
@@ -38,7 +40,7 @@ pub(crate) enum SwitchCommand {
     Off,
 }
 
-pub(crate) async fn run(
+pub(crate) fn run(
     directories: &AppDirectories,
     command: &PowerCommand,
     output: Output,
@@ -102,7 +104,6 @@ pub(crate) async fn run(
     });
 
     output.emit(&document, || {
-        use std::fmt::Write;
         let line = |state: &AwakeState| -> String {
             if !state.is_active(now) {
                 return "off".to_string();

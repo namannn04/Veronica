@@ -31,6 +31,7 @@ fn read(path: &Path) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 pub(crate) fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
     let (source, format) = match command {
         UtilityCommand::Image { path, format } => {
             (image_tools::decode(&read(path)?)?, format.as_deref())
@@ -46,7 +47,6 @@ pub(crate) fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Outpu
                 "image"
             });
     std::fs::create_dir_all(&root)?;
-    use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))?;
     let mut files: Vec<_> = std::fs::read_dir(&root)?
         .flatten()

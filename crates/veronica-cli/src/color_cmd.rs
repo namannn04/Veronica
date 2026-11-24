@@ -62,7 +62,9 @@ pub(crate) async fn run(
         settings
             .get("colorPickerHistorySize")
             .and_then(serde_json::Value::as_u64)
-            .unwrap_or(DEFAULT_HISTORY_SIZE as u64) as usize,
+            .map_or(DEFAULT_HISTORY_SIZE, |size| {
+                usize::try_from(size).unwrap_or(usize::MAX)
+            }),
     );
 
     match command {

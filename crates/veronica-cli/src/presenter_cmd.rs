@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::Result;
 use serde_json::json;
 use veronica_core::{AppDirectories, BlurCategory, PresenterState, Settings};
@@ -109,7 +111,6 @@ pub(crate) async fn run(
     });
 
     output.emit(&document, || {
-        use std::fmt::Write;
         let mut out = String::new();
         let _ = writeln!(
             out,

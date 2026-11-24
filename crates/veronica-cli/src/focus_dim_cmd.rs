@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::Result;
 use serde_json::json;
 use veronica_core::focus_dim::{
@@ -77,7 +79,6 @@ pub(crate) async fn run(
     });
 
     output.emit(&document, || {
-        use std::fmt::Write;
         let mut out = String::new();
         let _ = writeln!(
             out,
@@ -86,9 +87,9 @@ pub(crate) async fn run(
         );
         let _ = writeln!(
             out,
-            "intensity  {}%  (max {}%)",
+            "intensity  {}%  (max {:.0}%)",
             resolved.intensity_percent(),
-            (MAX_INTENSITY * 100.0).round() as i64
+            (MAX_INTENSITY * 100.0).round()
         );
         let _ = writeln!(out, "fade       {}s", resolved.animation_secs);
         let _ = writeln!(out, "displays   {}", resolved.mode.title());

@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use chrono::Local;
 use clap::Subcommand;
@@ -36,6 +38,13 @@ pub(crate) async fn run(command: &CalendarCommand, output: Output) -> Result<()>
 
     match command {
         CalendarCommand::List { days, all } => {
+            #[derive(serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Report {
+                has_calendars: bool,
+                days: Vec<veronica_calendar::AgendaDay>,
+            }
+
             let has_calendars = server::has_calendars(&connection).await.unwrap_or(false);
             let events = server::events_with_links(&connection, *days).await?;
             let now = Local::now();
@@ -46,12 +55,6 @@ pub(crate) async fn run(command: &CalendarCommand, output: Output) -> Result<()>
             };
             let agenda = agenda::group_by_day(&events, now);
 
-            #[derive(serde::Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct Report {
-                has_calendars: bool,
-                days: Vec<veronica_calendar::AgendaDay>,
-            }
             let report = Report {
                 has_calendars,
                 days: agenda,
@@ -64,7 +67,6 @@ pub(crate) async fn run(command: &CalendarCommand, output: Output) -> Result<()>
                 if report.days.is_empty() {
                     return format!("nothing scheduled in the next {days} days");
                 }
-                use std::fmt::Write;
                 let mut out = String::new();
                 for day in &report.days {
                     let _ = writeln!(out, "{}  {}", day.label, day.date);

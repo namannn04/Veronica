@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::Result;
 use serde_json::json;
 use veronica_audit::{Severity, DEFAULT_CONCURRENCY};
@@ -55,7 +57,6 @@ pub(crate) async fn run(command: &AuditCommand, output: Output) -> Result<()> {
             let report = veronica_audit::audit(site, *limit, *concurrency).await?;
 
             output.emit(&report, || {
-                use std::fmt::Write;
                 let mut out = format!(
                     "{}\n{} page{} · {} error{} · {} warning{} · {} notice{}\n",
                     report.site,
@@ -127,7 +128,6 @@ pub(crate) async fn run(command: &AuditCommand, output: Output) -> Result<()> {
             let page = veronica_audit::audit_page(&client, &parsed).await;
 
             output.emit(&page, || {
-                use std::fmt::Write;
                 let mut out = format!("{}\n", page.url);
                 if let Some(error) = &page.error {
                     let _ = write!(out, "could not be read: {error}");

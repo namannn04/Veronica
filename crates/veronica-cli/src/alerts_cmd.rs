@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::Result;
 use serde_json::json;
 use veronica_core::AppDirectories;
@@ -33,7 +35,6 @@ pub(crate) async fn run(
         AlertsCommand::State => {
             let state = NotifierState::load(&path);
             output.emit(&state, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let _ = writeln!(out, "session level  {:?}", state.session_level);
                 let _ = writeln!(out, "weekly level   {:?}", state.weekly_level);

@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use serde_json::json;
 use uuid::Uuid;
@@ -303,7 +305,6 @@ pub(crate) async fn run(
             output.emit(
                 &json!({ "identity": identity, "connectedInMillis": elapsed }),
                 || {
-                    use std::fmt::Write;
                     let mut out = format!("{} answered in {elapsed} ms\n", definition.display_name);
                     let _ = writeln!(out, "Product   {}", identity.product.title());
                     if let Some(version) = &identity.version {
@@ -468,7 +469,6 @@ async fn connections(
         ConnectionCommand::Get { connection } => {
             let definition = store.resolve(connection)?;
             output.emit(&definition, || {
-                use std::fmt::Write;
                 let mut out = format!("{}\n", definition.display_name);
                 let _ = writeln!(out, "id           {}", definition.id);
                 let _ = writeln!(out, "product      {}", definition.product_hint.title());
@@ -902,7 +902,6 @@ async fn mutations(
             }
 
             output.emit(&json!({ "preview": preview, "plan": plan }), || {
-                use std::fmt::Write;
                 let mut out = format!(
                     "{} on {}\n\n",
                     preview.effect.action.key(),

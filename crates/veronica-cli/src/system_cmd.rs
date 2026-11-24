@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::Result;
 use clap::Subcommand;
 use veronica_system::audio::StreamDirection;
@@ -106,14 +108,13 @@ pub(crate) async fn run(command: &SystemCommand, output: Output) -> Result<()> {
         SystemCommand::Stats => {
             let snapshot = veronica_system::MetricsSampler::new().sample();
             output.emit(&snapshot, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let _ = writeln!(
                     out,
                     "{}  ·  {}  ·  up {}",
                     snapshot.host_name.as_deref().unwrap_or("this computer"),
                     snapshot.distribution,
-                    format::countdown(snapshot.uptime_secs as i64)
+                    format::countdown(i64::try_from(snapshot.uptime_secs).unwrap_or(i64::MAX))
                 );
                 let _ = writeln!(
                     out,
@@ -213,7 +214,6 @@ pub(crate) async fn run(command: &SystemCommand, output: Output) -> Result<()> {
         SystemCommand::Bluetooth => {
             let state = veronica_system::bluetooth::state().await;
             output.emit(&state, || {
-                use std::fmt::Write;
                 let mut out = state.summary();
                 let rows: Vec<Vec<String>> = state
                     .devices

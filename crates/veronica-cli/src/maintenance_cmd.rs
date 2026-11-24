@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_system::packages::{self, Source};
@@ -217,7 +219,6 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
             let plan = packages::removal_plan(package).await?;
             if !yes {
                 return output.emit(&plan, || {
-                    use std::fmt::Write;
                     let mut out = format!("Removing {} would remove:\n", plan.package);
                     for name in &plan.removed {
                         let _ = writeln!(out, "  {name}");

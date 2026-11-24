@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::cleaner::{self, Family};
@@ -129,7 +131,6 @@ pub(crate) fn run(command: &CleanerCommand, output: Output) -> Result<()> {
             }
             let report = cleaner::clean(&home()?, &found);
             output.emit(&report, || {
-                use std::fmt::Write;
                 let mut out = format!(
                     "moved {} item{} to the Trash, {}",
                     report.trashed.len(),
@@ -171,7 +172,6 @@ pub(crate) fn run(command: &CleanerCommand, output: Output) -> Result<()> {
 }
 
 fn summary(scan: &veronica_core::CleanerScan, dry_run: bool) -> String {
-    use std::fmt::Write;
     if scan.items.is_empty() {
         return "nothing to reclaim".to_string();
     }

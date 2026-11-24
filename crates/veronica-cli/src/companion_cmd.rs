@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
@@ -99,7 +101,6 @@ pub(crate) fn run(
                 .find(|item| item.id == *id)
                 .with_context(|| format!("no Companion item {id}"))?;
             output.emit(&item, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let _ = writeln!(out, "{}", item.title);
                 let _ = writeln!(

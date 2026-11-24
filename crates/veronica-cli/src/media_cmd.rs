@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use veronica_media::{mpris, Transport};
@@ -120,7 +122,6 @@ pub(crate) async fn run(command: &MediaCommand, output: Output) -> Result<()> {
                 let Some(playing) = &playing else {
                     return "nothing is playing".to_string();
                 };
-                use std::fmt::Write;
                 let mut out = String::new();
                 let status = playing
                     .status
