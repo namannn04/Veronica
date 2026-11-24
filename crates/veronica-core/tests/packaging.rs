@@ -63,6 +63,47 @@ fn every_desktop_release_rebuilds_the_cli_it_packages() {
 }
 
 #[test]
+fn every_desktop_package_ships_the_bundled_extensions() {
+    let root = repo_root();
+    let read = |relative: &str| {
+        std::fs::read_to_string(root.join(relative))
+            .unwrap_or_else(|e| panic!("cannot read {relative}: {e}"))
+    };
+    let config: serde_json::Value =
+        serde_json::from_str(&read("apps/desktop/src-tauri/tauri.conf.json"))
+            .expect("valid Tauri configuration");
+    for bundle in ["deb", "appimage"] {
+        assert_eq!(
+            config["bundle"]["linux"][bundle]["files"]["/usr/share/veronica/extensions"],
+            "../../../packaging/bundled-extensions",
+            "the {bundle} bundle carries the bundled extensions"
+        );
+    }
+    let command = config["build"]["beforeBuildCommand"]
+        .as_str()
+        .expect("beforeBuildCommand");
+    assert!(
+        command.contains(
+            "veronica-pack -- bundle --packages ../../target/ext --out ../../packaging/bundled-extensions"
+        ),
+        "every desktop build regenerates the bundled index, even with no packages"
+    );
+    assert!(read("packaging/flatpak/io.github.namannn04.Veronica.yml")
+        .contains("cp -r usr/share/veronica/extensions /app/share/veronica/extensions"));
+    assert!(read("packaging/snap/snapcraft.yaml").contains("      - usr/share\n"));
+    assert!(read("packaging/ppa/debian/install-files.sh").contains("cp -R"));
+    assert!(read("scripts/build-ppa-sources.sh").contains("packaging/bundled-extensions"));
+    assert!(read(".gitignore").contains("/packaging/bundled-extensions/"));
+}
+
+#[test]
+fn the_test_fixture_is_never_planned_into_a_package() {
+    let plan = std::fs::read_to_string(repo_root().join("scripts/extensions-plan.sh"))
+        .expect("scripts/extensions-plan.sh");
+    assert!(plan.contains("excluded=\" ${PLAN_EXCLUDE-fixture} \""));
+}
+
+#[test]
 fn the_main_webview_is_created_only_when_opened() {
     let config = repo_root().join("apps/desktop/src-tauri/tauri.conf.json");
     let document: serde_json::Value = serde_json::from_str(

@@ -47,6 +47,7 @@ jobs:
           case "$EVENT" in
             pull_request) export PLAN_BASE="$PR_BASE" ;;
             merge_group) export PLAN_BASE="$QUEUE_BASE" ;;
+            push) export PLAN_ALL=1 ;;
           esac
           matrix="$(scripts/extensions-plan.sh)"
           echo "matrix=$matrix" >>"$GITHUB_OUTPUT"
@@ -77,38 +78,13 @@ jobs:
           rustup target add "$MUSL_TARGET"
       - name: Read the manifest
         id: manifest
-        run: |
-          manifest="extensions/$EXTENSION/manifest.json"
-          echo "backend=$(jq 'has("backend")' "$manifest")" >>"$GITHUB_OUTPUT"
-          echo "ui=$(jq 'has("ui")' "$manifest")" >>"$GITHUB_OUTPUT"
+        run: echo "ui=$(jq 'has("ui")' "extensions/$EXTENSION/manifest.json")" >>"$GITHUB_OUTPUT"
       - name: Build the packaging tool
         run: cargo build --release --locked -p veronica-pack
-      - name: Build the static backend
-        if: steps.manifest.outputs.backend == 'true'
-        run: cargo build --release --locked -p "veronica-ext-$EXTENSION" --target "$MUSL_TARGET"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         if: steps.manifest.outputs.ui == 'true'
-      - name: Build the interface bundle
-        if: steps.manifest.outputs.ui == 'true'
-        working-directory: extensions/${{ matrix.extension.id }}/ui
-        run: |
-          bun install --frozen-lockfile
-          bun run build
-      - name: Pack the extension
-        env:
-          HAS_BACKEND: ${{ steps.manifest.outputs.backend }}
-          HAS_UI: ${{ steps.manifest.outputs.ui }}
-        run: |
-          args=(--out target/ext)
-          if [ "$HAS_BACKEND" = true ]; then
-            args+=(--backend "target/$MUSL_TARGET/release/veronica-ext-$EXTENSION")
-          fi
-          if [ "$HAS_UI" = true ]; then
-            args+=(--ui "extensions/$EXTENSION/ui/dist")
-          fi
-          target/release/vr-pack pack "$EXTENSION" "${args[@]}"
-      - name: Audit the package
-        run: target/release/vr-pack audit target/ext/*.tar.zst
+      - name: Build, pack and audit the extension
+        run: scripts/build-extension.sh "$EXTENSION"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ext-${{ matrix.extension.id }}

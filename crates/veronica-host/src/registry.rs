@@ -14,6 +14,7 @@ pub const REGISTRY_SCHEMA: u32 = 1;
 #[serde(rename_all = "camelCase")]
 pub enum Origin {
     Builtin,
+    Bundled,
     Catalog,
     Sideload,
 }

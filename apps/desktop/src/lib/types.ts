@@ -899,7 +899,7 @@ export interface ExtensionManifest {
   requires?: ExtensionRequirements;
 }
 
-export type ExtensionOrigin = "builtin" | "catalog" | "sideload";
+export type ExtensionOrigin = "builtin" | "bundled" | "catalog" | "sideload";
 
 export type ShortcutState = "active" | "unbound" | "invalid" | "conflict" | "unavailable";
 

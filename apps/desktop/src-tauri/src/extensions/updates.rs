@@ -7,6 +7,7 @@ use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use veronica_core::Settings;
+use veronica_host::bundled::{claim_due, Bundled};
 use veronica_host::catalog::CatalogStore;
 use veronica_host::fetch::HttpTransport;
 use veronica_host::update::{plan, AutoUpdate, Decision, Trigger};
@@ -81,6 +82,31 @@ async fn refresh(host: &Arc<Host>) -> Result<()> {
     let store = CatalogStore::new(host.layout().clone());
     tokio::task::spawn_blocking(move || store.refresh(&HttpTransport::new()?, Utc::now()).map(drop))
         .await?
+}
+
+pub(crate) async fn install_bundled(host: &Arc<Host>, settings: Settings) {
+    let installer = host.installer();
+    let due = tokio::task::spawn_blocking(move || -> Result<Vec<String>> {
+        match Bundled::current()? {
+            Some(bundled) => claim_due(&installer, &bundled, &settings),
+            None => Ok(Vec::new()),
+        }
+    })
+    .await
+    .map_err(anyhow::Error::from)
+    .and_then(|due| due);
+    match due {
+        Ok(ids) => {
+            for id in ids {
+                if !host.jobs().is_busy(&id) {
+                    submit(host, Action::on(Kind::Install, id));
+                }
+            }
+        }
+        Err(error) => {
+            tracing::warn!(target: "veronica", "cannot install the bundled extensions: {error:#}");
+        }
+    }
 }
 
 pub(crate) async fn run(host: Arc<Host>, settings_file: PathBuf) {

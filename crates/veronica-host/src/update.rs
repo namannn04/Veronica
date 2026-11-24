@@ -154,7 +154,7 @@ fn decide(
     settings: &AutoUpdate,
     trigger: Trigger,
 ) -> Decision {
-    if installed.origin != Origin::Catalog {
+    if !matches!(installed.origin, Origin::Catalog | Origin::Bundled) {
         return Decision::Skip(Skip::NotFromCatalog);
     }
     if trigger == Trigger::Automatic && !settings.allows(id) {

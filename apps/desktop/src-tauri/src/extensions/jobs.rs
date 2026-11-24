@@ -6,10 +6,11 @@ use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use veronica_core::fsutil::write_atomic;
+use veronica_host::bundled::{install_preferred, Bundled};
 use veronica_host::catalog::CatalogStore;
 use veronica_host::connection::Launch;
 use veronica_host::fetch::HttpTransport;
-use veronica_host::update::{install_from_catalog, plan, AutoUpdate, Decision, Skip, Trigger};
+use veronica_host::update::{plan, AutoUpdate, Decision, Skip, Trigger};
 use veronica_host::Installer;
 use veronica_protocol::manifest::ActivationMode;
 use veronica_protocol::rpc::RunMode;
@@ -253,7 +254,14 @@ pub(crate) fn fetch(installer: &Installer, id: &str, update: bool) -> Result<()>
             None => bail!("{id} is not installed"),
         }
     }
-    install_from_catalog(installer, &catalog, &HttpTransport::new()?, id)?;
+    let bundled = Bundled::current()?;
+    install_preferred(
+        installer,
+        &catalog,
+        bundled.as_ref(),
+        &HttpTransport::new()?,
+        id,
+    )?;
     Ok(())
 }
 

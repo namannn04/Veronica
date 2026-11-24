@@ -1,4 +1,5 @@
 pub mod archive;
+pub mod bundled;
 pub mod catalog;
 pub mod connection;
 pub mod fetch;

@@ -29,7 +29,7 @@ for manifest in extensions/*/manifest.json; do
       echo "$id $version: unchanged since $base" >&2
       continue
     fi
-  elif git rev-parse -q --verify "refs/tags/ext/$id/v$version" >/dev/null; then
+  elif [ -z "${PLAN_ALL:-}" ] && git rev-parse -q --verify "refs/tags/ext/$id/v$version" >/dev/null; then
     echo "$id $version: already tagged" >&2
     continue
   fi

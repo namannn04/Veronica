@@ -264,6 +264,9 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             let settings_file = directories.settings_file();
             tauri::async_runtime::spawn(async move {
                 host.start().await;
+                if let Ok(settings) = veronica_core::Settings::load(&settings_file) {
+                    extensions::updates::install_bundled(&host, settings).await;
+                }
                 extensions::updates::run(host, settings_file).await;
             });
 
@@ -355,6 +358,12 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                         shortcuts::sync(&watch_settings, &settings);
                     }
                     if changed {
+                        let host =
+                            std::sync::Arc::clone(&watch_settings.state::<AppState>().extensions);
+                        let wanted = settings.clone();
+                        tauri::async_runtime::spawn(async move {
+                            extensions::updates::install_bundled(&host, wanted).await;
+                        });
                         let _ = watch_settings.emit("settings-updated", "external");
                     }
                 }

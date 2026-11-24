@@ -204,10 +204,29 @@ impl Installer {
         id: &str,
         version: PackageVersion,
     ) -> Result<InstalledExtension> {
+        self.install_package(reader, id, version, Origin::Catalog)
+    }
+
+    pub fn install_bundled(
+        &self,
+        reader: impl Read,
+        id: &str,
+        version: PackageVersion,
+    ) -> Result<InstalledExtension> {
+        self.install_package(reader, id, version, Origin::Bundled)
+    }
+
+    fn install_package(
+        &self,
+        reader: impl Read,
+        id: &str,
+        version: PackageVersion,
+        origin: Origin,
+    ) -> Result<InstalledExtension> {
         let _lock = self.lock()?;
         let staged = self.stage()?;
         archive::extract(reader, &staged.path().join(TREE), &self.limits)?;
-        self.activate(&staged, id, version, Origin::Catalog)
+        self.activate(&staged, id, version, origin)
     }
 
     pub fn install_sideload(&self, source: &Path) -> Result<InstalledExtension> {
@@ -247,7 +266,9 @@ impl Installer {
         );
         let expected = match origin {
             Origin::Sideload => manifest.version.authored() == version.authored(),
-            Origin::Builtin | Origin::Catalog => manifest.version.stamped() == Some(version),
+            Origin::Builtin | Origin::Catalog | Origin::Bundled => {
+                manifest.version.stamped() == Some(version)
+            }
         };
         ensure!(
             expected,

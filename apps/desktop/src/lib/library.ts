@@ -5,6 +5,7 @@ import type {
   CatalogShelf,
   ExtensionGroup,
   ExtensionJob,
+  ExtensionOrigin,
   ExtensionPermissions,
   ExtensionReport,
   ExtensionRequirements,
@@ -238,7 +239,7 @@ export function availableActions(
     return entry.offer?.available ? ["install"] : [];
   }
   const actions: LibraryAction[] = [];
-  if (row.update !== null && row.origin === "catalog") {
+  if (row.update !== null && updatable(row.origin)) {
     actions.push("update");
   }
   actions.push(row.enabled ? "disable" : "enable");
@@ -254,13 +255,22 @@ export function availableActions(
   return actions;
 }
 
+function updatable(origin: ExtensionOrigin): boolean {
+  return origin === "catalog" || origin === "bundled";
+}
+
 export function needsConfirmation(action: LibraryAction): boolean {
   return action === "remove";
 }
 
 export function pendingUpdates(entries: readonly LibraryEntry[]): string[] {
   return entries
-    .filter((entry) => entry.installed?.origin === "catalog" && entry.installed.update !== null)
+    .filter(
+      (entry) =>
+        entry.installed !== undefined &&
+        updatable(entry.installed.origin) &&
+        entry.installed.update !== null,
+    )
     .map((entry) => entry.id);
 }
 

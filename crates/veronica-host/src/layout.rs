@@ -72,6 +72,10 @@ impl Layout {
         self.state.join("catalog-state.json")
     }
 
+    pub fn bundled_file(&self) -> PathBuf {
+        self.state.join("bundled.json")
+    }
+
     pub fn jobs_file(&self) -> PathBuf {
         self.state.join("jobs.json")
     }
