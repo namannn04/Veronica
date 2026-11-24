@@ -34,11 +34,13 @@ import {
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ringStatus, SpendCalendar } from "../components/charts";
+import { ExtensionCards } from "../components/ExtensionCards";
 import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
 import { WelcomeCard } from "../components/WelcomeCard";
 import { money, tokens } from "../lib/format";
 import { ipc, listenEvent } from "../lib/ipc";
+import type { ExtensionRoute } from "../lib/navigation";
 import { STARTERS_KEY, storedStarters } from "../lib/onboarding";
 import { startVisiblePolling } from "../lib/polling";
 import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
@@ -52,7 +54,7 @@ import type {
 } from "../lib/types";
 import "./HomePage.css";
 
-type HomeRoute = "usage" | "media" | "calendar" | "system" | "library";
+type HomeRoute = "usage" | "media" | "calendar" | "system" | "library" | ExtensionRoute;
 type HomeData = {
   usage: UsageView | null;
   limits: GaugeReport | null;
@@ -308,6 +310,8 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
             onOpenLibrary={() => onNavigate("library")}
           />
         )}
+        <ExtensionCards onOpen={onNavigate} />
+
         <WorldClocks
           now={now}
           zones={zonesFrom(settings.homeClockZones)}
