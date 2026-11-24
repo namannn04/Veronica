@@ -61,10 +61,6 @@
     {
       "includes": ["extension/stylesheet.css"],
       "formatter": { "enabled": false }
-    },
-    {
-      "includes": ["site/styles.css", "integrations/**/*.cjs", "scripts/**/*.cjs"],
-      "formatter": { "enabled": false }
     }
   ]
 }
