@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useEffect, useMemo, useState } from "react";
 import { AudioLines, Music, Radio } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   TrackProgress,

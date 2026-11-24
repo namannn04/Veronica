@@ -1,5 +1,5 @@
-import { Fragment, useState, useSyncExternalStore } from "react";
 import { ChevronDown, ChevronRight, CircleCheck, Globe, ScanSearch } from "lucide-react";
+import { Fragment, useState, useSyncExternalStore } from "react";
 
 import { ipc } from "../lib/ipc";
 import type { AuditPage as AuditedPage, AuditReport, AuditSeverity } from "../lib/types";

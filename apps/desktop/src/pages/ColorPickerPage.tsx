@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { Check, Copy, Pipette, Trash } from "lucide-react";
-
-import { ipc, listenEvent } from "../lib/ipc";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import { timeAgo } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
 import type { CopyFormatOption, PickResult, SwatchRow } from "../lib/types";
 import {
   Button,

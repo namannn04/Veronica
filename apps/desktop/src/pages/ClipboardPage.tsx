@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AtSign,
   Check,
@@ -10,10 +9,10 @@ import {
   Type,
   X,
 } from "lucide-react";
-
-import { startVisiblePolling } from "../lib/polling";
-import { ipc } from "../lib/ipc";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { bytes, timeAgo } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
 import type { ClipRow } from "../lib/types";
 import {
   Button,

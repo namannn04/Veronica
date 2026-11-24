@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
 import { CalendarCheck, CalendarDays, ExternalLink, RefreshCw, Video } from "lucide-react";
-
-import { startVisiblePolling } from "../lib/polling";
-import { ipc } from "../lib/ipc";
+import { useCallback, useEffect, useState } from "react";
 import { eventSlot, untilLabel } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
 import type { AgendaView, CalendarEvent } from "../lib/types";
 import {
   Badge,

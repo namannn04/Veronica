@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchX, Smile } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
