@@ -28,7 +28,7 @@ COMMENT_TYPES = {"comment", "line_comment", "block_comment"}
 
 DIRECTIVE = re.compile(
     r"@ts-|eslint-|biome-ignore|shellcheck |noqa|type: ignore|yamllint |"
-    r"swift-format|swiftlint|pragma|istanbul ignore"
+    r"swift-format|swiftlint|istanbul ignore"
 )
 
 
@@ -52,11 +52,19 @@ def removal_range(node):
     parent = node.parent
     if (
         parent is not None
-        and parent.type == "jsx_expression_container"
-        and all(c.type in COMMENT_TYPES or c.type in ("{", "}") for c in parent.children)
+        and parent.type in ("jsx_expression", "jsx_expression_container")
+        and all(
+            c.type in COMMENT_TYPES or c.type in ("{", "}") for c in parent.children
+        )
     ):
         return parent.start_byte, parent.end_byte
-    return node.start_byte, node.end_byte
+    end = node.end_byte
+    while (
+        end > node.start_byte
+        and node.text[end - node.start_byte - 1 : end - node.start_byte] == b"\n"
+    ):
+        end -= 1
+    return node.start_byte, end
 
 
 def strip(source: bytes, ranges: list) -> bytes:
@@ -86,19 +94,23 @@ def strip(source: bytes, ranges: list) -> bytes:
             if after.strip() == b"":
                 del out[trim:line_end]
             else:
-                del out[start:end]
+                left, right = start, end
+                if right < len(out) and out[right] in b" \t":
+                    while left > line_start and out[left - 1] in b" \t":
+                        left -= 1
+                del out[left:right]
     return bytes(out)
 
 
-def tracked_files() -> list[Path]:
+def tracked_under(paths: list[str]) -> list[Path]:
     listed = subprocess.run(
-        ["git", "ls-files", "-z"], check=True, capture_output=True
+        ["git", "ls-files", "-z", "--", *paths], check=True, capture_output=True
     ).stdout.split(b"\0")
     return [Path(p.decode()) for p in listed if p]
 
 
 def candidates(paths: list[str]) -> list[Path]:
-    files = [Path(p) for p in paths] if paths else tracked_files()
+    files = tracked_under(paths)
     return [
         f
         for f in files
@@ -132,7 +144,10 @@ def main() -> int:
         for start, _ in found:
             print(f"{path}:{line_of(source, start)}: comment")
     if violations:
-        print(f"{violations} comments found; run scripts/comments.sh --fix", file=sys.stderr)
+        print(
+            f"{violations} comments found; run scripts/comments.sh --fix",
+            file=sys.stderr,
+        )
         return 1
     return 0
 
