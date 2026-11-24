@@ -211,7 +211,9 @@ enum Command {
         #[command(subcommand)]
         command: Option<tools_cmd::ToolCommand>,
     },
-    #[command(about = "Give agents Veronica's commands over MCP")]
+    #[command(
+        about = "Give agents Veronica's commands over MCP, and register the server with agent clients"
+    )]
     Mcp {
         #[command(subcommand)]
         command: Option<mcp_cmd::McpCommand>,
@@ -323,7 +325,12 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
             .await
         }
         Command::Mcp { command } => {
-            mcp_cmd::run(command.as_ref().unwrap_or(&mcp_cmd::McpCommand::Serve)).await
+            mcp_cmd::run(
+                command.as_ref().unwrap_or(&mcp_cmd::McpCommand::Serve),
+                output,
+                cli.yes,
+            )
+            .await
         }
         Command::Invoke { id, request } => invoke_cmd::run(id, request, output).await,
         Command::Tools { command } => {
