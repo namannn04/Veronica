@@ -6053,6 +6053,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-fixture"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rustix",
+ "serde_json",
+ "tokio",
+ "veronica-sdk",
+]
+
+[[package]]
 name = "veronica-host"
 version = "0.1.26"
 dependencies = [
@@ -6060,6 +6072,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "ed25519-dalek",
+ "fastrand",
  "jsonc-parser",
  "proptest",
  "reqwest 0.12.28",
@@ -6071,6 +6084,7 @@ dependencies = [
  "tar",
  "tempfile",
  "thiserror 2.0.21",
+ "tokio",
  "toml_edit 0.25.20+spec-1.1.0",
  "veronica-core",
  "veronica-pack",
