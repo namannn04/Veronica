@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import argparse
 import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tree_sitter_language_pack import get_parser
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 LANGUAGES = {
     ".rs": "rust",
@@ -39,7 +45,7 @@ def is_allowed(text: bytes, start: int) -> bool:
     return body.startswith("/*!") or bool(DIRECTIVE.search(body))
 
 
-def collect(node, source: bytes, found: list) -> None:
+def collect(node: Node, source: bytes, found: list) -> None:
     if node.type in COMMENT_TYPES:
         if not is_allowed(source[node.start_byte : node.end_byte], node.start_byte):
             found.append(removal_range(node))
@@ -48,7 +54,7 @@ def collect(node, source: bytes, found: list) -> None:
         collect(child, source, found)
 
 
-def removal_range(node):
+def removal_range(node: Node) -> tuple[int, int]:
     parent = node.parent
     if (
         parent is not None
@@ -75,7 +81,7 @@ def strip(source: bytes, ranges: list) -> bytes:
         before = out[line_start:start]
         after = out[end:line_end]
         if before.strip() == b"" and after.strip() == b"":
-            prev_blank = line_start >= 2 and out[line_start - 2 : line_start] == b"\n\n"
+            prev_blank = out[max(line_start - 2, 0) : line_start] == b"\n\n"
             next_start = line_end + 1
             next_end = out.find(b"\n", next_start)
             next_line = out[next_start : next_end if next_end != -1 else len(out)]
