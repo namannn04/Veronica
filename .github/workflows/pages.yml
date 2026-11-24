@@ -81,7 +81,11 @@ jobs:
         if: steps.packages.outputs.debs != '0'
         run: |
           sources="$RUNNER_TEMP/veronica.list"
-          echo "deb [signed-by=$PWD/target/pages/apt/veronica.gpg] file:$PWD/target/pages/apt stable main" > "$sources"
+          sudo install -D -m 0644 target/pages/apt/veronica.gpg /etc/apt/keyrings/veronica.gpg
+          sudo rm -rf /srv/veronica-apt
+          sudo cp -R target/pages/apt /srv/veronica-apt
+          sudo chmod -R a+rX /srv/veronica-apt
+          echo "deb [signed-by=/etc/apt/keyrings/veronica.gpg] file:/srv/veronica-apt stable main" > "$sources"
           apt_options=(-o Dir::Etc::sourcelist="$sources" -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0)
           sudo apt-get update "${apt_options[@]}"
           (cd "$RUNNER_TEMP" && apt-get download "${apt_options[@]}" veronica)
