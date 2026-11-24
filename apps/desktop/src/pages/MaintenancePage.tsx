@@ -189,15 +189,13 @@ export function MaintenancePage() {
               : "What apt, snap and flatpak have installed"
           }
           actions={
-            <>
-              <Button
-                icon={<RefreshCw strokeWidth={STROKE} />}
-                disabled={Boolean(busy)}
-                onClick={() => void loadUpdates()}
-              >
-                Check for updates
-              </Button>
-            </>
+            <Button
+              icon={<RefreshCw strokeWidth={STROKE} />}
+              disabled={Boolean(busy)}
+              onClick={() => void loadUpdates()}
+            >
+              Check for updates
+            </Button>
           }
           accessory={
             <Tabs
