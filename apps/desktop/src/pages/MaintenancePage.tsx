@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Package, RefreshCw } from "lucide-react";
-
-import { ipc } from "../lib/ipc";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { bytes } from "../lib/format";
+import { ipc } from "../lib/ipc";
 import type { PackageInstalled, PackageSource, PackageUpdate, RemovalPlan } from "../lib/types";
 import {
   Badge,
@@ -49,19 +48,30 @@ export function MaintenancePage() {
   const [pending, setPending] = useState<Pending | null>(null);
 
   const loadUpdates = useCallback(async () => {
-    setBusy("Looking for updates…"); setError(""); setNotice(""); setUpdatesError("");
-    try { setUpdates(await ipc.packagesUpdates()); }
-    catch (reason) { setUpdatesError(String(reason)); }
-    finally { setBusy(""); }
+    setBusy("Looking for updates…");
+    setError("");
+    setNotice("");
+    setUpdatesError("");
+    try {
+      setUpdates(await ipc.packagesUpdates());
+    } catch (reason) {
+      setUpdatesError(String(reason));
+    } finally {
+      setBusy("");
+    }
   }, []);
 
   useEffect(() => {
-    void ipc.packagesSources().then(setSources).catch((reason) => setSourcesError(String(reason)));
+    void ipc
+      .packagesSources()
+      .then(setSources)
+      .catch((reason) => setSourcesError(String(reason)));
     void loadUpdates();
   }, [loadUpdates]);
 
   const loadInstalled = useCallback(() => {
-    setBusy("Reading what is installed…"); setInstalledError("");
+    setBusy("Reading what is installed…");
+    setInstalledError("");
     void ipc
       .packagesInventory()
       .then(setInstalled)
@@ -70,7 +80,9 @@ export function MaintenancePage() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "installed" || installed !== null || installedError) return;
+    if (tab !== "installed" || installed !== null || installedError) {
+      return;
+    }
     loadInstalled();
   }, [tab, installed, installedError, loadInstalled]);
 
@@ -84,11 +96,13 @@ export function MaintenancePage() {
     return groups;
   }, [updates]);
 
-  const needsRoot = (source: string) => sources.find((entry) => entry.source === source)?.needsRoot ?? true;
+  const needsRoot = (source: string) =>
+    sources.find((entry) => entry.source === source)?.needsRoot ?? true;
 
   const run = async (targets: string[]) => {
     setPending(null);
-    setError(""); setNotice("");
+    setError("");
+    setNotice("");
     const outcomes: string[] = [];
     const failures: string[] = [];
     try {
@@ -99,44 +113,69 @@ export function MaintenancePage() {
         results.push({ source, succeeded: result.succeeded, output: result.output });
       }
       setBusy("Looking for updates…");
-      const remaining = await ipc.packagesUpdates().then((next) => { setUpdates(next); return next; }).catch(() => null);
+      const remaining = await ipc
+        .packagesUpdates()
+        .then((next) => {
+          setUpdates(next);
+          return next;
+        })
+        .catch(() => null);
       for (const { source, succeeded, output } of results) {
         const left = remaining?.filter((entry) => entry.source === source).length ?? 0;
         if (!succeeded) {
           outcomes.push(`${source} update did not finish.`);
           failures.push(output);
         } else if (left > 0) {
-          outcomes.push(`${source} updated, but ${left} package${left === 1 ? " was" : "s were"} held back and still need${left === 1 ? "s" : ""} updating.`);
+          outcomes.push(
+            `${source} updated, but ${left} package${left === 1 ? " was" : "s were"} held back and still need${left === 1 ? "s" : ""} updating.`,
+          );
         } else {
           outcomes.push(`${source} is up to date.`);
         }
       }
       setNotice(outcomes.join(" "));
-      if (failures.length > 0) setError(failures.join("\n\n"));
-    } catch (reason) { setError(String(reason)); }
-    finally { setBusy(""); }
+      if (failures.length > 0) {
+        setError(failures.join("\n\n"));
+      }
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy("");
+    }
   };
 
   const review = async (name: string) => {
-    setBusy(`Checking what removing ${name} would do…`); setError(""); setPlan(null);
-    try { setPlan(await ipc.packagesRemovalPlan(name)); }
-    catch (reason) { setError(String(reason)); }
-    finally { setBusy(""); }
+    setBusy(`Checking what removing ${name} would do…`);
+    setError("");
+    setPlan(null);
+    try {
+      setPlan(await ipc.packagesRemovalPlan(name));
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy("");
+    }
   };
 
   const needle = query.trim().toLowerCase();
-  const visibleInstalled = (installed ?? []).filter((entry) => !needle || entry.name.toLowerCase().includes(needle));
+  const visibleInstalled = (installed ?? []).filter(
+    (entry) => !needle || entry.name.toLowerCase().includes(needle),
+  );
   const total = updates?.length ?? 0;
   const groups = [...bySource.entries()];
 
   const pendingSources = pending ? [pending.source] : [];
-  const pendingCount = pendingSources.reduce((sum, source) => sum + (bySource.get(source)?.length ?? 0), 0);
+  const pendingCount = pendingSources.reduce(
+    (sum, source) => sum + (bySource.get(source)?.length ?? 0),
+    0,
+  );
   const pendingRoot = pendingSources.filter(needsRoot);
-  const pendingMessage = pendingRoot.length === 0
-    ? "This is a user-scope flatpak update and needs no authentication."
-    : pendingRoot.length === pendingSources.length && pendingSources.length === 1
-      ? "Your desktop will ask you to authenticate. Veronica runs the change through pkexec and never uses sudo on your behalf."
-      : `Your desktop will ask you to authenticate for ${pendingRoot.join(" and ")}. Veronica runs those changes through pkexec and never uses sudo on your behalf.`;
+  const pendingMessage =
+    pendingRoot.length === 0
+      ? "This is a user-scope flatpak update and needs no authentication."
+      : pendingRoot.length === pendingSources.length && pendingSources.length === 1
+        ? "Your desktop will ask you to authenticate. Veronica runs the change through pkexec and never uses sudo on your behalf."
+        : `Your desktop will ask you to authenticate for ${pendingRoot.join(" and ")}. Veronica runs those changes through pkexec and never uses sudo on your behalf.`;
 
   return (
     <Page
@@ -144,13 +183,19 @@ export function MaintenancePage() {
       header={
         <PageHeader
           title="App Maintenance"
-          subtitle={tab === "updates" ? "Updates across apt, snap and flatpak" : "What apt, snap and flatpak have installed"}
+          subtitle={
+            tab === "updates"
+              ? "Updates across apt, snap and flatpak"
+              : "What apt, snap and flatpak have installed"
+          }
           actions={
-            <>
-              <Button icon={<RefreshCw strokeWidth={STROKE} />} disabled={Boolean(busy)} onClick={() => void loadUpdates()}>
-                Check for updates
-              </Button>
-            </>
+            <Button
+              icon={<RefreshCw strokeWidth={STROKE} />}
+              disabled={Boolean(busy)}
+              onClick={() => void loadUpdates()}
+            >
+              Check for updates
+            </Button>
           }
           accessory={
             <Tabs
@@ -173,19 +218,44 @@ export function MaintenancePage() {
         </div>
       )}
       {error && (
-        <Notice tone="critical" title={notice || "That did not work"} actions={<Button size="small" variant="plain" onClick={() => setError("")}>Dismiss</Button>}>
+        <Notice
+          tone="critical"
+          title={notice || "That did not work"}
+          actions={
+            <Button size="small" variant="plain" onClick={() => setError("")}>
+              Dismiss
+            </Button>
+          }
+        >
           <span className="mnt-output ui-mono">{error}</span>
         </Notice>
       )}
-      {notice && !error && <Notice tone="good" compact actions={<Button size="small" variant="plain" onClick={() => setNotice("")}>Dismiss</Button>}>{notice}</Notice>}
+      {notice && !error && (
+        <Notice
+          tone="good"
+          compact
+          actions={
+            <Button size="small" variant="plain" onClick={() => setNotice("")}>
+              Dismiss
+            </Button>
+          }
+        >
+          {notice}
+        </Notice>
+      )}
 
       {tab === "updates" && (
         <>
           {sources.length > 0 && (
-            <div className="mnt-sources" aria-label="Package sources">
+            <div className="mnt-sources">
               {sources.map((entry) => (
-                <Badge key={entry.source} tone={entry.available ? "good" : "neutral"} dot={entry.available}>
-                  {entry.source}{entry.available ? "" : " not installed"}
+                <Badge
+                  key={entry.source}
+                  tone={entry.available ? "good" : "neutral"}
+                  dot={entry.available}
+                >
+                  {entry.source}
+                  {entry.available ? "" : " not installed"}
                 </Badge>
               ))}
               <span className="mnt-sources-note">Checking never installs anything.</span>
@@ -193,21 +263,39 @@ export function MaintenancePage() {
           )}
 
           {sourcesError && !updatesError && (
-            <Notice tone="warning" compact title="Package sources could not be read">{sourcesError}</Notice>
+            <Notice tone="warning" compact title="Package sources could not be read">
+              {sourcesError}
+            </Notice>
           )}
 
           {updatesError ? (
-            <Notice tone="critical" title="Updates could not be checked" actions={<Button size="small" disabled={Boolean(busy)} onClick={() => void loadUpdates()}>Retry</Button>}>
+            <Notice
+              tone="critical"
+              title="Updates could not be checked"
+              actions={
+                <Button size="small" disabled={Boolean(busy)} onClick={() => void loadUpdates()}>
+                  Retry
+                </Button>
+              }
+            >
               {updatesError}
             </Notice>
           ) : updates === null ? (
-            <List label="Updates"><div className="mnt-pad"><SkeletonRows rows={5} label="Looking for updates" /></div></List>
+            <List label="Updates">
+              <div className="mnt-pad">
+                <SkeletonRows rows={5} label="Looking for updates" />
+              </div>
+            </List>
           ) : updates.length === 0 ? (
             <List label="Updates">
               <EmptyState
                 icon={<CheckCircle2 strokeWidth={STROKE} />}
                 title="Everything is up to date"
-                action={<Button disabled={Boolean(busy)} onClick={() => void loadUpdates()}>Check again</Button>}
+                action={
+                  <Button disabled={Boolean(busy)} onClick={() => void loadUpdates()}>
+                    Check again
+                  </Button>
+                }
               >
                 Nothing on apt, snap or flatpak has a newer version.
               </EmptyState>
@@ -219,7 +307,11 @@ export function MaintenancePage() {
                 title={source}
                 description={`${packages(rows.length)} · ${needsRoot(source) ? "asks you to authenticate" : "no authentication needed"}`}
                 actions={
-                  <Button size="small" disabled={Boolean(busy)} onClick={() => setPending({ source })}>
+                  <Button
+                    size="small"
+                    disabled={Boolean(busy)}
+                    onClick={() => setPending({ source })}
+                  >
                     Update {rows.length}
                   </Button>
                 }
@@ -235,11 +327,17 @@ export function MaintenancePage() {
                         <span className="mnt-versions ui-mono ui-selectable">
                           {row.installedVersion && (
                             <>
-                              <span className="mnt-version-from" title={row.installedVersion}>{row.installedVersion}</span>
-                              <span className="mnt-version-arrow" aria-label="to">→</span>
+                              <span className="mnt-version-from" title={row.installedVersion}>
+                                {row.installedVersion}
+                              </span>
+                              <span className="mnt-version-arrow" role="img" aria-label="to">
+                                →
+                              </span>
                             </>
                           )}
-                          <span className="mnt-version-to" title={row.availableVersion}>{row.availableVersion}</span>
+                          <span className="mnt-version-to" title={row.availableVersion}>
+                            {row.availableVersion}
+                          </span>
                         </span>
                       }
                     />
@@ -254,20 +352,65 @@ export function MaintenancePage() {
       {tab === "installed" && (
         <Section>
           <Toolbar
-            leading={<SearchField className="mnt-search" value={query} onChange={setQuery} placeholder="Search packages" />}
-            trailing={installed && <span className="mnt-count ui-num">{visibleInstalled.length === installed.length ? packages(installed.length) : `${visibleInstalled.length} of ${installed.length}`}</span>}
+            leading={
+              <SearchField
+                className="mnt-search"
+                value={query}
+                onChange={setQuery}
+                placeholder="Search packages"
+              />
+            }
+            trailing={
+              installed && (
+                <span className="mnt-count ui-num">
+                  {visibleInstalled.length === installed.length
+                    ? packages(installed.length)
+                    : `${visibleInstalled.length} of ${installed.length}`}
+                </span>
+              )
+            }
           />
           {installedError ? (
-            <Notice tone="critical" title="Installed packages could not be read" actions={<Button size="small" onClick={loadInstalled}>Retry</Button>}>
+            <Notice
+              tone="critical"
+              title="Installed packages could not be read"
+              actions={
+                <Button size="small" onClick={loadInstalled}>
+                  Retry
+                </Button>
+              }
+            >
               {installedError}
             </Notice>
           ) : installed === null ? (
-            <List label="Installed packages"><div className="mnt-pad"><SkeletonRows rows={6} label="Reading what is installed" /></div></List>
+            <List label="Installed packages">
+              <div className="mnt-pad">
+                <SkeletonRows rows={6} label="Reading what is installed" />
+              </div>
+            </List>
           ) : visibleInstalled.length === 0 ? (
             <List label="Installed packages">
-              {needle
-                ? <EmptyState size="compact" title={`Nothing matches “${query.trim()}”`} action={<Button size="small" onClick={() => setQuery("")}>Clear search</Button>}>Search by package name.</EmptyState>
-                : <EmptyState size="compact" icon={<Package strokeWidth={STROKE} />} title="No packages reported">None of apt, snap or flatpak listed anything installed.</EmptyState>}
+              {needle ? (
+                <EmptyState
+                  size="compact"
+                  title={`Nothing matches “${query.trim()}”`}
+                  action={
+                    <Button size="small" onClick={() => setQuery("")}>
+                      Clear search
+                    </Button>
+                  }
+                >
+                  Search by package name.
+                </EmptyState>
+              ) : (
+                <EmptyState
+                  size="compact"
+                  icon={<Package strokeWidth={STROKE} />}
+                  title="No packages reported"
+                >
+                  None of apt, snap or flatpak listed anything installed.
+                </EmptyState>
+              )}
             </List>
           ) : (
             <List label="Installed packages">
@@ -275,17 +418,31 @@ export function MaintenancePage() {
                 <ListRow
                   key={`${entry.source}-${entry.name}`}
                   title={entry.name}
-                  subtitle={<>{entry.source} · <span className="ui-mono">{entry.version}</span></>}
+                  subtitle={
+                    <>
+                      {entry.source} · <span className="ui-mono">{entry.version}</span>
+                    </>
+                  }
                   meta={entry.sizeBytes !== null ? bytes(entry.sizeBytes) : undefined}
-                  trailing={entry.source === "apt" ? (
-                    <Button size="small" variant="plain" disabled={Boolean(busy)} onClick={() => void review(entry.name)}>Review removal</Button>
-                  ) : undefined}
+                  trailing={
+                    entry.source === "apt" ? (
+                      <Button
+                        size="small"
+                        variant="plain"
+                        disabled={Boolean(busy)}
+                        onClick={() => void review(entry.name)}
+                      >
+                        Review removal
+                      </Button>
+                    ) : undefined
+                  }
                 />
               ))}
             </List>
           )}
           <p className="mnt-footnote">
-            apt shows what you asked for, not the dependencies pulled in with it. Removal is reviewed here and applied with{" "}
+            apt shows what you asked for, not the dependencies pulled in with it. Removal is
+            reviewed here and applied with{" "}
             <span className="ui-mono">vr maintenance remove &lt;package&gt; --yes</span>.
           </p>
         </Section>
@@ -310,21 +467,35 @@ export function MaintenancePage() {
       >
         {plan && (
           <div className="mnt-plan">
-            {plan.removesMoreThanAsked && <Notice tone="warning" compact>This takes more than the package you named.</Notice>}
+            {plan.removesMoreThanAsked && (
+              <Notice tone="warning" compact>
+                This takes more than the package you named.
+              </Notice>
+            )}
             <div className="mnt-plan-group">
               <span className="mnt-plan-label">Would be removed</span>
-              <ul className="mnt-plan-list ui-mono">{plan.removed.map((name) => <li key={name}>{name}</li>)}</ul>
+              <ul className="mnt-plan-list ui-mono">
+                {plan.removed.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
             </div>
             {plan.nowUnused.length > 0 && (
               <div className="mnt-plan-group">
                 <span className="mnt-plan-label">Left installed but no longer needed</span>
-                <ul className="mnt-plan-list ui-mono">{plan.nowUnused.map((name) => <li key={name}>{name}</li>)}</ul>
+                <ul className="mnt-plan-list ui-mono">
+                  {plan.nowUnused.map((name) => (
+                    <li key={name}>{name}</li>
+                  ))}
+                </ul>
               </div>
             )}
             <div className="mnt-plan-group">
               <span className="mnt-plan-label">Run it yourself</span>
               <code className="mnt-command ui-mono ui-selectable">{plan.command}</code>
-              <code className="mnt-command ui-mono ui-selectable">vr maintenance remove {plan.package} --yes</code>
+              <code className="mnt-command ui-mono ui-selectable">
+                vr maintenance remove {plan.package} --yes
+              </code>
             </div>
           </div>
         )}
