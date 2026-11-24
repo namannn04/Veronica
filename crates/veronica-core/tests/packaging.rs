@@ -189,7 +189,7 @@ fn github_pages_publishes_the_canonical_installer() {
     assert!(workflow.contains("scripts/build-pages.sh"));
     assert!(builder.contains("cp \"$repo_root/install.sh\" \"$destination/install\""));
     assert!(builder.contains("cmp --silent"));
-    assert!(page.contains("https://namannn04.github.io/veronica/install | bash"));
+    assert!(page.contains("https://veronica.namandadhich.in/install | bash"));
 }
 
 #[test]

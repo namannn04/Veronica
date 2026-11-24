@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Install (or update to) the latest verified GitHub release
-curl -fsSL https://namannn04.github.io/veronica/install | bash
+curl -fsSL https://veronica.namandadhich.in/install | bash
 
 # 2. Log out and back in once, so GNOME loads the notch
 
