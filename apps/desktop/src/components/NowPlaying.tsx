@@ -1,31 +1,28 @@
 import { useCallback, useEffect, useState } from "react";
+import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 
 import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
 import { trackTimeline } from "../lib/format";
 import type { MediaAction, NowPlaying as NowPlayingState } from "../lib/types";
+import { Badge, IconButton, ProgressBar } from "../ui";
+import "./NowPlaying.css";
 
-/** Poll interval while a surface showing now-playing is visible. */
 const POLL_MS = 1000;
 
-/**
- * Live now-playing state.
- *
- * MPRIS has no position-changed signal that players implement reliably, so the
- * position has to be polled. Polling stops as soon as the caller unmounts, which
- * is why the notch only mounts this while it is open.
- */
 export function useNowPlaying(active = true) {
   const [playing, setPlaying] = useState<NowPlayingState | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       setPlaying(await ipc.mediaNowPlaying());
       setUnavailable(false);
     } catch {
-      // No session bus, or no player: neither is worth an error banner.
       setUnavailable(true);
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -38,61 +35,70 @@ export function useNowPlaying(active = true) {
     async (action: MediaAction) => {
       try {
         await ipc.mediaControl(action);
-        // Read straight back so the button reflects the new state at once
-        // rather than after the next poll.
         await refresh();
       } catch {
-        // A player that refuses a command is not an application error.
+        return;
       }
     },
     [refresh],
   );
 
-  return { playing, unavailable, control, refresh };
+  return { playing, unavailable, loaded, control, refresh };
 }
 
-/** Transport buttons. Skip buttons disable themselves when the player says so. */
-export function TransportControls({
+export function Transport({
   playing,
-  control,
-  compact,
+  canPlay = true,
+  canGoPrevious,
+  canGoNext,
+  onToggle,
+  onPrevious,
+  onNext,
 }: {
-  playing: NowPlayingState;
-  control: (action: MediaAction) => void;
-  compact?: boolean;
+  playing: boolean;
+  canPlay?: boolean;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
+  onToggle: () => void;
+  onPrevious: () => void;
+  onNext: () => void;
 }) {
-  const isPlaying = playing.status === "playing";
   return (
-    <div className={compact ? "transport compact" : "transport"}>
-      <button
-        onClick={() => control("previous")}
-        disabled={!playing.canGoPrevious}
-        aria-label="Previous track"
-        title="Previous"
-      >
-        ⏮
-      </button>
-      <button
-        className="primary"
-        onClick={() => control("toggle")}
-        aria-label={isPlaying ? "Pause" : "Play"}
-        title={isPlaying ? "Pause" : "Play"}
-      >
-        {isPlaying ? "⏸" : "▶"}
-      </button>
-      <button
-        onClick={() => control("next")}
-        disabled={!playing.canGoNext}
-        aria-label="Next track"
-        title="Next"
-      >
-        ⏭
-      </button>
+    <div className="np-transport" role="group" aria-label="Playback">
+      <IconButton label="Previous track" tooltip="Play previous track" icon={<SkipBack />} disabled={!canGoPrevious} onClick={onPrevious} />
+      <IconButton
+        className="np-toggle"
+        variant="secondary"
+        label={playing ? "Pause" : "Play"}
+        tooltip={playing ? "Pause playback" : "Resume playback"}
+        icon={playing ? <Pause /> : <Play />}
+        disabled={!canPlay}
+        onClick={onToggle}
+      />
+      <IconButton label="Next track" tooltip="Play next track" icon={<SkipForward />} disabled={!canGoNext} onClick={onNext} />
     </div>
   );
 }
 
-/** Progress bar, hidden entirely when the player reports no duration. */
+export function TransportControls({
+  playing,
+  control,
+}: {
+  playing: NowPlayingState;
+  control: (action: MediaAction) => void;
+}) {
+  return (
+    <Transport
+      playing={playing.status === "playing"}
+      canGoPrevious={playing.canGoPrevious}
+      canGoNext={playing.canGoNext}
+      onToggle={() => control("toggle")}
+      onPrevious={() => control("previous")}
+      onNext={() => control("next")}
+    />
+  );
+}
+
 export function TrackProgress({ playing }: { playing: NowPlayingState }) {
   const { positionUs, lengthUs } = playing;
   const fraction =
@@ -100,18 +106,17 @@ export function TrackProgress({ playing }: { playing: NowPlayingState }) {
       ? Math.min(1, Math.max(0, positionUs / lengthUs))
       : null;
   const timeline = trackTimeline(positionUs, lengthUs);
+  const live = fraction === null && lengthUs === null && positionUs !== null;
+
+  if (fraction === null && !timeline) return null;
 
   return (
-    <div className="track-progress">
-      {fraction !== null && (
-        <div className="track-track">
-          <div className="track-fill" style={{ width: `${fraction * 100}%` }} />
-        </div>
-      )}
-      {timeline && <span className="track-time">{timeline}</span>}
-      {fraction === null && lengthUs === null && positionUs !== null && (
-        <span className="track-live">LIVE</span>
-      )}
+    <div className="np-progress">
+      {fraction !== null && <ProgressBar value={fraction} size="thin" label="Track position" />}
+      <div className="np-progress-times">
+        {timeline && <span className="ui-num">{timeline}</span>}
+        {live && <Badge tone="accent">Live</Badge>}
+      </div>
     </div>
   );
 }

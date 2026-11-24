@@ -1,0 +1,136 @@
+.media-now {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.media-now-identity {
+  flex: none;
+}
+
+.media-art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 112px;
+  height: 112px;
+  overflow: hidden;
+  border-radius: var(--radius-m);
+  background: var(--bg-inset);
+  box-shadow: inset 0 0 0 1px var(--separator);
+  color: var(--text-3);
+}
+
+.media-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-art svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.5;
+}
+
+.media-art-skeleton {
+  flex: none;
+}
+
+.media-now-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.media-now-titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.media-now-titles > p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-now-source {
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+
+.media-now-title {
+  color: var(--text-1);
+  font-size: var(--text-title-2);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.014em;
+  line-height: 1.25;
+}
+
+.media-now-artist {
+  color: var(--text-2);
+  font-size: var(--text-body);
+}
+
+.media-seek {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.media-seek-times {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-3);
+  font-size: var(--text-caption);
+}
+
+.media-now .np-transport {
+  margin-left: -6px;
+}
+
+.media-search {
+  width: 220px;
+}
+
+.media-row-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-s);
+  background: var(--fill-control);
+  color: var(--text-3);
+}
+
+.media-row-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.media-row-icon[data-current] {
+  background: var(--accent-tint);
+  color: var(--accent-text);
+}
+
+@container main (max-width: 720px) {
+  .media-now {
+    gap: var(--space-4);
+  }
+
+  .media-art,
+  .media-art-skeleton {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .media-search {
+    width: 160px;
+  }
+}

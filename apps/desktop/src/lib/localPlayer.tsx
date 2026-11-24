@@ -1,21 +1,14 @@
-/* The local music player, kept for the life of the window.
- *
- * Only the page on screen is mounted, and the player used to be an <audio>
- * element inside the Music page: going to any other page destroyed it, so the
- * music stopped, while the system media controls stayed registered and did
- * nothing. The player now lives here, above the pages, and the Music page is
- * one view onto it.
- */
-
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ipc } from "./ipc";
 import type { LocalTrack } from "./types";
 
+export type LibraryStatus = "idle" | "loading" | "ready" | "failed";
+
 type LocalPlayer = {
   tracks: LocalTrack[];
-  /** Index into `tracks`, or -1 before anything has been chosen. */
+  libraryStatus: LibraryStatus;
   index: number;
   current: LocalTrack | undefined;
   playing: boolean;
@@ -26,19 +19,16 @@ type LocalPlayer = {
   next: () => void;
   previous: () => void;
   seek: (seconds: number) => void;
-  /** Read ~/Music, once; the page calls this when it first opens. */
   loadLibrary: () => void;
 };
 
 const Context = createContext<LocalPlayer | null>(null);
 
 export function LocalPlayerProvider({ children }: { children: ReactNode }) {
-  // One element for the whole session; it never belongs to a page. Created
-  // once, lazily, rather than a new one built and discarded every render.
   const [element] = useState(() => new Audio());
   const audio = useRef<HTMLAudioElement>(element);
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [libraryStatus, setLibraryStatus] = useState<LibraryStatus>("idle");
   const [index, setIndex] = useState(-1);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
@@ -46,10 +36,19 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
   const current = tracks[index];
 
   const loadLibrary = useCallback(() => {
-    if (loaded) return;
-    setLoaded(true);
-    void ipc.musicLibrary().then(setTracks).catch(() => setTracks([]));
-  }, [loaded]);
+    if (libraryStatus === "loading" || libraryStatus === "ready") return;
+    setLibraryStatus("loading");
+    void ipc
+      .musicLibrary()
+      .then((list) => {
+        setTracks(list);
+        setLibraryStatus("ready");
+      })
+      .catch(() => {
+        setTracks([]);
+        setLibraryStatus("failed");
+      });
+  }, [libraryStatus]);
 
   const play = useCallback((next: number) => {
     const track = tracks[next];
@@ -77,8 +76,6 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
   const seek = useCallback((seconds: number) => {
     if (Number.isFinite(seconds)) audio.current.currentTime = seconds;
   }, []);
-
-  // The element's own events are the truth about playing and position.
   useEffect(() => {
     const element = audio.current;
     const onPlay = () => setPlaying(true);
@@ -96,16 +93,11 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
       element.removeEventListener("loadedmetadata", onMeta);
     };
   }, []);
-
-  // A track that ends moves on, as the page's player did.
   useEffect(() => {
     const element = audio.current;
     element.addEventListener("ended", next);
     return () => element.removeEventListener("ended", next);
   }, [next]);
-
-  // The system media controls (keyboard keys, GNOME's media panel) follow the
-  // player wherever the window is, rather than the page being open.
   useEffect(() => {
     if (!current || !("mediaSession" in navigator)) return;
     navigator.mediaSession.metadata = new MediaMetadata({
@@ -121,9 +113,9 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
   }, [current, next, previous, toggle]);
 
   const value = useMemo<LocalPlayer>(() => ({
-    tracks, index, current, playing, position, duration,
+    tracks, libraryStatus, index, current, playing, position, duration,
     play, toggle, next, previous, seek, loadLibrary,
-  }), [tracks, index, current, playing, position, duration, play, toggle, next, previous, seek, loadLibrary]);
+  }), [tracks, libraryStatus, index, current, playing, position, duration, play, toggle, next, previous, seek, loadLibrary]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
