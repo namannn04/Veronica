@@ -7,6 +7,7 @@ mod emoji;
 mod legacy;
 mod maintenance;
 mod media;
+mod system;
 mod usage;
 
 pub(crate) use attention::*;
@@ -18,6 +19,7 @@ pub(crate) use emoji::*;
 pub(crate) use legacy::*;
 pub(crate) use maintenance::*;
 pub(crate) use media::*;
+pub(crate) use system::*;
 pub(crate) use usage::*;
 
 type CommandResult<T> = Result<T, String>;
