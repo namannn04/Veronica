@@ -1,0 +1,41 @@
+.clip-search {
+  width: min(360px, 100%);
+}
+
+.clip-count {
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+.clip-kind {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-s);
+  background: var(--fill-control);
+  color: var(--text-2);
+}
+
+.clip-kind svg {
+  width: 14px;
+  height: 14px;
+}
+
+.clip-text {
+  font-weight: var(--weight-regular);
+}
+
+.clip-copied {
+  color: var(--tone-good-text);
+}
+
+@container main (max-width: 720px) {
+  .clip-search {
+    width: 100%;
+  }
+
+  .ui-toolbar-leading:has(.clip-search) {
+    flex-basis: 100%;
+  }
+}

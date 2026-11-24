@@ -1,143 +1,266 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Apple, Car, Clock, Flag, Hand, Heart, Lamp, Leaf, SmilePlus, Trophy, X } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
 import { applyAppearance } from "../lib/preferences";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
+import { IconButton, Kbd, Notice, SearchField } from "../ui";
+import "./EmojiPicker.css";
 
 const PAGE = 120;
-/**
- * A group being browsed is shown whole. The page size is for search results;
- * applied to a group it cut People, Objects and Flags off part-way, with no
- * way to reach the rest. The largest group has about four hundred.
- */
 const WHOLE_GROUP = 2_000;
+const COLUMNS = 9;
+
+const GROUP_ICONS: Record<string, ReactNode> = {
+  smileys: <SmilePlus />,
+  people: <Hand />,
+  animals: <Leaf />,
+  food: <Apple />,
+  travel: <Car />,
+  activities: <Trophy />,
+  objects: <Lamp />,
+  symbols: <Heart />,
+  flags: <Flag />,
+};
+
+type Message = { tone: "neutral" | "critical"; text: string };
 
 export function EmojiPicker() {
   const [groups, setGroups] = useState<EmojiGroup[]>([]);
-  const [emoji, setEmoji] = useState<EmojiRow[]>([]);
+  const [emoji, setEmoji] = useState<EmojiRow[] | null>(null);
   const [recents, setRecents] = useState<EmojiRow[]>([]);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<Message | null>(null);
+  const [active, setActive] = useState(0);
+  const search = useRef<HTMLInputElement>(null);
+  const grid = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
-    void getCurrentWindow().close().catch((reason) => setError(String(reason)));
+    void getCurrentWindow().close().catch((reason) => setMessage({ tone: "critical", text: String(reason) }));
   }, []);
 
   useEffect(() => {
-    void ipc.emojiGroups().then(setGroups).catch((reason) => setError(String(reason)));
+    void ipc.emojiGroups().then(setGroups).catch((reason) => setMessage({ tone: "critical", text: String(reason) }));
     void ipc.emojiRecents(18).then(setRecents).catch(() => {});
     void ipc.settingsAll().then((settings) => applyAppearance(settings.appearance)).catch(() => {});
 
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [close]);
 
   const activeGroup = query.trim() ? null : group;
+
   useEffect(() => {
     let live = true;
-    void ipc.emojiSearch(query, activeGroup, activeGroup === null ? PAGE : WHOLE_GROUP)
+    void ipc
+      .emojiSearch(query, activeGroup, activeGroup === null ? PAGE : WHOLE_GROUP)
       .then((rows) => {
         if (live) {
           setEmoji(rows);
-          setError(null);
+          setActive(0);
+          setMessage(null);
         }
       })
-      .catch((reason) => { if (live) setError(String(reason)); });
-    return () => { live = false; };
+      .catch((reason) => {
+        if (live) setMessage({ tone: "critical", text: String(reason) });
+      });
+    return () => {
+      live = false;
+    };
   }, [activeGroup, query]);
 
-  const visibleRecents = useMemo(
-    () => (!query.trim() && activeGroup === null ? recents : []),
-    [activeGroup, query, recents],
-  );
+  const visibleRecents = useMemo(() => (!query.trim() && activeGroup === null ? recents : []), [activeGroup, query, recents]);
+  const cells = useMemo(() => [...visibleRecents, ...(emoji ?? [])], [emoji, visibleRecents]);
+  const current = cells[Math.min(active, cells.length - 1)];
 
   const pick = async (row: EmojiRow) => {
     if (busy) return;
     setBusy(true);
     try {
-      // Respect copy-only mode while keeping the picker available for more picks.
-      const settings = await ipc.settingsAll().catch(() => ({} as Record<string, unknown>));
+      const settings = await ipc.settingsAll().catch(() => ({}) as Record<string, unknown>);
       const insert = settings.emojiInsertInPlace !== false;
       const result = await ipc.emojiCopy(row.character, insert);
-      setError(insert && !result.inserted ? "Copied. Focus your text field, then choose another emoji to insert." : null);
+      setMessage(
+        insert && !result.inserted
+          ? { tone: "neutral", text: "Copied. Focus your text field, then choose another emoji to insert." }
+          : null,
+      );
       void ipc.emojiRecents(18).then(setRecents).catch(() => {});
     } catch (reason) {
-      setError(String(reason));
+      setMessage({ tone: "critical", text: String(reason) });
     } finally {
       setBusy(false);
     }
   };
 
-  return <main className="emoji-popover" aria-label="Emoji picker">
-    <header className="emoji-popover-head" data-tauri-drag-region>
-      <div data-tauri-drag-region>
-        <strong data-tauri-drag-region>Emoji</strong>
-        <span data-tauri-drag-region>Drag to move</span>
-      </div>
-      <button className="emoji-popover-close" onClick={close} aria-label="Close">×</button>
-    </header>
+  const focusCell = (index: number) => {
+    const clamped = Math.max(0, Math.min(cells.length - 1, index));
+    setActive(clamped);
+    grid.current?.querySelector<HTMLButtonElement>(`[data-index="${clamped}"]`)?.focus();
+  };
 
-    <div className="emoji-popover-search">
-      <span aria-hidden="true">⌕</span>
-      <input
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search emoji"
-        aria-label="Search emoji"
-        autoFocus
-      />
-      <kbd>Esc</kbd>
-    </div>
+  const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") close();
+    else if (event.key === "ArrowDown" && cells.length > 0) {
+      event.preventDefault();
+      focusCell(0);
+    } else if (event.key === "Enter" && cells[0]) {
+      event.preventDefault();
+      void pick(cells[0]);
+    }
+  };
 
-    <div className="emoji-popover-tabs" aria-label="Emoji categories">
-      <button className={activeGroup === null ? "active" : ""} onClick={() => { setGroup(null); setQuery(""); }}>Recent</button>
-      {groups.map((entry, index) => (
-        <button key={entry.id} className={activeGroup === index ? "active" : ""} onClick={() => { setGroup(index); setQuery(""); }}>{entry.name}</button>
-      ))}
-    </div>
+  const onGridKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: COLUMNS, ArrowUp: -COLUMNS };
+    if (event.key in moves) {
+      event.preventDefault();
+      const next = active + moves[event.key];
+      if (next < 0 && event.key === "ArrowUp") search.current?.focus();
+      else focusCell(next);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      focusCell(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      focusCell(cells.length - 1);
+    } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey && event.key !== " ") {
+      search.current?.focus();
+    }
+  };
 
-    {error && <div className="emoji-popover-error">{error}</div>}
+  const selectGroup = (index: number | null) => {
+    setGroup(index);
+    setQuery("");
+  };
 
-    <div className="emoji-popover-scroll">
-      {visibleRecents.length > 0 && <section>
-        <h2>Recently used</h2>
-        <div className="emoji-popover-grid">
-          {visibleRecents.map((row) => <PickerCell key={`recent-${row.character}`} row={row} disabled={busy} onPick={pick} />)}
+  const heading = query.trim() ? "Results" : activeGroup === null ? "All emoji" : groups[activeGroup]?.name;
+
+  return (
+    <main className="emoji-picker" aria-label="Emoji picker">
+      <header className="emoji-picker-head" data-tauri-drag-region>
+        <SearchField
+          ref={search}
+          className="emoji-picker-search"
+          value={query}
+          onChange={setQuery}
+          onKeyDown={onSearchKeyDown}
+          placeholder="Search emoji"
+          aria-label="Search emoji"
+          autoFocus
+        />
+        <IconButton label="Close" tooltip="Close the picker" icon={<X />} onClick={close} />
+      </header>
+
+      <nav className="emoji-picker-groups" aria-label="Emoji categories" data-tauri-drag-region>
+        <IconButton
+          size="small"
+          label="Recent and all"
+          tooltip="Show recent and all emoji"
+          icon={<Clock />}
+          pressed={activeGroup === null && !query.trim()}
+          onClick={() => selectGroup(null)}
+        />
+        {groups.map((entry, index) => (
+          <IconButton
+            key={entry.id}
+            size="small"
+            label={entry.name}
+            tooltip={`Show ${entry.name}`}
+            icon={GROUP_ICONS[entry.id] ?? <SmilePlus />}
+            pressed={activeGroup === index}
+            onClick={() => selectGroup(index)}
+          />
+        ))}
+      </nav>
+
+      {message && (
+        <div className="emoji-picker-message">
+          <Notice tone={message.tone} compact>
+            {message.text}
+          </Notice>
         </div>
-      </section>}
-      <section>
-        <h2>{query.trim() ? "Results" : activeGroup === null ? "All emoji" : groups[activeGroup]?.name}</h2>
-        {emoji.length > 0
-          ? <div className="emoji-popover-grid">
-              {emoji.map((row) => <PickerCell key={row.character} row={row} disabled={busy} onPick={pick} />)}
-            </div>
-          : <p className="emoji-popover-empty">No emoji found</p>}
-      </section>
-    </div>
+      )}
 
-    <footer>Pick multiple emoji · Close with × or Esc</footer>
-  </main>;
+      <div className="emoji-picker-scroll" ref={grid} onKeyDown={onGridKeyDown}>
+        {visibleRecents.length > 0 && (
+          <section aria-label="Recently used">
+            <h2 className="emoji-picker-label">Recently used</h2>
+            <div className="emoji-picker-grid">
+              {visibleRecents.map((row, index) => (
+                <PickerCell key={`recent-${row.character}`} row={row} index={index} active={index === active} disabled={busy} onPick={pick} onFocus={setActive} />
+              ))}
+            </div>
+          </section>
+        )}
+        {emoji !== null && (
+          <section aria-label={heading}>
+            <h2 className="emoji-picker-label">{heading}</h2>
+            {emoji.length > 0 ? (
+              <div className="emoji-picker-grid">
+                {emoji.map((row, offset) => {
+                  const index = visibleRecents.length + offset;
+                  return <PickerCell key={row.character} row={row} index={index} active={index === active} disabled={busy} onPick={pick} onFocus={setActive} />;
+                })}
+              </div>
+            ) : (
+              <p className="emoji-picker-empty">{query.trim() ? `No emoji match “${query.trim()}”` : "No emoji loaded"}</p>
+            )}
+          </section>
+        )}
+      </div>
+
+      <footer className="emoji-picker-foot">
+        <span className="emoji-picker-current" aria-live="polite">
+          {current ? (
+            <>
+              <span className="emoji-picker-current-glyph" aria-hidden="true">{current.character}</span>
+              <span className="emoji-picker-current-name">{current.name}</span>
+            </>
+          ) : null}
+        </span>
+        <span className="emoji-picker-keys">
+          <Kbd>↵</Kbd> insert
+          <Kbd>Esc</Kbd> close
+        </span>
+      </footer>
+    </main>
+  );
 }
 
-function PickerCell({ row, disabled, onPick }: {
+function PickerCell({
+  row,
+  index,
+  active,
+  disabled,
+  onPick,
+  onFocus,
+}: {
   row: EmojiRow;
+  index: number;
+  active: boolean;
   disabled: boolean;
   onPick: (row: EmojiRow) => void;
+  onFocus: (index: number) => void;
 }) {
-  return <button
-    className="emoji-popover-cell"
-    title={row.name}
-    aria-label={row.name}
-    disabled={disabled}
-    onClick={() => onPick(row)}
-  >{row.character}</button>;
+  return (
+    <button
+      type="button"
+      className="emoji-picker-cell"
+      data-index={index}
+      tabIndex={active ? 0 : -1}
+      aria-label={row.name}
+      aria-disabled={disabled || undefined}
+      onFocus={() => onFocus(index)}
+      onMouseEnter={() => onFocus(index)}
+      onClick={() => onPick(row)}
+    >
+      {row.character}
+    </button>
+  );
 }

@@ -1,43 +1,60 @@
-import { useState, useSyncExternalStore } from "react";
+import { Fragment, useState, useSyncExternalStore } from "react";
+import { ChevronDown, ChevronRight, CircleCheck, Globe, ScanSearch } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
-import type { AuditReport, AuditSeverity } from "../lib/types";
+import type { AuditPage as AuditedPage, AuditReport, AuditSeverity } from "../lib/types";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  KeyValueList,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  ProgressBar,
+  Section,
+  Select,
+  Stat,
+  StatGrid,
+  TextField,
+  type Tone,
+} from "../ui";
+import "./AuditPage.css";
 
-/**
- * Site Audit.
- *
- * Edith's rules exactly — the same eleven checks, the same thresholds — so a
- * page that passes on macOS passes here.
- *
- * Every run stays local: Veronica fetches the pages being audited and nothing
- * else. No result is uploaded and no third-party service is consulted, which is
- * the whole reason to run an audit from your own machine.
- */
-const SEVERITIES: { id: AuditSeverity; label: string; pill: string }[] = [
-  { id: "error", label: "Errors", pill: "critical" },
-  { id: "warning", label: "Warnings", pill: "warn" },
-  { id: "notice", label: "Notices", pill: "" },
+const SEVERITIES: { id: AuditSeverity; label: string; singular: string; tone: Tone }[] = [
+  { id: "error", label: "Errors", singular: "Error", tone: "critical" },
+  { id: "warning", label: "Warnings", singular: "Warning", tone: "warning" },
+  { id: "notice", label: "Notices", singular: "Notice", tone: "neutral" },
 ];
 
-/**
- * The latest run, kept outside the page.
- *
- * Only the page on screen is mounted, so a run held in its state was thrown
- * away as soon as you went elsewhere, while the crawl carried on in the
- * background with nowhere to put its answer. Held here, a run finishes into
- * this store and is waiting when you come back.
- */
+const LIMITS = [10, 25, 50, 100, 250];
+
 type AuditRun = { site: string; limit: number; report: AuditReport | null; running: boolean; error: string };
 let current: AuditRun = { site: "", limit: 50, report: null, running: false, error: "" };
 const listeners = new Set<() => void>();
-const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
-const update = (next: Partial<AuditRun>) => { current = { ...current, ...next }; listeners.forEach((listener) => listener()); };
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+const update = (next: Partial<AuditRun>) => {
+  current = { ...current, ...next };
+  listeners.forEach((listener) => listener());
+};
 
 async function startAudit(site: string, limit: number) {
   update({ site, limit, running: true, error: "", report: null });
-  try { update({ report: await ipc.auditSite(site, limit, 4) }); }
-  catch (reason) { update({ error: String(reason) }); }
-  finally { update({ running: false }); }
+  try {
+    update({ report: await ipc.auditSite(site, limit, 4) });
+  } catch (reason) {
+    update({ error: String(reason) });
+  } finally {
+    update({ running: false });
+  }
 }
 
 export function AuditPage() {
@@ -52,105 +69,178 @@ export function AuditPage() {
     await startAudit(site.trim(), limit);
   };
 
-  const counts = report
-    ? { error: report.errors, warning: report.warnings, notice: report.notices }
-    : null;
+  return (
+    <Page
+      header={<PageHeader title="Site Audit" subtitle="Checks every page in a sitemap, from this computer" />}
+    >
+      <Card>
+        <form
+          className="audit-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run();
+          }}
+        >
+          <TextField
+            className="audit-site"
+            leading={<Globe aria-hidden="true" />}
+            value={site}
+            placeholder="example.com, or a link to a sitemap"
+            aria-label="Site to audit"
+            onChange={(event) => setSite(event.target.value)}
+          />
+          <Select value={limit} onChange={(event) => setLimit(Number(event.target.value))} aria-label="Page limit">
+            {LIMITS.map((value) => (
+              <option key={value} value={value}>
+                Up to {value} pages
+              </option>
+            ))}
+          </Select>
+          <Button type="submit" variant="primary" busy={running} disabled={!site.trim()}>
+            Run audit
+          </Button>
+        </form>
+        <p className="audit-hint">
+          Veronica fetches only the pages being audited, four at a time, so an audit never reads as a load test against someone else's server.
+        </p>
+      </Card>
 
-  return <div className="page audit-page">
-    <div className="page-head edith-head">
-      <div><h1>Site Audit</h1><div className="page-sub">Sitemap crawl and page metadata · every run stays on this computer</div></div>
-    </div>
-
-    <section className="card">
-      <div className="backup-path">
-        <input
-          className="button"
-          value={site}
-          placeholder="example.com, or a link to a sitemap"
-          aria-label="Site to audit"
-          onChange={(event) => setSite(event.target.value)}
-          onKeyDown={(event) => { if (event.key === "Enter") void run(); }}
-        />
-        <select value={limit} onChange={(event) => setLimit(Number(event.target.value))} aria-label="Page limit">
-          {[10, 25, 50, 100, 250].map((value) => <option key={value} value={value}>{value} pages</option>)}
-        </select>
-        <button className="button primary" disabled={running || !site.trim()} onClick={() => void run()}>
-          {running ? "Crawling…" : "Audit"}
-        </button>
-      </div>
-      <p className="card-note">
-        Veronica fetches the pages being audited and nothing else — four at a time, so an audit
-        does not read as a load test against someone else&apos;s server.
-      </p>
-    </section>
-
-    {error && <div className="banner error">{error}</div>}
-
-    {report && <>
-      <div className="metric-grid">
-        {SEVERITIES.map((entry) => (
-          <div className="metric-card" key={entry.id}>
-            <span>{entry.label}</span>
-            <strong>{counts?.[entry.id] ?? 0}</strong>
+      {running && (
+        <Card className="audit-progress" aria-live="polite">
+          <div className="audit-progress-text">
+            <span className="audit-progress-label">Crawling {lastSite}…</span>
+            <span className="audit-progress-note">Reading the sitemap and up to {lastLimit} pages</span>
           </div>
+          <ProgressBar value={null} label={`Crawling ${lastSite}`} />
+        </Card>
+      )}
+
+      {error && !running && (
+        <Notice tone="critical" title={`Could not audit ${lastSite}`} actions={<Button size="small" onClick={() => void startAudit(lastSite, lastLimit)}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
+
+      {!report && !running && !error && (
+        <EmptyState icon={<ScanSearch />} title="No audit yet">
+          Enter a site or a sitemap link above. Each page is checked for titles, descriptions, headings, canonical links and social previews.
+        </EmptyState>
+      )}
+
+      {report && <Results report={report} open={open} onToggle={(url) => setOpen(open === url ? null : url)} />}
+    </Page>
+  );
+}
+
+function Results({ report, open, onToggle }: { report: AuditReport; open: string | null; onToggle: (url: string) => void }) {
+  const counts: Record<AuditSeverity, number> = { error: report.errors, warning: report.warnings, notice: report.notices };
+  const total = report.errors + report.warnings + report.notices;
+  const titles = new Map(report.pages.flatMap((page) => page.issues.map((issue) => [issue.code, issue.title] as const)));
+  const pages = [...report.pages].sort((a, b) => b.issues.length - a.issues.length);
+
+  return (
+    <>
+      <StatGrid min={140}>
+        <Stat label="Pages crawled" value={report.pages.length} />
+        {SEVERITIES.map((entry) => (
+          <Stat key={entry.id} label={entry.label} value={counts[entry.id]} tone={counts[entry.id] > 0 && entry.tone !== "neutral" ? entry.tone : "neutral"} />
         ))}
-        <div className="metric-card"><span>Pages</span><strong>{report.pages.length}</strong></div>
-      </div>
+      </StatGrid>
 
-      {report.pages.length > 0 && report.errors + report.warnings + report.notices === 0
-        ? <div className="empty"><div className="empty-glyph">✓</div><h3>Nothing to fix</h3><p>Every page crawled passes all eleven checks.</p></div>
-        : <>
-          <section className="card">
-            <div className="card-head"><h2>Across the site</h2><span className="card-note">one page is a page&apos;s problem; forty is the template&apos;s</span></div>
-            <div className="list">
-              {report.byCode.map(([code, severity, count]) => (
-                <div className="list-row" key={code}>
-                  <div><strong>{code}</strong></div>
-                  <span className={`pill ${SEVERITIES.find((entry) => entry.id === severity)?.pill ?? ""}`}>
-                    {count} page{count === 1 ? "" : "s"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-head"><h2>Pages</h2><span className="card-note">worst first</span></div>
-            <div className="list">
-              {[...report.pages]
-                .sort((a, b) => b.issues.length - a.issues.length)
-                .map((page) => (
-                  <div key={page.url}>
-                    <button className="list-row audit-page-row" onClick={() => setOpen(open === page.url ? null : page.url)}>
-                      <div>
-                        <strong>{page.url}</strong>
-                        <small>{page.error ?? `HTTP ${page.statusCode ?? "—"} · ${page.responseMillis ?? 0} ms · ${page.metadata.wordCount} words`}</small>
-                      </div>
-                      <span className={`pill ${page.issues.some((issue) => issue.severity === "error") ? "critical" : page.issues.length ? "warn" : "good"}`}>
-                        {page.issues.length === 0 ? "Clean" : `${page.issues.length} issue${page.issues.length === 1 ? "" : "s"}`}
-                      </span>
-                    </button>
-                    {open === page.url && <div className="audit-detail">
-                      {page.issues.map((issue) => (
-                        <div className="audit-issue" key={issue.code}>
-                          <span className={`pill ${SEVERITIES.find((entry) => entry.id === issue.severity)?.pill ?? ""}`}>{issue.severity}</span>
-                          <div><strong>{issue.title}</strong><small>{issue.detail}</small></div>
-                        </div>
-                      ))}
-                      <dl className="hardware-list">
-                        <div><dt>Title</dt><dd>{page.metadata.title ?? "—"}</dd></div>
-                        <div><dt>Description</dt><dd>{page.metadata.description ?? "—"}</dd></div>
-                        <div><dt>Canonical</dt><dd>{page.metadata.canonicalUrl ?? "—"}</dd></div>
-                        <div><dt>Language</dt><dd>{page.metadata.language ?? "—"}</dd></div>
-                        <div><dt>H1</dt><dd>{page.metadata.heading ?? "—"}</dd></div>
-                        <div><dt>og:image</dt><dd>{page.metadata.openGraphImageUrl ?? "—"}</dd></div>
-                      </dl>
-                    </div>}
-                  </div>
+      {report.pages.length > 0 && total === 0 ? (
+        <EmptyState icon={<CircleCheck />} title="Nothing to fix">
+          Every page crawled passes all eleven checks.
+        </EmptyState>
+      ) : (
+        SEVERITIES.map((severity) => {
+          const issues = report.byCode.filter(([, level]) => level === severity.id);
+          if (issues.length === 0) return null;
+          return (
+            <Section key={severity.id} title={severity.label}>
+              <List label={severity.label}>
+                {issues.map(([code, , count]) => (
+                  <ListRow
+                    key={code}
+                    title={titles.get(code) ?? code}
+                    subtitle={<span className="ui-mono">{code}</span>}
+                    trailing={
+                      <Badge tone={severity.tone}>
+                        {count} page{count === 1 ? "" : "s"}
+                      </Badge>
+                    }
+                  />
                 ))}
-            </div>
-          </section>
-        </>}
-    </>}
-  </div>;
+              </List>
+            </Section>
+          );
+        })
+      )}
+
+      {pages.length > 0 && (
+        <Section title="Pages" description="Worst first. Open a page to see its issues and metadata.">
+          <List label="Audited pages">
+            {pages.map((page) => (
+              <Fragment key={page.url}>
+                <ListRow
+                  leading={open === page.url ? <ChevronDown /> : <ChevronRight />}
+                  title={page.url}
+                  mono
+                  subtitle={page.error ?? `HTTP ${page.statusCode ?? "unknown"} · ${page.responseMillis ?? 0} ms · ${page.metadata.wordCount} words`}
+                  trailing={<PageBadge page={page} />}
+                  selected={open === page.url}
+                  onClick={() => onToggle(page.url)}
+                />
+                {open === page.url && <PageDetail page={page} />}
+              </Fragment>
+            ))}
+          </List>
+        </Section>
+      )}
+    </>
+  );
+}
+
+function PageBadge({ page }: { page: AuditedPage }) {
+  if (page.error) return <Badge tone="critical">Failed</Badge>;
+  if (page.issues.length === 0) return <Badge tone="good">Clean</Badge>;
+  const tone: Tone = page.issues.some((issue) => issue.severity === "error") ? "critical" : page.issues.some((issue) => issue.severity === "warning") ? "warning" : "neutral";
+  return (
+    <Badge tone={tone}>
+      {page.issues.length} issue{page.issues.length === 1 ? "" : "s"}
+    </Badge>
+  );
+}
+
+function PageDetail({ page }: { page: AuditedPage }) {
+  const none = "None";
+  return (
+    <div className="audit-detail">
+      {page.issues.length > 0 && (
+        <ul className="audit-issues">
+          {page.issues.map((issue) => {
+            const severity = SEVERITIES.find((entry) => entry.id === issue.severity);
+            return (
+              <li key={issue.code} className="audit-issue">
+                <Badge tone={severity?.tone ?? "neutral"}>{severity?.singular ?? issue.severity}</Badge>
+                <div className="audit-issue-text">
+                  <p className="audit-issue-title">{issue.title}</p>
+                  <p className="audit-issue-detail">{issue.detail}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <KeyValueList
+        items={[
+          { label: "Title", value: page.metadata.title ?? none },
+          { label: "Description", value: page.metadata.description ?? none },
+          { label: "Canonical", value: page.metadata.canonicalUrl ?? none, mono: Boolean(page.metadata.canonicalUrl) },
+          { label: "Language", value: page.metadata.language ?? none },
+          { label: "H1", value: page.metadata.heading ?? none },
+          { label: "og:image", value: page.metadata.openGraphImageUrl ?? none, mono: Boolean(page.metadata.openGraphImageUrl) },
+        ]}
+      />
+    </div>
+  );
 }

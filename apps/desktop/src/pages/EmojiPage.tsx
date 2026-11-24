@@ -1,20 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SearchX, Smile } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
+import {
+  Button,
+  Card,
+  EmptyState,
+  Kbd,
+  Notice,
+  Page,
+  PageHeader,
+  SearchField,
+  Section,
+  Select,
+  Skeleton,
+  Tabs,
+  Toolbar,
+  Tooltip,
+} from "../ui";
+import "./EmojiPage.css";
 
-/**
- * The emoji picker.
- *
- * The catalogue, the ranking and the recents ledger are Edith's, so a search
- * here returns what Edith's picker would. What differs is the last step: the
- * clipboard is the part that always works, and typing the emoji into the app
- * you were in goes through Veronica's shell extension, because only the
- * compositor may synthesise input into a window it does not own.
- */
-
-/** Edith's tone list, in its order. */
-const TONES: { key: string; title: string; sample: string }[] = [
+const SKIN_TONES: { key: string; title: string; sample: string }[] = [
   { key: "standard", title: "Default", sample: "✋" },
   { key: "light", title: "Light", sample: "✋🏻" },
   { key: "mediumLight", title: "Medium light", sample: "✋🏼" },
@@ -23,67 +30,80 @@ const TONES: { key: string; title: string; sample: string }[] = [
   { key: "dark", title: "Dark", sample: "✋🏿" },
 ];
 
-/** Enough to fill the grid several times over without rendering two thousand cells. */
+const SHORT_GROUP_NAMES: Record<string, string> = {
+  smileys: "Smileys",
+  people: "People",
+  animals: "Nature",
+  food: "Food",
+  travel: "Travel",
+  activities: "Activities",
+  objects: "Objects",
+  symbols: "Symbols",
+  flags: "Flags",
+};
+
 const PAGE = 240;
-/**
- * A group being browsed is shown whole. The page size is for search results;
- * applied to a group it cut People, Objects and Flags off part-way, with no
- * way to reach the rest. The largest group has about four hundred.
- */
 const WHOLE_GROUP = 2_000;
+const ALL = "all";
 
 export function EmojiPage() {
   const [groups, setGroups] = useState<EmojiGroup[]>([]);
-  const [emoji, setEmoji] = useState<EmojiRow[]>([]);
+  const [emoji, setEmoji] = useState<EmojiRow[] | null>(null);
   const [recents, setRecents] = useState<EmojiRow[]>([]);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<number | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   const tone = typeof settings.emojiSkinTone === "string" ? settings.emojiSkinTone : "standard";
-  // The setting is for the Ctrl+Alt+E picker, which knows the app you were
-  // in. This page has focus itself, so typing "into the app I was in" from
-  // here pasted into Veronica; a click on this page copies. Absent means on,
-  // which is what the picker always did; a paste that cannot happen still
-  // leaves the emoji on the clipboard.
-  const insert = settings.emojiInsertInPlace !== false;
 
   const loadRecents = useCallback(async () => {
-    try { setRecents(await ipc.emojiRecents(24)); } catch { /* an empty ledger is not an error */ }
+    try {
+      setRecents(await ipc.emojiRecents(24));
+    } catch {
+      setRecents([]);
+    }
   }, []);
 
   useEffect(() => {
     void ipc.emojiGroups().then(setGroups).catch((reason) => setError(String(reason)));
     void ipc.settingsAll().then(setSettings).catch(() => {});
-  }, []);
+  }, [attempt]);
 
-  // Recents are stored as the base character and rendered in the chosen
-  // tone, so they are read again when it changes; the grid already was, and
-  // "Most used" kept showing the old tone beside it.
-  useEffect(() => { void loadRecents(); }, [loadRecents, tone]);
+  useEffect(() => {
+    void loadRecents();
+  }, [loadRecents, tone]);
 
-  // Searching narrows across every group, so an active tab is cleared the
-  // moment there is a query — otherwise a hit outside the tab looks like a
-  // catalogue with nothing in it.
   const activeGroup = query.trim() ? null : group;
 
   useEffect(() => {
     let live = true;
     void ipc
       .emojiSearch(query, activeGroup, activeGroup === null ? PAGE : WHOLE_GROUP)
-      .then((rows) => { if (live) { setEmoji(rows); setError(null); } })
-      .catch((reason) => { if (live) setError(String(reason)); });
-    return () => { live = false; };
-  }, [query, activeGroup, tone]);
+      .then((rows) => {
+        if (live) {
+          setEmoji(rows);
+          setError(null);
+        }
+      })
+      .catch((reason) => {
+        if (live) setError(String(reason));
+      });
+    return () => {
+      live = false;
+    };
+  }, [query, activeGroup, tone, attempt]);
 
-  const set = async (key: string, value: unknown) => {
+  const setTone = async (value: string) => {
     try {
-      await ipc.settingsSet(key, value);
-      setSettings((current) => ({ ...current, [key]: value }));
+      await ipc.settingsSet("emojiSkinTone", value);
+      setSettings((current) => ({ ...current, emojiSkinTone: value }));
       setError(null);
-    } catch (reason) { setError(String(reason)); }
+    } catch (reason) {
+      setError(String(reason));
+    }
   };
 
   const pick = async (row: EmojiRow) => {
@@ -93,68 +113,146 @@ export function EmojiPage() {
       setError(null);
       window.setTimeout(() => setCopied((current) => (current === result.character ? null : current)), 1200);
       await loadRecents();
-    } catch (reason) { setError(String(reason)); }
+    } catch (reason) {
+      setError(String(reason));
+    }
   };
 
-  const groupName = useMemo(
-    () => new Map(groups.map((entry, index) => [index, entry.name])),
-    [groups]
+  const groupName = useMemo(() => new Map(groups.map((entry, index) => [index, entry.name])), [groups]);
+
+  const tabs = useMemo(
+    () => [
+      { id: ALL, label: "All" },
+      ...groups.map((entry, index) => ({ id: String(index), label: SHORT_GROUP_NAMES[entry.id] ?? entry.name })),
+    ],
+    [groups],
   );
 
-  return <div className="page emoji-page">
-    <div className="page-head edith-head">
-      <div><h1>Emoji</h1><div className="page-sub">Every emoji on Ctrl+Alt+E, copied on click</div></div>
-      <div className="head-actions">
-        <select value={tone} onChange={(event) => void set("emojiSkinTone", event.target.value)} aria-label="Skin tone">
-          {TONES.map((item) => <option key={item.key} value={item.key}>{item.sample}  {item.title}</option>)}
-        </select>
-        <label className="emoji-insert">
-          <input type="checkbox" checked={insert} onChange={(event) => void set("emojiInsertInPlace", event.target.checked)} />
-          Ctrl+Alt+E types into the app I was in
-        </label>
-      </div>
-    </div>
+  const selectGroup = (id: string) => {
+    setGroup(id === ALL ? null : Number(id));
+    setQuery("");
+  };
 
-    {error && <div className="banner error">{error}</div>}
+  const searching = query.trim().length > 0;
+  const resultsTitle = searching ? "Results" : activeGroup === null ? "All emoji" : groupName.get(activeGroup) ?? "Emoji";
+  const resultsNote =
+    emoji === null ? undefined : emoji.length === PAGE && activeGroup === null ? `Showing the first ${PAGE}` : `${emoji.length} emoji`;
 
-    <div className="emoji-toolbar">
-      <input className="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name or keyword" aria-label="Search emoji" autoFocus />
-      <div className="emoji-tabs">
-        <button className={activeGroup === null ? "active" : ""} onClick={() => { setGroup(null); setQuery(""); }}>All</button>
-        {groups.map((entry, index) => (
-          <button key={entry.id} className={activeGroup === index ? "active" : ""} onClick={() => { setGroup(index); setQuery(""); }}>{entry.name}</button>
-        ))}
-      </div>
-    </div>
+  return (
+    <Page
+      header={
+        <PageHeader
+          title="Emoji"
+          subtitle={
+            <>
+              Click to copy. <Kbd>Ctrl Alt E</Kbd> opens the picker.
+            </>
+          }
+          accessory={
+            groups.length > 0 && (
+              <Tabs items={tabs} value={activeGroup === null ? ALL : String(activeGroup)} onChange={selectGroup} label="Emoji categories" />
+            )
+          }
+        />
+      }
+    >
+      <Toolbar
+        leading={<SearchField className="emoji-search" value={query} onChange={setQuery} placeholder="Search by name or keyword" autoFocus />}
+        trailing={
+          <Select variant="chip" value={tone} onChange={(event) => void setTone(event.target.value)} aria-label="Skin tone">
+            {SKIN_TONES.map((item) => (
+              <option key={item.key} value={item.key}>
+                {item.sample} {item.title}
+              </option>
+            ))}
+          </Select>
+        }
+      />
 
-    {recents.length > 0 && !query.trim() && <section className="card">
-      <div className="card-head"><h2>Most used</h2><span className="card-note">yours, kept locally</span></div>
-      <div className="emoji-grid">{recents.map((row) => <EmojiCell key={`recent-${row.character}`} row={row} copied={copied} groupName={groupName} onPick={pick} />)}</div>
-    </section>}
+      {error && (
+        <Notice tone="critical" title="The emoji catalogue did not load" actions={<Button size="small" onClick={() => setAttempt((value) => value + 1)}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
 
-    <section className="card">
-      <div className="card-head"><h2>{query.trim() ? "Results" : activeGroup === null ? "Everything" : groupName.get(activeGroup)}</h2><span className="card-note">{emoji.length === PAGE ? `first ${PAGE}` : `${emoji.length}`}</span></div>
-      {emoji.length === 0
-        ? query.trim()
-          ? <div className="empty"><h3>Nothing matches “{query}”</h3><p>Try a shorter word, or one of the keywords an emoji is known by.</p></div>
-          // An empty grid with an empty search box is the catalogue failing to
-          // load, not a search that found nothing.
-          : <div className="empty"><h3>No emoji loaded</h3><p>The catalogue ships with Veronica and is read at launch. Run `vr emoji search smile` to see what the catalogue reports.</p></div>
-        : <div className="emoji-grid">{emoji.map((row) => <EmojiCell key={row.character} row={row} copied={copied} groupName={groupName} onPick={pick} />)}</div>}
-    </section>
-  </div>;
+      {recents.length > 0 && !searching && activeGroup === null && (
+        <Section title="Most used" description="Yours, kept on this computer">
+          <Card padding="compact">
+            <EmojiGrid rows={recents} copied={copied} groupName={groupName} onPick={pick} keyPrefix="recent-" />
+          </Card>
+        </Section>
+      )}
+
+      {!(emoji === null && error) && (
+        <Section title={resultsTitle} description={resultsNote}>
+          {emoji === null ? (
+            <Card padding="compact" aria-label="Loading emoji">
+              <div className="emoji-grid">
+                {Array.from({ length: 48 }, (_, index) => (
+                  <Skeleton key={index} width={40} height={40} radius={8} />
+                ))}
+              </div>
+            </Card>
+          ) : emoji.length === 0 ? (
+            <Card>
+              {searching ? (
+                <EmptyState
+                  size="compact"
+                  icon={<SearchX />}
+                  title={`Nothing matches “${query.trim()}”`}
+                  action={<Button onClick={() => setQuery("")}>Clear search</Button>}
+                >
+                  Try a shorter word, or one of the keywords an emoji is known by.
+                </EmptyState>
+              ) : (
+                <EmptyState size="compact" icon={<Smile />} title="No emoji loaded">
+                  The catalogue ships with Veronica and is read at launch. Run vr emoji search smile to see what it reports.
+                </EmptyState>
+      )}
+          </Card>
+        ) : (
+          <Card padding="compact">
+            <EmojiGrid rows={emoji} copied={copied} groupName={groupName} onPick={pick} keyPrefix="" />
+          </Card>
+        )}
+      </Section>
+      )}
+
+      <p className="ui-visually-hidden" role="status">
+        {copied ? `Copied ${copied}` : ""}
+      </p>
+    </Page>
+  );
 }
 
-function EmojiCell({ row, copied, groupName, onPick }: {
-  row: EmojiRow;
+function EmojiGrid({
+  rows,
+  copied,
+  groupName,
+  onPick,
+  keyPrefix,
+}: {
+  rows: EmojiRow[];
   copied: string | null;
   groupName: Map<number, string>;
   onPick: (row: EmojiRow) => void;
+  keyPrefix: string;
 }) {
-  return <button
-    className={`emoji-cell ${copied === row.character ? "copied" : ""}`}
-    title={`${row.name} · ${groupName.get(row.groupIndex) ?? ""}`}
-    aria-label={row.name}
-    onClick={() => onPick(row)}
-  >{row.character}</button>;
+  return (
+    <div className="emoji-grid">
+      {rows.map((row) => (
+        <Tooltip key={`${keyPrefix}${row.character}`} content={[row.name, groupName.get(row.groupIndex)].filter(Boolean).join(" · ")}>
+          <button
+            type="button"
+            className="emoji-cell"
+            data-copied={copied === row.character || undefined}
+            aria-label={row.name}
+            onClick={() => onPick(row)}
+          >
+            {row.character}
+          </button>
+        </Tooltip>
+      ))}
+    </div>
+  );
 }

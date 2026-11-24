@@ -1,0 +1,27 @@
+.np-transport {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.np-transport .np-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.np-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.np-progress-times {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--text-3);
+  font-size: var(--text-caption);
+}

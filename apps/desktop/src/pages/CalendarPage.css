@@ -1,0 +1,88 @@
+.cal-now {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.cal-now-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cal-now-text > p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-now-label {
+  color: var(--accent-text);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-semibold);
+}
+
+.cal-now-title {
+  color: var(--text-1);
+  font-size: var(--text-title-3);
+  font-weight: var(--weight-semibold);
+}
+
+.cal-now-slot {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+}
+
+.cal-agenda {
+  gap: var(--section-gap);
+}
+
+.cal-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 64px;
+  color: var(--text-1);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}
+
+.cal-time-end {
+  color: var(--text-3);
+  font-weight: var(--weight-regular);
+}
+
+.cal-event-next .cal-time {
+  color: var(--accent-text);
+}
+
+.cal-event-next::after {
+  content: "";
+  position: absolute;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  left: 0;
+  width: 3px;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  background: var(--accent);
+}
+
+.cal-more {
+  display: flex;
+  justify-content: center;
+}
+
+@container main (max-width: 720px) {
+  .cal-now {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cal-now .ui-button {
+    align-self: flex-start;
+  }
+}
