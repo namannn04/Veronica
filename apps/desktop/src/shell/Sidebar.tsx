@@ -1,7 +1,8 @@
+import { useRef } from "react";
 import veronicaLogo from "../assets/veronica-logo.png";
 import { SearchIcon } from "../components/icons";
 import type { NavGroup, Route } from "../lib/navigation";
-import { Kbd } from "../ui";
+import { Kbd, useIndicator } from "../ui";
 
 export function Sidebar({
   groups,
@@ -16,6 +17,8 @@ export function Sidebar({
   onNavigate: (route: Route) => void;
   onSearch: () => void;
 }) {
+  const nav = useRef<HTMLDivElement>(null);
+  const selection = useIndicator(nav, '[aria-current="page"]', `${route}:${groups.length}`);
   return (
     <nav className="shell-sidebar" aria-label="Sections">
       <div className="shell-brand">
@@ -30,7 +33,8 @@ export function Sidebar({
         <Kbd>Ctrl K</Kbd>
       </button>
 
-      <div className="shell-nav">
+      <div className="shell-nav" ref={nav}>
+        <span className="shell-nav-selection" style={selection} aria-hidden="true" />
         {groups.map((group) => (
           <fieldset key={group.label} className="shell-nav-group" aria-label={group.label}>
             <div className="shell-nav-heading">{group.label}</div>

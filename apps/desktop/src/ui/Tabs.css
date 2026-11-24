@@ -5,6 +5,7 @@
 }
 
 .ui-tabs {
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: var(--space-5);
@@ -63,12 +64,33 @@
   color: var(--text-1);
 }
 
+.ui-tab:hover:not([data-selected])::after {
+  background: var(--separator-strong);
+}
+
 .ui-tab[data-selected] {
   color: var(--text-1);
   font-weight: var(--weight-semibold);
 }
 
-.ui-tab[data-selected]::after {
+.ui-tabs-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transition:
+    transform var(--motion-snap),
+    width var(--motion-snap);
+}
+
+.ui-tabs-indicator::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
   background: var(--accent);
 }
 

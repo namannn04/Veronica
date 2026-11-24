@@ -108,13 +108,30 @@ export function appearanceOf(value: unknown): Appearance {
   return typeof value === "string" && APPEARANCE_IDS.has(value) ? (value as Appearance) : "system";
 }
 
-export function applyAppearance(value: unknown) {
-  const appearance = appearanceOf(value);
+let appearanceApplied = false;
+
+function setThemeAttribute(appearance: Appearance) {
   if (appearance === "system") {
     delete document.documentElement.dataset.theme;
   } else {
     document.documentElement.dataset.theme = appearance;
   }
+}
+
+export function applyAppearance(value: unknown) {
+  const appearance = appearanceOf(value);
+  const current = document.documentElement.dataset.theme ?? "system";
+  const firstApply = !appearanceApplied;
+  appearanceApplied = true;
+  if (current === appearance) {
+    return;
+  }
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (firstApply || calm || typeof document.startViewTransition !== "function") {
+    setThemeAttribute(appearance);
+    return;
+  }
+  document.startViewTransition(() => setThemeAttribute(appearance));
 }
 
 export const LIMIT_PROVIDERS = ["Claude", "Codex"] as const;

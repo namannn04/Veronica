@@ -1,4 +1,5 @@
 .ui-segmented {
+  position: relative;
   display: inline-grid;
   grid-auto-flow: column;
   gap: 2px;
@@ -20,6 +21,8 @@
 }
 
 .ui-segment {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -64,12 +67,27 @@
 }
 
 .ui-segment[aria-pressed="true"] {
-  background: var(--bg-card);
   color: var(--text-1);
   font-weight: var(--weight-semibold);
+}
+
+.ui-segmented-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: calc(var(--radius-m) - 2px);
+  background: var(--bg-card);
   box-shadow:
     0 0 0 1px var(--separator),
     0 1px 2px color-mix(in srgb, #000 10%, transparent);
+  pointer-events: none;
+  transition:
+    transform var(--motion-snap),
+    width var(--motion-snap);
+}
+
+.ui-segmented-small .ui-segmented-thumb {
+  border-radius: calc(var(--radius-s) - 2px);
 }
 
 .ui-segment:disabled {

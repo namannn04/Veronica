@@ -348,3 +348,11 @@
   line-height: 1;
   white-space: nowrap;
 }
+
+.ui-notice {
+  animation: ui-enter var(--duration-snap) var(--ease-out);
+}
+
+.ui-empty {
+  animation: ui-fade var(--duration-snap) var(--ease-out);
+}

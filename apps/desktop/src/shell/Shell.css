@@ -80,6 +80,7 @@
 }
 
 .shell-nav {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -130,8 +131,24 @@
   background: var(--fill-pressed);
 }
 
-.shell-nav-item[aria-current="page"] {
+.shell-nav-selection {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--radius-m);
   background: var(--fill-selected);
+  pointer-events: none;
+  transition:
+    transform var(--motion-snap),
+    height var(--motion-snap);
+}
+
+.shell-nav-item {
+  position: relative;
+}
+
+.shell-nav-item[aria-current="page"] {
+  background: transparent;
   color: var(--text-1);
   font-weight: var(--weight-semibold);
 }
@@ -288,4 +305,15 @@
 
 .shell-main > :not(.ui-page):not(.shell-loading) {
   padding: 22px 26px 40px;
+}
+
+.shell-main > * {
+  animation: shell-route-enter var(--duration-snap) var(--ease-out);
+}
+
+@keyframes shell-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--enter-offset) * 1.5));
+  }
 }
