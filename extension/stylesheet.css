@@ -325,6 +325,24 @@
   x-align: center;
 }
 
+.veronica-surface-strip {
+  spacing: 8px;
+}
+
+.veronica-surface {
+  spacing: 6px;
+}
+
+.veronica-surface-actions {
+  spacing: 6px;
+}
+
+.veronica-surface-action {
+  height: 2em;
+  padding: 0 12px;
+  font-size: 0.9em;
+}
+
 .veronica-action-icon {
   icon-size: 16px;
 }

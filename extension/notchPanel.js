@@ -15,6 +15,7 @@ import { PowerInhibitors } from './inhibitors.js';
 import { brandIcon, launchApp, launchFileShelf, launchServices, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { presenterClick, presenterState } from './presenterGate.js';
+import { SurfaceStrip } from './surfaces.js';
 import { isTheme } from './themes.js';
 import { UsageCard } from './usageCard.js';
 import { UtilityPanel } from './utilityPanel.js';
@@ -274,6 +275,9 @@ export class NotchPanel {
         this._usage = new UsageCard();
         glance.add_child(this._usage.actor);
         panel.add_child(glance);
+
+        this._surfaces = new SurfaceStrip(this._cancellable, () => this._presenterState);
+        panel.add_child(this._surfaces.actor);
 
         const actions = new St.BoxLayout({ style_class: 'veronica-actions-row' });
         actions.add_child(
@@ -803,6 +807,7 @@ export class NotchPanel {
 
     _applyPresenter(state) {
         this._presenterState = state;
+        this._surfaces?.refresh();
         if (this._presenter) {
             this._presenter.visible = state.enabled;
             this._setToggle(this._presenter, state.active);
@@ -955,6 +960,8 @@ export class NotchPanel {
         this._imageTool = this._qrTool = null;
         this._usage?.destroy();
         this._nowPlaying?.destroy();
+        this._surfaces?.destroy();
+        this._surfaces = null;
         this._clipboardRows = null;
         this._fileRows = null;
         this._messageList = null;
