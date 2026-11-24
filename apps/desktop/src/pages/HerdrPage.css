@@ -211,3 +211,8 @@
     display: none;
   }
 }
+
+.herdr-page .ui-section-description,
+.herdr-page .ui-form-group-description {
+  max-width: 72ch;
+}

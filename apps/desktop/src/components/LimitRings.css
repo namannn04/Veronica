@@ -1,6 +1,6 @@
 .limits-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(176px, 100%), 1fr));
   gap: var(--space-4) var(--space-6);
   padding: var(--space-1) 0;
 }

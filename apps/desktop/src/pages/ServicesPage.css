@@ -64,6 +64,7 @@
   margin: 0;
   color: var(--text-3);
   font-size: var(--text-callout);
+  max-width: 72ch;
 }
 
 @container main (max-width: 720px) {

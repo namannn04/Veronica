@@ -247,6 +247,7 @@ export function AttentionPage() {
 
       {!failedEmpty && view === "overview" && (
         <>
+          <div className="attn-stats">
           <StatGrid min={150}>
             {firstLoad || !overview ? (
               <>
@@ -278,6 +279,7 @@ export function AttentionPage() {
               </>
             )}
           </StatGrid>
+          </div>
 
           <Section title="Applications" description="Local only, never uploaded">
             <Card>

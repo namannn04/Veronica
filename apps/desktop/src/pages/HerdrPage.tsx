@@ -126,6 +126,7 @@ export function HerdrPage() {
 
   return (
     <Page
+      className="herdr-page"
       header={
         <PageHeader
           title="Agents & Herdr"

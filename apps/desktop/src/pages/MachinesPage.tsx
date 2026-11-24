@@ -211,7 +211,7 @@ export function MachinesPage() {
               <CardHeader title={<SkeletonText width="32%" />} subtitle={<SkeletonText width="64%" />} />
               <Toolbar className="mach-actions" leading={<Skeleton width={84} height={26} radius={6} />} />
               <Skeleton width="100%" height={26} radius={6} />
-              <StatGrid min={150}>
+              <StatGrid min={128}>
                 <StatSkeleton meter />
                 <StatSkeleton meter />
                 <StatSkeleton meter />
@@ -596,7 +596,7 @@ function MachineDetail({
           )}
 
           {tool === "overview" && (
-            <StatGrid min={150}>
+            <StatGrid min={128}>
               <MeterStat
                 label="CPU"
                 value={stats.cpuPercent}
