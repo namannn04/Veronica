@@ -1,0 +1,168 @@
+name: Extensions
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: extensions-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  MUSL_TARGET: x86_64-unknown-linux-musl
+
+jobs:
+  plan:
+    name: Plan extension builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: extensions-plan
+      - name: Build the packaging tool
+        run: cargo build --release --locked -p veronica-pack
+      - name: Validate manifests and choose what to build
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          QUEUE_BASE: ${{ github.event.merge_group.base_sha }}
+          VR_PACK: target/release/vr-pack
+        run: |
+          case "$EVENT" in
+            pull_request) export PLAN_BASE="$PR_BASE" ;;
+            merge_group) export PLAN_BASE="$QUEUE_BASE" ;;
+          esac
+          matrix="$(scripts/extensions-plan.sh)"
+          echo "matrix=$matrix" >>"$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.extension.id }}
+    needs: plan
+    if: needs.plan.outputs.matrix != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        extension: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      EXTENSION: ${{ matrix.extension.id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the musl toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y musl-tools
+          rustup target add "$MUSL_TARGET"
+      - name: Read the manifest
+        id: manifest
+        run: |
+          manifest="extensions/$EXTENSION/manifest.json"
+          echo "backend=$(jq 'has("backend")' "$manifest")" >>"$GITHUB_OUTPUT"
+          echo "ui=$(jq 'has("ui")' "$manifest")" >>"$GITHUB_OUTPUT"
+      - name: Build the packaging tool
+        run: cargo build --release --locked -p veronica-pack
+      - name: Build the static backend
+        if: steps.manifest.outputs.backend == 'true'
+        run: cargo build --release --locked -p "veronica-ext-$EXTENSION" --target "$MUSL_TARGET"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        if: steps.manifest.outputs.ui == 'true'
+      - name: Build the interface bundle
+        if: steps.manifest.outputs.ui == 'true'
+        working-directory: extensions/${{ matrix.extension.id }}/ui
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+      - name: Pack the extension
+        env:
+          HAS_BACKEND: ${{ steps.manifest.outputs.backend }}
+          HAS_UI: ${{ steps.manifest.outputs.ui }}
+        run: |
+          args=(--out target/ext)
+          if [ "$HAS_BACKEND" = true ]; then
+            args+=(--backend "target/$MUSL_TARGET/release/veronica-ext-$EXTENSION")
+          fi
+          if [ "$HAS_UI" = true ]; then
+            args+=(--ui "extensions/$EXTENSION/ui/dist")
+          fi
+          target/release/vr-pack pack "$EXTENSION" "${args[@]}"
+      - name: Audit the package
+        run: target/release/vr-pack audit target/ext/*.tar.zst
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ext-${{ matrix.extension.id }}
+          path: target/ext/
+          if-no-files-found: error
+
+  test:
+    name: Install a packaged extension end to end
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/linux-build-deps
+      - name: Install the musl toolchain
+        run: |
+          sudo apt-get install --no-install-recommends -y musl-tools
+          rustup target add "$MUSL_TARGET"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          key: extensions-test
+      - name: Build the packaging tool and the static fixture backend
+        run: |
+          cargo build --release --locked -p veronica-pack
+          cargo build --release --locked -p veronica-ext-fixture --target "$MUSL_TARGET"
+      - name: Pack, audit and sign the fixture with a throwaway key
+        id: signed
+        run: |
+          work="$RUNNER_TEMP/extensions"
+          backend="target/$MUSL_TARGET/release/veronica-ext-fixture"
+          file "$backend" | grep -q 'static'
+          mkdir -p "$work/packages"
+          target/release/vr-pack pack fixture --backend "$backend" --out "$work/packages"
+          target/release/vr-pack audit "$work"/packages/*.tar.zst
+          target/release/vr-pack catalog --metadata "$work/packages" --out "$work/payload.json" --revision "$(date +%s)"
+          target/release/vr-pack --json keygen --out-private "$work/catalog.key" >"$work/key.json"
+          key_id="$(jq -r .keyId "$work/key.json")"
+          public_key="$(jq -r .publicKey "$work/key.json")"
+          target/release/vr-pack sign --key "$work/catalog.key" --key-id "$key_id" --out "$work/catalog.signed.json" "$work/payload.json"
+          target/release/vr-pack verify --public "$public_key" --key-id "$key_id" "$work/catalog.signed.json"
+          rm -f "$work/catalog.key"
+          {
+            echo "packages=$work/packages"
+            echo "catalog=$work/catalog.signed.json"
+            echo "key_id=$key_id"
+            echo "public_key=$public_key"
+          } >>"$GITHUB_OUTPUT"
+      - name: Install, verify and roll back the package through the host
+        env:
+          VERONICA_PACKAGES_DIR: ${{ steps.signed.outputs.packages }}
+          VERONICA_CATALOG: ${{ steps.signed.outputs.catalog }}
+          VERONICA_CATALOG_KEY_ID: ${{ steps.signed.outputs.key_id }}
+          VERONICA_CATALOG_PUBLIC_KEY: ${{ steps.signed.outputs.public_key }}
+        run: >-
+          cargo test -p veronica-host --locked --test host packaged -- --ignored
+          --nocapture
