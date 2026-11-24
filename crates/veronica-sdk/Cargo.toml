@@ -7,6 +7,8 @@ publish.workspace = true
 
 [dependencies]
 veronica-protocol = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
 futures-util = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

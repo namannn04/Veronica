@@ -6121,6 +6121,8 @@ dependencies = [
 name = "veronica-sdk"
 version = "0.1.26"
 dependencies = [
+ "anyhow",
+ "clap",
  "futures-util",
  "serde",
  "serde_json",
