@@ -5,17 +5,8 @@ import { ipc } from "../lib/ipc";
 import { bytes, timeAgo } from "../lib/format";
 import type { ClipRow } from "../lib/types";
 
-/** How often to pick up newly captured entries. */
 const TICK_MS = 3000;
 
-/**
- * The clipboard history.
- *
- * Capture happens in the GNOME Shell extension, because on Wayland only the
- * compositor may watch the selection. This page reads what was captured, and
- * copying back uses the browser clipboard API, which is allowed here because it
- * happens in response to a click in a focused window.
- */
 export function ClipboardPage() {
   const [rows, setRows] = useState<ClipRow[]>([]);
   const [query, setQuery] = useState("");
@@ -42,7 +33,6 @@ export function ClipboardPage() {
     try {
       await navigator.clipboard.writeText(row.text);
       setCopied(row.id);
-      // A brief confirmation; the row is otherwise unchanged.
       setTimeout(() => setCopied((current) => (current === row.id ? null : current)), 1200);
     } catch (e) {
       setError(`Cannot write to the clipboard: ${e}`);
@@ -60,8 +50,6 @@ export function ClipboardPage() {
 
   const clear = async () => {
     try {
-      // Clearing removes the whole history, not the search's matches, so the
-      // confirmation counts the whole history.
       const total = query ? (await ipc.clipboardList("")).length : rows.length;
       if (total === 0) return;
       const scope = query ? `, not only the ${rows.length} matching “${query}”` : "";

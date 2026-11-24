@@ -5,7 +5,6 @@ export type InstallNotice = {
   text: string;
 };
 
-/** Turn every non-error install outcome into honest, actionable UI copy. */
 export function installNotice(
   displayName: string,
   outcome: ToolInstallOutcome,

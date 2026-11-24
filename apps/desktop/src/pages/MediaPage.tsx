@@ -5,8 +5,6 @@ import { stopwatch } from "../lib/format";
 import { useLocalPlayer } from "../lib/localPlayer";
 
 export function MediaPage() {
-  // The player outlives this page (lib/localPlayer.tsx), so leaving Music no
-  // longer stops the music.
   const external=useNowPlaying(true); const [tab,setTab]=useState<"library"|"players">("library"); const [query,setQuery]=useState("");
   const { tracks, index, current, playing, position, duration, play, toggle, next, previous, seek, loadLibrary } = useLocalPlayer();
   useEffect(()=>{loadLibrary();},[loadLibrary]);

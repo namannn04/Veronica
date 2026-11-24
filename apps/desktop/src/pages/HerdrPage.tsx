@@ -29,15 +29,11 @@ export function HerdrPage() {
   const agents = useMemo(() => (board?.agents ?? []).filter((agent) => (session === "all" || agent.session === session) && (kinds.length === 0 || kinds.includes(agent.kind))), [board, kinds, session]);
   const selectedAgent = board?.agents.find((agent) => agent.id === selected) ?? null;
 
-  // Every launcher reports its failure (Herdr uninstalled, no terminal found)
-  // rather than dropping it as an unhandled rejection behind a dead button.
   const open = (session: string, pane?: string) => {
     void ipc.herdrOpen(session, pane).catch((reason) => setError(String(reason)));
   };
 
   const toggleKind = (kind: string) => setKinds((current) => current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind]);
-  // The line comes from the backend, which builds it from the same helper the
-  // terminal launcher and `vr herdr attach` use, so the three cannot drift.
   const copyAttach = async (agent: HerdrAgent) => {
     try { await navigator.clipboard.writeText(agent.attachCommand); setCopied(agent.id); window.setTimeout(() => setCopied((id) => id === agent.id ? null : id), 1_200); }
     catch (reason) { setError(`Cannot copy the attach command: ${reason}`); }

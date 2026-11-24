@@ -4,13 +4,6 @@ import { ipc, listenEvent } from "../lib/ipc";
 import { timeAgo } from "../lib/format";
 import type { CopyFormatOption, PickResult, SwatchRow } from "../lib/types";
 
-/**
- * The colour picker and its swatch history.
- *
- * Picking opens the compositor's own eyedropper — GNOME Shell's, or the desktop
- * portal's — so Veronica never reads the screen without a click. What comes back
- * is recorded here and copied in the configured format.
- */
 export function ColorPickerPage() {
   const [swatches, setSwatches] = useState<SwatchRow[]>([]);
   const [formats, setFormats] = useState<CopyFormatOption[]>([]);
@@ -39,7 +32,6 @@ export function ColorPickerPage() {
     void ipc.settingsAll().then(setSettings).catch(() => {});
   }, [load]);
 
-  // A pick started from the notch or the CLI lands in the same history.
   useEffect(() => {
     const updated = listenEvent("swatches-updated", () => void load());
     const changed = listenEvent("settings-updated", () => {
@@ -79,8 +71,6 @@ export function ColorPickerPage() {
       );
       if (result.copyError) setError(result.copyError);
     } catch (reason) {
-      // Cancelling the eyedropper is the ordinary way to back out, so it reads
-      // as a note rather than a failure.
       const message = String(reason);
       if (/cancel/i.test(message)) setNotice("No colour picked.");
       else setError(message);
@@ -97,7 +87,6 @@ export function ColorPickerPage() {
       setTimeout(() => setCopied((c) => (c === swatch.id ? null : c)), 1200);
       setError(null);
     } catch (reason) {
-      // The clipboard needs the shell extension or wl-clipboard; say so.
       setError(String(reason));
     }
   };
@@ -265,11 +254,6 @@ export function ColorPickerPage() {
   );
 }
 
-/**
- * The CSS that shows a swatch as picked. A Display P3 swatch's components are
- * in P3 space, and painting its hex as sRGB showed a different colour from
- * the one recorded; WebKit draws `color(display-p3 …)` itself.
- */
 function paint(swatch: SwatchRow): string {
   return swatch.profile === "displayP3"
     ? `color(display-p3 ${swatch.red} ${swatch.green} ${swatch.blue})`

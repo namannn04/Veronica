@@ -6,11 +6,6 @@ import { applyAppearance } from "../lib/preferences";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
 
 const PAGE = 120;
-/**
- * A group being browsed is shown whole. The page size is for search results;
- * applied to a group it cut People, Objects and Flags off part-way, with no
- * way to reach the rest. The largest group has about four hundred.
- */
 const WHOLE_GROUP = 2_000;
 
 export function EmojiPicker() {
@@ -64,7 +59,6 @@ export function EmojiPicker() {
     if (busy) return;
     setBusy(true);
     try {
-      // Respect copy-only mode while keeping the picker available for more picks.
       const settings = await ipc.settingsAll().catch(() => ({} as Record<string, unknown>));
       const insert = settings.emojiInsertInPlace !== false;
       const result = await ipc.emojiCopy(row.character, insert);

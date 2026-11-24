@@ -3,30 +3,12 @@ import { useState, useSyncExternalStore } from "react";
 import { ipc } from "../lib/ipc";
 import type { AuditReport, AuditSeverity } from "../lib/types";
 
-/**
- * Site Audit.
- *
- * Edith's rules exactly — the same eleven checks, the same thresholds — so a
- * page that passes on macOS passes here.
- *
- * Every run stays local: Veronica fetches the pages being audited and nothing
- * else. No result is uploaded and no third-party service is consulted, which is
- * the whole reason to run an audit from your own machine.
- */
 const SEVERITIES: { id: AuditSeverity; label: string; pill: string }[] = [
   { id: "error", label: "Errors", pill: "critical" },
   { id: "warning", label: "Warnings", pill: "warn" },
   { id: "notice", label: "Notices", pill: "" },
 ];
 
-/**
- * The latest run, kept outside the page.
- *
- * Only the page on screen is mounted, so a run held in its state was thrown
- * away as soon as you went elsewhere, while the crawl carried on in the
- * background with nowhere to put its answer. Held here, a run finishes into
- * this store and is waiting when you come back.
- */
 type AuditRun = { site: string; limit: number; report: AuditReport | null; running: boolean; error: string };
 let current: AuditRun = { site: "", limit: 50, report: null, running: false, error: "" };
 const listeners = new Set<() => void>();
