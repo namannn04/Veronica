@@ -12,6 +12,7 @@ pub mod extensions;
 pub mod file_shelf;
 pub mod focus_dim;
 pub mod fsutil;
+pub mod host;
 pub mod keystroke;
 pub mod paths;
 pub mod presenter;
@@ -19,8 +20,6 @@ pub mod session;
 pub mod settings;
 pub mod swatches;
 pub mod tools;
-
-pub use veronica_sdk::spawn as host;
 
 pub use appearance::Scheme;
 pub use attention::{

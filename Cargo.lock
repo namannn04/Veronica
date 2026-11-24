@@ -5986,7 +5986,6 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
- "veronica-sdk",
  "walkdir",
 ]
 
@@ -6130,6 +6129,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "veronica-core",
  "veronica-protocol",
 ]
 
