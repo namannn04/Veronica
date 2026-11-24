@@ -187,12 +187,14 @@ pub fn pack(inputs: &PackInputs<'_>, stamp: &Stamp) -> Result<Packed> {
             )
         })
         .collect();
-    entries.push(Entry {
-        path: FILES_INDEX.to_string(),
-        mode: FILE_MODE_REGULAR,
-        bytes: canonical::to_string_pretty(&index)?.into_bytes(),
-    });
-    entries.sort_by(|left, right| left.path.cmp(&right.path));
+    entries.insert(
+        0,
+        Entry {
+            path: FILES_INDEX.to_string(),
+            mode: FILE_MODE_REGULAR,
+            bytes: canonical::to_string_pretty(&index)?.into_bytes(),
+        },
+    );
 
     let archive = tar_zst(&entries)?;
     let name = package_asset_name(&manifest.id, stamp.version, inputs.target);

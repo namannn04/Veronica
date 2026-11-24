@@ -38,7 +38,7 @@ fn v(raw: &str) -> PackageVersion {
 fn install(installer: &Installer, id: &str, version: &str) -> anyhow::Result<()> {
     let version = v(version);
     let bytes = package(
-        &manifest(id, &version.authored().to_string()),
+        &manifest(id, &version.to_string()),
         version.to_string().as_bytes(),
     );
     installer
@@ -139,23 +139,25 @@ fn rollback_needs_a_previous_version() {
 fn packages_that_do_not_match_the_request_or_host_are_refused() {
     let (_home, installer) = installer();
     let cases = [
-        ("other", manifest("other", "1.0")),
-        ("probe", manifest("probe", "2.0")),
+        ("other", manifest("other", "1.0.0")),
+        ("probe", manifest("probe", "2.0.0")),
+        ("probe", manifest("probe", "1.0")),
+        ("probe", manifest("probe", "1.0.1")),
         (
             "probe",
-            manifest_with("probe", "1.0", ">=0.6.0", 1, "linux-x86_64"),
+            manifest_with("probe", "1.0.0", ">=0.6.0", 1, "linux-x86_64"),
         ),
         (
             "probe",
-            manifest_with("probe", "1.0", "not a range", 1, "linux-x86_64"),
+            manifest_with("probe", "1.0.0", "not a range", 1, "linux-x86_64"),
         ),
         (
             "probe",
-            manifest_with("probe", "1.0", ">=0.1.0", 2, "linux-x86_64"),
+            manifest_with("probe", "1.0.0", ">=0.1.0", 2, "linux-x86_64"),
         ),
         (
             "probe",
-            manifest_with("probe", "1.0", ">=0.1.0", 1, "linux-aarch64"),
+            manifest_with("probe", "1.0.0", ">=0.1.0", 1, "linux-aarch64"),
         ),
     ];
     for (label, manifest) in cases {
@@ -198,7 +200,7 @@ fn a_truncated_download_leaves_no_partial_state() {
     let (_home, installer) = installer();
     install(&installer, "probe", "1.0.1").unwrap();
     let before = installer.registry().unwrap();
-    let bytes = package(&manifest("probe", "1.0"), &vec![7; 64 * 1024]);
+    let bytes = package(&manifest("probe", "1.0.2"), &vec![7; 64 * 1024]);
     let truncated = &bytes[..bytes.len() / 2];
     assert!(installer
         .install_archive(truncated, "probe", v("1.0.2"))
@@ -321,6 +323,13 @@ fn a_local_directory_installs_as_a_sideload() {
             .extensions["probe"]
             .origin,
         Origin::Sideload
+    );
+
+    let packed = tempfile::tempdir().unwrap();
+    package_tree(packed.path(), &manifest("probe", "0.3.9"), b"packed");
+    assert_eq!(
+        installer.install_sideload(packed.path()).unwrap().version,
+        v("0.3.0")
     );
 
     std::os::unix::fs::symlink("/etc/passwd", source.path().join("leak")).unwrap();

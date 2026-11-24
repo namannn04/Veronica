@@ -88,7 +88,7 @@ fn packing_is_byte_for_byte_deterministic() {
 }
 
 #[test]
-fn the_package_tree_is_sorted_stamped_and_indexed() {
+fn the_package_tree_leads_with_its_index_and_is_sorted_and_stamped() {
     let dir = repo();
     let root = dir.path();
     let binary = backend(root, "binary");
@@ -100,11 +100,11 @@ fn the_package_tree_is_sorted_stamped_and_indexed() {
     assert_eq!(
         names,
         [
+            "files.json",
             "LICENSE",
             "NOTICE",
             "assets/icon.svg",
             "bin/backend",
-            "files.json",
             "guide.md",
             "manifest.json",
             "resources/refresh",
