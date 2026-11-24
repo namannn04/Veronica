@@ -29,7 +29,9 @@ import {
 } from "../ui";
 import "./CompanionPage.css";
 
-const CompanionChat = lazy(() => import("../components/CompanionChat").then((m) => ({ default: m.CompanionChat })));
+const CompanionChat = lazy(() =>
+  import("../components/CompanionChat").then((m) => ({ default: m.CompanionChat })),
+);
 
 type View = "all" | "notes" | "voice" | "activity" | "chat";
 
@@ -72,7 +74,9 @@ export function CompanionPage() {
     const next = await ipc.companionList(search);
     setItems(next);
     setLoaded(true);
-    setSelectedId((current) => (current && next.some((item) => item.id === current) ? current : next[0]?.id ?? null));
+    setSelectedId((current) =>
+      current && next.some((item) => item.id === current) ? current : (next[0]?.id ?? null),
+    );
   }, []);
 
   const loadFailed = (reason: unknown) => {
@@ -86,7 +90,10 @@ export function CompanionPage() {
 
   useEffect(() => {
     void refresh("").catch(loadFailed);
-    void ipc.attentionOverview(7).then(setActivity).catch(() => {});
+    void ipc
+      .attentionOverview(7)
+      .then(setActivity)
+      .catch(() => {});
     void ipc
       .companionRecordingStatus()
       .then((status) => {
@@ -118,11 +125,21 @@ export function CompanionPage() {
     setPinned(selected?.pinned ?? false);
     setAudio("");
     setSaved(false);
-    if (selected?.kind === "voice") void ipc.companionAudio(selected.id).then((path) => setAudio(convertFileSrc(path))).catch((reason) => setError(String(reason)));
+    if (selected?.kind === "voice")
+      void ipc
+        .companionAudio(selected.id)
+        .then((path) => setAudio(convertFileSrc(path)))
+        .catch((reason) => setError(String(reason)));
   }, [selectedId, selected?.updatedAt]);
 
   const visible = useMemo(
-    () => items.filter((item) => view === "all" || view === "activity" || (view === "notes" ? item.kind === "note" : item.kind === view)),
+    () =>
+      items.filter(
+        (item) =>
+          view === "all" ||
+          view === "activity" ||
+          (view === "notes" ? item.kind === "note" : item.kind === view),
+      ),
     [items, view],
   );
 
@@ -216,7 +233,9 @@ export function CompanionPage() {
   };
 
   const listView = view !== "chat" && view !== "activity";
-  const dirty = selected !== null && (title !== selected.title || body !== selected.body || pinned !== selected.pinned);
+  const dirty =
+    selected !== null &&
+    (title !== selected.title || body !== selected.body || pinned !== selected.pinned);
 
   return (
     <Page
@@ -245,7 +264,12 @@ export function CompanionPage() {
                 <Button icon={<Plus {...ICON} />} disabled={busy} onClick={() => void createNote()}>
                   New note
                 </Button>
-                <Button variant={view === "chat" ? "secondary" : "primary"} icon={<Mic {...ICON} />} disabled={busy} onClick={() => void startRecording()}>
+                <Button
+                  variant={view === "chat" ? "secondary" : "primary"}
+                  icon={<Mic {...ICON} />}
+                  disabled={busy}
+                  onClick={() => void startRecording()}
+                >
                   Record memo
                 </Button>
               </>
@@ -256,7 +280,21 @@ export function CompanionPage() {
       }
     >
       {error && (
-        <Notice tone="critical" title="Companion hit a problem" actions={<Button size="small" onClick={() => { setError(""); void refresh(query).catch(loadFailed); }}>Retry</Button>}>
+        <Notice
+          tone="critical"
+          title="Companion hit a problem"
+          actions={
+            <Button
+              size="small"
+              onClick={() => {
+                setError("");
+                void refresh(query).catch(loadFailed);
+              }}
+            >
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Notice>
       )}
@@ -289,12 +327,25 @@ export function CompanionPage() {
                   {visible.map((item) => (
                     <ListRow
                       key={item.id}
-                      leading={item.kind === "voice" ? <AudioLines {...ICON} aria-label="Voice memo" /> : <NotebookPen {...ICON} aria-label="Note" />}
+                      leading={
+                        item.kind === "voice" ? (
+                          <AudioLines {...ICON} aria-label="Voice memo" />
+                        ) : (
+                          <NotebookPen {...ICON} aria-label="Note" />
+                        )
+                      }
                       title={item.title}
-                      subtitle={item.body || (item.kind === "voice" ? `${stopwatch(item.durationSeconds ?? 0)} recording` : "Empty note")}
+                      subtitle={
+                        item.body ||
+                        (item.kind === "voice"
+                          ? `${stopwatch(item.durationSeconds ?? 0)} recording`
+                          : "Empty note")
+                      }
                       meta={
                         <span className="comp-row-meta">
-                          {item.pinned && <Pin {...ICON} aria-label="Pinned" className="comp-pin" />}
+                          {item.pinned && (
+                            <Pin {...ICON} aria-label="Pinned" className="comp-pin" />
+                          )}
                           {timeAgo(item.updatedAt)}
                         </span>
                       }
@@ -316,7 +367,13 @@ export function CompanionPage() {
                   Try different words.
                 </EmptyState>
               ) : (
-                <p className="comp-list-empty">{view === "voice" ? "No voice memos yet" : view === "notes" ? "No notes yet" : "Nothing saved yet"}</p>
+                <p className="comp-list-empty">
+                  {view === "voice"
+                    ? "No voice memos yet"
+                    : view === "notes"
+                      ? "No notes yet"
+                      : "Nothing saved yet"}
+                </p>
               )}
             </div>
           </Card>
@@ -325,35 +382,70 @@ export function CompanionPage() {
             {selected ? (
               <>
                 <div className="comp-editor-head">
-                  <Badge tone={selected.kind === "voice" ? "accent" : "neutral"}>{selected.kind === "voice" ? "Voice memo" : "Note"}</Badge>
+                  <Badge tone={selected.kind === "voice" ? "accent" : "neutral"}>
+                    {selected.kind === "voice" ? "Voice memo" : "Note"}
+                  </Badge>
                   <span className="comp-editor-time">Edited {timeAgo(selected.updatedAt)}</span>
                   <span className="comp-spacer" />
                   <Checkbox label="Pinned" checked={pinned} onChange={setPinned} />
                 </div>
-                <input className="comp-title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} aria-label="Title" spellCheck />
-                {selected.kind === "voice" && audio && <audio className="comp-audio" src={audio} controls preload="metadata" />}
+                <input
+                  className="comp-title"
+                  value={title}
+                  maxLength={120}
+                  onChange={(event) => setTitle(event.target.value)}
+                  aria-label="Title"
+                  spellCheck
+                />
+                {selected.kind === "voice" && audio && (
+                  <audio className="comp-audio" src={audio} controls preload="metadata" />
+                )}
                 <TextArea
                   className="comp-body"
                   value={body}
                   maxLength={100000}
                   onChange={(event) => setBody(event.target.value)}
                   aria-label="Body"
-                  placeholder={selected.kind === "voice" ? "Add searchable notes about this recording" : "Write anything"}
+                  placeholder={
+                    selected.kind === "voice"
+                      ? "Add searchable notes about this recording"
+                      : "Write anything"
+                  }
                 />
                 <div className="comp-editor-foot">
-                  <span className="comp-count ui-num">{dirty ? "Unsaved changes" : saved ? "Saved on this device" : `${body.length.toLocaleString()} characters`}</span>
+                  <span className="comp-count ui-num">
+                    {dirty
+                      ? "Unsaved changes"
+                      : saved
+                        ? "Saved on this device"
+                        : `${body.length.toLocaleString()} characters`}
+                  </span>
                   <span className="comp-spacer" />
-                  <Button variant="destructive-plain" icon={<Trash2 {...ICON} />} disabled={busy} onClick={() => setConfirmDelete(true)}>
+                  <Button
+                    variant="destructive-plain"
+                    icon={<Trash2 {...ICON} />}
+                    disabled={busy}
+                    onClick={() => setConfirmDelete(true)}
+                  >
                     Delete
                   </Button>
-                  <Button variant="primary" icon={<Save {...ICON} />} busy={busy} onClick={() => void save()}>
+                  <Button
+                    variant="primary"
+                    icon={<Save {...ICON} />}
+                    busy={busy}
+                    onClick={() => void save()}
+                  >
                     Save
                   </Button>
                 </div>
               </>
             ) : (
               <div className="comp-editor-empty">
-                <EmptyState icon={<NotebookPen {...ICON} />} title="Your private memory" action={<Button onClick={() => void createNote()}>New note</Button>}>
+                <EmptyState
+                  icon={<NotebookPen {...ICON} />}
+                  title="Your private memory"
+                  action={<Button onClick={() => void createNote()}>New note</Button>}
+                >
                   Select an item, write a note, or record a voice memo.
                 </EmptyState>
               </div>
@@ -388,14 +480,31 @@ function ActivityPanel({ overview }: { overview: AttentionOverview | null }) {
   return (
     <>
       <StatGrid>
-        <Stat label="Active time" value={<span className="ui-num">{countdown(overview.activeSeconds)}</span>} />
-        <Stat label="Focused" value={<span className="ui-num">{countdown(overview.focusedSeconds)}</span>} />
-        <Stat label="Context switches" value={<span className="ui-num">{overview.contextSwitches}</span>} />
+        <Stat
+          label="Active time"
+          value={<span className="ui-num">{countdown(overview.activeSeconds)}</span>}
+        />
+        <Stat
+          label="Focused"
+          value={<span className="ui-num">{countdown(overview.focusedSeconds)}</span>}
+        />
+        <Stat
+          label="Context switches"
+          value={<span className="ui-num">{overview.contextSwitches}</span>}
+        />
       </StatGrid>
       <Section title="Applications" description="Private application activity, last 7 days">
         <Card>
           {applications.length ? (
-            <BarList label="Time per application" items={applications.map(([name, seconds]) => ({ id: name, label: name, value: seconds, display: countdown(seconds) }))} />
+            <BarList
+              label="Time per application"
+              items={applications.map(([name, seconds]) => ({
+                id: name,
+                label: name,
+                value: seconds,
+                display: countdown(seconds),
+              }))}
+            />
           ) : (
             <EmptyState size="compact" title="Nothing recorded">
               No focused applications were recorded this week.

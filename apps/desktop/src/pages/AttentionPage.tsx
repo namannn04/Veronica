@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Activity, CircleStop, History, Play, RefreshCw } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
-import type { AttentionFocusSession, AttentionOverview, AttentionSettings, AttentionStatus } from "../lib/types";
+import type {
+  AttentionFocusSession,
+  AttentionOverview,
+  AttentionSettings,
+  AttentionStatus,
+} from "../lib/types";
 import {
   BarList,
   Button,
@@ -70,7 +75,8 @@ const clock = (raw: number) => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return h ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
 };
-const message = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/^Error:\s*/, "");
+const message = (error: unknown) =>
+  (error instanceof Error ? error.message : String(error)).replace(/^Error:\s*/, "");
 
 export function AttentionPage() {
   const [view, setView] = useState<View>("overview");
@@ -91,7 +97,12 @@ export function AttentionPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const [s, o, c, h] = await Promise.all([ipc.attentionStatus(), ipc.attentionOverview(days), ipc.attentionSettings(), ipc.attentionHistory()]);
+      const [s, o, c, h] = await Promise.all([
+        ipc.attentionStatus(),
+        ipc.attentionOverview(days),
+        ipc.attentionSettings(),
+        ipc.attentionHistory(),
+      ]);
       setStatus(s);
       setOverview(o);
       setSettings(c);
@@ -177,13 +188,22 @@ export function AttentionPage() {
           actions={
             <>
               {(view === "overview" || view === "timeline") && (
-                <Select variant="chip" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Range">
+                <Select
+                  variant="chip"
+                  value={days}
+                  onChange={(e) => setDays(Number(e.target.value))}
+                  aria-label="Range"
+                >
                   <option value={1}>Today</option>
                   <option value={7}>7 days</option>
                   <option value={30}>30 days</option>
                 </Select>
               )}
-              <Button icon={<RefreshCw {...ICON} />} busy={refreshing} onClick={() => void manualRefresh()}>
+              <Button
+                icon={<RefreshCw {...ICON} />}
+                busy={refreshing}
+                onClick={() => void manualRefresh()}
+              >
                 Refresh
               </Button>
             </>
@@ -193,13 +213,29 @@ export function AttentionPage() {
       }
     >
       {error && (
-        <Notice tone="critical" title="Attention did not answer" actions={<Button size="small" onClick={() => void manualRefresh()}>Retry</Button>}>
+        <Notice
+          tone="critical"
+          title="Attention did not answer"
+          actions={
+            <Button size="small" onClick={() => void manualRefresh()}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Notice>
       )}
 
       {settings && !settings.enabled && view !== "settings" && (
-        <Notice tone="neutral" title="Tracking is off" actions={<Button size="small" onClick={() => setView("settings")}>Open settings</Button>}>
+        <Notice
+          tone="neutral"
+          title="Tracking is off"
+          actions={
+            <Button size="small" onClick={() => setView("settings")}>
+              Open settings
+            </Button>
+          }
+        >
           Existing history stays on this device.
         </Notice>
       )}
@@ -216,10 +252,24 @@ export function AttentionPage() {
               ))
             ) : (
               <>
-                <Stat label="Active" value={<span className="ui-num">{duration(overview.activeSeconds)}</span>} note={RANGE_LABEL[days]} />
-                <Stat label="Focused" value={<span className="ui-num">{duration(overview.focusedSeconds)}</span>} note={status ? `${status.completedSessions} sessions completed` : undefined} />
-                <Stat label="Idle" value={<span className="ui-num">{duration(overview.idleSeconds)}</span>} />
-                <Stat label="Context switches" value={<span className="ui-num">{overview.contextSwitches}</span>} />
+                <Stat
+                  label="Active"
+                  value={<span className="ui-num">{duration(overview.activeSeconds)}</span>}
+                  note={RANGE_LABEL[days]}
+                />
+                <Stat
+                  label="Focused"
+                  value={<span className="ui-num">{duration(overview.focusedSeconds)}</span>}
+                  note={status ? `${status.completedSessions} sessions completed` : undefined}
+                />
+                <Stat
+                  label="Idle"
+                  value={<span className="ui-num">{duration(overview.idleSeconds)}</span>}
+                />
+                <Stat
+                  label="Context switches"
+                  value={<span className="ui-num">{overview.contextSwitches}</span>}
+                />
               </>
             )}
           </StatGrid>
@@ -229,13 +279,27 @@ export function AttentionPage() {
               {firstLoad ? (
                 <SkeletonRows rows={4} label="Reading activity" />
               ) : overview?.applications.length ? (
-                <BarList label="Time per application" items={overview.applications.map(([app, seconds]) => ({ id: app, label: app, value: seconds, display: duration(seconds) }))} />
+                <BarList
+                  label="Time per application"
+                  items={overview.applications.map(([app, seconds]) => ({
+                    id: app,
+                    label: app,
+                    value: seconds,
+                    display: duration(seconds),
+                  }))}
+                />
               ) : (
                 <EmptyState
                   size="compact"
                   icon={<Activity {...ICON} />}
                   title="No activity yet"
-                  action={settings && !settings.enabled ? <Button size="small" onClick={() => setView("settings")}>Turn on tracking</Button> : undefined}
+                  action={
+                    settings && !settings.enabled ? (
+                      <Button size="small" onClick={() => setView("settings")}>
+                        Turn on tracking
+                      </Button>
+                    ) : undefined
+                  }
                 >
                   Activity appears here once tracking is on.
                 </EmptyState>
@@ -250,7 +314,13 @@ export function AttentionPage() {
                   label="Time per category"
                   items={overview.categories.map(([id, seconds]) => {
                     const category = settings?.categories.find((item) => item.id === id);
-                    return { id, label: category?.name ?? (id === "unclassified" ? "Unclassified" : id), value: seconds, display: duration(seconds), color: category?.color };
+                    return {
+                      id,
+                      label: category?.name ?? (id === "unclassified" ? "Unclassified" : id),
+                      value: seconds,
+                      display: duration(seconds),
+                      color: category?.color,
+                    };
                   })}
                 />
               </Card>
@@ -281,7 +351,11 @@ export function AttentionPage() {
             </List>
           ) : (
             <Card>
-              <EmptyState size="compact" icon={<History {...ICON} />} title="Nothing recorded in this range">
+              <EmptyState
+                size="compact"
+                icon={<History {...ICON} />}
+                title="Nothing recorded in this range"
+              >
                 Switch applications with tracking on and they show up here.
               </EmptyState>
             </Card>
@@ -298,17 +372,33 @@ export function AttentionPage() {
                 <div className="attn-clock ui-num" aria-live="off">
                   {remaining >= 0 ? clock(remaining) : `+${clock(-remaining)}`}
                 </div>
-                <p className="attn-clock-label">{remaining >= 0 ? `left of ${duration(active.plannedDurationSeconds)}` : "Over the planned time"}</p>
-                <ProgressBar value={Math.min(1, elapsed / Math.max(1, active.plannedDurationSeconds))} tone={remaining >= 0 ? "accent" : "warning"} label="Session progress" />
+                <p className="attn-clock-label">
+                  {remaining >= 0
+                    ? `left of ${duration(active.plannedDurationSeconds)}`
+                    : "Over the planned time"}
+                </p>
+                <ProgressBar
+                  value={Math.min(1, elapsed / Math.max(1, active.plannedDurationSeconds))}
+                  tone={remaining >= 0 ? "accent" : "warning"}
+                  label="Session progress"
+                />
                 <div className="attn-focus-actions">
-                  <Button variant="primary" icon={<CircleStop {...ICON} />} busy={toggling} onClick={() => void stop()}>
+                  <Button
+                    variant="primary"
+                    icon={<CircleStop {...ICON} />}
+                    busy={toggling}
+                    onClick={() => void stop()}
+                  >
                     Finish session
                   </Button>
                 </div>
               </>
             ) : (
               <>
-                <CardHeader title="Start a focus session" subtitle="Name a block of work and pick how long it should last." />
+                <CardHeader
+                  title="Start a focus session"
+                  subtitle="Name a block of work and pick how long it should last."
+                />
                 <form
                   className="attn-focus-form"
                   onSubmit={(event) => {
@@ -316,11 +406,20 @@ export function AttentionPage() {
                     void start();
                   }}
                 >
-                  <Field label="Session name">{(id) => <TextField id={id} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+                  <Field label="Session name">
+                    {(id) => (
+                      <TextField id={id} value={name} onChange={(e) => setName(e.target.value)} />
+                    )}
+                  </Field>
                   <div className="attn-duration">
                     <span className="attn-duration-label">Duration</span>
                     <div className="attn-duration-controls">
-                      <Segmented options={PRESETS} value={preset} onChange={choosePreset} label="Duration" />
+                      <Segmented
+                        options={PRESETS}
+                        value={preset}
+                        onChange={choosePreset}
+                        label="Duration"
+                      />
                       {preset === "custom" && (
                         <TextField
                           className="attn-minutes"
@@ -336,7 +435,12 @@ export function AttentionPage() {
                     </div>
                   </div>
                   <div className="attn-focus-actions">
-                    <Button type="submit" variant="primary" icon={<Play {...ICON} />} busy={toggling}>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      icon={<Play {...ICON} />}
+                      busy={toggling}
+                    >
                       Start
                     </Button>
                   </div>
@@ -353,7 +457,15 @@ export function AttentionPage() {
                     key={item.id}
                     title={item.name}
                     subtitle={new Date(item.startedAt).toLocaleString()}
-                    meta={<span className="ui-num">{duration((Date.parse(item.endedAt ?? item.startedAt) - Date.parse(item.startedAt)) / 1000)}</span>}
+                    meta={
+                      <span className="ui-num">
+                        {duration(
+                          (Date.parse(item.endedAt ?? item.startedAt) -
+                            Date.parse(item.startedAt)) /
+                            1000,
+                        )}
+                      </span>
+                    }
                   />
                 ))}
               </List>
@@ -370,17 +482,35 @@ export function AttentionPage() {
 
       {view === "settings" && settings && (
         <>
-          <FormGroup title="Tracking" footer={saving ? "Saving…" : "Saved on this device. Nothing is uploaded."}>
+          <FormGroup
+            title="Tracking"
+            footer={saving ? "Saving…" : "Saved on this device. Nothing is uploaded."}
+          >
             <FormRow
               label="Track application activity"
               description="Follows the focused application through GNOME Shell."
-              control={<Switch label="Track application activity" checked={settings.enabled} onChange={(enabled) => void save({ ...settings, enabled })} />}
+              control={
+                <Switch
+                  label="Track application activity"
+                  checked={settings.enabled}
+                  onChange={(enabled) => void save({ ...settings, enabled })}
+                />
+              }
             />
             <FormRow
               label="Privacy"
               description="Applications only never stores window titles."
               control={
-                <Select value={settings.privacy} onChange={(e) => void save({ ...settings, privacy: e.target.value as AttentionSettings["privacy"] })} aria-label="Privacy">
+                <Select
+                  value={settings.privacy}
+                  onChange={(e) =>
+                    void save({
+                      ...settings,
+                      privacy: e.target.value as AttentionSettings["privacy"],
+                    })
+                  }
+                  aria-label="Privacy"
+                >
                   <option value="applications">Applications only</option>
                   <option value="detailed">Detailed titles</option>
                 </Select>
@@ -390,7 +520,13 @@ export function AttentionPage() {
               label="Idle threshold"
               description="Time without input before activity counts as idle."
               control={
-                <Select value={settings.idleThresholdSeconds} onChange={(e) => void save({ ...settings, idleThresholdSeconds: Number(e.target.value) })} aria-label="Idle threshold">
+                <Select
+                  value={settings.idleThresholdSeconds}
+                  onChange={(e) =>
+                    void save({ ...settings, idleThresholdSeconds: Number(e.target.value) })
+                  }
+                  aria-label="Idle threshold"
+                >
                   {[60, 300, 600, 900].map((v) => (
                     <option value={v} key={v}>
                       {duration(v)}
@@ -401,10 +537,17 @@ export function AttentionPage() {
             />
           </FormGroup>
 
-          <FormGroup title="Categories" description="Applications are matched by name, separated by commas. Changes save when you leave a field.">
+          <FormGroup
+            title="Categories"
+            description="Applications are matched by name, separated by commas. Changes save when you leave a field."
+          >
             {settings.categories.map((category, index) => (
               <div className="attn-category-row" key={category.id}>
-                <span className="attn-swatch" style={{ background: category.color }} aria-hidden="true" />
+                <span
+                  className="attn-swatch"
+                  style={{ background: category.color }}
+                  aria-hidden="true"
+                />
                 <div className="attn-category">
                   <TextField
                     value={category.name}
@@ -421,7 +564,13 @@ export function AttentionPage() {
                     value={category.applications.join(", ")}
                     onChange={(e) => {
                       const categories = [...settings.categories];
-                      categories[index] = { ...category, applications: e.target.value.split(",").map((v) => v.trim()).filter(Boolean) };
+                      categories[index] = {
+                        ...category,
+                        applications: e.target.value
+                          .split(",")
+                          .map((v) => v.trim())
+                          .filter(Boolean),
+                      };
                       setSettings({ ...settings, categories });
                     }}
                     onBlur={() => settings && void save(settings)}
@@ -441,4 +590,3 @@ export function AttentionPage() {
     </Page>
   );
 }
-

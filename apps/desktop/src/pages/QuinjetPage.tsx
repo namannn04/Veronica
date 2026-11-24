@@ -3,7 +3,18 @@ import { ChevronRight, FolderGit2, GitBranch, RefreshCw } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
 import type { QuinjetBoard, QuinjetProject, QuinjetWorktree } from "../lib/types";
-import { Badge, Button, EmptyState, List, ListRow, Notice, Page, PageHeader, Section, SkeletonRows } from "../ui";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  Section,
+  SkeletonRows,
+} from "../ui";
 import "./QuinjetPage.css";
 
 const ICON = { strokeWidth: 1.75 };
@@ -66,7 +77,15 @@ export function QuinjetPage() {
       }
     >
       {error && (
-        <Notice tone="critical" title="Quinjet did not answer" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+        <Notice
+          tone="critical"
+          title="Quinjet did not answer"
+          actions={
+            <Button size="small" onClick={() => void load()}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Notice>
       )}
@@ -81,7 +100,8 @@ export function QuinjetPage() {
             </Button>
           }
         >
-          Quinjet is its own tool. Veronica finds your projects through it and opens its review view in your terminal; nothing else in Veronica needs it.
+          Quinjet is its own tool. Veronica finds your projects through it and opens its review view
+          in your terminal; nothing else in Veronica needs it.
         </Notice>
       )}
 
@@ -95,7 +115,11 @@ export function QuinjetPage() {
 
       {board?.installed && board.projects.length === 0 && !busy && (
         <div className="quinjet-empty">
-          <EmptyState icon={<FolderGit2 {...ICON} />} title="No recent projects" action={<Button onClick={() => void load()}>Refresh</Button>}>
+          <EmptyState
+            icon={<FolderGit2 {...ICON} />}
+            title="No recent projects"
+            action={<Button onClick={() => void load()}>Refresh</Button>}
+          >
             Quinjet lists the repositories you have opened in it. Open one there, then refresh.
           </EmptyState>
         </div>
@@ -105,7 +129,13 @@ export function QuinjetPage() {
         <Section title="Projects" description="Review and Open launch Quinjet in your terminal">
           <List label="Quinjet projects" className="quinjet-list">
             {board.projects.map((project) => (
-              <ProjectGroup key={project.commonDir} project={project} expanded={openSet.has(project.commonDir)} onToggle={() => toggle(project.commonDir)} onOpen={(worktree) => void open(worktree)} />
+              <ProjectGroup
+                key={project.commonDir}
+                project={project}
+                expanded={openSet.has(project.commonDir)}
+                onToggle={() => toggle(project.commonDir)}
+                onOpen={(worktree) => void open(worktree)}
+              />
             ))}
           </List>
         </Section>
@@ -125,17 +155,30 @@ function ProjectGroup({
   onToggle: () => void;
   onOpen: (worktree: QuinjetWorktree) => void;
 }) {
-  const worktrees = project.worktrees.filter((worktree) => !worktree.bare && worktree.prunable === null);
+  const worktrees = project.worktrees.filter(
+    (worktree) => !worktree.bare && worktree.prunable === null,
+  );
   const current = worktrees.find((worktree) => worktree.current) ?? worktrees[0];
   return (
     <>
       <ListRow
         className="quinjet-project"
-        leading={<ChevronRight {...ICON} className="quinjet-chevron" data-open={expanded || undefined} aria-hidden="true" />}
+        leading={
+          <ChevronRight
+            {...ICON}
+            className="quinjet-chevron"
+            data-open={expanded || undefined}
+            aria-hidden="true"
+          />
+        }
         title={project.name}
         subtitle={
           <>
-            {current ? <span className="ui-mono">{branchOf(current)}</span> : "No openable worktree"}
+            {current ? (
+              <span className="ui-mono">{branchOf(current)}</span>
+            ) : (
+              "No openable worktree"
+            )}
             {` · ${worktrees.length} worktree${worktrees.length === 1 ? "" : "s"}`}
           </>
         }
