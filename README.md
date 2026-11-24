@@ -73,6 +73,26 @@ key as the Flatpak repository (fingerprint
 `91E3 2AE6 B669 8439 7E12 094F A5CE BD75 B2D1 5EB7`). Remove it with
 `sudo rm /etc/apt/sources.list.d/veronica.list /etc/apt/keyrings/veronica.gpg`.
 
+### Snap
+
+```bash
+sudo snap install veronica --classic
+sudo snap alias veronica.vr vr
+```
+
+The second line makes the command line tool available as `vr`; without it the
+snap provides it as `veronica.vr`. snapd refreshes Veronica on its own. Until
+the Snap Store listing is live, each release also attaches
+`Veronica_<version>_amd64.snap`, which installs with
+`sudo snap install --classic --dangerous ./Veronica_0.1.26_amd64.snap`.
+
+Veronica controls the computer it runs on, so the snap uses classic
+confinement and the GTK and WebKitGTK libraries of the Ubuntu desktop, like the
+Debian package. On first launch it copies its GNOME Shell extension into
+`~/.local/share/gnome-shell/extensions`; log out and back in once, then enable
+it from Veronica. It brings its own `jq`, but uses host tools such as `zenity`,
+GStreamer and PipeWire, which the Debian package would otherwise pull in.
+
 ### AppImage
 
 An AppImage is also published for other distributions:

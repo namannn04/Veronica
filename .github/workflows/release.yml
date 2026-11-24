@@ -70,6 +70,13 @@ jobs:
           dbus-run-session -- ./scripts/build-flatpak.sh "target/release/bundle/deb/Veronica_${version}_amd64.deb"
           (cd target/flatpak && sha256sum "Veronica_${version}_x86_64.flatpak") >> target/release/bundle/SHA256SUMS
 
+      - name: Build the snap
+        run: |
+          version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
+          sudo snap install snapcraft --classic
+          sudo ./scripts/build-snap.sh "target/release/bundle/deb/Veronica_${version}_amd64.deb"
+          (cd target/snap && sha256sum "Veronica_${version}_amd64.snap") >> target/release/bundle/SHA256SUMS
+
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -79,6 +86,7 @@ jobs:
             "target/release/bundle/deb/Veronica_${version}_amd64.deb"
             "target/release/bundle/appimage/Veronica_${version}_amd64.AppImage"
             "target/flatpak/Veronica_${version}_x86_64.flatpak"
+            "target/snap/Veronica_${version}_amd64.snap"
             "target/release/bundle/SHA256SUMS"
           )
           # A maintainer can prepare a draft under their own account before
@@ -99,3 +107,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --ref main
 
+      - name: Publish the snap to the Snap Store
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          if [ -z "$SNAPCRAFT_STORE_CREDENTIALS" ]; then
+            echo "::notice::SNAPCRAFT_STORE_CREDENTIALS is not set, so the snap was attached to the release but not uploaded to the Snap Store"
+            exit 0
+          fi
+          version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
+          snapcraft upload --release=stable "target/snap/Veronica_${version}_amd64.snap"
