@@ -1,11 +1,3 @@
-//! Writing shared files safely.
-//!
-//! The app, `vr` and the shell extension (through `vr`) all write the same
-//! small JSON files. Each writer therefore needs a temporary file of its own:
-//! with one fixed `name.json.tmp`, two concurrent saves write into the same
-//! file, and one rename can publish the other's half-written body, after which
-//! every reader fails to parse it.
-
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -15,7 +7,6 @@ use anyhow::{Context, Result};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
-/// A sibling temporary path unique to this process and this call.
 fn temporary_for(path: &Path) -> PathBuf {
     let name = path
         .file_name()
@@ -28,8 +19,6 @@ fn temporary_for(path: &Path) -> PathBuf {
     ))
 }
 
-/// Replace `path` with `body` atomically: readers see the old file or the new
-/// one, never a mixture, and a crash cannot leave it truncated.
 pub fn write_atomic(path: &Path, body: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)

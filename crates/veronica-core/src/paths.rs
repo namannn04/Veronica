@@ -1,18 +1,9 @@
-//! XDG base directories for Veronica.
-//!
-//! Edith stores everything under `~/Library/Application Support/Edith`. On
-//! Ubuntu the equivalent is the XDG basedir spec, so config, data, cache and
-//! runtime are four distinct roots rather than one.
-
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
-/// Freedesktop application id. Used for the desktop entry, AppStream
-/// metadata, the D-Bus name and the notification sender.
 pub const APP_ID: &str = "io.github.namannn04.Veronica";
 
-/// Directory name used inside the XDG roots.
 pub const APP_DIR: &str = "veronica";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,15 +16,11 @@ pub struct AppDirectories {
 }
 
 impl AppDirectories {
-    /// Resolve the directories from the environment, honouring every XDG
-    /// variable and falling back to the spec defaults when one is unset.
     pub fn current() -> Result<Self> {
         let home = home_dir().context("cannot resolve the home directory")?;
         Ok(Self::with_env(&home, EnvOverrides::from_env()))
     }
 
-    /// Pure resolution, so the fallback rules stay testable without touching
-    /// the real environment.
     pub fn with_env(home: &Path, env: EnvOverrides) -> Self {
         let base = |explicit: Option<PathBuf>, default: &str| -> PathBuf {
             explicit
@@ -43,8 +30,6 @@ impl AppDirectories {
         };
 
         let cache = base(env.cache_home, ".cache");
-        // XDG_RUNTIME_DIR has no spec-defined fallback. When it is absent the
-        // cache is the only writable location guaranteed to exist.
         let runtime = env
             .runtime_dir
             .filter(|p| p.is_absolute())
@@ -70,7 +55,6 @@ impl AppDirectories {
         ]
     }
 
-    /// Create every directory. Safe to call on each launch.
     pub fn prepare(&self) -> Result<()> {
         for dir in self.all() {
             std::fs::create_dir_all(dir)
@@ -79,7 +63,6 @@ impl AppDirectories {
         Ok(())
     }
 
-    /// Where the usage collector writes `usage.json` and `machines/`.
     pub fn usage_dir(&self) -> PathBuf {
         self.data.join("usage")
     }
@@ -92,7 +75,6 @@ impl AppDirectories {
         self.usage_dir().join("machines")
     }
 
-    /// Extracted copy of the bundled collector script.
     pub fn collector_script(&self) -> PathBuf {
         self.cache.join("bin").join("refresh-usage")
     }
@@ -101,7 +83,6 @@ impl AppDirectories {
         self.configuration.join("settings.json")
     }
 
-    /// Freedesktop per-user login entry, beside Veronica's config directory.
     pub fn autostart_file(&self) -> PathBuf {
         self.configuration
             .parent()
@@ -118,46 +99,34 @@ impl AppDirectories {
         self.data.join("clipboard.json")
     }
 
-    /// Colours sampled with the picker, newest first.
     pub fn swatches_file(&self) -> PathBuf {
         self.data.join("swatches.json")
     }
 
-    /// Which emoji you reach for, so the picker can rank recents.
     pub fn emoji_usage_file(&self) -> PathBuf {
         self.data.join("emoji-usage.json")
     }
 
-    /// Local application, browser and focus-session attention ledger.
     pub fn attention_dir(&self) -> PathBuf {
         self.data.join("attention")
     }
 
-    /// Local Companion notes, index and voice recordings.
     pub fn companion_dir(&self) -> PathBuf {
         self.data.join("companion")
     }
 
-    /// Saved database connections, saved queries, the operation history and
-    /// the outstanding confirmation receipts. Never a credential: those are in
-    /// the keyring, referenced from here by identifier.
     pub fn database_store(&self) -> PathBuf {
         self.state.join("database.sqlite")
     }
 
-    /// Where a database secret falls back to when there is no keyring — over
-    /// SSH, say. Written 0600, and the diagnostics say it is the worse store.
     pub fn database_secrets_fallback(&self) -> PathBuf {
         self.state.join("database-secrets.json")
     }
 
-    /// What the alert notifier remembers between polls, so a restart does not
-    /// re-fire an alert the user has already seen.
     pub fn alerts_state_file(&self) -> PathBuf {
         self.state.join("alerts.json")
     }
 
-    /// Unix socket the CLI uses to reach a running app instance.
     pub fn ipc_socket(&self) -> PathBuf {
         self.runtime.join("veronica.sock")
     }

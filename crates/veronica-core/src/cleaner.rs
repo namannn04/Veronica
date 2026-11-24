@@ -1,37 +1,13 @@
-//! The disk cleaner.
-//!
-//! Ported from Edith's `ed cleaner`: the same two families of category, the
-//! same on-by-default flags, the same rule that cleaning moves things to the
-//! Trash rather than deleting them, and the same warning that the Trash keeps
-//! occupying the disk until it is emptied.
-//!
-//! The paths are Ubuntu's. Edith's Xcode, SwiftPM, Homebrew and CocoaPods
-//! entries have no counterpart here, and the caches that do the same job on
-//! Linux — Cargo's registry, Go's build cache, pnpm's store, GNOME's
-//! thumbnails — take their place. Padding the list back to Edith's count with
-//! a risky match would be worse than being one shorter: a project category
-//! matches a *directory name* anywhere under the root, with no check that a
-//! project surrounds it, so every entry here has to be a name nobody keeps
-//! anything irreplaceable in.
-//!
-//! Everything scans and cleans with the user's own permissions inside their own
-//! home directory. Nothing here asks for root, and nothing touches a
-//! system-wide cache such as apt's, which `sudo apt clean` owns.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::Serialize;
 
-/// Which family a category belongs to, because they are found differently and
-/// the difference matters when a scan turns up nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Family {
-    /// Found at a known path under the home directory.
     Cache,
-    /// Found by directory name, anywhere under a root the user passes.
     Project,
 }
 
@@ -40,16 +16,10 @@ pub enum Family {
 pub struct Category {
     pub id: &'static str,
     pub title: &'static str,
-    /// What removing it costs, which is the only thing that makes an informed
-    /// choice possible.
     pub cost: &'static str,
     pub family: Family,
-    /// Whether the interface ticks it initially. `clean` ignores this and takes
-    /// everything the scan found, as Edith's does.
     pub on_by_default: bool,
-    /// Paths relative to the home directory, for a `Cache` category.
     pub paths: &'static [&'static str],
-    /// Directory names matched anywhere under the root, for a `Project` one.
     pub directory_names: &'static [&'static str],
 }
 
@@ -234,8 +204,6 @@ pub fn category(id: &str) -> Option<&'static Category> {
     CATEGORIES.iter().find(|entry| entry.id == id)
 }
 
-/// One thing the scan found: a directory, its size, and which category claimed
-/// it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Item {
@@ -244,19 +212,16 @@ pub struct Item {
     pub bytes: u64,
 }
 
-/// What a scan found, grouped for reporting.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Scan {
     pub items: Vec<Item>,
-    /// Total per category id, so a summary needs no second pass.
     pub totals: BTreeMap<String, u64>,
     pub total_bytes: u64,
 }
 
 impl Scan {
     fn from_items(mut items: Vec<Item>) -> Self {
-        // Largest first: what is worth deleting should be at the top.
         items.sort_by(|left, right| {
             right
                 .bytes
@@ -277,10 +242,6 @@ impl Scan {
     }
 }
 
-/// Recursive size of a directory, following no symlinks.
-///
-/// Following them would count a target twice, or walk out of the tree entirely
-/// and report a size for something the clean will not remove.
 pub fn directory_size(path: &Path) -> u64 {
     walkdir::WalkDir::new(path)
         .follow_links(false)
@@ -292,10 +253,6 @@ pub fn directory_size(path: &Path) -> u64 {
         .sum()
 }
 
-/// Measure the fixed caches under `home`.
-///
-/// A category whose paths do not exist contributes nothing rather than a zero
-/// row, so a scan lists what is actually there.
 pub fn scan_caches(home: &Path, selected: Option<&[String]>) -> Scan {
     let mut items = Vec::new();
     for category in CATEGORIES
@@ -322,17 +279,8 @@ pub fn scan_caches(home: &Path, selected: Option<&[String]>) -> Scan {
     Scan::from_items(items)
 }
 
-/// How deep to descend when sweeping a project root.
-///
-/// Deep enough for a monorepo's `packages/<name>/node_modules`, shallow enough
-/// that pointing this at a home directory does not walk every file on the disk.
 pub const MAX_PROJECT_DEPTH: usize = 8;
 
-/// Sweep `root` for project directories by name.
-///
-/// A match is not descended into: a `node_modules` inside a `node_modules` is
-/// already counted by its parent, and recursing would both double the total and
-/// take far longer.
 pub fn scan_projects(root: &Path, selected: Option<&[String]>) -> Result<Scan> {
     if !root.is_dir() {
         anyhow::bail!("not a directory: {}", root.display());
@@ -378,25 +326,13 @@ pub fn scan_projects(root: &Path, selected: Option<&[String]>) -> Result<Scan> {
     Ok(Scan::from_items(items))
 }
 
-/// Where the freedesktop Trash lives for the user's home directory.
 pub fn trash_dir(home: &Path) -> PathBuf {
-    // Honouring XDG_DATA_HOME matters: a user who moved it would otherwise get
-    // files put somewhere their file manager does not look.
     match std::env::var_os("XDG_DATA_HOME").filter(|value| !value.is_empty()) {
         Some(value) => PathBuf::from(value).join("Trash"),
         None => home.join(".local/share/Trash"),
     }
 }
 
-/// Move one path to the Trash, the way the file manager does.
-///
-/// This is the freedesktop trash specification: the item goes to
-/// `Trash/files/<name>` and a `Trash/info/<name>.trashinfo` records where it
-/// came from, so Files can restore it. Deleting in place would make a mistake
-/// unrecoverable, which is exactly what a bulk cleaner must not do.
-///
-/// Returns the name it was filed under, which differs from the original when
-/// something of that name was already in the Trash.
 pub fn trash(home: &Path, path: &Path) -> Result<String> {
     let root = trash_dir(home);
     let files = root.join("files");
@@ -410,8 +346,6 @@ pub fn trash(home: &Path, path: &Path) -> Result<String> {
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| "item".to_string());
 
-    // A name already in the Trash is not overwritten: that would destroy
-    // something the user had already chosen to keep recoverable.
     let mut name = original.clone();
     let mut suffix = 1;
     while files.join(&name).exists() || info.join(format!("{name}.trashinfo")).exists() {
@@ -422,8 +356,6 @@ pub fn trash(home: &Path, path: &Path) -> Result<String> {
         }
     }
 
-    // The info file is written first: an entry in `files` with no `info` is an
-    // orphan the file manager cannot restore or describe.
     let deletion_date = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S");
     std::fs::write(
         info.join(format!("{name}.trashinfo")),
@@ -437,9 +369,6 @@ pub fn trash(home: &Path, path: &Path) -> Result<String> {
     match std::fs::rename(path, files.join(&name)) {
         Ok(()) => Ok(name),
         Err(error) => {
-            // The rename is what actually moves it, so a failure has to take
-            // the info file back out rather than leave a record of a file that
-            // is still where it was.
             let _ = std::fs::remove_file(info.join(format!("{name}.trashinfo")));
             Err(error).with_context(|| {
                 format!(
@@ -452,7 +381,6 @@ pub fn trash(home: &Path, path: &Path) -> Result<String> {
     }
 }
 
-/// Percent-encode a path for a `.trashinfo` file, which the spec requires.
 fn encode_path(path: &Path) -> String {
     let mut out = String::new();
     for byte in path.display().to_string().bytes() {
@@ -466,19 +394,14 @@ fn encode_path(path: &Path) -> String {
     out
 }
 
-/// What a clean did.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanReport {
     pub trashed: Vec<Item>,
-    /// Paths that could not be moved, with why. One failure never stops the
-    /// rest: a cleaner that gave up at the first busy directory would be
-    /// useless on a machine that is actually in use.
     pub failed: Vec<(String, String)>,
     pub bytes_reclaimed: u64,
 }
 
-/// Move everything a scan found to the Trash.
 pub fn clean(home: &Path, scan: &Scan) -> CleanReport {
     let mut report = CleanReport::default();
     for item in &scan.items {
@@ -543,8 +466,6 @@ mod tests {
 
     #[test]
     fn every_category_says_what_removing_it_costs() {
-        // Without that, no informed choice is possible, which is the whole
-        // point of listing them rather than just deleting.
         for entry in CATEGORIES {
             assert!(!entry.cost.is_empty(), "{} has no cost", entry.id);
             assert!(!entry.title.is_empty(), "{} has no title", entry.id);
@@ -553,8 +474,6 @@ mod tests {
 
     #[test]
     fn no_cache_path_escapes_the_home_directory() {
-        // A relative path with `..` would let a scan measure, and a clean move,
-        // something outside the user's own files.
         for entry in CATEGORIES {
             for path in entry.paths {
                 assert!(!path.starts_with('/'), "{} is absolute: {path}", entry.id);
@@ -578,7 +497,6 @@ mod tests {
             None,
             "an absent cache is not a zero row"
         );
-        // Largest first.
         assert_eq!(scan.items[0].category, "npm");
         std::fs::remove_dir_all(&home).ok();
     }
@@ -612,8 +530,6 @@ mod tests {
 
     #[test]
     fn a_nested_match_is_not_counted_twice() {
-        // A node_modules inside a node_modules is already inside its parent's
-        // total; counting it again would overstate what a clean reclaims.
         let root = scratch("nested");
         write(
             &root.join("node_modules/pkg/node_modules/dep/index.js"),
@@ -655,8 +571,6 @@ mod tests {
 
     #[test]
     fn a_second_item_of_the_same_name_does_not_overwrite_the_first() {
-        // Overwriting would destroy something the user had already chosen to
-        // keep recoverable.
         let home = scratch("collide");
         write(&home.join("a/target/x"), 10);
         write(&home.join("b/target/y"), 10);
@@ -714,8 +628,6 @@ mod tests {
 
     #[test]
     fn a_failed_move_leaves_no_orphan_info_file_behind() {
-        // An entry in `info` with nothing in `files` is a record the file
-        // manager cannot restore or describe.
         let home = scratch("orphan");
         let missing = home.join("never/existed");
         assert!(trash(&home, &missing).is_err());

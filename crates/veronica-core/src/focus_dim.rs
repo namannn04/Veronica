@@ -1,50 +1,20 @@
-//! Focus Dim.
-//!
-//! Dims everything behind the window you are working in.
-//!
-//! Ported from Edith's `FocusDimMath` and `FocusDimDisplayMode`: the same
-//! ranges, the same defaults, the same two display modes and the same settings
-//! keys.
-//!
-//! What differs is where the dimming happens. Edith stacks its own windows
-//! underneath the focused one, which a Wayland client cannot do — a client
-//! cannot position itself, raise itself, or learn what else is on screen. The
-//! compositor can, so on Ubuntu the overlay is drawn by Veronica's GNOME Shell
-//! extension. That also makes it work on Wayland, which the equivalent X11
-//! approach would not.
-//!
-//! This module is the part both sides agree on: what a valid intensity is, what
-//! the modes mean, and which keys hold them. The extension clamps again on read,
-//! because a settings file can be edited by hand and a compositor overlay at
-//! full opacity would leave the user unable to see anything.
-
 use serde::{Deserialize, Serialize};
 
 use crate::Settings;
 
-/// How dark the dimming may go. Edith's ceiling is 0.9 rather than 1.0: a fully
-/// opaque overlay would hide the desktop completely, which is a lock screen
-/// rather than a focus aid.
 pub const MIN_INTENSITY: f64 = 0.0;
 pub const MAX_INTENSITY: f64 = 0.9;
 pub const DEFAULT_INTENSITY: f64 = 0.45;
 
-/// Fade length in seconds. The floor is not zero because an instant change reads
-/// as a flicker when focus moves between windows.
 pub const MIN_ANIMATION_SECS: f64 = 0.05;
 pub const MAX_ANIMATION_SECS: f64 = 1.0;
 pub const DEFAULT_ANIMATION_SECS: f64 = 0.25;
 
-/// What to dim on displays other than the one holding the focused window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DisplayMode {
-    /// Each display keeps its own frontmost window bright. Better for a
-    /// multi-monitor setup where the other screens hold reference material.
     #[default]
     PerScreenFront,
-    /// Only the focused window anywhere is bright; every other display dims
-    /// entirely.
     DimUnfocused,
 }
 
@@ -65,7 +35,6 @@ impl DisplayMode {
         }
     }
 
-    /// Unknown values fall back to the default, as Edith's `from` does.
     pub fn parse(raw: &str) -> Self {
         DisplayMode::ALL
             .into_iter()
@@ -74,8 +43,6 @@ impl DisplayMode {
     }
 }
 
-/// A NaN is not a smaller or larger number, it is an absent one, so it falls
-/// back to the default rather than clamping to a bound.
 pub fn clamp_intensity(value: f64) -> f64 {
     if value.is_nan() {
         return DEFAULT_INTENSITY;
@@ -123,7 +90,6 @@ impl FocusDimSettings {
         }
     }
 
-    /// Intensity as a percentage, for an interface that talks in whole numbers.
     pub fn intensity_percent(&self) -> i64 {
         (self.intensity * 100.0).round() as i64
     }
@@ -156,8 +122,6 @@ mod tests {
 
     #[test]
     fn intensity_never_reaches_fully_opaque() {
-        // A dim of 1.0 hides the desktop entirely, which is a lock screen rather
-        // than a focus aid, so Edith caps it below that and so does this.
         assert_eq!(clamp_intensity(1.0), MAX_INTENSITY);
         assert_eq!(clamp_intensity(50.0), MAX_INTENSITY);
         const { assert!(MAX_INTENSITY < 1.0) };
@@ -170,11 +134,8 @@ mod tests {
 
     #[test]
     fn a_nan_falls_back_rather_than_clamping() {
-        // Clamping a NaN would silently pick a bound; it is an absent value, so
-        // the default is the honest answer.
         assert_eq!(clamp_intensity(f64::NAN), DEFAULT_INTENSITY);
         assert_eq!(clamp_animation_secs(f64::NAN), DEFAULT_ANIMATION_SECS);
-        // Infinities are numbers, so they clamp.
         assert_eq!(clamp_intensity(f64::INFINITY), MAX_INTENSITY);
         assert_eq!(clamp_intensity(f64::NEG_INFINITY), MIN_INTENSITY);
     }
@@ -229,7 +190,6 @@ mod tests {
 
     #[test]
     fn an_integer_intensity_is_accepted_because_json_has_one_number_type() {
-        // `vr config set focusDimIntensity 0` stores an integer, not a float.
         let settings = FocusDimSettings::read(&stored(&[("focusDimIntensity", json!(0))]));
         assert_eq!(settings.intensity, 0.0);
     }

@@ -1,18 +1,3 @@
-//! The emoji picker's catalogue, search and usage ledger.
-//!
-//! A direct port of Edith's `EmojiCatalog`, `EmojiSearch` and
-//! `EmojiUsageLedger`, over the same `emoji-catalog.json` — same emojibase
-//! release, same names, same search terms, same group order, same skin-tone
-//! variants — so a search for "shrug" ranks the same characters in the same
-//! order on both platforms.
-//!
-//! What differs is only what happens after a pick. Edith synthesises the
-//! keystroke into whatever app was frontmost; on Wayland only the compositor
-//! may do that, so Veronica always copies to the clipboard and inserts in place
-//! through its shell extension where one is running. Everything in this module
-//! is the part that is identical: which emoji exist, which one a query means,
-//! and which ones you reach for most.
-
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -20,14 +5,8 @@ use anyhow::{Context, Result};
 
 use serde::{Deserialize, Serialize};
 
-/// The catalogue, embedded rather than read at runtime: the picker must open
-/// instantly on a hotkey, and a missing file would be a broken feature rather
-/// than a degraded one.
 pub const CATALOG_JSON: &str = include_str!("../../../resources/emoji-catalog.json");
 
-/// How many recents the ledger keeps, and how fast an old pick loses weight.
-/// Edith's numbers: a character used twenty times a month ago should not
-/// outrank one used five times today.
 pub const LEDGER_CAPACITY: usize = 200;
 pub const HALF_LIFE_DAYS: f64 = 21.0;
 
@@ -64,7 +43,6 @@ impl SkinTone {
         }
     }
 
-    /// The raised hand in this tone, which is what a tone chooser shows.
     pub fn sample(self) -> &'static str {
         match self {
             SkinTone::Standard => "✋",
@@ -87,7 +65,6 @@ impl SkinTone {
         }
     }
 
-    /// Which tone variant this is, 1-based. `Standard` has no variant.
     fn variant_index(self) -> Option<usize> {
         match self {
             SkinTone::Standard => None,
@@ -99,7 +76,6 @@ impl SkinTone {
         }
     }
 
-    /// Unknown values fall back to the default, as elsewhere.
     pub fn parse(raw: &str) -> Self {
         SkinTone::ALL
             .into_iter()
@@ -112,13 +88,10 @@ impl SkinTone {
 pub struct Group {
     pub id: String,
     pub name: String,
-    /// Edith stores an SF Symbol here; Veronica's interface maps it to its own
-    /// glyph, so the field is carried through rather than reinterpreted.
     #[serde(rename = "symbol")]
     pub symbol: String,
 }
 
-/// One emoji, in the catalogue's compact on-disk shape.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 struct RawEmoji {
     #[serde(rename = "e")]
@@ -151,8 +124,6 @@ impl Emoji {
         !self.tone_variants.is_empty()
     }
 
-    /// This emoji in one tone, falling back to the standard character when the
-    /// emoji has no such variant — most do not.
     pub fn character(&self, tone: SkinTone) -> &str {
         match tone.variant_index() {
             Some(index) => self
@@ -178,7 +149,6 @@ pub struct Catalog {
     pub source: String,
     pub groups: Vec<Group>,
     emoji: Vec<Emoji>,
-    /// Precomputed once, because the picker searches on every keystroke.
     index: Vec<IndexEntry>,
 }
 
@@ -189,12 +159,9 @@ struct IndexEntry {
     terms: Vec<String>,
 }
 
-/// The schema this build understands. A newer catalogue is refused rather than
-/// read as if the fields still meant the same thing.
 pub const SCHEMA: u32 = 1;
 
 impl Catalog {
-    /// The embedded catalogue.
     pub fn bundled() -> Self {
         Self::parse(CATALOG_JSON).expect("the bundled emoji catalogue is valid")
     }
@@ -211,7 +178,6 @@ impl Catalog {
         let emoji: Vec<Emoji> = raw
             .emoji
             .into_iter()
-            // A group index past the end would be an emoji no tab can show.
             .filter(|entry| entry.group_index < group_count)
             .map(|entry| Emoji {
                 character: entry.character,
@@ -255,12 +221,10 @@ impl Catalog {
         self.emoji.is_empty()
     }
 
-    /// Find one emoji by its standard character.
     pub fn find(&self, character: &str) -> Option<&Emoji> {
         self.emoji.iter().find(|emoji| emoji.character == character)
     }
 
-    /// Everything in one group, in catalogue order.
     pub fn group(&self, index: usize) -> Vec<&Emoji> {
         self.emoji
             .iter()
@@ -268,16 +232,12 @@ impl Catalog {
             .collect()
     }
 
-    /// Search, ranked. An empty query is the whole catalogue in its own order,
-    /// which is what an unfiltered picker shows.
     pub fn search(&self, query: &str, limit: usize) -> Vec<&Emoji> {
         let normalized = normalize(query);
         if normalized.is_empty() {
             return self.emoji.iter().take(limit).collect();
         }
 
-        // Seven buckets, filled in catalogue order, then concatenated: within a
-        // rank the catalogue's own order decides, so results are stable.
         let mut buckets: [Vec<&Emoji>; 7] = Default::default();
         for (position, entry) in self.index.iter().enumerate() {
             if let Some(rank) = score(entry, &normalized) {
@@ -288,7 +248,6 @@ impl Catalog {
     }
 }
 
-/// Edith's normalisation: `:smiling_face:` and `Smiling Face` are one query.
 pub fn normalize(query: &str) -> String {
     query
         .trim()
@@ -304,11 +263,6 @@ fn words(name: &str) -> Vec<String> {
         .collect()
 }
 
-/// How well one entry matches, lower is better. `None` is no match.
-///
-/// The ladder is Edith's exactly: an exact name, then a name prefix, then a
-/// word prefix, then an exact term, a term prefix, a name substring, and last a
-/// term substring. It is what makes "grin" put 😀 above 😬.
 fn score(entry: &IndexEntry, query: &str) -> Option<usize> {
     if entry.name == query {
         return Some(0);
@@ -339,15 +293,9 @@ fn score(entry: &IndexEntry, query: &str) -> Option<usize> {
 pub struct Usage {
     pub character: String,
     pub count: u32,
-    /// Milliseconds since the Unix epoch, so the ledger needs no clock type.
     pub last_used_at_ms: i64,
 }
 
-/// Which emoji you reach for, weighted so an old habit decays.
-///
-/// Edith's `EmojiUsageLedger`: a count with a 21-day half-life, capped at 200
-/// characters. A plain count would pin last year's favourites to the top of the
-/// picker forever.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageLedger {
@@ -360,7 +308,6 @@ impl UsageLedger {
         usage.count as f64 * 0.5_f64.powf(age_days / HALF_LIFE_DAYS)
     }
 
-    /// The most-used characters, best first.
     pub fn ranked(&self, now_ms: i64, limit: usize) -> Vec<String> {
         if limit == 0 {
             return Vec::new();
@@ -370,8 +317,6 @@ impl UsageLedger {
             .iter()
             .map(|usage| (usage, Self::score(usage, now_ms)))
             .collect();
-        // Ties break on recency and then on the character itself, so the order
-        // is total and the picker never reshuffles between two equal entries.
         scored.sort_by(|(left, left_score), (right, right_score)| {
             right_score
                 .partial_cmp(left_score)
@@ -406,8 +351,6 @@ impl UsageLedger {
         if self.entries.len() <= LEDGER_CAPACITY {
             return;
         }
-        // The character just used always survives, even if its single use ranks
-        // below everything else — dropping what was just picked would be absurd.
         let mut survivors: HashMap<&str, ()> = HashMap::new();
         let ranked = self.ranked(now_ms, LEDGER_CAPACITY - 1);
         for character in &ranked {
@@ -419,9 +362,6 @@ impl UsageLedger {
             .retain(|usage| keep.iter().any(|character| character == &usage.character));
     }
 
-    /// A missing file is an empty ledger, not an error: that is a first pick.
-    /// A corrupt one is also empty rather than fatal, because losing a list of
-    /// recents must never stop the picker from opening.
     pub fn load(path: &Path) -> Result<Self> {
         match std::fs::read(path) {
             Ok(bytes) => Ok(serde_json::from_slice(&bytes).unwrap_or_default()),
@@ -430,7 +370,6 @@ impl UsageLedger {
         }
     }
 
-    /// Written atomically, so a crash mid-write cannot truncate the file.
     pub fn save(&self, path: &Path) -> Result<()> {
         crate::fsutil::write_atomic(path, &serde_json::to_vec_pretty(self)?)
     }
@@ -485,7 +424,6 @@ mod tests {
 
     #[test]
     fn an_emoji_in_a_group_that_does_not_exist_is_dropped() {
-        // It would otherwise be listed under no tab and reachable only by search.
         let json = r#"{"schema":1,"source":"x",
           "groups":[{"id":"a","name":"A","symbol":"s"}],
           "emoji":[{"e":"😀","n":"grinning face","g":0,"v":1},
@@ -518,7 +456,6 @@ mod tests {
     #[test]
     fn a_search_finds_by_term_not_only_by_name() {
         let catalog = catalog();
-        // "cya" is a term on the waving hand, and appears in no name.
         let results = catalog.search("cya", 20);
         assert!(
             results.iter().any(|emoji| emoji.character == "👋"),
@@ -566,7 +503,6 @@ mod tests {
         assert_eq!(wave.character(SkinTone::Light), "👋🏻");
         assert_eq!(wave.character(SkinTone::Dark), "👋🏿");
 
-        // Most emoji have no variants; asking for a tone must not blank them.
         let grin = catalog.find("😀").unwrap();
         assert!(!grin.supports_skin_tones());
         assert_eq!(grin.character(SkinTone::Dark), "😀");
@@ -610,7 +546,6 @@ mod tests {
 
     #[test]
     fn a_recent_pick_outranks_a_stale_habit() {
-        // Five uses today beat twenty uses two half-lives ago: 5 > 20 * 0.25.
         let now = 100 * DAY_MS;
         let ledger = UsageLedger {
             entries: vec![
@@ -682,7 +617,6 @@ mod tests {
     #[test]
     fn the_ledger_is_capped_and_the_character_just_used_always_survives() {
         let mut ledger = UsageLedger::default();
-        // Fill it with well-used, recent characters.
         for index in 0..LEDGER_CAPACITY {
             ledger.entries.push(Usage {
                 character: format!("e{index}"),

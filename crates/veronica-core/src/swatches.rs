@@ -1,33 +1,12 @@
-//! Picked-colour history.
-//!
-//! Ported from Edith's `ColorSwatch`, `ColorFormatting` and
-//! `ColorHistoryStore`: the same fields, the same formatting maths and the same
-//! prepend-and-cap history, so a colour picked on either platform reads the
-//! same way.
-//!
-//! Two of Edith's five copy formats are AppKit literals (`Color(...)` and
-//! `NSColor(...)`), which mean nothing on Ubuntu. Those two slots hold the
-//! toolkit form Ubuntu actually uses — a `GdkRGBA` literal — plus CSS
-//! `rgba()`. The three portable formats are byte-for-byte Edith's.
-//!
-//! The history is a plain JSON file the user can read or delete. Nothing
-//! leaves the machine.
-
 use std::path::Path;
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Edith's default and hard ceiling for how many swatches are kept.
 pub const DEFAULT_HISTORY_SIZE: usize = 100;
 pub const MAX_HISTORY_SIZE: usize = 100;
 
-/// Colour space a swatch is recorded in.
-///
-/// The compositor hands back sRGB, so `DisplayP3` is a conversion rather than a
-/// different sample. It is offered because many laptop panels are P3 and a
-/// designer sampling one wants the P3 coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ColorProfile {
@@ -61,7 +40,6 @@ impl ColorProfile {
     }
 }
 
-/// How a swatch is written to the clipboard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum CopyFormat {
@@ -102,8 +80,6 @@ impl CopyFormat {
         }
     }
 
-    /// Unknown values fall back to hex rather than failing, matching how Edith
-    /// reads the same setting.
     pub fn parse(raw: &str) -> Self {
         CopyFormat::ALL
             .into_iter()
@@ -115,10 +91,7 @@ impl CopyFormat {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Swatch {
-    /// Stable id, assigned when recorded. Matches how the clipboard history
-    /// identifies its rows, so both lists behave the same in the interface.
     pub id: u64,
-    /// Components in 0..=1, in `profile`'s space.
     pub red: f64,
     pub green: f64,
     pub blue: f64,
@@ -131,23 +104,16 @@ impl Swatch {
         formatting::string(self.red, self.green, self.blue, format)
     }
 
-    /// Always available regardless of the configured format, because the
-    /// interface shows the hex under every swatch.
     pub fn hex(&self) -> String {
         formatting::hex(self.red, self.green, self.blue)
     }
 
-    /// Whether white or black text is legible on this colour, by WCAG relative
-    /// luminance. The swatch grid prints its hex on top of the colour.
     pub fn prefers_dark_text(&self) -> bool {
         formatting::relative_luminance(self.red, self.green, self.blue) > 0.45
     }
 }
 
 pub mod formatting {
-    //! The conversions, kept as free functions so the CLI can format a colour
-    //! it was handed without building a `Swatch` first.
-
     use super::CopyFormat;
 
     pub fn string(red: f64, green: f64, blue: f64, format: CopyFormat) -> String {
@@ -191,7 +157,6 @@ pub mod formatting {
         )
     }
 
-    /// Ported verbatim from Edith's `rgbToHSL`, hue normalised to 0..1.
     pub fn rgb_to_hsl(red: f64, green: f64, blue: f64) -> (f64, f64, f64) {
         let max_v = red.max(green).max(blue);
         let min_v = red.min(green).min(blue);
@@ -215,7 +180,6 @@ pub mod formatting {
         (h, s, l)
     }
 
-    /// WCAG relative luminance, used only to choose a legible label colour.
     pub fn relative_luminance(red: f64, green: f64, blue: f64) -> f64 {
         let channel = |c: f64| {
             let c = c.clamp(0.0, 1.0);
@@ -237,14 +201,7 @@ pub mod formatting {
     }
 }
 
-/// Convert an sRGB triple to Display P3, both gamma-encoded and in 0..=1.
-///
-/// The compositor only ever reports sRGB, so this is what makes the profile
-/// setting mean something rather than relabel the same numbers. sRGB and P3
-/// share the D65 white point, so this is decode, one 3×3 matrix, re-encode,
-/// with no chromatic adaptation needed.
 pub fn srgb_to_display_p3(red: f64, green: f64, blue: f64) -> (f64, f64, f64) {
-    // sRGB primaries to XYZ, then XYZ to P3 primaries, pre-multiplied.
     const M: [[f64; 3]; 3] = [
         [0.822_461_969_1, 0.177_538_030_9, 0.0],
         [0.033_194_199_2, 0.966_805_800_8, 0.0],
@@ -266,7 +223,6 @@ pub fn srgb_to_display_p3(red: f64, green: f64, blue: f64) -> (f64, f64, f64) {
     )
 }
 
-/// Display P3 uses the sRGB transfer function, so both spaces share these.
 fn srgb_decode(value: f64) -> f64 {
     let v = value.clamp(0.0, 1.0);
     if v <= 0.040_45 {
@@ -294,9 +250,6 @@ pub struct SwatchHistory {
 }
 
 impl SwatchHistory {
-    /// A missing file is an empty history, not an error: that is a first pick.
-    /// A corrupt file is also empty rather than fatal, because losing a colour
-    /// history must never stop the app from starting.
     pub fn load(path: &Path) -> Result<Self> {
         match std::fs::read(path) {
             Ok(bytes) => Ok(serde_json::from_slice(&bytes).unwrap_or_default()),
@@ -305,7 +258,6 @@ impl SwatchHistory {
         }
     }
 
-    /// Written atomically, so a crash mid-write cannot truncate the file.
     pub fn save(&self, path: &Path) -> Result<()> {
         crate::fsutil::write_atomic(path, &serde_json::to_vec_pretty(self)?)
     }
@@ -326,15 +278,10 @@ impl SwatchHistory {
         self.swatches.iter().find(|swatch| swatch.id == id)
     }
 
-    /// Clamp a configured history size the way Edith does, so a hand-edited
-    /// settings file cannot ask for an unbounded history.
     pub fn clamp_limit(requested: usize) -> usize {
         requested.clamp(1, MAX_HISTORY_SIZE)
     }
 
-    /// Record a pick. Newest first, capped, and — like Edith — every pick is
-    /// kept even if the same colour was sampled before, because the history is
-    /// a record of picks rather than a set of colours.
     pub fn record(
         &mut self,
         red: f64,
@@ -388,7 +335,6 @@ mod tests {
     fn hex_matches_ediths_uppercase_two_digit_form() {
         assert_eq!(formatting::hex(1.0, 1.0, 1.0), "#FFFFFF");
         assert_eq!(formatting::hex(0.0, 0.0, 0.0), "#000000");
-        // 0.5 * 255 = 127.5, and Edith rounds rather than truncates.
         assert_eq!(formatting::hex(0.5, 0.5, 0.5), "#808080");
     }
 
@@ -442,7 +388,6 @@ mod tests {
 
     #[test]
     fn a_blue_below_green_wraps_the_hue_forward_rather_than_negative() {
-        // Edith's `+6` branch: red is the maximum and blue exceeds green.
         let (h, _, _) = formatting::rgb_to_hsl(1.0, 0.0, 0.5);
         assert!(h > 0.5, "hue should wrap to the magenta side, got {h}");
     }
@@ -462,8 +407,6 @@ mod tests {
 
     #[test]
     fn p3_conversion_keeps_greys_and_pulls_saturated_colours_in() {
-        // Both spaces share a white point and transfer function, so the
-        // extremes and the greys must survive the round trip untouched.
         for level in [0.0, 0.5, 1.0] {
             let (r, g, b) = srgb_to_display_p3(level, level, level);
             for channel in [r, g, b] {
@@ -473,8 +416,6 @@ mod tests {
                 );
             }
         }
-        // P3 is the wider gamut, so pure sRGB red needs less of the P3 red
-        // primary and picks up a little green.
         let (r, g, b) = srgb_to_display_p3(1.0, 0.0, 0.0);
         assert!(r < 1.0 && r > 0.9, "P3 red was {r}");
         assert!(g > 0.0, "P3 red should not be pure, green was {g}");
@@ -512,7 +453,6 @@ mod tests {
         }
         assert_eq!(history.len(), 3);
 
-        // A settings file asking for zero or a million still gets a usable cap.
         assert_eq!(SwatchHistory::clamp_limit(0), 1);
         assert_eq!(SwatchHistory::clamp_limit(1_000_000), MAX_HISTORY_SIZE);
         assert_eq!(SwatchHistory::clamp_limit(50), 50);
@@ -520,7 +460,6 @@ mod tests {
 
     #[test]
     fn ids_stay_unique_after_the_newest_entries_are_removed() {
-        // Reusing an id would make the interface act on the wrong swatch.
         let mut history = SwatchHistory::default();
         let a = history.record(0.0, 0.0, 0.0, ColorProfile::Srgb, at(0), 10);
         let b = history.record(0.1, 0.1, 0.1, ColorProfile::Srgb, at(1), 10);

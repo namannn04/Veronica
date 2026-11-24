@@ -1,10 +1,3 @@
-//! Local-first Companion notes and voice-memo index.
-//!
-//! Edith's Companion is a separate service. Veronica keeps the useful user
-//! experience without requiring a daemon or container: text metadata is one
-//! atomic JSON document and recordings live beside it under XDG data. The
-//! entire directory is already included by Veronica backups.
-
 use std::fs;
 use std::path::{Path, PathBuf};
 

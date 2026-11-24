@@ -1,9 +1,3 @@
-//! Durable local state for Attention focus sessions.
-//!
-//! Edith keeps an active session separately from append-only history so a
-//! crash never silently completes or loses a focus timer. Veronica mirrors
-//! that model under the XDG data directory.
-
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -232,9 +226,6 @@ impl AttentionRepository {
             }
         }
         let path = self.events_file();
-        // A record cut short (the shell stopped mid-write at logout, say)
-        // has no newline; appending straight after it would glue this event
-        // onto the broken one and lose both.
         let torn = fs::read(&path)
             .map(|body| body.last().is_some_and(|byte| *byte != b'\n'))
             .unwrap_or(false);
@@ -253,9 +244,6 @@ impl AttentionRepository {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
             Err(error) => return Err(error.into()),
         };
-        // One unreadable line is skipped rather than failing the whole log:
-        // failing made every later summary and record fail too, so a single
-        // torn write ended Attention for good.
         let mut skipped = 0;
         let events = body
             .lines()
@@ -290,15 +278,10 @@ impl AttentionRepository {
         Ok(())
     }
 
-    /// Where a window of `days` days ending `now` begins: local midnight,
-    /// `days - 1` days ago. "Today" is since this morning, not the last
-    /// twenty-four hours.
     pub fn window_start(days: i64, now: DateTime<Utc>) -> DateTime<Utc> {
         use chrono::{Local, TimeZone};
         let local = now.with_timezone(&Local).date_naive() - Duration::days(days.clamp(1, 365) - 1);
         let midnight = local.and_hms_opt(0, 0, 0).expect("midnight exists");
-        // A day whose midnight is skipped by a clock change starts at its
-        // first moment instead.
         Local
             .from_local_datetime(&midnight)
             .earliest()
@@ -324,9 +307,6 @@ impl AttentionRepository {
         let mut switches = 0;
         let mut previous = None;
         for event in &events {
-            // Only the part inside the window counts. Counting whole events
-            // gave "Today" ten hours for an event that began yesterday and
-            // ended this morning, and merging makes long events the norm.
             let end = event.started_at + Duration::seconds(event.duration_seconds);
             let seconds = (end.min(to) - event.started_at.max(from))
                 .num_seconds()
