@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use reqwest::blocking::Client;
+use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::header::{ETAG, IF_NONE_MATCH};
 use reqwest::{StatusCode, Url};
 use sha2::{Digest, Sha256};
@@ -53,12 +53,11 @@ pub struct HttpTransport {
 
 impl HttpTransport {
     pub fn new() -> Result<Self> {
-        Self::build(true)
+        Self::build(Client::builder().https_only(true))
     }
 
-    fn build(https_only: bool) -> Result<Self> {
-        let client = Client::builder()
-            .https_only(https_only)
+    fn build(builder: ClientBuilder) -> Result<Self> {
+        let client = builder
             .connect_timeout(CONNECT_TIMEOUT)
             .timeout(REQUEST_TIMEOUT)
             .user_agent(concat!("veronica/", env!("CARGO_PKG_VERSION")))
@@ -208,7 +207,7 @@ mod tests {
     use std::io::{BufRead, BufReader, Write};
     use std::net::TcpListener;
 
-    use super::{is_allowed_package_url, read_limited, HttpTransport, Response, Transport};
+    use super::{is_allowed_package_url, read_limited, Client, HttpTransport, Response, Transport};
 
     fn serve(listener: &TcpListener, answer: &str) -> Vec<String> {
         let (mut stream, _) = listener.accept().unwrap();
@@ -241,7 +240,7 @@ mod tests {
             );
             (first, second)
         });
-        let transport = HttpTransport::build(false).unwrap();
+        let transport = HttpTransport::build(Client::builder().no_proxy()).unwrap();
         let Response::Body { etag, body } = transport.get(&url, None).unwrap() else {
             panic!("expected a body");
         };
