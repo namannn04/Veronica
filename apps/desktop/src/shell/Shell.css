@@ -176,6 +176,17 @@
   white-space: nowrap;
 }
 
+.shell-nav-badge {
+  margin-left: auto;
+  padding: 0 var(--space-1-5);
+  border-radius: 999px;
+  background: var(--fill-selected);
+  color: var(--text-2);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+
 .shell-main {
   container: main / inline-size;
   position: relative;
@@ -303,7 +314,7 @@
   text-align: center;
 }
 
-.shell-main > :not(.ui-page):not(.shell-loading) {
+.shell-main > :not(.ui-page):not(.shell-loading):not(.shell-extension-page) {
   padding: 22px 26px 40px;
 }
 
@@ -316,4 +327,8 @@
     opacity: 0;
     transform: translateY(calc(var(--enter-offset) * 1.5));
   }
+}
+
+.shell-extension-page {
+  height: 100%;
 }
