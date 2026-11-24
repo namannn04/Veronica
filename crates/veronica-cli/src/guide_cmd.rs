@@ -182,6 +182,7 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("shelf clear", Effect::Destructive),
     ("shelf list", Effect::Read),
     ("shelf remove", Effect::Destructive),
+    ("surfaces", Effect::Read),
     ("system audio list", Effect::Read),
     ("system audio mute", Effect::Write),
     ("system audio unmute", Effect::Write),
