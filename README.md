@@ -55,6 +55,26 @@ That installs the app, the `vr` command line tool, the desktop entry, the
 AppStream metadata and the tray icon, and pulls in `jq`, which the usage
 collector needs, plus `curl` for the on-demand update check.
 
+### apt repository
+
+To get updates through `apt upgrade` like any other package, add Veronica's
+signed apt repository once:
+
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://namannn04.github.io/Veronica/apt/veronica.gpg | sudo tee /etc/apt/keyrings/veronica.gpg >/dev/null
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/veronica.gpg] https://namannn04.github.io/Veronica/apt stable main" | sudo tee /etc/apt/sources.list.d/veronica.list >/dev/null
+sudo apt update
+sudo apt install veronica
+```
+
+The repository always carries the latest release and is signed with the same
+key as the Flatpak repository (fingerprint
+`91E3 2AE6 B669 8439 7E12 094F A5CE BD75 B2D1 5EB7`). Remove it with
+`sudo rm /etc/apt/sources.list.d/veronica.list /etc/apt/keyrings/veronica.gpg`.
+
+### AppImage
+
 An AppImage is also published for other distributions:
 
 ```
