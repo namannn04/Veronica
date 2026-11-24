@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use veronica_core::{file_shelf::FileShelf, AppDirectories, Settings};
 
 #[derive(clap::Subcommand)]
-pub enum ShelfCommand {
+pub(crate) enum ShelfCommand {
     List,
     Add {
         #[arg(required = true)]
@@ -17,7 +17,11 @@ pub enum ShelfCommand {
     Clear,
 }
 
-pub fn run(directories: &AppDirectories, command: &ShelfCommand, output: Output) -> Result<()> {
+pub(crate) fn run(
+    directories: &AppDirectories,
+    command: &ShelfCommand,
+    output: Output,
+) -> Result<()> {
     let shelf = FileShelf::new(directories.data.join("file-shelf"));
     let settings = Settings::load(&directories.settings_file())?;
     let legacy: Vec<PathBuf> = settings

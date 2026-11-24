@@ -103,8 +103,8 @@ pub(crate) fn claim(background: bool, shelf: bool, tools: bool, services: bool) 
             .await
         {
             Ok(RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner) => false,
-            Ok(RequestNameReply::Exists | RequestNameReply::InQueue) => true,
-            Err(zbus::Error::NameTaken) => true,
+            Ok(RequestNameReply::Exists | RequestNameReply::InQueue)
+            | Err(zbus::Error::NameTaken) => true,
             Err(error) => {
                 tracing::debug!("cannot claim {BUS_NAME}: {error}");
                 return None;

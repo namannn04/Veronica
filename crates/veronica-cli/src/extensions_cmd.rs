@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -11,7 +13,7 @@ use veronica_system::tools::Report as ToolReport;
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum ExtensionCommand {
+pub(crate) enum ExtensionCommand {
     #[command(
         alias = "list",
         about = "Every extension, its group, switch and availability"
@@ -73,7 +75,7 @@ struct Mutation {
     missing_tools: Vec<&'static str>,
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     session: DesktopSession,
     command: &ExtensionCommand,
@@ -218,8 +220,6 @@ fn capability_reports(
 }
 
 fn render_info(report: &Info) -> String {
-    use std::fmt::Write;
-
     let mut out = format!(
         "{} ({})\n{}\n\nsetting       {}\ngroup         {}\nenabled       {}\navailability  {}",
         report.title,

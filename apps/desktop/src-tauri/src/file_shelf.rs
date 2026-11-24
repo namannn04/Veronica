@@ -11,7 +11,7 @@ enum Change {
     Removed(Result<(), String>),
 }
 
-pub fn show(app: &tauri::AppHandle) -> anyhow::Result<()> {
+pub(crate) fn show(app: &tauri::AppHandle) -> anyhow::Result<()> {
     if WINDOW.with(|slot| {
         if let Some(window) = slot.borrow().as_ref() {
             window.present();
@@ -32,12 +32,12 @@ pub fn show(app: &tauri::AppHandle) -> anyhow::Result<()> {
     window.set_keep_above(true);
     window.set_skip_taskbar_hint(true);
     window.set_widget_name("veronica-file-shelf");
-    if let Some(screen) = gtk::prelude::WidgetExt::screen(&window) {
+    if let Some(screen) = WidgetExt::screen(&window) {
         window.set_visual(screen.rgba_visual().as_ref());
     }
     let css = gtk::CssProvider::new();
     css.load_from_data(b"#veronica-file-shelf { background: #101012; color: #f5f5f7; border: 1px solid #343438; border-radius: 24px; } #veronica-file-shelf button { border-radius: 10px; } #veronica-file-shelf label { color: #f5f5f7; }")?;
-    if let Some(screen) = gtk::prelude::WidgetExt::screen(&window) {
+    if let Some(screen) = WidgetExt::screen(&window) {
         gtk::StyleContext::add_provider_for_screen(
             &screen,
             &css,
@@ -63,6 +63,10 @@ pub fn show(app: &tauri::AppHandle) -> anyhow::Result<()> {
         if event.button() == 1 {
             if let Some(window) = weak.upgrade() {
                 let (x, y) = event.root();
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "GTK reports root pointer coordinates as f64 while begin_move_drag takes whole screen pixels"
+                )]
                 window.begin_move_drag(1, x as i32, y as i32, event.time());
             }
         }

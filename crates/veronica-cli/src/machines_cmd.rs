@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::{AppDirectories, Settings};
@@ -9,7 +11,7 @@ use crate::format::{self, countdown, Output};
 const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
-pub enum MachineCommand {
+pub(crate) enum MachineCommand {
     #[command(
         alias = "ls",
         about = "List the fleet and whether each machine answers"
@@ -130,7 +132,7 @@ fn bytes(value: u64) -> String {
     }
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &MachineCommand,
     output: Output,
@@ -167,11 +169,11 @@ pub async fn run(
                             report.machine.name.clone(),
                             format!("{:.0}%", stats.cpu_percent),
                             format!("{:.0}%", stats.memory_used_percent()),
-                            stats
-                                .root_disk()
-                                .map(|disk| format!("{:.0}%", disk.used_percent()))
-                                .unwrap_or_else(|| "-".into()),
-                            countdown(stats.uptime_secs as i64),
+                            stats.root_disk().map_or_else(
+                                || "-".into(),
+                                |disk| format!("{:.0}%", disk.used_percent()),
+                            ),
+                            countdown(i64::try_from(stats.uptime_secs).unwrap_or(i64::MAX)),
                         ],
                         None => vec![
                             report.machine.id.clone(),
@@ -187,7 +189,7 @@ pub async fn run(
                     format::table(&["id", "name", "cpu", "mem", "disk", "up"], &rows);
                 for report in &reports {
                     if let Some(error) = &report.error {
-                        rendered.push_str(&format!("\n{}: {error}", report.machine.id));
+                        let _ = write!(rendered, "\n{}: {error}", report.machine.id);
                     }
                 }
                 rendered
@@ -211,7 +213,7 @@ pub async fn run(
                 anyhow::bail!("a machine called {id} already exists");
             }
             let machine = Machine {
-                id: id.clone(),
+                id,
                 name: label,
                 reach: Reach::Ssh {
                     target: target.clone(),
@@ -247,12 +249,15 @@ pub async fn run(
             let machine = find(&settings, id)?;
             let stats = veronica_machines::probe_machine(&machine, DEFAULT_TIMEOUT).await?;
             output.emit(&stats, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let _ = writeln!(out, "Host       {}", stats.host_name);
                 let _ = writeln!(out, "OS         {}", stats.os);
                 let _ = writeln!(out, "Kernel     {}", stats.kernel);
-                let _ = writeln!(out, "Up         {}", countdown(stats.uptime_secs as i64));
+                let _ = writeln!(
+                    out,
+                    "Up         {}",
+                    countdown(i64::try_from(stats.uptime_secs).unwrap_or(i64::MAX))
+                );
                 let _ = writeln!(out, "CPU        {:.1}%", stats.cpu_percent);
                 let _ = writeln!(
                     out,
@@ -292,9 +297,10 @@ pub async fn run(
                                     bytes(gpu.memory_used_bytes),
                                     bytes(gpu.memory_total_bytes)
                                 ),
-                                gpu.temperature_celsius
-                                    .map(|celsius| format!("{celsius:.0} °C"))
-                                    .unwrap_or_else(|| "-".to_string()),
+                                gpu.temperature_celsius.map_or_else(
+                                    || "-".to_string(),
+                                    |celsius| format!("{celsius:.0} °C"),
+                                ),
                             ]
                         })
                         .collect();

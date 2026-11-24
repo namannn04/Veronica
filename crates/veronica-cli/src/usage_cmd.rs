@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use serde_json::json;
@@ -8,7 +10,7 @@ use veronica_usage::collector;
 use crate::format::{self, countdown, money, tokens, Output};
 
 #[derive(Subcommand)]
-pub enum UsageCommand {
+pub(crate) enum UsageCommand {
     #[command(about = "Totals, day count and model spread for a window")]
     Summary {
         #[arg(
@@ -126,17 +128,13 @@ fn range(days: Option<usize>) -> DayRange {
     }
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &UsageCommand,
     output: Output,
 ) -> Result<()> {
     match command {
         UsageCommand::Summary { days, sources } => {
-            let document = load(directories)?;
-            let range = range(*days);
-            let board = aggregate::dashboard(&document, &range, &selection(sources));
-
             #[derive(serde::Serialize)]
             #[serde(rename_all = "camelCase")]
             struct Summary<'a> {
@@ -150,6 +148,10 @@ pub async fn run(
                 models: usize,
             }
 
+            let document = load(directories)?;
+            let range = range(*days);
+            let board = aggregate::dashboard(&document, &range, &selection(sources));
+
             let summary = Summary {
                 generated_at: &document.generated_at,
                 start: range.start.as_deref(),
@@ -162,7 +164,6 @@ pub async fn run(
             };
 
             output.emit(&summary, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let window = match (range.start.as_deref(), range.end.as_deref()) {
                     (Some(start), Some(end)) if start != end => format!("{start} to {end}"),
@@ -238,7 +239,6 @@ pub async fn run(
             let rows = aggregate::projects(&document, &range, &selection(sources));
             let show_chats = *chats;
             output.emit(&rows, || {
-                use std::fmt::Write;
                 if show_chats {
                     let mut out = String::new();
                     for project in &rows {
@@ -297,12 +297,7 @@ pub async fn run(
                 let mut out = String::new();
                 for cell in &cells {
                     let block = BLOCKS[cell.level.min(4) as usize];
-                    out.push_str(&format!(
-                        "{}  {}  {:>9}\n",
-                        cell.period,
-                        block,
-                        money(cell.cost)
-                    ));
+                    let _ = writeln!(out, "{}  {}  {:>9}", cell.period, block, money(cell.cost));
                 }
                 out.trim_end().to_string()
             })
@@ -312,6 +307,27 @@ pub async fn run(
             settings: show_settings,
         } => {
             use veronica_usage::alerts::{self, NotifierState, NotifySettings};
+
+            #[derive(serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Preview {
+                percent: f64,
+                resets_in: Option<String>,
+            }
+
+            #[derive(serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Report<'a> {
+                enabled: bool,
+                note: Option<String>,
+                session: Option<Preview>,
+                week: Option<Preview>,
+                would_post: &'a [alerts::LimitAlert],
+                session_reminder_at: Option<String>,
+                week_reminder_at: Option<String>,
+                #[serde(skip_serializing_if = "Option::is_none")]
+                settings: Option<&'a NotifySettings>,
+            }
 
             let stored = veronica_core::Settings::load(&directories.settings_file())?;
             let notify = NotifySettings::from_settings(&stored);
@@ -332,27 +348,6 @@ pub async fn run(
             would_post.extend(alerts::due_reminders(
                 session, week, &notify, &mut state, now,
             ));
-
-            #[derive(serde::Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct Report<'a> {
-                enabled: bool,
-                note: Option<String>,
-                session: Option<Preview>,
-                week: Option<Preview>,
-                would_post: &'a [alerts::LimitAlert],
-                session_reminder_at: Option<String>,
-                week_reminder_at: Option<String>,
-                #[serde(skip_serializing_if = "Option::is_none")]
-                settings: Option<&'a NotifySettings>,
-            }
-
-            #[derive(serde::Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct Preview {
-                percent: f64,
-                resets_in: Option<String>,
-            }
 
             let preview = |window: Option<veronica_usage::limits::LimitWindow>| {
                 window.map(|window| Preview {
@@ -388,7 +383,6 @@ pub async fn run(
             };
 
             output.emit(&report, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let _ = writeln!(
                     out,
@@ -407,8 +401,7 @@ pub async fn run(
                         let left = window
                             .resets_at
                             .filter(|at| *at > now)
-                            .map(|at| alerts::countdown(now, at))
-                            .unwrap_or_else(|| "unknown".into());
+                            .map_or_else(|| "unknown".into(), |at| alerts::countdown(now, at));
                         let _ =
                             writeln!(out, "{label}   {:>5.1}%  resets in {left}", window.percent);
                     }
@@ -439,7 +432,6 @@ pub async fn run(
             .await;
 
             output.emit(&report, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 if report.gauges.is_empty() {
                     let _ = write!(out, "no rate limits available");
@@ -457,10 +449,7 @@ pub async fn run(
                                 gauge.window.clone(),
                                 bar(gauge.percent),
                                 format!("{:.0}%", gauge.percent),
-                                gauge
-                                    .resets_in_secs
-                                    .map(countdown)
-                                    .unwrap_or_else(|| "-".into()),
+                                gauge.resets_in_secs.map_or_else(|| "-".into(), countdown),
                                 format!("{:?}", gauge.zone).to_lowercase(),
                                 format!("{level:?}").to_lowercase(),
                             ]
@@ -548,9 +537,10 @@ pub async fn run(
                 let path = if single_file {
                     target.expect("single_file implies a target").to_path_buf()
                 } else {
-                    let directory = target
-                        .map(std::path::Path::to_path_buf)
-                        .unwrap_or_else(|| std::path::PathBuf::from("."));
+                    let directory = target.map_or_else(
+                        || std::path::PathBuf::from("."),
+                        std::path::Path::to_path_buf,
+                    );
                     directory.join(cards::file_name(*card, &stamp, extension))
                 };
 
@@ -570,6 +560,17 @@ pub async fn run(
         }
 
         UsageCommand::Refresh { progress } => {
+            #[derive(serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Refreshed {
+                completed: bool,
+                generated_at: String,
+                sources: Vec<String>,
+                totals: veronica_usage::models::Totals,
+                days: usize,
+                errors: Vec<String>,
+            }
+
             let script = directories.collector_script();
             collector::install_script(&script)?;
             let out_dir = directories.usage_dir();
@@ -584,27 +585,16 @@ pub async fn run(
                             seconds,
                         } => eprintln!("  {name:<14} {detail}  ({seconds:.2}s)"),
                         veronica_usage::CollectorEvent::Note { message } => {
-                            eprintln!("  … {message}")
+                            eprintln!("  … {message}");
                         }
                         veronica_usage::CollectorEvent::Error { message } => {
-                            eprintln!("  ! {message}")
+                            eprintln!("  ! {message}");
                         }
                         _ => {}
                     }
                 }
             })
             .await?;
-
-            #[derive(serde::Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct Refreshed {
-                completed: bool,
-                generated_at: String,
-                sources: Vec<String>,
-                totals: veronica_usage::models::Totals,
-                days: usize,
-                errors: Vec<String>,
-            }
 
             let refreshed = Refreshed {
                 completed: outcome.completed,
@@ -616,7 +606,6 @@ pub async fn run(
             };
 
             output.emit(&refreshed, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 for (name, detail) in outcome.summaries() {
                     let _ = writeln!(out, "{name:<10} {detail}");
@@ -635,7 +624,9 @@ pub async fn run(
 }
 
 fn bar(percent: f64) -> String {
-    let filled = ((percent / 10.0).round() as usize).min(10);
+    let filled = (1..=10_u8)
+        .filter(|&step| percent / 10.0 >= f64::from(step) - 0.5)
+        .count();
     format!("[{}{}]", "#".repeat(filled), "·".repeat(10 - filled))
 }
 

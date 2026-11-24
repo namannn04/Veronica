@@ -31,7 +31,12 @@ fn inline_qr_and_conversion_return_private_small_previews_and_real_exports() {
     );
     let jpg = run(root.path(), &["utility", "image", artifact, "jpg"]);
     assert_eq!(jpg["format"], "PNG");
-    assert!(jpg["artifact"].as_str().unwrap().ends_with(".jpg"));
+    assert_eq!(
+        Path::new(jpg["artifact"].as_str().unwrap())
+            .extension()
+            .and_then(std::ffi::OsStr::to_str),
+        Some("jpg")
+    );
     let detected = run(
         root.path(),
         &["utility", "image", jpg["artifact"].as_str().unwrap()],

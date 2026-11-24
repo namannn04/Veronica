@@ -7,7 +7,7 @@ use veronica_core::{AppDirectories, Settings};
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum EmojiCommand {
+pub(crate) enum EmojiCommand {
     #[command(
         alias = "search",
         about = "Search the catalogue. With no query, the whole catalogue in order"
@@ -63,7 +63,7 @@ fn parse_tone(raw: &str) -> Result<SkinTone> {
     Ok(parsed)
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     settings: &Settings,
     command: &EmojiCommand,
@@ -214,7 +214,7 @@ pub async fn run(
                     json!({
                         "character": character,
                         "name": catalog.find(character).map(|emoji| emoji.name.clone()),
-                        "count": usage.map(|usage| usage.count).unwrap_or(0),
+                        "count": usage.map_or(0, |usage| usage.count),
                     })
                 })
                 .collect();
@@ -235,8 +235,7 @@ pub async fn run(
                                 .entries
                                 .iter()
                                 .find(|usage| &usage.character == character)
-                                .map(|usage| usage.count.to_string())
-                                .unwrap_or_else(|| "0".to_string()),
+                                .map_or_else(|| "0".to_string(), |usage| usage.count.to_string()),
                         ]
                     })
                     .collect();

@@ -1,10 +1,12 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use veronica_system::tools::Outcome;
 
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum ToolCommand {
+pub(crate) enum ToolCommand {
     #[command(
         alias = "list",
         about = "Every tool, with whether it is installed, its version, and why"
@@ -22,7 +24,7 @@ pub enum ToolCommand {
     },
 }
 
-pub async fn run(command: &ToolCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &ToolCommand, output: Output) -> Result<()> {
     match command {
         ToolCommand::Ls => {
             let reports = veronica_system::tools::catalogue().await;
@@ -43,7 +45,7 @@ pub async fn run(command: &ToolCommand, output: Output) -> Result<()> {
                     .iter()
                     .filter(|report| !report.readiness.is_installed())
                 {
-                    rendered.push_str(&format!("\n\n{}  {}", report.id, report.note()));
+                    let _ = write!(rendered, "\n\n{}  {}", report.id, report.note());
                 }
                 rendered
             })

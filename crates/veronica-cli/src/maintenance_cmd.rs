@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_system::packages::{self, Source};
@@ -5,7 +7,7 @@ use veronica_system::packages::{self, Source};
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum MaintenanceCommand {
+pub(crate) enum MaintenanceCommand {
     #[command(
         alias = "ls",
         about = "What is installed, from every source on this computer"
@@ -53,7 +55,7 @@ fn source(raw: &str) -> Result<Source> {
     })
 }
 
-pub async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
     match command {
         MaintenanceCommand::Sources => {
             let mut rows = Vec::new();
@@ -104,10 +106,10 @@ pub async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
                             entry.source.title().to_string(),
                             entry.name.clone(),
                             entry.version.clone(),
-                            entry
-                                .size_bytes
-                                .map(veronica_system::metrics::human_bytes)
-                                .unwrap_or_else(|| "-".to_string()),
+                            entry.size_bytes.map_or_else(
+                                || "-".to_string(),
+                                veronica_system::metrics::human_bytes,
+                            ),
                         ]
                     })
                     .collect();
@@ -217,7 +219,6 @@ pub async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
             let plan = packages::removal_plan(package).await?;
             if !yes {
                 return output.emit(&plan, || {
-                    use std::fmt::Write;
                     let mut out = format!("Removing {} would remove:\n", plan.package);
                     for name in &plan.removed {
                         let _ = writeln!(out, "  {name}");

@@ -9,7 +9,7 @@ use veronica_core::AppDirectories;
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum ClipboardCommand {
+pub(crate) enum ClipboardCommand {
     #[command(
         about = "Record a copy, reading the text from stdin",
         long_about = "Record a copy, reading the text from stdin.\n\nUsed by the shell extension. Silent and idempotent by design: re-copying something moves it to the front rather than adding a duplicate."
@@ -38,7 +38,7 @@ pub enum ClipboardCommand {
     Clear,
 }
 
-pub async fn run(
+pub(crate) fn run(
     directories: &AppDirectories,
     command: &ClipboardCommand,
     output: Output,
@@ -69,13 +69,6 @@ pub async fn run(
         }
 
         ClipboardCommand::List { query, limit } => {
-            let matches: Vec<_> = history
-                .search(query)
-                .into_iter()
-                .take(*limit)
-                .cloned()
-                .collect();
-
             #[derive(serde::Serialize)]
             #[serde(rename_all = "camelCase")]
             struct Row {
@@ -86,6 +79,14 @@ pub async fn run(
                 count: u32,
                 last_seen: String,
             }
+
+            let matches: Vec<_> = history
+                .search(query)
+                .into_iter()
+                .take(*limit)
+                .cloned()
+                .collect();
+
             let rows: Vec<Row> = matches
                 .iter()
                 .map(|entry| Row {

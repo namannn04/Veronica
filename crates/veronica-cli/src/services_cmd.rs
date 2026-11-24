@@ -3,7 +3,7 @@ use anyhow::{ensure, Result};
 use veronica_system::{docker, ports};
 
 #[derive(clap::Subcommand)]
-pub enum PortsCommand {
+pub(crate) enum PortsCommand {
     #[command(about = "TCP listeners and bound, unconnected UDP sockets, IPv4 and IPv6")]
     List {
         #[arg(long)]
@@ -22,7 +22,7 @@ pub enum PortsCommand {
     },
 }
 #[derive(clap::Subcommand)]
-pub enum DockerCommand {
+pub(crate) enum DockerCommand {
     #[command(about = "Local daemon availability, containers and published ports")]
     Status,
     #[command(about = "Start, stop or restart a container from a status reading")]
@@ -37,7 +37,7 @@ pub enum DockerCommand {
     },
 }
 #[derive(Clone, Copy, clap::ValueEnum)]
-pub enum ContainerAction {
+pub(crate) enum ContainerAction {
     Start,
     Stop,
     Restart,
@@ -51,7 +51,7 @@ impl ContainerAction {
         }
     }
 }
-pub async fn ports(command: &PortsCommand, output: Output) -> Result<()> {
+pub(crate) async fn ports(command: &PortsCommand, output: Output) -> Result<()> {
     match command {
         PortsCommand::List { port } => {
             let mut report = ports::snapshot().await?;
@@ -112,7 +112,7 @@ pub async fn ports(command: &PortsCommand, output: Output) -> Result<()> {
         }
     }
 }
-pub async fn docker(command: &DockerCommand, output: Output) -> Result<()> {
+pub(crate) async fn docker(command: &DockerCommand, output: Output) -> Result<()> {
     match command {
         DockerCommand::Status => {
             let report = docker::snapshot().await;

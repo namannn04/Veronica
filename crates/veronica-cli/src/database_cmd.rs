@@ -1,10 +1,20 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use serde_json::json;
 use uuid::Uuid;
 use veronica_core::AppDirectories;
-use veronica_database::connection::*;
+use veronica_database::connection::{
+    Authentication, AuthenticationKind, ConnectionDefinition, ConnectionLimits, DeploymentMode,
+    EndpointRole, EnvironmentKind, EnvironmentMetadata, EnvironmentProtection, Location,
+    NamespaceDefaults, NetworkEndpoint, Port, ProductionPolicy, ReadOnlyPolicy, SecretPurpose,
+    SecretReference, SqliteAccessMode, SqliteLocation, TlsConfiguration, SCHEMA_VERSION,
+};
 use veronica_database::identify::{ObjectIdentifier, TargetIdentifier};
-use veronica_database::mutation::*;
+use veronica_database::mutation::{
+    Action, ContextKind, ExecutionMode, Impact, MutationContext, Parameter, Payload, Plan,
+    RollbackAvailability, Scope, TransactionBehavior,
+};
 use veronica_database::paging::{PageRequest, PageSize};
 use veronica_database::product::Product;
 use veronica_database::secrets::SecretStore;
@@ -15,7 +25,7 @@ use veronica_database::value::Value;
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum DatabaseCommand {
+pub(crate) enum DatabaseCommand {
     #[command(subcommand, alias = "conn", about = "Saved connections")]
     Connections(ConnectionCommand),
     #[command(about = "What this server can be asked to do")]
@@ -68,7 +78,7 @@ pub enum DatabaseCommand {
 }
 
 #[derive(clap::Subcommand)]
-pub enum ConnectionCommand {
+pub(crate) enum ConnectionCommand {
     #[command(
         alias = "ls",
         about = "Every saved connection. No credential is printed"
@@ -122,7 +132,7 @@ pub enum ConnectionCommand {
 }
 
 #[derive(clap::Subcommand)]
-pub enum SavedQueryCommand {
+pub(crate) enum SavedQueryCommand {
     #[command(alias = "ls")]
     List,
     #[command(about = "Keep a query. The text is read from stdin when not given")]
@@ -139,7 +149,7 @@ pub enum SavedQueryCommand {
 }
 
 #[derive(clap::Subcommand)]
-pub enum MutationCommand {
+pub(crate) enum MutationCommand {
     #[command(
         about = "Describe a change without making it, and issue a token",
         long_about = "Describe a change without making it, and issue a token.\n\nPrints the plan, what it would affect, the warnings it earns, and the exact text you have to type back. Nothing is sent to the server."
@@ -238,7 +248,7 @@ fn read_stdin() -> Result<String> {
     Ok(buffer.trim_end_matches(['\n', '\r']).to_string())
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &DatabaseCommand,
     output: Output,
@@ -295,7 +305,6 @@ pub async fn run(
             output.emit(
                 &json!({ "identity": identity, "connectedInMillis": elapsed }),
                 || {
-                    use std::fmt::Write;
                     let mut out = format!("{} answered in {elapsed} ms\n", definition.display_name);
                     let _ = writeln!(out, "Product   {}", identity.product.title());
                     if let Some(version) = &identity.version {
@@ -460,7 +469,6 @@ async fn connections(
         ConnectionCommand::Get { connection } => {
             let definition = store.resolve(connection)?;
             output.emit(&definition, || {
-                use std::fmt::Write;
                 let mut out = format!("{}\n", definition.display_name);
                 let _ = writeln!(out, "id           {}", definition.id);
                 let _ = writeln!(out, "product      {}", definition.product_hint.title());
@@ -585,7 +593,7 @@ async fn connections(
 
             let now = chrono::Utc::now();
             let definition = ConnectionDefinition {
-                version: veronica_database::connection::SCHEMA_VERSION,
+                version: SCHEMA_VERSION,
                 id: Uuid::new_v4(),
                 display_name: name.clone(),
                 product_hint: product,
@@ -894,7 +902,6 @@ async fn mutations(
             }
 
             output.emit(&json!({ "preview": preview, "plan": plan }), || {
-                use std::fmt::Write;
                 let mut out = format!(
                     "{} on {}\n\n",
                     preview.effect.action.key(),

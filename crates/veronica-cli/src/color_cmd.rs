@@ -9,7 +9,7 @@ use veronica_core::{AppDirectories, Settings};
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum ColorCommand {
+pub(crate) enum ColorCommand {
     #[command(about = "Open the screen colour sampler and record what is picked")]
     Pick {
         #[arg(long, value_parser = parse_format, help = "Which representation to copy. Defaults to the configured format")]
@@ -48,7 +48,7 @@ fn parse_format(raw: &str) -> Result<CopyFormat, String> {
     Ok(parsed)
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     settings: &Settings,
     command: &ColorCommand,
@@ -61,8 +61,10 @@ pub async fn run(
     let limit = SwatchHistory::clamp_limit(
         settings
             .get("colorPickerHistorySize")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(DEFAULT_HISTORY_SIZE as u64) as usize,
+            .and_then(serde_json::Value::as_u64)
+            .map_or(DEFAULT_HISTORY_SIZE, |size| {
+                usize::try_from(size).unwrap_or(usize::MAX)
+            }),
     );
 
     match command {

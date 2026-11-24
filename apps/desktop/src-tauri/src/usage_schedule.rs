@@ -4,15 +4,15 @@ use tauri::{AppHandle, Manager};
 
 use crate::state::AppState;
 
-pub const KEY: &str = "usageRefreshMinutes";
-pub const DEFAULT_MINUTES: u64 = 15;
-pub const MIN_MINUTES: u64 = 5;
-pub const MAX_MINUTES: u64 = 24 * 60;
+pub(crate) const KEY: &str = "usageRefreshMinutes";
+pub(crate) const DEFAULT_MINUTES: u64 = 15;
+pub(crate) const MIN_MINUTES: u64 = 5;
+pub(crate) const MAX_MINUTES: u64 = 24 * 60;
 
-const CHECK_EVERY: Duration = Duration::from_secs(60);
+const CHECK_EVERY: Duration = Duration::from_mins(1);
 const STARTUP_DELAY: Duration = Duration::from_secs(20);
 
-pub fn interval(settings: &veronica_core::Settings) -> Option<Duration> {
+pub(crate) fn interval(settings: &veronica_core::Settings) -> Option<Duration> {
     let minutes = settings
         .get(KEY)
         .and_then(serde_json::Value::as_u64)
@@ -20,7 +20,7 @@ pub fn interval(settings: &veronica_core::Settings) -> Option<Duration> {
     (minutes > 0).then(|| Duration::from_secs(minutes.clamp(MIN_MINUTES, MAX_MINUTES) * 60))
 }
 
-pub fn is_due(
+pub(crate) fn is_due(
     since_attempt: Option<Duration>,
     data_age: Option<Duration>,
     every: Duration,
@@ -40,7 +40,7 @@ fn data_age(app: &AppHandle) -> Option<Duration> {
         .ok()
 }
 
-pub async fn run(app: AppHandle) {
+pub(crate) async fn run(app: AppHandle) {
     tokio::time::sleep(STARTUP_DELAY).await;
     let mut last_attempt: Option<std::time::Instant> = None;
     loop {
@@ -65,7 +65,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    const MINUTE: Duration = Duration::from_secs(60);
+    const MINUTE: Duration = Duration::from_mins(1);
 
     #[test]
     fn the_interval_defaults_clamps_and_can_be_switched_off() {

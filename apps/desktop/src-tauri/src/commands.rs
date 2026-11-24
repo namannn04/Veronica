@@ -9,13 +9,13 @@ use crate::state::AppState;
 
 type CommandResult<T> = Result<T, String>;
 
-fn fail(error: anyhow::Error) -> String {
+fn fail(error: impl std::fmt::Display) -> String {
     format!("{error:#}")
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UsageView {
+pub(crate) struct UsageView {
     pub dashboard: Option<aggregate::Dashboard>,
     pub generated_at: Option<String>,
     pub sources: Vec<SourceOption>,
@@ -25,39 +25,51 @@ pub struct UsageView {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SourceOption {
+pub(crate) struct SourceOption {
     pub id: String,
     pub label: String,
 }
 
 #[tauri::command]
-pub fn diagnostics(state: State<'_, AppState>) -> CommandResult<Diagnostics> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn diagnostics(state: State<'_, AppState>) -> Diagnostics {
     let session = state.session.lock().expect("session lock").clone();
     let settings = state.settings_snapshot();
-    Ok(Diagnostics::collect(&state.directories, session, &settings))
+    Diagnostics::collect(&state.directories, session, &settings)
 }
 
 #[tauri::command]
-pub fn capabilities(state: State<'_, AppState>) -> CommandResult<Capabilities> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn capabilities(state: State<'_, AppState>) -> Capabilities {
     let session = state.session.lock().expect("session lock").clone();
-    Ok(Capabilities::resolve(&session))
+    Capabilities::resolve(&session)
 }
 
 #[tauri::command]
-pub fn usage_view(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn usage_view(
     state: State<'_, AppState>,
     days: Option<usize>,
     sources: Vec<String>,
-) -> CommandResult<UsageView> {
+) -> UsageView {
     let guard = state.usage.lock().expect("usage lock");
     let Some(document) = guard.as_ref() else {
-        return Ok(UsageView {
+        return UsageView {
             dashboard: None,
             generated_at: None,
             sources: Vec::new(),
             models: Vec::new(),
             has_data: false,
-        });
+        };
     };
 
     let range = match days {
@@ -80,7 +92,7 @@ pub fn usage_view(
     models.sort_unstable();
     models.dedup();
 
-    Ok(UsageView {
+    UsageView {
         dashboard: Some(aggregate::dashboard(document, &range, &selection)),
         generated_at: Some(document.generated_at.clone()),
         sources: document
@@ -93,11 +105,11 @@ pub fn usage_view(
             .collect(),
         models,
         has_data: true,
-    })
+    }
 }
 
 #[tauri::command]
-pub async fn usage_export(
+pub(crate) async fn usage_export(
     state: State<'_, AppState>,
     cards: Vec<String>,
     days: Option<usize>,
@@ -125,10 +137,8 @@ pub async fn usage_export(
             .as_ref()
             .ok_or_else(|| "No usage has been collected yet.".to_string())?;
         let range = match days {
-            Some(days) => {
-                veronica_usage::DayRange::last_days(days, chrono::Local::now().date_naive())
-            }
-            None => veronica_usage::DayRange::default(),
+            Some(days) => DayRange::last_days(days, chrono::Local::now().date_naive()),
+            None => DayRange::default(),
         };
         let label = match (range.start.as_deref(), range.end.as_deref()) {
             (Some(start), Some(end)) if start == end => start.to_string(),
@@ -136,8 +146,8 @@ pub async fn usage_export(
             _ => "all time".to_string(),
         };
         let selection = match sources.filter(|sources| !sources.is_empty()) {
-            Some(sources) => veronica_usage::SourceSelection::Only(sources),
-            None => veronica_usage::SourceSelection::All,
+            Some(sources) => SourceSelection::Only(sources),
+            None => SourceSelection::All,
         };
         (
             veronica_usage::dashboard(document, &range, &selection),
@@ -171,7 +181,7 @@ pub async fn usage_export(
 }
 
 #[tauri::command]
-pub async fn usage_refresh(app: AppHandle) -> CommandResult<String> {
+pub(crate) async fn usage_refresh(app: AppHandle) -> CommandResult<String> {
     {
         let state = app.state::<AppState>();
         let mut refreshing = state.refreshing.lock().expect("refresh lock");
@@ -218,7 +228,7 @@ async fn run_refresh(app: &AppHandle) -> CommandResult<String> {
 }
 
 #[tauri::command]
-pub async fn usage_limits() -> CommandResult<veronica_usage::GaugeReport> {
+pub(crate) async fn usage_limits() -> CommandResult<veronica_usage::GaugeReport> {
     Ok(veronica_usage::gauges::collect(
         chrono::Utc::now(),
         veronica_usage::gauges::DEFAULT_PACING_MARGIN,
@@ -227,14 +237,18 @@ pub async fn usage_limits() -> CommandResult<veronica_usage::GaugeReport> {
 }
 
 #[tauri::command]
-pub fn settings_all(state: State<'_, AppState>) -> CommandResult<serde_json::Value> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn settings_all(state: State<'_, AppState>) -> CommandResult<serde_json::Value> {
     let settings = state.settings_snapshot();
     serde_json::to_value(settings.as_map()).map_err(|e| e.to_string())
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LaunchAtLoginStatus {
+pub(crate) struct LaunchAtLoginStatus {
     pub enabled: bool,
     pub entry_path: String,
 }
@@ -258,12 +272,22 @@ fn launch_at_login_status_for(state: &AppState) -> CommandResult<LaunchAtLoginSt
 }
 
 #[tauri::command]
-pub fn launch_at_login_status(state: State<'_, AppState>) -> CommandResult<LaunchAtLoginStatus> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn launch_at_login_status(
+    state: State<'_, AppState>,
+) -> CommandResult<LaunchAtLoginStatus> {
     launch_at_login_status_for(&state)
 }
 
 #[tauri::command]
-pub fn launch_at_login_set(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn launch_at_login_set(
     state: State<'_, AppState>,
     enabled: bool,
 ) -> CommandResult<LaunchAtLoginStatus> {
@@ -280,7 +304,7 @@ const BUNDLED_SHELL_EXTENSION: &str = "/app/share/veronica/gnome-shell-extension
 const FLATPAK_CLI_SHIM: &str =
     "#!/bin/sh\nexec flatpak run --command=vr io.github.namannn04.Veronica \"$@\"\n";
 
-pub fn install_bundled_shell_extension(
+pub(crate) fn install_bundled_shell_extension(
     directories: &veronica_core::AppDirectories,
 ) -> anyhow::Result<()> {
     use anyhow::Context;
@@ -373,7 +397,7 @@ fn enable_at_next_login() -> Result<(), String> {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ShellExtensionStatus {
+pub(crate) struct ShellExtensionStatus {
     pub state: String,
     pub detail: String,
     pub can_enable: bool,
@@ -476,12 +500,22 @@ fn shell_extension_status_for(state: &AppState) -> ShellExtensionStatus {
 }
 
 #[tauri::command]
-pub fn shell_extension_status(state: State<'_, AppState>) -> CommandResult<ShellExtensionStatus> {
-    Ok(shell_extension_status_for(&state))
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn shell_extension_status(state: State<'_, AppState>) -> ShellExtensionStatus {
+    shell_extension_status_for(&state)
 }
 
 #[tauri::command]
-pub fn shell_extension_enable(state: State<'_, AppState>) -> CommandResult<ShellExtensionStatus> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn shell_extension_enable(
+    state: State<'_, AppState>,
+) -> CommandResult<ShellExtensionStatus> {
     let output = veronica_core::host::command("gnome-extensions")
         .args(["enable", SHELL_EXTENSION_UUID])
         .output()
@@ -500,7 +534,7 @@ pub fn shell_extension_enable(state: State<'_, AppState>) -> CommandResult<Shell
 }
 
 #[tauri::command]
-pub async fn shell_action(action: String) -> CommandResult<()> {
+pub(crate) async fn shell_action(action: String) -> CommandResult<()> {
     let method = match action.as_str() {
         "cleanKeys" => "CleanKeys",
         "pickColor" => "PickColor",
@@ -545,7 +579,7 @@ fn clear_awake_deadline(app: &AppHandle, until_key: &str) {
 }
 
 #[tauri::command]
-pub async fn settings_set(
+pub(crate) async fn settings_set(
     app: AppHandle,
     key: String,
     value: serde_json::Value,
@@ -605,7 +639,7 @@ pub async fn settings_set(
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BackupSummary {
+pub(crate) struct BackupSummary {
     pub path: String,
     pub app_version: String,
     pub created_at: String,
@@ -624,21 +658,24 @@ fn backup_summary(path: &std::path::Path, archive: &veronica_core::BackupArchive
 }
 
 #[tauri::command]
-pub fn backup_export(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn backup_export(
     state: State<'_, AppState>,
     path: Option<String>,
 ) -> CommandResult<BackupSummary> {
     let now = chrono::Utc::now();
-    let destination = match path.filter(|value| !value.trim().is_empty()) {
-        Some(value) => std::path::PathBuf::from(value),
-        None => {
-            let home = veronica_core::paths::home_dir()
-                .ok_or_else(|| "cannot resolve your home directory".to_string())?;
-            home.join("Downloads").join(format!(
-                "Veronica-backup-{}.veronica-backup",
-                now.format("%Y-%m-%d-%H%M%S")
-            ))
-        }
+    let destination = if let Some(value) = path.filter(|value| !value.trim().is_empty()) {
+        std::path::PathBuf::from(value)
+    } else {
+        let home = veronica_core::paths::home_dir()
+            .ok_or_else(|| "cannot resolve your home directory".to_string())?;
+        home.join("Downloads").join(format!(
+            "Veronica-backup-{}.veronica-backup",
+            now.format("%Y-%m-%d-%H%M%S")
+        ))
     };
     let archive =
         veronica_core::BackupArchive::collect(&state.directories, env!("CARGO_PKG_VERSION"), now)
@@ -648,14 +685,18 @@ pub fn backup_export(
 }
 
 #[tauri::command]
-pub fn backup_inspect(path: String) -> CommandResult<BackupSummary> {
+pub(crate) fn backup_inspect(path: String) -> CommandResult<BackupSummary> {
     let source = std::path::PathBuf::from(path);
     let archive = veronica_core::BackupArchive::load(&source).map_err(fail)?;
     Ok(backup_summary(&source, &archive))
 }
 
 #[tauri::command]
-pub fn backup_import(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn backup_import(
     app: AppHandle,
     path: String,
     confirm: bool,
@@ -679,7 +720,11 @@ fn companion_repository(state: &AppState) -> veronica_core::CompanionRepository 
 }
 
 #[tauri::command]
-pub fn companion_list(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_list(
     state: State<'_, AppState>,
     query: String,
 ) -> CommandResult<Vec<veronica_core::CompanionItem>> {
@@ -687,7 +732,11 @@ pub fn companion_list(
 }
 
 #[tauri::command]
-pub fn companion_note_create(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_note_create(
     app: AppHandle,
     title: String,
     body: String,
@@ -700,7 +749,11 @@ pub fn companion_note_create(
 }
 
 #[tauri::command]
-pub fn companion_update(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_update(
     app: AppHandle,
     id: u64,
     title: String,
@@ -715,7 +768,11 @@ pub fn companion_update(
 }
 
 #[tauri::command]
-pub fn companion_remove(app: AppHandle, id: u64) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_remove(app: AppHandle, id: u64) -> CommandResult<()> {
     companion_repository(&app.state::<AppState>())
         .remove(id)
         .map_err(fail)?;
@@ -725,13 +782,17 @@ pub fn companion_remove(app: AppHandle, id: u64) -> CommandResult<()> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CompanionRecordingStatus {
+pub(crate) struct CompanionRecordingStatus {
     pub recording: bool,
     pub elapsed_seconds: u64,
 }
 
 #[tauri::command]
-pub fn companion_recording_status(state: State<'_, AppState>) -> CompanionRecordingStatus {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_recording_status(state: State<'_, AppState>) -> CompanionRecordingStatus {
     let recording = state
         .companion_recording
         .lock()
@@ -740,13 +801,16 @@ pub fn companion_recording_status(state: State<'_, AppState>) -> CompanionRecord
         recording: recording.is_some(),
         elapsed_seconds: recording
             .as_ref()
-            .map(|recording| recording.started.elapsed().as_secs())
-            .unwrap_or(0),
+            .map_or(0, |recording| recording.started.elapsed().as_secs()),
     }
 }
 
 #[tauri::command]
-pub fn companion_record_start(state: State<'_, AppState>) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_record_start(state: State<'_, AppState>) -> CommandResult<()> {
     let mut active = state
         .companion_recording
         .lock()
@@ -807,7 +871,11 @@ fn stop_companion_process(recording: &mut crate::state::CompanionRecording) {
 }
 
 #[tauri::command]
-pub fn companion_record_stop(app: AppHandle) -> CommandResult<veronica_core::CompanionItem> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_record_stop(app: AppHandle) -> CommandResult<veronica_core::CompanionItem> {
     let state = app.state::<AppState>();
     let recording = state
         .companion_recording
@@ -820,7 +888,7 @@ pub fn companion_record_stop(app: AppHandle) -> CommandResult<veronica_core::Com
     Ok(item)
 }
 
-pub fn finish_companion_recording_on_exit(app: &AppHandle) {
+pub(crate) fn finish_companion_recording_on_exit(app: &AppHandle) {
     let Some(state) = app.try_state::<AppState>() else {
         return;
     };
@@ -843,9 +911,7 @@ fn finish_companion_recording(
     mut recording: crate::state::CompanionRecording,
 ) -> CommandResult<veronica_core::CompanionItem> {
     stop_companion_process(&mut recording);
-    let bytes = std::fs::metadata(&recording.path)
-        .map(|metadata| metadata.len())
-        .unwrap_or(0);
+    let bytes = std::fs::metadata(&recording.path).map_or(0, |metadata| metadata.len());
     if bytes <= 44 {
         let _ = std::fs::remove_file(&recording.path);
         return Err("the microphone produced no audio; check PipeWire input access".to_string());
@@ -860,28 +926,39 @@ fn finish_companion_recording(
 }
 
 #[tauri::command]
-pub fn companion_record_cancel(state: State<'_, AppState>) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_record_cancel(state: State<'_, AppState>) {
     let Some(mut recording) = state
         .companion_recording
         .lock()
         .expect("companion recording lock")
         .take()
     else {
-        return Ok(());
+        return;
     };
     stop_companion_process(&mut recording);
     let _ = std::fs::remove_file(recording.path);
-    Ok(())
 }
 
 #[tauri::command]
-pub fn companion_audio(state: State<'_, AppState>, id: u64) -> CommandResult<String> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn companion_audio(state: State<'_, AppState>, id: u64) -> CommandResult<String> {
     let path = companion_repository(&state).audio_path(id).map_err(fail)?;
     Ok(path.display().to_string())
 }
 
 #[tauri::command]
-pub fn attention_status(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn attention_status(
     state: State<'_, AppState>,
 ) -> CommandResult<veronica_core::AttentionStatus> {
     veronica_core::AttentionRepository::new(state.directories.attention_dir())
@@ -890,7 +967,11 @@ pub fn attention_status(
 }
 
 #[tauri::command]
-pub fn attention_start(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn attention_start(
     state: State<'_, AppState>,
     name: String,
     duration_seconds: i64,
@@ -901,7 +982,11 @@ pub fn attention_start(
 }
 
 #[tauri::command]
-pub fn attention_stop(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn attention_stop(
     state: State<'_, AppState>,
 ) -> CommandResult<veronica_core::AttentionFocusSession> {
     veronica_core::AttentionRepository::new(state.directories.attention_dir())
@@ -910,7 +995,11 @@ pub fn attention_stop(
 }
 
 #[tauri::command]
-pub fn attention_history(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn attention_history(
     state: State<'_, AppState>,
 ) -> CommandResult<Vec<veronica_core::AttentionFocusSession>> {
     let mut sessions = veronica_core::AttentionRepository::new(state.directories.attention_dir())
@@ -921,7 +1010,11 @@ pub fn attention_history(
 }
 
 #[tauri::command]
-pub fn attention_overview(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn attention_overview(
     state: State<'_, AppState>,
     days: i64,
 ) -> CommandResult<veronica_core::AttentionOverview> {
@@ -935,7 +1028,11 @@ pub fn attention_overview(
 }
 
 #[tauri::command]
-pub fn attention_settings(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn attention_settings(
     state: State<'_, AppState>,
 ) -> CommandResult<veronica_core::AttentionSettings> {
     veronica_core::AttentionRepository::new(state.directories.attention_dir())
@@ -944,7 +1041,11 @@ pub fn attention_settings(
 }
 
 #[tauri::command]
-pub fn attention_settings_save(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn attention_settings_save(
     app: AppHandle,
     settings: veronica_core::AttentionSettings,
 ) -> CommandResult<()> {
@@ -962,7 +1063,7 @@ pub fn attention_settings_save(
                 "attentionPrivacy",
                 serde_json::json!(match settings.privacy {
                     veronica_core::AttentionPrivacy::Detailed => "detailed",
-                    _ => "applications",
+                    veronica_core::AttentionPrivacy::Applications => "applications",
                 }),
             );
             shared.set(
@@ -976,7 +1077,7 @@ pub fn attention_settings_save(
     Ok(())
 }
 
-pub async fn sync_prevent_sleep(app: &AppHandle, enabled: bool) -> CommandResult<()> {
+pub(crate) async fn sync_prevent_sleep(app: &AppHandle, enabled: bool) -> CommandResult<()> {
     if !enabled {
         app.state::<AppState>()
             .prevent_sleep
@@ -1015,7 +1116,7 @@ pub async fn sync_prevent_sleep(app: &AppHandle, enabled: bool) -> CommandResult
     Ok(())
 }
 
-pub async fn sync_lid_awake(app: &AppHandle, enabled: bool) -> CommandResult<()> {
+pub(crate) async fn sync_lid_awake(app: &AppHandle, enabled: bool) -> CommandResult<()> {
     if !enabled {
         app.state::<AppState>()
             .lid_awake
@@ -1057,7 +1158,7 @@ pub async fn sync_lid_awake(app: &AppHandle, enabled: bool) -> CommandResult<()>
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PowerStatus {
+pub(crate) struct PowerStatus {
     pub has_lid: bool,
     pub lid_awake_active: bool,
     pub prevent_sleep_active: bool,
@@ -1066,7 +1167,11 @@ pub struct PowerStatus {
 }
 
 #[tauri::command]
-pub fn power_status(state: State<'_, AppState>) -> PowerStatus {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn power_status(state: State<'_, AppState>) -> PowerStatus {
     let settings = state.settings_snapshot();
     let now = chrono::Utc::now().timestamp_millis();
     PowerStatus {
@@ -1092,7 +1197,7 @@ pub fn power_status(state: State<'_, AppState>) -> PowerStatus {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateInfo {
+pub(crate) struct UpdateInfo {
     pub current_version: String,
     pub latest_version: String,
     pub update_available: bool,
@@ -1162,7 +1267,7 @@ fn newer_version(latest: &str, current: &str) -> bool {
 }
 
 #[tauri::command]
-pub async fn update_check() -> CommandResult<UpdateInfo> {
+pub(crate) async fn update_check() -> CommandResult<UpdateInfo> {
     tauri::async_runtime::spawn_blocking(|| {
         let fetch = |url: &str| std::process::Command::new("curl")
             .args([
@@ -1217,7 +1322,7 @@ pub async fn update_check() -> CommandResult<UpdateInfo> {
 }
 
 #[tauri::command]
-pub async fn update_install(version: String) -> CommandResult<String> {
+pub(crate) async fn update_install(version: String) -> CommandResult<String> {
     let valid = version.split('.').count() == 3
         && version
             .split('.')
@@ -1290,20 +1395,23 @@ fn install_deb_release(version: &str) -> CommandResult<String> {
             .map_err(|error| format!("cannot run pkexec: {error}"))?;
         match output.status.code() {
             Some(0) => Ok(format!("Veronica {version} is installed.")),
-            Some(126) | Some(127) => {
-                Err("Authentication was cancelled; nothing was installed.".into())
-            }
+            Some(126 | 127) => Err("Authentication was cancelled; nothing was installed.".into()),
             _ => {
                 let text = String::from_utf8_lossy(&output.stderr);
-                let tail: Vec<&str> = text.lines().rev().take(5).collect();
-                Err(tail.into_iter().rev().collect::<Vec<_>>().join("\n"))
+                let mut tail: Vec<&str> = text.lines().rev().take(5).collect();
+                tail.reverse();
+                Err(tail.join("\n"))
             }
         }
     })()
 }
 
 #[tauri::command]
-pub fn app_restart(app: AppHandle) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn app_restart(app: AppHandle) -> CommandResult<()> {
     let relaunch = restart_command(install_kind(), std::env::current_exe().ok());
     std::process::Command::new(&relaunch[0])
         .args(&relaunch[1..])
@@ -1318,35 +1426,34 @@ pub fn app_restart(app: AppHandle) -> CommandResult<()> {
 
 fn restart_command(kind: &str, current_exe: Option<std::path::PathBuf>) -> Vec<String> {
     const WAIT: &str = "sleep 2";
-    match kind {
-        "flatpak" => vec![
+    if kind == "flatpak" {
+        vec![
             "flatpak-spawn".into(),
             "--host".into(),
             "sh".into(),
             "-c".into(),
             format!("{WAIT}; exec flatpak run io.github.namannn04.Veronica"),
-        ],
-        _ => {
-            let program = std::env::var("APPIMAGE").ok().or_else(|| {
-                current_exe.map(|path| {
-                    let shown = path.display().to_string();
-                    shown.trim_end_matches(" (deleted)").to_string()
-                })
-            });
-            let program = program.unwrap_or_else(|| "veronica".into());
-            vec![
-                "setsid".into(),
-                "sh".into(),
-                "-c".into(),
-                format!("{WAIT}; exec \"$0\""),
-                program,
-            ]
-        }
+        ]
+    } else {
+        let program = std::env::var("APPIMAGE").ok().or_else(|| {
+            current_exe.map(|path| {
+                let shown = path.display().to_string();
+                shown.trim_end_matches(" (deleted)").to_string()
+            })
+        });
+        let program = program.unwrap_or_else(|| "veronica".into());
+        vec![
+            "setsid".into(),
+            "sh".into(),
+            "-c".into(),
+            format!("{WAIT}; exec \"$0\""),
+            program,
+        ]
     }
 }
 
 #[tauri::command]
-pub async fn system_snapshot(app: AppHandle) -> CommandResult<SystemSnapshot> {
+pub(crate) async fn system_snapshot(app: AppHandle) -> CommandResult<SystemSnapshot> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let mut sampler = match state.sampler.try_lock() {
@@ -1363,14 +1470,19 @@ pub async fn system_snapshot(app: AppHandle) -> CommandResult<SystemSnapshot> {
 }
 
 #[tauri::command]
-pub async fn system_processes() -> CommandResult<Vec<veronica_system::metrics::RunningProcess>> {
+pub(crate) async fn system_processes(
+) -> CommandResult<Vec<veronica_system::metrics::RunningProcess>> {
     tauri::async_runtime::spawn_blocking(veronica_system::metrics::running_processes)
         .await
         .map_err(|error| format!("cannot read running processes: {error}"))
 }
 
 #[tauri::command]
-pub fn database_connections(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn database_connections(
     state: State<'_, AppState>,
 ) -> CommandResult<Vec<veronica_database::connection::ConnectionDefinition>> {
     veronica_database::store::MetadataStore::open(state.directories.database_store())
@@ -1379,7 +1491,7 @@ pub fn database_connections(
 }
 
 #[tauri::command]
-pub async fn database_test(
+pub(crate) async fn database_test(
     app: AppHandle,
     connection: String,
 ) -> CommandResult<veronica_database::product::ProductIdentity> {
@@ -1391,7 +1503,7 @@ pub async fn database_test(
 }
 
 #[tauri::command]
-pub async fn database_browse(
+pub(crate) async fn database_browse(
     app: AppHandle,
     connection: String,
     path: Vec<String>,
@@ -1407,7 +1519,7 @@ pub async fn database_browse(
 }
 
 #[tauri::command]
-pub async fn database_query(
+pub(crate) async fn database_query(
     app: AppHandle,
     connection: String,
     statement: String,
@@ -1433,7 +1545,7 @@ pub async fn database_query(
 }
 
 #[tauri::command]
-pub async fn database_read(
+pub(crate) async fn database_read(
     app: AppHandle,
     connection: String,
     path: Vec<String>,
@@ -1496,7 +1608,7 @@ fn exact_large_integers(json: &mut serde_json::Value) {
 }
 
 #[tauri::command]
-pub async fn database_capabilities(
+pub(crate) async fn database_capabilities(
     app: AppHandle,
     connection: String,
 ) -> CommandResult<veronica_database::capabilities::Report> {
@@ -1508,7 +1620,11 @@ pub async fn database_capabilities(
 }
 
 #[tauri::command]
-pub fn database_operations(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn database_operations(
     state: State<'_, AppState>,
     limit: usize,
 ) -> CommandResult<Vec<veronica_database::store::OperationRecord>> {
@@ -1534,7 +1650,7 @@ fn database_context(
 }
 
 #[tauri::command]
-pub async fn audit_site(
+pub(crate) async fn audit_site(
     site: String,
     limit: usize,
     concurrency: usize,
@@ -1545,7 +1661,7 @@ pub async fn audit_site(
 }
 
 #[tauri::command]
-pub async fn packages_sources() -> Vec<PackageSource> {
+pub(crate) async fn packages_sources() -> Vec<PackageSource> {
     let mut sources = Vec::new();
     for source in veronica_system::packages::Source::ALL {
         sources.push(PackageSource {
@@ -1559,24 +1675,24 @@ pub async fn packages_sources() -> Vec<PackageSource> {
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PackageSource {
+pub(crate) struct PackageSource {
     pub source: String,
     pub available: bool,
     pub needs_root: bool,
 }
 
 #[tauri::command]
-pub async fn packages_updates() -> Vec<veronica_system::packages::Update> {
+pub(crate) async fn packages_updates() -> Vec<veronica_system::packages::Update> {
     veronica_system::packages::updates().await
 }
 
 #[tauri::command]
-pub async fn packages_inventory() -> Vec<veronica_system::packages::Installed> {
+pub(crate) async fn packages_inventory() -> Vec<veronica_system::packages::Installed> {
     veronica_system::packages::inventory().await
 }
 
 #[tauri::command]
-pub async fn packages_update(
+pub(crate) async fn packages_update(
     source: String,
     names: Vec<String>,
 ) -> CommandResult<veronica_system::packages::UpdateResult> {
@@ -1588,7 +1704,7 @@ pub async fn packages_update(
 }
 
 #[tauri::command]
-pub async fn packages_removal_plan(
+pub(crate) async fn packages_removal_plan(
     package: String,
 ) -> CommandResult<veronica_system::packages::RemovalPlan> {
     veronica_system::packages::removal_plan(&package)
@@ -1597,12 +1713,14 @@ pub async fn packages_removal_plan(
 }
 
 #[tauri::command]
-pub fn cleaner_categories() -> &'static [veronica_core::CleanerCategory] {
+pub(crate) fn cleaner_categories() -> &'static [veronica_core::CleanerCategory] {
     veronica_core::cleaner::CATEGORIES
 }
 
 #[tauri::command]
-pub async fn cleaner_scan(categories: Vec<String>) -> CommandResult<veronica_core::CleanerScan> {
+pub(crate) async fn cleaner_scan(
+    categories: Vec<String>,
+) -> CommandResult<veronica_core::CleanerScan> {
     tauri::async_runtime::spawn_blocking(move || {
         let home = veronica_core::paths::home_dir()
             .ok_or_else(|| "cannot resolve the home directory".to_string())?;
@@ -1621,7 +1739,7 @@ pub async fn cleaner_scan(categories: Vec<String>) -> CommandResult<veronica_cor
 }
 
 #[tauri::command]
-pub async fn cleaner_clean(
+pub(crate) async fn cleaner_clean(
     items: Vec<veronica_core::cleaner::Item>,
 ) -> CommandResult<veronica_core::cleaner::CleanReport> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -1654,12 +1772,12 @@ pub async fn cleaner_clean(
 }
 
 #[tauri::command]
-pub fn system_quit_process(pid: u32) -> CommandResult<()> {
+pub(crate) fn system_quit_process(pid: u32) -> CommandResult<()> {
     veronica_system::metrics::terminate_process(pid).map_err(fail)
 }
 
 #[tauri::command]
-pub async fn tools_readiness() -> CommandResult<veronica_system::tools::Survey> {
+pub(crate) async fn tools_readiness() -> CommandResult<veronica_system::tools::Survey> {
     Ok(veronica_system::tools::survey().await)
 }
 
@@ -1675,7 +1793,7 @@ fn requested_tool(id: &str) -> CommandResult<&'static veronica_core::tools::Tool
 }
 
 #[tauri::command]
-pub async fn tools_install(tool: String) -> CommandResult<veronica_system::tools::Outcome> {
+pub(crate) async fn tools_install(tool: String) -> CommandResult<veronica_system::tools::Outcome> {
     let spec = requested_tool(&tool)?;
     veronica_system::tools::install(spec, true)
         .await
@@ -1702,12 +1820,12 @@ mod tool_command_tests {
 }
 
 #[tauri::command]
-pub async fn herdr_board() -> CommandResult<veronica_system::herdr::HerdrBoard> {
+pub(crate) async fn herdr_board() -> CommandResult<veronica_system::herdr::HerdrBoard> {
     veronica_system::herdr::board().await.map_err(fail)
 }
 
 #[tauri::command]
-pub async fn quinjet_projects() -> CommandResult<QuinjetBoard> {
+pub(crate) async fn quinjet_projects() -> CommandResult<QuinjetBoard> {
     tauri::async_runtime::spawn_blocking(|| {
         if !veronica_system::quinjet::installed() {
             return Ok(QuinjetBoard {
@@ -1726,13 +1844,17 @@ pub async fn quinjet_projects() -> CommandResult<QuinjetBoard> {
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct QuinjetBoard {
+pub(crate) struct QuinjetBoard {
     pub installed: bool,
     pub projects: Vec<veronica_system::quinjet::Project>,
 }
 
 #[tauri::command]
-pub fn quinjet_open(state: State<'_, AppState>, worktree: String) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn quinjet_open(state: State<'_, AppState>, worktree: String) -> CommandResult<()> {
     let settings = state.settings_snapshot();
     let appearance =
         veronica_core::appearance::scheme(settings.string("appearance").unwrap_or("system"))
@@ -1749,41 +1871,53 @@ pub fn quinjet_open(state: State<'_, AppState>, worktree: String) -> CommandResu
 }
 
 #[tauri::command]
-pub fn herdr_open(session: String, pane_id: Option<String>) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn herdr_open(session: String, pane_id: Option<String>) -> CommandResult<()> {
     veronica_system::herdr::open_terminal(&session, pane_id.as_deref()).map_err(fail)
 }
 
 #[tauri::command]
-pub async fn audio_streams() -> CommandResult<Vec<veronica_system::audio::AudioStream>> {
+pub(crate) async fn audio_streams() -> CommandResult<Vec<veronica_system::audio::AudioStream>> {
     veronica_system::audio::streams().await.map_err(fail)
 }
 
 #[tauri::command]
-pub async fn audio_stream_volume(id: u32, volume: f32) -> CommandResult<()> {
+pub(crate) async fn audio_stream_volume(id: u32, volume: f32) -> CommandResult<()> {
     veronica_system::audio::set_stream_volume(id, volume)
         .await
         .map_err(fail)
 }
 
 #[tauri::command]
-pub async fn audio_stream_toggle_mute(id: u32) -> CommandResult<bool> {
+pub(crate) async fn audio_stream_toggle_mute(id: u32) -> CommandResult<bool> {
     veronica_system::audio::toggle_stream_muted(id)
         .await
         .map_err(fail)
 }
 
 #[tauri::command]
-pub async fn bluetooth_state() -> veronica_system::BluetoothState {
+pub(crate) async fn bluetooth_state() -> veronica_system::BluetoothState {
     veronica_system::bluetooth::state().await
 }
 
 #[tauri::command]
-pub fn emoji_groups(state: State<'_, AppState>) -> Vec<veronica_core::emoji::Group> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn emoji_groups(state: State<'_, AppState>) -> Vec<veronica_core::emoji::Group> {
     state.emoji.groups.clone()
 }
 
 #[tauri::command]
-pub fn emoji_search(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn emoji_search(
     state: State<'_, AppState>,
     query: String,
     group: Option<usize>,
@@ -1801,7 +1935,14 @@ pub fn emoji_search(
 }
 
 #[tauri::command]
-pub fn emoji_recents(state: State<'_, AppState>, limit: usize) -> CommandResult<Vec<EmojiRow>> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn emoji_recents(
+    state: State<'_, AppState>,
+    limit: usize,
+) -> CommandResult<Vec<EmojiRow>> {
     let ledger = veronica_core::emoji::UsageLedger::load(&state.directories.emoji_usage_file())
         .map_err(fail)?;
     let tone = state.emoji_tone();
@@ -1818,7 +1959,7 @@ pub fn emoji_recents(state: State<'_, AppState>, limit: usize) -> CommandResult<
 }
 
 #[tauri::command]
-pub async fn emoji_copy(
+pub(crate) async fn emoji_copy(
     app: AppHandle,
     window: tauri::WebviewWindow,
     character: String,
@@ -1831,8 +1972,7 @@ pub async fn emoji_copy(
             .emoji()
             .iter()
             .find(|emoji| emoji.character(state.emoji_tone()) == character)
-            .map(|emoji| emoji.character.clone())
-            .unwrap_or_else(|| character.clone());
+            .map_or_else(|| character.clone(), |emoji| emoji.character.clone());
         (state.directories.emoji_usage_file(), base)
     };
 
@@ -1875,7 +2015,7 @@ fn uses_emoji_target(window_label: &str, insert: bool) -> bool {
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EmojiRow {
+pub(crate) struct EmojiRow {
     pub character: String,
     pub name: String,
     pub group_index: usize,
@@ -1895,26 +2035,26 @@ impl EmojiRow {
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EmojiCopyResult {
+pub(crate) struct EmojiCopyResult {
     pub character: String,
     pub copied_via: String,
     pub inserted: bool,
 }
 
 #[tauri::command]
-pub async fn microphone_state() -> CommandResult<veronica_system::audio::VolumeState> {
+pub(crate) async fn microphone_state() -> CommandResult<veronica_system::audio::VolumeState> {
     veronica_system::audio::microphone().await.map_err(fail)
 }
 
 #[tauri::command]
-pub async fn microphone_toggle() -> CommandResult<veronica_system::audio::VolumeState> {
+pub(crate) async fn microphone_toggle() -> CommandResult<veronica_system::audio::VolumeState> {
     veronica_system::audio::toggle_microphone()
         .await
         .map_err(fail)
 }
 
 #[tauri::command]
-pub async fn media_now_playing() -> CommandResult<Option<veronica_media::NowPlaying>> {
+pub(crate) async fn media_now_playing() -> CommandResult<Option<veronica_media::NowPlaying>> {
     let connection = zbus::Connection::session()
         .await
         .map_err(|e| format!("cannot reach the session bus: {e}"))?;
@@ -1929,7 +2069,7 @@ pub async fn media_now_playing() -> CommandResult<Option<veronica_media::NowPlay
 }
 
 #[tauri::command]
-pub async fn media_control(action: String) -> CommandResult<()> {
+pub(crate) async fn media_control(action: String) -> CommandResult<()> {
     use veronica_media::Transport;
     let transport = match action.as_str() {
         "play" => Transport::Play,
@@ -1949,7 +2089,7 @@ pub async fn media_control(action: String) -> CommandResult<()> {
 }
 
 #[tauri::command]
-pub fn music_library() -> CommandResult<Vec<veronica_media::LocalTrack>> {
+pub(crate) fn music_library() -> CommandResult<Vec<veronica_media::LocalTrack>> {
     let home = veronica_core::paths::home_dir()
         .ok_or_else(|| "cannot resolve home directory".to_string())?;
     let root = home.join("Music");
@@ -1961,7 +2101,7 @@ pub fn music_library() -> CommandResult<Vec<veronica_media::LocalTrack>> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AgendaView {
+pub(crate) struct AgendaView {
     pub has_calendars: bool,
     pub days: Vec<veronica_calendar::AgendaDay>,
     pub next_up: Option<veronica_calendar::Event>,
@@ -1969,7 +2109,7 @@ pub struct AgendaView {
 }
 
 #[tauri::command]
-pub async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<AgendaView> {
+pub(crate) async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<AgendaView> {
     use veronica_calendar::{agenda, server};
 
     let connection = zbus::Connection::session()
@@ -1996,7 +2136,7 @@ pub async fn calendar_agenda(days: i64, with_links: bool) -> CommandResult<Agend
 }
 
 #[tauri::command]
-pub async fn calendar_open() -> CommandResult<()> {
+pub(crate) async fn calendar_open() -> CommandResult<()> {
     let output = tauri::async_runtime::spawn_blocking(|| {
         veronica_core::host::command("gtk-launch")
             .arg("org.gnome.Calendar")
@@ -2018,34 +2158,42 @@ pub async fn calendar_open() -> CommandResult<()> {
 }
 
 #[tauri::command]
-pub fn notifications_list(
-    state: State<'_, AppState>,
-) -> CommandResult<Vec<veronica_system::Notification>> {
-    Ok(state
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn notifications_list(state: State<'_, AppState>) -> Vec<veronica_system::Notification> {
+    state
         .notifications
         .lock()
         .expect("notifications lock")
-        .clone())
+        .clone()
 }
 
 #[tauri::command]
-pub fn notifications_dismiss(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn notifications_dismiss(state: State<'_, AppState>, id: u64) {
     state
         .notifications
         .lock()
         .expect("notifications lock")
         .retain(|entry| entry.id != id);
-    Ok(())
 }
 
 #[tauri::command]
-pub fn notifications_clear(state: State<'_, AppState>) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn notifications_clear(state: State<'_, AppState>) {
     state
         .notifications
         .lock()
         .expect("notifications lock")
         .clear();
-    Ok(())
 }
 
 const MACHINES_KEY: &str = "machines";
@@ -2065,7 +2213,7 @@ fn machine_by_id(state: &AppState, id: &str) -> CommandResult<veronica_machines:
 }
 
 #[tauri::command]
-pub async fn machines_probe(
+pub(crate) async fn machines_probe(
     app: AppHandle,
 ) -> CommandResult<Vec<veronica_machines::MachineReport>> {
     let stored = {
@@ -2083,7 +2231,11 @@ pub async fn machines_probe(
 }
 
 #[tauri::command]
-pub fn machines_add(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn machines_add(
     state: State<'_, AppState>,
     target: String,
     name: Option<String>,
@@ -2125,7 +2277,11 @@ pub fn machines_add(
 }
 
 #[tauri::command]
-pub fn machines_remove(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn machines_remove(state: State<'_, AppState>, id: String) -> CommandResult<()> {
     state
         .update_settings(|settings| {
             let mut machines: Vec<veronica_machines::Machine> = settings
@@ -2144,7 +2300,11 @@ pub fn machines_remove(state: State<'_, AppState>, id: String) -> CommandResult<
 }
 
 #[tauri::command]
-pub fn machines_discover(state: State<'_, AppState>) -> CommandResult<Vec<String>> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn machines_discover(state: State<'_, AppState>) -> Vec<String> {
     use veronica_machines::host;
 
     let settings = state.settings_snapshot();
@@ -2155,24 +2315,28 @@ pub fn machines_discover(state: State<'_, AppState>) -> CommandResult<Vec<String
     let config = veronica_core::paths::home_dir()
         .map(|home| home.join(".ssh/config"))
         .unwrap_or_default();
-    Ok(host::ssh_config_hosts(&config)
+    host::ssh_config_hosts(&config)
         .into_iter()
         .filter(|alias| {
             !configured
                 .iter()
                 .any(|machine| machine.ssh_target() == Some(alias.as_str()))
         })
-        .collect())
+        .collect()
 }
 
 #[tauri::command]
-pub fn machines_terminal(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn machines_terminal(state: State<'_, AppState>, id: String) -> CommandResult<()> {
     let machine = machine_by_id(&state, &id)?;
     veronica_machines::manage::open_terminal(&machine).map_err(fail)
 }
 
 #[tauri::command]
-pub async fn machines_files(
+pub(crate) async fn machines_files(
     state: State<'_, AppState>,
     id: String,
     path: Option<String>,
@@ -2188,7 +2352,7 @@ pub async fn machines_files(
 }
 
 #[tauri::command]
-pub async fn machines_file_download(
+pub(crate) async fn machines_file_download(
     state: State<'_, AppState>,
     id: String,
     path: String,
@@ -2215,7 +2379,7 @@ pub async fn machines_file_download(
 }
 
 #[tauri::command]
-pub async fn machines_containers(
+pub(crate) async fn machines_containers(
     state: State<'_, AppState>,
     id: String,
 ) -> CommandResult<Vec<veronica_machines::ContainerInfo>> {
@@ -2226,7 +2390,7 @@ pub async fn machines_containers(
 }
 
 #[tauri::command]
-pub async fn machines_container_action(
+pub(crate) async fn machines_container_action(
     state: State<'_, AppState>,
     id: String,
     engine: String,
@@ -2246,7 +2410,7 @@ pub async fn machines_container_action(
 }
 
 #[tauri::command]
-pub async fn machines_container_logs(
+pub(crate) async fn machines_container_logs(
     state: State<'_, AppState>,
     id: String,
     engine: String,
@@ -2266,7 +2430,7 @@ pub async fn machines_container_logs(
 }
 
 #[tauri::command]
-pub async fn machines_power(
+pub(crate) async fn machines_power(
     state: State<'_, AppState>,
     id: String,
     action: String,
@@ -2280,7 +2444,7 @@ pub async fn machines_power(
 }
 
 #[tauri::command]
-pub async fn machines_wake(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+pub(crate) async fn machines_wake(state: State<'_, AppState>, id: String) -> CommandResult<()> {
     let machine = machine_by_id(&state, &id)?;
     let mac = machine.mac.clone().ok_or_else(|| {
         format!(
@@ -2293,7 +2457,14 @@ pub async fn machines_wake(state: State<'_, AppState>, id: String) -> CommandRes
 }
 
 #[tauri::command]
-pub fn clipboard_list(state: State<'_, AppState>, query: String) -> CommandResult<Vec<ClipRow>> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn clipboard_list(
+    state: State<'_, AppState>,
+    query: String,
+) -> CommandResult<Vec<ClipRow>> {
     use veronica_core::ClipboardHistory;
 
     let history = ClipboardHistory::load(&state.directories.clipboard_db()).map_err(fail)?;
@@ -2314,7 +2485,7 @@ pub fn clipboard_list(state: State<'_, AppState>, query: String) -> CommandResul
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ClipRow {
+pub(crate) struct ClipRow {
     pub id: u64,
     pub preview: String,
     pub text: String,
@@ -2325,7 +2496,9 @@ pub struct ClipRow {
 }
 
 #[tauri::command]
-pub async fn presenter_state(app: AppHandle) -> CommandResult<crate::presenter::PresenterView> {
+pub(crate) async fn presenter_state(
+    app: AppHandle,
+) -> CommandResult<crate::presenter::PresenterView> {
     let enabled = app
         .state::<AppState>()
         .settings_snapshot()
@@ -2339,7 +2512,11 @@ pub async fn presenter_state(app: AppHandle) -> CommandResult<crate::presenter::
 }
 
 #[tauri::command]
-pub fn presenter_set(app: AppHandle, action: String) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn presenter_set(app: AppHandle, action: String) -> CommandResult<()> {
     let state = app.state::<AppState>();
     let (key, value) = match action.as_str() {
         "enable" => ("presenterEnabled", serde_json::Value::Bool(true)),
@@ -2362,7 +2539,7 @@ pub fn presenter_set(app: AppHandle, action: String) -> CommandResult<()> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AlertsView {
+pub(crate) struct AlertsView {
     pub settings: veronica_usage::alerts::NotifySettings,
     pub poll_seconds: u64,
     pub session: Option<WatchedWindow>,
@@ -2374,7 +2551,7 @@ pub struct AlertsView {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct WatchedWindow {
+pub(crate) struct WatchedWindow {
     pub percent: f64,
     pub resets_at: Option<String>,
     pub resets_in: Option<String>,
@@ -2383,7 +2560,7 @@ pub struct WatchedWindow {
 }
 
 #[tauri::command]
-pub async fn alerts_view(app: AppHandle) -> CommandResult<AlertsView> {
+pub(crate) async fn alerts_view(app: AppHandle) -> CommandResult<AlertsView> {
     use veronica_usage::alerts::{self, NotifySettings};
     use veronica_usage::limits::{
         level_for_risk, pacing_delta, pacing_zone, smart_risk, LimitWindow, LimitWindowKind,
@@ -2414,13 +2591,12 @@ pub async fn alerts_view(app: AppHandle) -> CommandResult<AlertsView> {
         },
         zone: window
             .resets_at
-            .map(|at| {
+            .map_or(veronica_usage::limits::PacingZone::OnTrack, |at| {
                 pacing_zone(
                     pacing_delta(window.percent, at, kind.duration_secs(), now),
                     notify.pacing_margin,
                 )
-            })
-            .unwrap_or(veronica_usage::limits::PacingZone::OnTrack),
+            }),
     };
 
     let limits = if notify.master {
@@ -2470,7 +2646,7 @@ pub async fn alerts_view(app: AppHandle) -> CommandResult<AlertsView> {
 }
 
 #[tauri::command]
-pub async fn alerts_test() -> CommandResult<String> {
+pub(crate) async fn alerts_test() -> CommandResult<String> {
     let connection = zbus::Connection::session()
         .await
         .map_err(|error| format!("no session bus, so no notifications: {error}"))?;
@@ -2481,7 +2657,11 @@ pub async fn alerts_test() -> CommandResult<String> {
 }
 
 #[tauri::command]
-pub fn alerts_reset(state: State<'_, AppState>) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn alerts_reset(state: State<'_, AppState>) -> CommandResult<()> {
     let path = state.directories.alerts_state_file();
     let mut notifier = veronica_usage::alerts::NotifierState::load(&path);
     notifier.reset_tracking();
@@ -2490,7 +2670,7 @@ pub fn alerts_reset(state: State<'_, AppState>) -> CommandResult<()> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SwatchRow {
+pub(crate) struct SwatchRow {
     pub id: u64,
     pub hex: String,
     pub red: f64,
@@ -2524,31 +2704,35 @@ fn swatch_row(swatch: &veronica_core::Swatch) -> SwatchRow {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FormatOption {
+pub(crate) struct FormatOption {
     pub id: &'static str,
     pub label: &'static str,
 }
 
 #[tauri::command]
-pub fn color_formats() -> CommandResult<Vec<FormatOption>> {
-    Ok(veronica_core::CopyFormat::ALL
+pub(crate) fn color_formats() -> Vec<FormatOption> {
+    veronica_core::CopyFormat::ALL
         .iter()
         .map(|format| FormatOption {
             id: format.key(),
             label: format.title(),
         })
-        .collect())
+        .collect()
 }
 
 #[tauri::command]
-pub fn color_swatches(state: State<'_, AppState>) -> CommandResult<Vec<SwatchRow>> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn color_swatches(state: State<'_, AppState>) -> CommandResult<Vec<SwatchRow>> {
     let history =
         veronica_core::SwatchHistory::load(&state.directories.swatches_file()).map_err(fail)?;
     Ok(history.swatches().iter().map(swatch_row).collect())
 }
 
 #[tauri::command]
-pub async fn color_pick(app: AppHandle) -> CommandResult<PickResult> {
+pub(crate) async fn color_pick(app: AppHandle) -> CommandResult<PickResult> {
     use veronica_core::swatches::{srgb_to_display_p3, ColorProfile, CopyFormat, SwatchHistory};
 
     let (path, format, profile, limit) = {
@@ -2561,9 +2745,10 @@ pub async fn color_pick(app: AppHandle) -> CommandResult<PickResult> {
             SwatchHistory::clamp_limit(
                 settings
                     .get("colorPickerHistorySize")
-                    .and_then(|value| value.as_u64())
-                    .unwrap_or(veronica_core::swatches::DEFAULT_HISTORY_SIZE as u64)
-                    as usize,
+                    .and_then(serde_json::Value::as_u64)
+                    .map_or(veronica_core::swatches::DEFAULT_HISTORY_SIZE, |size| {
+                        usize::try_from(size).unwrap_or(usize::MAX)
+                    }),
             ),
         )
     };
@@ -2597,7 +2782,7 @@ pub async fn color_pick(app: AppHandle) -> CommandResult<PickResult> {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PickResult {
+pub(crate) struct PickResult {
     pub swatch: SwatchRow,
     pub value: String,
     pub format: &'static str,
@@ -2607,7 +2792,7 @@ pub struct PickResult {
 }
 
 #[tauri::command]
-pub async fn color_copy(
+pub(crate) async fn color_copy(
     app: AppHandle,
     id: u64,
     format: Option<String>,
@@ -2622,10 +2807,7 @@ pub async fn color_copy(
             CopyFormat::parse(settings.string("colorPickerCopyFormat").unwrap_or("hex")),
         )
     };
-    let chosen = format
-        .as_deref()
-        .map(CopyFormat::parse)
-        .unwrap_or(configured);
+    let chosen = format.as_deref().map_or(configured, CopyFormat::parse);
 
     let history = veronica_core::SwatchHistory::load(&path).map_err(fail)?;
     let swatch = history.get(id).ok_or_else(|| format!("no swatch {id}"))?;
@@ -2642,14 +2824,18 @@ pub async fn color_copy(
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CopyResult {
+pub(crate) struct CopyResult {
     pub value: String,
     pub format: &'static str,
     pub copied_via: &'static str,
 }
 
 #[tauri::command]
-pub fn color_forget(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn color_forget(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
     let path = state.directories.swatches_file();
     let mut history = veronica_core::SwatchHistory::load(&path).map_err(fail)?;
     if !history.remove(id) {
@@ -2659,7 +2845,11 @@ pub fn color_forget(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
 }
 
 #[tauri::command]
-pub fn color_clear(state: State<'_, AppState>) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn color_clear(state: State<'_, AppState>) -> CommandResult<()> {
     let path = state.directories.swatches_file();
     let mut history = veronica_core::SwatchHistory::load(&path).map_err(fail)?;
     history.clear();
@@ -2667,7 +2857,11 @@ pub fn color_clear(state: State<'_, AppState>) -> CommandResult<()> {
 }
 
 #[tauri::command]
-pub fn clipboard_remove(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn clipboard_remove(state: State<'_, AppState>, id: u64) -> CommandResult<()> {
     use veronica_core::ClipboardHistory;
 
     let path = state.directories.clipboard_db();
@@ -2679,7 +2873,11 @@ pub fn clipboard_remove(state: State<'_, AppState>, id: u64) -> CommandResult<()
 }
 
 #[tauri::command]
-pub fn clipboard_clear(state: State<'_, AppState>) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn clipboard_clear(state: State<'_, AppState>) -> CommandResult<()> {
     use veronica_core::ClipboardHistory;
 
     let path = state.directories.clipboard_db();
@@ -2689,12 +2887,20 @@ pub fn clipboard_clear(state: State<'_, AppState>) -> CommandResult<()> {
 }
 
 #[tauri::command]
-pub fn show_main_window(app: AppHandle) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn show_main_window(app: AppHandle) -> CommandResult<()> {
     crate::main_window::show(&app, None).map_err(fail)
 }
 
 #[tauri::command]
-pub fn open_external(target: String) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn open_external(target: String) -> CommandResult<()> {
     let allowed =
         target.starts_with("https://") || target.starts_with("http://") || target.starts_with('/');
     if !allowed {
@@ -2961,10 +3167,10 @@ mod wire_shape_tests {
 
     #[test]
     fn the_extension_report_carries_the_settings_key_the_interface_toggles() {
-        let report = veronica_core::Diagnostics::collect(
+        let report = Diagnostics::collect(
             &veronica_core::AppDirectories::with_env(
                 std::path::Path::new("/tmp"),
-                Default::default(),
+                veronica_core::paths::EnvOverrides::default(),
             ),
             veronica_core::DesktopSession::unknown(),
             &veronica_core::Settings::default(),
@@ -2998,26 +3204,32 @@ mod wire_shape_tests {
 }
 
 #[tauri::command]
-pub async fn ports_snapshot() -> CommandResult<veronica_system::ports::PortsSnapshot> {
+pub(crate) async fn ports_snapshot() -> CommandResult<veronica_system::ports::PortsSnapshot> {
     veronica_system::ports::snapshot().await.map_err(fail)
 }
 #[tauri::command]
-pub async fn ports_stop(request: veronica_system::ports::StopRequest) -> CommandResult<String> {
+pub(crate) async fn ports_stop(
+    request: veronica_system::ports::StopRequest,
+) -> CommandResult<String> {
     veronica_system::ports::stop(&request).await.map_err(fail)
 }
 #[tauri::command]
-pub async fn docker_snapshot() -> veronica_system::docker::DockerSnapshot {
+pub(crate) async fn docker_snapshot() -> veronica_system::docker::DockerSnapshot {
     veronica_system::docker::snapshot().await
 }
 #[tauri::command]
-pub async fn docker_action(endpoint: String, id: String, action: String) -> CommandResult<()> {
+pub(crate) async fn docker_action(
+    endpoint: String,
+    id: String,
+    action: String,
+) -> CommandResult<()> {
     veronica_system::docker::action(&endpoint, &id, &action)
         .await
         .map_err(fail)
 }
 
 #[tauri::command]
-pub async fn workspace_doctor(
+pub(crate) async fn workspace_doctor(
     request: veronica_system::workspace::DoctorRequest,
 ) -> CommandResult<veronica_system::workspace::DoctorReport> {
     veronica_system::workspace::doctor(request)
@@ -3026,7 +3238,7 @@ pub async fn workspace_doctor(
 }
 
 #[tauri::command]
-pub async fn graft_discover(
+pub(crate) async fn graft_discover(
     connection: veronica_system::graftcode::Connection,
 ) -> CommandResult<veronica_system::graftcode::Discovery> {
     veronica_system::graftcode::discover(connection)
@@ -3034,7 +3246,7 @@ pub async fn graft_discover(
         .map_err(fail)
 }
 #[tauri::command]
-pub async fn graft_call(
+pub(crate) async fn graft_call(
     connection: veronica_system::graftcode::Connection,
     name: String,
     arguments: serde_json::Value,
@@ -3046,7 +3258,11 @@ pub async fn graft_call(
 }
 
 #[tauri::command]
-pub fn agent_profiles(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn agent_profiles(
     state: State<'_, AppState>,
 ) -> CommandResult<Vec<veronica_system::agents::AgentProfile>> {
     let path = state.directories.data.join("agents/profiles.json");
@@ -3058,7 +3274,11 @@ pub fn agent_profiles(
     Ok(profiles)
 }
 #[tauri::command]
-pub fn agent_profiles_save(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn agent_profiles_save(
     state: State<'_, AppState>,
     profiles: Vec<veronica_system::agents::AgentProfile>,
 ) -> CommandResult<()> {
@@ -3081,7 +3301,7 @@ pub fn agent_profiles_save(
     .map_err(fail)
 }
 #[tauri::command]
-pub async fn agent_start(
+pub(crate) async fn agent_start(
     app: AppHandle,
     profile: veronica_system::agents::AgentProfile,
     cwd: String,
@@ -3097,7 +3317,11 @@ pub async fn agent_start(
     .map_err(|e| e.to_string())?
 }
 #[tauri::command]
-pub fn agent_list(state: State<'_, AppState>) -> Vec<veronica_system::agents::AgentView> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn agent_list(state: State<'_, AppState>) -> Vec<veronica_system::agents::AgentView> {
     let root = state.directories.data.join("agents");
     state
         .agents
@@ -3114,7 +3338,7 @@ pub fn agent_list(state: State<'_, AppState>) -> Vec<veronica_system::agents::Ag
         .collect()
 }
 #[tauri::command]
-pub async fn agent_external(
+pub(crate) async fn agent_external(
     app: AppHandle,
 ) -> CommandResult<Vec<veronica_system::agents::AgentView>> {
     let root = app.state::<AppState>().directories.data.join("agents");
@@ -3133,7 +3357,11 @@ pub async fn agent_external(
     .map_err(|e| e.to_string())
 }
 #[tauri::command]
-pub fn agent_output(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn agent_output(
     state: State<'_, AppState>,
     id: String,
     cursor: u64,
@@ -3141,11 +3369,23 @@ pub fn agent_output(
     state.agents.output(&id, cursor).map_err(fail)
 }
 #[tauri::command]
-pub fn agent_input(state: State<'_, AppState>, id: String, bytes: String) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn agent_input(
+    state: State<'_, AppState>,
+    id: String,
+    bytes: String,
+) -> CommandResult<()> {
     state.agents.input(&id, bytes).map_err(fail)
 }
 #[tauri::command]
-pub fn agent_resize(
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn agent_resize(
     state: State<'_, AppState>,
     id: String,
     cols: u16,
@@ -3154,12 +3394,20 @@ pub fn agent_resize(
     state.agents.resize(&id, cols, rows).map_err(fail)
 }
 #[tauri::command]
-pub fn agent_stop(state: State<'_, AppState>, id: String) -> CommandResult<()> {
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
+)]
+pub(crate) fn agent_stop(state: State<'_, AppState>, id: String) -> CommandResult<()> {
     state.agents.stop(&id).map_err(fail)
 }
 
 #[tauri::command]
-pub async fn agent_tracking(app: AppHandle, enabled: bool, confirmed: bool) -> CommandResult<()> {
+pub(crate) async fn agent_tracking(
+    app: AppHandle,
+    enabled: bool,
+    confirmed: bool,
+) -> CommandResult<()> {
     if !confirmed {
         return Err("Confirm changes to Claude's hook settings".into());
     }
@@ -3173,11 +3421,13 @@ pub async fn agent_tracking(app: AppHandle, enabled: bool, confirmed: bool) -> C
 }
 
 #[tauri::command]
-pub async fn chat_view(app: AppHandle) -> CommandResult<veronica_system::companion_ai::ChatView> {
+pub(crate) async fn chat_view(
+    app: AppHandle,
+) -> CommandResult<veronica_system::companion_ai::ChatView> {
     app.state::<AppState>().chat.view().map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_configure(
+pub(crate) async fn chat_configure(
     app: AppHandle,
     config: veronica_system::companion_ai::ModelConfig,
     memory: String,
@@ -3188,7 +3438,7 @@ pub async fn chat_configure(
         .map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_enable(
+pub(crate) async fn chat_enable(
     app: AppHandle,
     enabled: bool,
 ) -> CommandResult<veronica_system::companion_ai::ChatView> {
@@ -3196,7 +3446,7 @@ pub async fn chat_enable(
     app.state::<AppState>().chat.view().map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_send(
+pub(crate) async fn chat_send(
     app: AppHandle,
     text: String,
     key: String,
@@ -3210,7 +3460,7 @@ pub async fn chat_send(
         .map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_preview(
+pub(crate) async fn chat_preview(
     app: AppHandle,
     text: String,
     include_history: bool,
@@ -3222,7 +3472,7 @@ pub async fn chat_preview(
         .map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_models(
+pub(crate) async fn chat_models(
     app: AppHandle,
     config: veronica_system::companion_ai::ModelConfig,
 ) -> CommandResult<Vec<String>> {
@@ -3233,7 +3483,7 @@ pub async fn chat_models(
         .map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_pull(
+pub(crate) async fn chat_pull(
     app: AppHandle,
     config: veronica_system::companion_ai::ModelConfig,
     confirmed: bool,
@@ -3245,16 +3495,16 @@ pub async fn chat_pull(
         .map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_clear(app: AppHandle, memory: bool) -> CommandResult<()> {
+pub(crate) async fn chat_clear(app: AppHandle, memory: bool) -> CommandResult<()> {
     app.state::<AppState>().chat.clear(memory).map_err(fail)
 }
 #[tauri::command]
-pub async fn chat_export(app: AppHandle) -> CommandResult<String> {
+pub(crate) async fn chat_export(app: AppHandle) -> CommandResult<String> {
     app.state::<AppState>().chat.export().map_err(fail)
 }
 
 #[tauri::command]
-pub async fn chat_journal(
+pub(crate) async fn chat_journal(
     app: AppHandle,
     text: String,
 ) -> CommandResult<veronica_system::companion_ai::Message> {
@@ -3262,7 +3512,7 @@ pub async fn chat_journal(
 }
 
 #[tauri::command]
-pub async fn agent_herdr_attach(
+pub(crate) async fn agent_herdr_attach(
     app: AppHandle,
     session: String,
     pane: String,

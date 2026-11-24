@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use veronica_media::{mpris, Transport};
@@ -5,7 +7,7 @@ use veronica_media::{mpris, Transport};
 use crate::format::{self, Output};
 
 #[derive(Subcommand)]
-pub enum MediaCommand {
+pub(crate) enum MediaCommand {
     #[command(about = "What is playing right now")]
     Status,
     #[command(about = "Every MPRIS player registered on the session bus")]
@@ -49,7 +51,7 @@ fn music_root() -> Result<std::path::PathBuf> {
     Ok(home.join("Music"))
 }
 
-pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &MediaCommand, output: Output) -> Result<()> {
     if let MediaCommand::Library { query, limit } = command {
         let root = music_root()?;
         if !root.is_dir() {
@@ -120,12 +122,10 @@ pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
                 let Some(playing) = &playing else {
                     return "nothing is playing".to_string();
                 };
-                use std::fmt::Write;
                 let mut out = String::new();
                 let status = playing
                     .status
-                    .map(|s| format!("{s:?}"))
-                    .unwrap_or_else(|| "Unknown".into());
+                    .map_or_else(|| "Unknown".into(), |s| format!("{s:?}"));
                 let _ = writeln!(out, "Player     {} ({})", playing.identity, status);
                 if !playing.title.is_empty() {
                     let _ = writeln!(out, "Title      {}", playing.title);
@@ -160,9 +160,9 @@ pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
             mpris::control(&connection, transport).await?;
             let playing = mpris::now_playing(&connection).await?;
             output.emit(&playing, || {
-                playing
-                    .as_ref()
-                    .map(|p| {
+                playing.as_ref().map_or_else(
+                    || "no player".to_string(),
+                    |p| {
                         format!(
                             "{:?} · {} · {}",
                             p.status.unwrap_or(veronica_media::PlaybackStatus::Stopped),
@@ -173,8 +173,8 @@ pub async fn run(command: &MediaCommand, output: Output) -> Result<()> {
                             },
                             p.identity
                         )
-                    })
-                    .unwrap_or_else(|| "no player".to_string())
+                    },
+                )
             })
         }
     }

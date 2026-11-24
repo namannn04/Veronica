@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
@@ -7,7 +9,7 @@ use veronica_core::AppDirectories;
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum CompanionCommand {
+pub(crate) enum CompanionCommand {
     #[command(alias = "ls", about = "Everything, newest first, optionally filtered")]
     List {
         #[arg(default_value = "", help = "Match the title or the body")]
@@ -53,7 +55,11 @@ fn kind_label(kind: CompanionKind) -> &'static str {
     }
 }
 
-pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Output) -> Result<()> {
+pub(crate) fn run(
+    directories: &AppDirectories,
+    command: &CompanionCommand,
+    output: Output,
+) -> Result<()> {
     let repository = CompanionRepository::new(directories.companion_dir());
 
     match command {
@@ -95,7 +101,6 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
                 .find(|item| item.id == *id)
                 .with_context(|| format!("no Companion item {id}"))?;
             output.emit(&item, || {
-                use std::fmt::Write;
                 let mut out = String::new();
                 let _ = writeln!(out, "{}", item.title);
                 let _ = writeln!(
@@ -120,14 +125,13 @@ pub fn run(directories: &AppDirectories, command: &CompanionCommand, output: Out
             body,
             pinned,
         } => {
-            let text = match body {
-                Some(body) => body.clone(),
-                None => {
-                    let mut buffer = String::new();
-                    std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)
-                        .context("cannot read the note body from stdin")?;
-                    buffer
-                }
+            let text = if let Some(body) = body {
+                body.clone()
+            } else {
+                let mut buffer = String::new();
+                std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)
+                    .context("cannot read the note body from stdin")?;
+                buffer
             };
             let now = Utc::now();
             let item = repository.create_note(title, text.trim_end(), now)?;

@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::Result;
 use serde_json::json;
 use veronica_core::focus_dim::{
@@ -8,7 +10,7 @@ use veronica_core::{AppDirectories, Settings};
 use crate::format::Output;
 
 #[derive(clap::Subcommand)]
-pub enum FocusDimCommand {
+pub(crate) enum FocusDimCommand {
     #[command(about = "Report the current settings and whether the shell can apply them")]
     Status,
     #[command(about = "Turn dimming on")]
@@ -29,7 +31,7 @@ pub enum FocusDimCommand {
     },
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &FocusDimCommand,
     output: Output,
@@ -77,7 +79,6 @@ pub async fn run(
     });
 
     output.emit(&document, || {
-        use std::fmt::Write;
         let mut out = String::new();
         let _ = writeln!(
             out,
@@ -86,9 +87,9 @@ pub async fn run(
         );
         let _ = writeln!(
             out,
-            "intensity  {}%  (max {}%)",
+            "intensity  {}%  (max {:.0}%)",
             resolved.intensity_percent(),
-            (MAX_INTENSITY * 100.0).round() as i64
+            (MAX_INTENSITY * 100.0).round()
         );
         let _ = writeln!(out, "fade       {}s", resolved.animation_secs);
         let _ = writeln!(out, "displays   {}", resolved.mode.title());

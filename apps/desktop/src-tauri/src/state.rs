@@ -8,7 +8,7 @@ use veronica_core::{AppDirectories, DesktopSession, Settings};
 use veronica_system::MetricsSampler;
 use veronica_usage::UsageDocument;
 
-pub struct AppState {
+pub(crate) struct AppState {
     pub chat: veronica_system::companion_ai::ChatRuntime,
     pub agents: veronica_system::agents::AgentManager,
     pub directories: AppDirectories,
@@ -24,14 +24,14 @@ pub struct AppState {
     pub emoji: veronica_core::EmojiCatalog,
 }
 
-pub struct CompanionRecording {
+pub(crate) struct CompanionRecording {
     pub child: Child,
     pub path: PathBuf,
     pub started: Instant,
 }
 
 impl AppState {
-    pub fn new(directories: AppDirectories, session: DesktopSession) -> Result<Self> {
+    pub(crate) fn new(directories: AppDirectories, session: DesktopSession) -> Result<Self> {
         let settings = Settings::load(&directories.settings_file())?;
         let usage = match veronica_usage::collector::read_document(&directories.usage_file()) {
             Ok(document) => document,
@@ -45,7 +45,7 @@ impl AppState {
             chat: veronica_system::companion_ai::ChatRuntime::new(
                 directories.data.join("companion/chat"),
             ),
-            agents: Default::default(),
+            agents: veronica_system::agents::AgentManager::default(),
             emoji: veronica_core::EmojiCatalog::bundled(),
             directories,
             session: Mutex::new(session),
@@ -60,13 +60,13 @@ impl AppState {
         })
     }
 
-    pub fn push_notification(&self, notification: veronica_system::Notification) {
+    pub(crate) fn push_notification(&self, notification: veronica_system::Notification) {
         let mut list = self.notifications.lock().expect("notifications lock");
         list.insert(0, notification);
         list.truncate(veronica_system::notifications::HISTORY_LIMIT);
     }
 
-    pub fn emoji_tone(&self) -> veronica_core::SkinTone {
+    pub(crate) fn emoji_tone(&self) -> veronica_core::SkinTone {
         veronica_core::SkinTone::parse(
             self.settings_snapshot()
                 .string("emojiSkinTone")
@@ -74,18 +74,21 @@ impl AppState {
         )
     }
 
-    pub fn settings_snapshot(&self) -> Settings {
+    pub(crate) fn settings_snapshot(&self) -> Settings {
         self.settings.lock().expect("settings lock").clone()
     }
 
-    pub fn set_setting(&self, key: &str, value: serde_json::Value) -> Result<()> {
+    pub(crate) fn set_setting(&self, key: &str, value: serde_json::Value) -> Result<()> {
         self.update_settings(|settings| {
             settings.set(key, value);
             Ok(())
         })
     }
 
-    pub fn update_settings<T>(&self, change: impl FnOnce(&mut Settings) -> Result<T>) -> Result<T> {
+    pub(crate) fn update_settings<T>(
+        &self,
+        change: impl FnOnce(&mut Settings) -> Result<T>,
+    ) -> Result<T> {
         let mut cached = self.settings.lock().expect("settings lock");
         let path = self.directories.settings_file();
         let mut settings = match Settings::load(&path) {
@@ -101,7 +104,7 @@ impl AppState {
         Ok(result)
     }
 
-    pub fn reload_persistent_data(&self) -> Result<()> {
+    pub(crate) fn reload_persistent_data(&self) -> Result<()> {
         let settings = Settings::load(&self.directories.settings_file())?;
         *self.settings.lock().expect("settings lock") = settings;
         let usage = veronica_usage::collector::read_document(&self.directories.usage_file())?;
@@ -122,7 +125,7 @@ mod tests {
             runtime: root.join("runtime"),
             state: root.join("state"),
         };
-        AppState::new(directories, veronica_core::DesktopSession::detect()).unwrap()
+        AppState::new(directories, DesktopSession::detect()).unwrap()
     }
 
     #[test]

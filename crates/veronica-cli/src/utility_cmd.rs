@@ -8,7 +8,7 @@ use veronica_core::AppDirectories;
 use veronica_system::image_tools::{self, Source};
 
 #[derive(clap::Subcommand)]
-pub enum UtilityCommand {
+pub(crate) enum UtilityCommand {
     Image {
         path: PathBuf,
         #[arg(value_parser=["png", "jpg", "svg"])]
@@ -30,7 +30,8 @@ fn read(path: &Path) -> Result<Vec<u8>> {
     );
     Ok(bytes)
 }
-pub fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> Result<()> {
+pub(crate) fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
     let (source, format) = match command {
         UtilityCommand::Image { path, format } => {
             (image_tools::decode(&read(path)?)?, format.as_deref())
@@ -46,7 +47,6 @@ pub fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> R
                 "image"
             });
     std::fs::create_dir_all(&root)?;
-    use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700))?;
     let mut files: Vec<_> = std::fs::read_dir(&root)?
         .flatten()

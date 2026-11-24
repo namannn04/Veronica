@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::{Context, Result};
 use chrono::Local;
 use clap::Subcommand;
@@ -6,7 +8,7 @@ use veronica_calendar::{agenda, server};
 use crate::format::{self, Output};
 
 #[derive(Subcommand)]
-pub enum CalendarCommand {
+pub(crate) enum CalendarCommand {
     #[command(alias = "agenda", about = "The agenda, grouped by day")]
     List {
         #[arg(long, default_value_t = 7, help = "How many days ahead to include")]
@@ -29,13 +31,20 @@ fn slot(event: &veronica_calendar::Event) -> String {
     )
 }
 
-pub async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
     let connection = zbus::Connection::session()
         .await
         .context("cannot reach the session bus; is this a desktop session?")?;
 
     match command {
         CalendarCommand::List { days, all } => {
+            #[derive(serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Report {
+                has_calendars: bool,
+                days: Vec<veronica_calendar::AgendaDay>,
+            }
+
             let has_calendars = server::has_calendars(&connection).await.unwrap_or(false);
             let events = server::events_with_links(&connection, *days).await?;
             let now = Local::now();
@@ -46,12 +55,6 @@ pub async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
             };
             let agenda = agenda::group_by_day(&events, now);
 
-            #[derive(serde::Serialize)]
-            #[serde(rename_all = "camelCase")]
-            struct Report {
-                has_calendars: bool,
-                days: Vec<veronica_calendar::AgendaDay>,
-            }
             let report = Report {
                 has_calendars,
                 days: agenda,
@@ -64,7 +67,6 @@ pub async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
                 if report.days.is_empty() {
                     return format!("nothing scheduled in the next {days} days");
                 }
-                use std::fmt::Write;
                 let mut out = String::new();
                 for day in &report.days {
                     let _ = writeln!(out, "{}  {}", day.label, day.date);
