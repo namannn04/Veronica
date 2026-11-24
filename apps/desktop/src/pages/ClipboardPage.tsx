@@ -144,7 +144,6 @@ export function ClipboardPage() {
           {rows.map((row) => (
             <ListRow
               key={row.id}
-              className="clip-row"
               leading={<span className="clip-kind">{kindIcon(row)}</span>}
               title={<span className="clip-text ui-selectable">{row.preview}</span>}
               subtitle={details(row)}
