@@ -62,7 +62,7 @@ impl Env {
     fn new() -> Self {
         let home = tempfile::tempdir().unwrap();
         let directories = AppDirectories::with_env(home.path(), EnvOverrides::default());
-        let services = HostServices::new(Layout::new(&directories));
+        let services = HostServices::new(Layout::new(&directories), directories.settings_file());
         Self {
             home,
             services: Arc::new(services),
