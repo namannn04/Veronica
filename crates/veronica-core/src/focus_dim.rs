@@ -90,6 +90,10 @@ impl FocusDimSettings {
         }
     }
 
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the intensity is clamped to a fraction, so the rounded percentage always fits; std has no checked float-to-int conversion"
+    )]
     pub fn intensity_percent(&self) -> i64 {
         (self.intensity * 100.0).round() as i64
     }

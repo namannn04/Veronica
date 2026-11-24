@@ -89,7 +89,9 @@ impl CompanionRepository {
                 }
                 Ok(document)
             }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Default::default()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                Ok(CompanionDocument::default())
+            }
             Err(error) => Err(error.into()),
         }
     }

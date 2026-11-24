@@ -96,25 +96,23 @@ fn the_debian_package_declares_the_update_check_runtime() {
     )
     .expect("valid Tauri configuration");
     let debian = &document["bundle"]["linux"]["deb"];
-    let dependencies: Vec<&str> = debian["depends"]
+    let depends_on_curl = debian["depends"]
         .as_array()
         .expect("Debian dependency array")
         .iter()
-        .map(|value| value.as_str().expect("string dependency"))
-        .collect();
-    let recommendations: Vec<&str> = debian["recommends"]
+        .any(|value| value.as_str().expect("string dependency") == "curl");
+    let recommends_yt_dlp = debian["recommends"]
         .as_array()
         .expect("Debian recommendations array")
         .iter()
-        .map(|value| value.as_str().expect("string recommendation"))
-        .collect();
+        .any(|value| value.as_str().expect("string recommendation") == "yt-dlp");
 
     assert!(
-        dependencies.contains(&"curl"),
+        depends_on_curl,
         "the update checker executes curl, so a clean Debian install must pull it in"
     );
     assert!(
-        !recommendations.contains(&"yt-dlp"),
+        !recommends_yt_dlp,
         "Veronica has no download queue, so installing yt-dlp is an unrelated side effect"
     );
 }

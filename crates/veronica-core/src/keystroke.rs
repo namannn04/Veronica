@@ -128,10 +128,15 @@ impl Queue {
         if keys.is_empty() {
             return None;
         }
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "the duration is clamped to a few seconds, so the rounded millisecond count always fits; std has no checked float-to-int conversion"
+        )]
+        let duration_ms = (clamp_duration(duration_secs) * 1000.0).round() as i64;
         let entry = Entry {
             id: self.next_id,
             keys,
-            expires_at_ms: now_ms + (clamp_duration(duration_secs) * 1000.0).round() as i64,
+            expires_at_ms: now_ms + duration_ms,
         };
         self.next_id += 1;
         self.entries.push(entry);

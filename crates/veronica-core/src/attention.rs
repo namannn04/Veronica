@@ -281,12 +281,10 @@ impl AttentionRepository {
         use chrono::{Local, TimeZone};
         let local = now.with_timezone(&Local).date_naive() - Duration::days(days.clamp(1, 365) - 1);
         let midnight = local.and_hms_opt(0, 0, 0).expect("midnight exists");
-        Local
-            .from_local_datetime(&midnight)
-            .earliest()
-            .map_or(now - Duration::days(days.clamp(1, 365)), |start| {
-                start.with_timezone(&Utc)
-            })
+        Local.from_local_datetime(&midnight).earliest().map_or_else(
+            || now - Duration::days(days.clamp(1, 365)),
+            |start| start.with_timezone(&Utc),
+        )
     }
 
     pub fn overview(&self, from: DateTime<Utc>, to: DateTime<Utc>) -> Result<AttentionOverview> {

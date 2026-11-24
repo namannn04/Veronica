@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -388,7 +389,7 @@ fn encode_path(path: &Path) -> String {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' | b'/' => {
                 out.push(byte as char);
             }
-            _ => out.push_str(&format!("%{byte:02X}")),
+            _ => write!(out, "%{byte:02X}").expect("writing to a String cannot fail"),
         }
     }
     out

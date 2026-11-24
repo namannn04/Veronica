@@ -132,6 +132,10 @@ pub mod formatting {
         format!("rgba({}, {}, {}, 1)", byte(red), byte(green), byte(blue))
     }
 
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "hue, saturation and lightness are fractions, so the rounded degrees and percentages always fit; std has no checked float-to-int conversion"
+    )]
     pub fn hsl(red: f64, green: f64, blue: f64) -> String {
         let (h, s, l) = rgb_to_hsl(red, green, blue);
         format!(
@@ -186,6 +190,11 @@ pub mod formatting {
         0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue)
     }
 
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the value is clamped to 0..=255 before the cast; std has no checked float-to-int conversion"
+    )]
     pub fn byte(value: f64) -> u8 {
         (value.clamp(0.0, 1.0) * 255.0).round() as u8
     }
@@ -368,6 +377,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the hue is a fraction, so the rounded degrees always fit"
+    )]
     fn hue_lands_on_the_right_sextant_for_each_primary() {
         for (rgb, degrees) in [
             ((1.0, 0.0, 0.0), 0),

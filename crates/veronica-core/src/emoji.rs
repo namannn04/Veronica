@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -350,13 +350,13 @@ impl UsageLedger {
         if self.entries.len() <= LEDGER_CAPACITY {
             return;
         }
-        let mut survivors: HashMap<&str, ()> = HashMap::new();
+        let mut survivors: HashSet<&str> = HashSet::new();
         let ranked = self.ranked(now_ms, LEDGER_CAPACITY - 1);
         for character in &ranked {
-            survivors.insert(character.as_str(), ());
+            survivors.insert(character.as_str());
         }
-        survivors.insert(character, ());
-        let keep: Vec<String> = survivors.keys().map(ToString::to_string).collect();
+        survivors.insert(character);
+        let keep: Vec<String> = survivors.iter().map(ToString::to_string).collect();
         self.entries
             .retain(|usage| keep.iter().any(|character| character == &usage.character));
     }
