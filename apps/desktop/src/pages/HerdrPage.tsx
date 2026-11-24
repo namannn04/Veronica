@@ -1,75 +1,375 @@
-import { startVisiblePolling } from "../lib/polling";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Copy, ExternalLink, MonitorPlay, RefreshCw, SquareTerminal } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
-import type { HerdrAgent, HerdrBoard } from "../lib/types";
+import { startVisiblePolling } from "../lib/polling";
+import type { HerdrAgent, HerdrBoard, HerdrSession } from "../lib/types";
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  Dialog,
+  EmptyState,
+  FilterChips,
+  IconButton,
+  KeyValueList,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  Section,
+  Select,
+  Skeleton,
+  Spinner,
+  StatusDot,
+  Toolbar,
+  type Tone,
+} from "../ui";
+import "./HerdrPage.css";
 
-const AgentControls=lazy(()=>import("../components/AgentControls").then(m=>({default:m.AgentControls})));
+const AgentControls = lazy(() => import("../components/AgentControls").then((m) => ({ default: m.AgentControls })));
 
 const STATUSES: HerdrAgent["status"][] = ["blocked", "working", "unknown", "done", "idle"];
 const STATUS_LABEL: Record<HerdrAgent["status"], string> = { blocked: "Blocked", working: "Working", unknown: "Unknown", done: "Done", idle: "Idle" };
+const STATUS_TONE: Record<HerdrAgent["status"], Tone> = { blocked: "warning", working: "accent", unknown: "neutral", done: "good", idle: "neutral" };
+const ICON = { strokeWidth: 1.75 };
 
 export function HerdrPage() {
-  const [terminalFocus,setTerminalFocus]=useState<string>();
+  const [terminalFocus, setTerminalFocus] = useState<string>();
   const [board, setBoard] = useState<HerdrBoard | null>(null);
   const [error, setError] = useState("");
   const [session, setSession] = useState("all");
   const [kinds, setKinds] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [attachTarget, setAttachTarget] = useState<HerdrAgent | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    try { setBoard(await ipc.herdrBoard()); setError(""); }
-    catch (reason) { setError(String(reason)); }
+    try {
+      setBoard(await ipc.herdrBoard());
+      setError("");
+    } catch (reason) {
+      setError(String(reason));
+    }
   }, []);
 
   useEffect(() => startVisiblePolling(load, 2000), [load]);
 
+  const refresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
   const kindChoices = useMemo(() => [...new Set(board?.agents.map((agent) => agent.kind) ?? [])].sort(), [board]);
-  const agents = useMemo(() => (board?.agents ?? []).filter((agent) => (session === "all" || agent.session === session) && (kinds.length === 0 || kinds.includes(agent.kind))), [board, kinds, session]);
+  const agents = useMemo(
+    () => (board?.agents ?? []).filter((agent) => (session === "all" || agent.session === session) && (kinds.length === 0 || kinds.includes(agent.kind))),
+    [board, kinds, session],
+  );
   const selectedAgent = board?.agents.find((agent) => agent.id === selected) ?? null;
 
-  // Every launcher reports its failure (Herdr uninstalled, no terminal found)
-  // rather than dropping it as an unhandled rejection behind a dead button.
-  const open = (session: string, pane?: string) => {
-    void ipc.herdrOpen(session, pane).catch((reason) => setError(String(reason)));
+  const open = (name: string, pane?: string) => {
+    void ipc.herdrOpen(name, pane).catch((reason) => setError(String(reason)));
   };
 
-  const toggleKind = (kind: string) => setKinds((current) => current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind]);
-  // The line comes from the backend, which builds it from the same helper the
-  // terminal launcher and `vr herdr attach` use, so the three cannot drift.
+  const toggleKind = (kind: string) => setKinds((current) => (current.includes(kind) ? current.filter((item) => item !== kind) : [...current, kind]));
+
   const copyAttach = async (agent: HerdrAgent) => {
-    try { await navigator.clipboard.writeText(agent.attachCommand); setCopied(agent.id); window.setTimeout(() => setCopied((id) => id === agent.id ? null : id), 1_200); }
-    catch (reason) { setError(`Cannot copy the attach command: ${reason}`); }
+    try {
+      await navigator.clipboard.writeText(agent.attachCommand);
+      setCopied(agent.id);
+      window.setTimeout(() => setCopied((id) => (id === agent.id ? null : id)), 1_200);
+    } catch (reason) {
+      setError(`Cannot copy the attach command: ${reason}`);
+    }
   };
 
-  return <div className="herdr-page">
-    <div className="page-head edith-head"><div><div className="herdr-title"><span>H</span><h1>Agents &amp; Herdr</h1></div><div className="page-sub">Live coding-agent sessions across persistent terminal workspaces</div></div><div className="head-actions"><button className="button" onClick={() => void load()}>Refresh</button>{board?.sessions[0] && <button className="button primary" onClick={() => open(board.sessions[0].name)}>Open Herdr</button>}</div></div>
+  const attachInApp = (agent: HerdrAgent) => {
+    setAttachTarget(null);
+    setSelected(null);
+    void ipc
+      .agentHerdrAttach(agent.session, agent.paneId, true)
+      .then((view) => setTerminalFocus(view.id))
+      .catch((reason) => setError(String(reason)));
+  };
 
-    <Suspense fallback={<p>Opening agent controls…</p>}><AgentControls requestedId={terminalFocus}/></Suspense>
-    {error && <div className="banner error">{error}</div>}
-    {!error && board?.installed && board.error && <div className="banner warn">{board.error}</div>}
-    {!board && !error && <HerdrSkeleton />}
-    {board && !board.installed && <div className="empty herdr-empty"><div className="empty-glyph">H</div><h3>Optional Herdr integration is not installed</h3><p>The agent terminals above work independently. Install Herdr if you also want its persistent session board.</p></div>}
+  const firstSession = board?.sessions[0];
 
-    {board?.installed && <>
-      <div className="herdr-toolbar"><select value={session} onChange={(event) => setSession(event.target.value)} aria-label="Machine or session"><option value="all">All sessions</option>{board.sessions.map((item) => <option value={item.name} key={item.name}>{item.name}{item.running ? " · running" : " · stopped"}</option>)}</select><div className="herdr-kinds"><button aria-pressed={kinds.length === 0} onClick={() => setKinds([])}>All</button>{kindChoices.map((kind) => <button key={kind} aria-pressed={kinds.includes(kind)} onClick={() => toggleKind(kind)}><KindMark kind={kind} />{kind}</button>)}</div><span className="spacer" /><span className="live-count"><i />{agents.length} live</span></div>
+  return (
+    <Page
+      header={
+        <PageHeader
+          title="Agents & Herdr"
+          subtitle="Live coding-agent sessions across persistent terminal workspaces"
+          actions={
+            <>
+              <Button icon={<RefreshCw {...ICON} />} busy={refreshing} onClick={() => void refresh()}>
+                Refresh
+              </Button>
+              {firstSession && (
+                <Button icon={<ExternalLink {...ICON} />} onClick={() => open(firstSession.name)}>
+                  Open Herdr
+                </Button>
+              )}
+            </>
+          }
+        />
+      }
+    >
+      {error && (
+        <Notice tone="critical" title="Herdr did not answer" actions={<Button size="small" onClick={() => void refresh()}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
 
-      <div className={`herdr-workspace ${selectedAgent ? "detail-open" : ""}`}>
-        <aside className="herdr-rail"><RailSection title="Agents" count={agents.length}>{agents.map((agent) => <button className={selected === agent.id ? "selected" : ""} key={agent.id} onClick={() => setSelected(agent.id)}><KindMark kind={agent.kind} /><div><strong>{agent.title}</strong><small>{agent.workspace || agent.session}</small></div><i className={`status-dot ${agent.status}`} /></button>)}</RailSection><RailSection title="Terminals" count={board.sessions.length}>{board.sessions.map((item) => <button key={item.name} onClick={() => open(item.name)}><span className="terminal-mark">›_</span><div><strong>{item.name}</strong><small>{item.running ? "Running" : "Stopped · open to start"}</small></div><i className={`status-dot ${item.running ? "working" : "idle"}`} /></button>)}</RailSection></aside>
+      {!board && !error && <BoardSkeleton />}
 
-        <main className="herdr-board">{STATUSES.map((status) => { const rows = agents.filter((agent) => agent.status === status); return <section className={`herdr-column ${status}`} key={status}><header><div><i /><strong>{STATUS_LABEL[status]}</strong></div><span>{rows.length}</span></header><div>{rows.map((agent) => <button className={selected === agent.id ? "selected" : ""} key={agent.id} onClick={() => setSelected(agent.id)}><div className="agent-card-head"><KindMark kind={agent.kind} /><span>{agent.kind}</span>{agent.focused && <b>Focused</b>}</div><strong>{agent.title}</strong><p>{agent.workspace || "Workspace"}</p><footer><span>{agent.session}</span><span>Open →</span></footer></button>)}{rows.length === 0 && <div className="column-empty">No {STATUS_LABEL[status].toLowerCase()} agents</div>}</div></section>; })}</main>
+      {board && !board.installed && (
+        <Notice tone="neutral" title="Herdr is not installed" actions={<Button size="small" onClick={() => void refresh()}>Check again</Button>}>
+          The agent terminals below work on their own. Install Herdr if you also want its persistent session board.
+        </Notice>
+      )}
 
-        {selectedAgent && <aside className="herdr-detail"><button className="detail-close" onClick={() => setSelected(null)} aria-label="Close details">×</button><div className="detail-kind"><KindMark kind={selectedAgent.kind} /><span>{selectedAgent.kind}</span></div><h2>{selectedAgent.title}</h2><div className="agent-view-toggle"><button aria-pressed>Agent</button><button disabled>Diff</button></div><Detail label="Status" value={STATUS_LABEL[selectedAgent.status]} /><Detail label="Session" value={selectedAgent.session} /><Detail label="Workspace" value={selectedAgent.workspace || "—"} /><Detail label="Directory" value={selectedAgent.cwd || "Not reported"} mono /><Detail label="Pane" value={selectedAgent.paneId} mono /><div className="attach-block"><span>ATTACH</span><code>{selectedAgent.attachCommand}</code><div><button className="button" onClick={() => void copyAttach(selectedAgent)}>{copied === selectedAgent.id ? "Copied" : "Copy command"}</button><button className="button" onClick={()=>{if(window.confirm("Attach this Herdr pane inside Veronica? Its existing frontend may be disconnected (takeover). The Herdr backend and agent remain externally owned."))void ipc.agentHerdrAttach(selectedAgent.session,selectedAgent.paneId,true).then(v=>setTerminalFocus(v.id)).catch(e=>setError(String(e)));}}>View in app</button><button className="button primary" onClick={() => open(selectedAgent.session, selectedAgent.paneId)}>Open terminal</button></div></div></aside>}
-      </div>
+      {!error && board?.installed && board.error && <Notice tone="warning" title="Herdr answered with a problem">{board.error}</Notice>}
 
-      {board.sessions.length === 0 && <div className="empty herdr-empty"><div className="empty-glyph">H</div><h3>No Herdr sessions yet</h3><p>Launch Herdr once and the board will begin following its agents automatically.</p></div>}
-      {board.sessions.length > 0 && board.agents.length === 0 && <div className="herdr-session-strip">{board.sessions.map((item) => <div key={item.name}><i className={item.running ? "running" : ""} /><div><strong>{item.name}</strong><span>{item.error || (item.running ? "Session is running; no agents detected yet." : "Session is stopped.")}</span></div><button className="button" onClick={() => open(item.name)}>{item.running ? "Attach" : "Start"}</button></div>)}</div>}
-    </>}
-  </div>;
+      {board?.installed && (
+        <Section title="Board" description="Agents grouped by what they are doing right now">
+          {board.sessions.length === 0 ? (
+            <div className="herdr-empty">
+              <EmptyState icon={<SquareTerminal {...ICON} />} title="No Herdr sessions yet" action={<Button onClick={() => void refresh()}>Check again</Button>}>
+                Launch Herdr once and the board starts following its agents.
+              </EmptyState>
+            </div>
+          ) : (
+            <>
+              <Toolbar
+                className="herdr-toolbar"
+                leading={
+                  <>
+                    <Select variant="chip" size="small" value={session} onChange={(event) => setSession(event.target.value)} aria-label="Session">
+                      <option value="all">All sessions</option>
+                      {board.sessions.map((item) => (
+                        <option value={item.name} key={item.name}>
+                          {item.name}
+                          {item.running ? " (running)" : " (stopped)"}
+                        </option>
+                      ))}
+                    </Select>
+                    {kindChoices.length > 1 && (
+                      <FilterChips
+                        label="Agent kind"
+                        chips={kindChoices.map((kind) => ({ value: kind, label: kind }))}
+                        selected={kinds}
+                        onToggle={toggleKind}
+                        onClear={() => setKinds([])}
+                      />
+                    )}
+                  </>
+                }
+                trailing={
+                  <span className="herdr-live ui-num">
+                    <StatusDot tone={agents.length ? "good" : "neutral"} />
+                    {agents.length} live
+                  </span>
+                }
+              />
+              {board.agents.length === 0 ? (
+                <div className="herdr-empty">
+                  <EmptyState icon={<MonitorPlay {...ICON} />} title="No agents detected yet" size="compact">
+                    Agents show up here as soon as a Herdr session reports one.
+                  </EmptyState>
+                </div>
+              ) : agents.length === 0 ? (
+                <div className="herdr-empty">
+                  <EmptyState
+                    title="No agents match these filters"
+                    size="compact"
+                    action={
+                      <Button size="small" onClick={() => { setKinds([]); setSession("all"); }}>
+                        Clear filters
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="herdr-lanes">
+                  {STATUSES.map((status) => (
+                    <Lane
+                      key={status}
+                      status={status}
+                      agents={agents.filter((agent) => agent.status === status)}
+                      copied={copied}
+                      onSelect={setSelected}
+                      onOpen={(agent) => open(agent.session, agent.paneId)}
+                      onCopy={(agent) => void copyAttach(agent)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Section>
+      )}
+
+      {board?.installed && board.sessions.length > 0 && (
+        <Section title="Sessions" description="Each session keeps its terminals alive between launches">
+          <List label="Herdr sessions">
+            {board.sessions.map((item) => (
+              <SessionRow key={item.name} session={item} agentCount={board.agents.filter((agent) => agent.session === item.name).length} onOpen={() => open(item.name)} />
+            ))}
+          </List>
+        </Section>
+      )}
+
+      <Suspense
+        fallback={
+          <div className="herdr-loading">
+            <Spinner label="Opening agent terminals" />
+          </div>
+        }
+      >
+        <AgentControls requestedId={terminalFocus} />
+      </Suspense>
+
+      <Dialog
+        open={selectedAgent !== null}
+        onClose={() => setSelected(null)}
+        title={selectedAgent?.title ?? ""}
+        description={selectedAgent ? `${selectedAgent.kind} in ${selectedAgent.session}` : undefined}
+        width={520}
+        footer={
+          selectedAgent && (
+            <>
+              <Button icon={<Copy {...ICON} />} onClick={() => void copyAttach(selectedAgent)}>
+                {copied === selectedAgent.id ? "Copied" : "Copy command"}
+              </Button>
+              <Button onClick={() => setAttachTarget(selectedAgent)}>View in app</Button>
+              <Button variant="primary" onClick={() => open(selectedAgent.session, selectedAgent.paneId)}>
+                Open terminal
+              </Button>
+            </>
+          )
+        }
+      >
+        {selectedAgent && (
+          <div className="herdr-detail">
+            <KeyValueList
+              items={[
+                { label: "Status", value: <Badge tone={STATUS_TONE[selectedAgent.status]} dot>{STATUS_LABEL[selectedAgent.status]}</Badge> },
+                { label: "Session", value: selectedAgent.session, mono: true },
+                { label: "Workspace", value: selectedAgent.workspace || "Not reported" },
+                { label: "Directory", value: selectedAgent.cwd || "Not reported", mono: true },
+                { label: "Pane", value: selectedAgent.paneId, mono: true },
+              ]}
+            />
+            <div className="herdr-attach">
+              <span className="herdr-attach-label">Attach from any terminal</span>
+              <code className="herdr-attach-command ui-mono ui-selectable">{selectedAgent.attachCommand}</code>
+            </div>
+          </div>
+        )}
+      </Dialog>
+
+      <ConfirmDialog
+        open={attachTarget !== null}
+        onClose={() => setAttachTarget(null)}
+        onConfirm={() => attachTarget && attachInApp(attachTarget)}
+        title="Attach this pane inside Veronica?"
+        message="Its existing frontend may be disconnected. The Herdr backend and the agent stay owned by Herdr."
+        confirmLabel="Attach pane"
+      />
+    </Page>
+  );
 }
 
-function KindMark({ kind }: { kind: string }) { return <span className="kind-mark" aria-hidden="true">{kind.slice(0, 1).toUpperCase()}</span>; }
-function Detail({ label, value, mono }: { label: string; value: string; mono?: boolean }) { return <div className="herdr-meta"><span>{label}</span><strong className={mono ? "mono" : ""} title={value}>{value}</strong></div>; }
-function RailSection({ title, count, children }: { title: string; count: number; children: ReactNode }) { return <section className="rail-section"><header><strong>{title}</strong><span>{count}</span></header><div>{children}</div></section>; }
-function HerdrSkeleton() { return <div className="herdr-skeleton"><aside><i /><i /><i /></aside><main>{STATUSES.map((status) => <section key={status}><i /><i /><i /></section>)}</main></div>; }
+function Lane({
+  status,
+  agents,
+  copied,
+  onSelect,
+  onOpen,
+  onCopy,
+}: {
+  status: HerdrAgent["status"];
+  agents: HerdrAgent[];
+  copied: string | null;
+  onSelect: (id: string) => void;
+  onOpen: (agent: HerdrAgent) => void;
+  onCopy: (agent: HerdrAgent) => void;
+}) {
+  return (
+    <section className="herdr-lane" data-empty={agents.length === 0 || undefined} aria-label={`${STATUS_LABEL[status]} agents`}>
+      <header className="herdr-lane-head">
+        <StatusDot tone={STATUS_TONE[status]} />
+        <h3>{STATUS_LABEL[status]}</h3>
+        <span className="herdr-lane-count ui-num">{agents.length}</span>
+      </header>
+      <div className="herdr-lane-body">
+        {agents.map((agent) => (
+          <article className="herdr-card" key={agent.id}>
+            <button type="button" className="herdr-card-main" onClick={() => onSelect(agent.id)}>
+              <span className="herdr-card-top">
+                <span className="herdr-card-kind">{agent.kind}</span>
+                {agent.focused && <Badge tone="accent">Focused</Badge>}
+              </span>
+              <span className="herdr-card-title">{agent.title}</span>
+              <span className="herdr-card-path ui-mono">{agent.cwd || agent.workspace || agent.session}</span>
+            </button>
+            <footer className="herdr-card-actions">
+              <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
+              <span className="herdr-card-spacer" />
+              <IconButton
+                size="small"
+                label={copied === agent.id ? "Copied" : "Copy attach command"}
+                icon={<Copy {...ICON} />}
+                onClick={() => onCopy(agent)}
+              />
+              <Button size="small" onClick={() => onOpen(agent)}>
+                Open
+              </Button>
+            </footer>
+          </article>
+        ))}
+        {agents.length === 0 && <p className="herdr-lane-empty">No {STATUS_LABEL[status].toLowerCase()} agents</p>}
+      </div>
+    </section>
+  );
+}
+
+function SessionRow({ session, agentCount, onOpen }: { session: HerdrSession; agentCount: number; onOpen: () => void }) {
+  const detail = session.error || (session.running ? (agentCount ? `${agentCount} agent${agentCount === 1 ? "" : "s"}` : "Running, no agents detected yet") : "Stopped");
+  return (
+    <ListRow
+      leading={<StatusDot tone={session.error ? "critical" : session.running ? "good" : "neutral"} label={session.running ? "Running" : "Stopped"} />}
+      title={session.name}
+      mono
+      subtitle={detail}
+      meta={session.default ? <Badge>Default</Badge> : undefined}
+      trailing={
+        <Button size="small" onClick={onOpen}>
+          {session.running ? "Attach" : "Start"}
+        </Button>
+      }
+    />
+  );
+}
+
+function BoardSkeleton() {
+  return (
+    <div className="herdr-lanes" role="status" aria-label="Reading Herdr sessions">
+      {STATUSES.map((status) => (
+        <div className="herdr-lane" key={status}>
+          <div className="herdr-lane-head">
+            <Skeleton width={64} height={11} />
+          </div>
+          <div className="herdr-lane-body">
+            <Skeleton height={84} radius={10} />
+            <Skeleton height={84} radius={10} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,94 @@
+.agent-launch-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.agent-provider {
+  display: flex;
+  align-items: center;
+  gap: var(--control-gap);
+  min-width: 0;
+}
+
+.agent-provider > .ui-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-provider > .ui-select select {
+  width: 100%;
+}
+
+.agent-launch-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--separator);
+}
+
+.agent-owned {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  scroll-margin-top: 96px;
+}
+
+.agent-owned-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-1);
+}
+
+.agent-owned-title {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-semibold);
+}
+
+.agent-owned-spacer {
+  flex: 1;
+}
+
+.agent-terminal-loading {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+}
+
+.agent-footnote {
+  margin: 0;
+  padding: 0 var(--space-1);
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  line-height: 1.45;
+}
+
+.agent-external-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.agent-external-empty {
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+}
+
+.agent-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@container main (max-width: 720px) {
+  .agent-launch-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
