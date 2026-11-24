@@ -10,9 +10,15 @@ export function money(value: number): string {
 }
 
 export function moneyCompact(value: number): string {
-  if (value >= 1000) return `$${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
-  if (value >= 10) return `$${value.toFixed(0)}`;
-  if (value === 0) return "$0";
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
+  }
+  if (value >= 10) {
+    return `$${value.toFixed(0)}`;
+  }
+  if (value === 0) {
+    return "$0";
+  }
   return `$${value.toFixed(2)}`;
 }
 
@@ -32,7 +38,9 @@ export function tokens(value: number): string {
     if (value >= scale) {
       const scaled = value / scale;
       const rounded = round(scaled, decimals(scaled));
-      if (rounded >= 1000 && index > 0) return `1.00${UNITS[index - 1][1]}`;
+      if (rounded >= 1000 && index > 0) {
+        return `1.00${UNITS[index - 1][1]}`;
+      }
       return `${rounded.toFixed(decimals(rounded))}${suffix}`;
     }
   }
@@ -48,7 +56,9 @@ export function bytes(value: number): string {
     v /= 1024;
     i += 1;
   }
-  if (i === 0) return `${value} B`;
+  if (i === 0) {
+    return `${value} B`;
+  }
   return `${v >= 100 ? v.toFixed(0) : v.toFixed(1)} ${units[i]}`;
 }
 
@@ -57,13 +67,21 @@ export function percent(value: number, digits = 0): string {
 }
 
 export function countdown(seconds: number): string {
-  if (seconds <= 0) return "now";
+  if (seconds <= 0) {
+    return "now";
+  }
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m`;
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
   return `${Math.floor(seconds)}s`;
 }
 
@@ -89,18 +107,30 @@ export function dayLabelLong(period: string): string {
 }
 
 export function hourLabel(hour: number): string {
-  if (hour === 0) return "12a";
-  if (hour === 12) return "12p";
+  if (hour === 0) {
+    return "12a";
+  }
+  if (hour === 12) {
+    return "12p";
+  }
   return hour < 12 ? `${hour}a` : `${hour - 12}p`;
 }
 
 export function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "unknown";
+  if (Number.isNaN(then)) {
+    return "unknown";
+  }
   const seconds = Math.floor((Date.now() - then) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 60) {
+    return "just now";
+  }
+  if (seconds < 3600) {
+    return `${Math.floor(seconds / 60)}m ago`;
+  }
+  if (seconds < 86400) {
+    return `${Math.floor(seconds / 3600)}h ago`;
+  }
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
@@ -116,35 +146,53 @@ export function trackClock(microseconds: number): string {
 }
 
 export function trackTimeline(positionUs: number | null, lengthUs: number | null): string {
-  if (positionUs === null && lengthUs === null) return "";
-  if (lengthUs === null) return positionUs === null ? "" : trackClock(positionUs);
+  if (positionUs === null && lengthUs === null) {
+    return "";
+  }
+  if (lengthUs === null) {
+    return positionUs === null ? "" : trackClock(positionUs);
+  }
   const position = positionUs === null ? "?" : trackClock(positionUs);
   return `${position} / ${trackClock(lengthUs)}`;
 }
 
 export function clockTime(iso: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
   return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
 export function eventSlot(start: string, end: string, allDay: boolean): string {
-  if (allDay) return "All day";
+  if (allDay) {
+    return "All day";
+  }
   return `${clockTime(start)} – ${clockTime(end)}`;
 }
 
 export function untilLabel(iso: string): string {
   const seconds = Math.floor((new Date(iso).getTime() - Date.now()) / 1000);
-  if (Number.isNaN(seconds)) return "";
-  if (seconds <= 0) return "now";
+  if (Number.isNaN(seconds)) {
+    return "";
+  }
+  if (seconds <= 0) {
+    return "now";
+  }
   return `in ${countdown(seconds)}`;
 }
 
 export function agoFromMillis(millis: number): string {
   const seconds = Math.floor((Date.now() - millis) / 1000);
-  if (seconds < 45) return "now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 45) {
+    return "now";
+  }
+  if (seconds < 3600) {
+    return `${Math.floor(seconds / 60)}m ago`;
+  }
+  if (seconds < 86400) {
+    return `${Math.floor(seconds / 3600)}h ago`;
+  }
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 

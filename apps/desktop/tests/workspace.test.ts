@@ -10,8 +10,9 @@ test("method arguments must be a bounded JSON object, including multibyte input"
     "oops",
     JSON.stringify({ x: "a".repeat(16384) }),
     JSON.stringify({ x: "😀".repeat(5000) }),
-  ])
+  ]) {
     expect(() => methodArguments(text)).toThrow();
+  }
 });
 
 test("structured MCP results remain readable and protocol errors stay intact", () => {

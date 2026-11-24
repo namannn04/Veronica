@@ -42,17 +42,31 @@ const ACTION_LABEL: Record<ContainerAction, string> = {
 };
 
 function containerTone(state: string): Tone {
-  if (state === "running") return "good";
-  if (state === "paused" || state === "restarting") return "warning";
-  if (state === "dead") return "critical";
+  if (state === "running") {
+    return "good";
+  }
+  if (state === "paused" || state === "restarting") {
+    return "warning";
+  }
+  if (state === "dead") {
+    return "critical";
+  }
   return "neutral";
 }
 
 function dockerHeadline(docker: DockerSnapshot | null, error: string | null) {
-  if (docker?.status === "ready") return null;
-  if (docker?.status === "missing") return "Docker is not installed";
-  if (docker?.status === "remote") return "Docker uses an external endpoint";
-  if (docker?.status === "unavailable" || error) return "Docker is unavailable";
+  if (docker?.status === "ready") {
+    return null;
+  }
+  if (docker?.status === "missing") {
+    return "Docker is not installed";
+  }
+  if (docker?.status === "remote") {
+    return "Docker uses an external endpoint";
+  }
+  if (docker?.status === "unavailable" || error) {
+    return "Docker is unavailable";
+  }
   return null;
 }
 
@@ -74,7 +88,9 @@ export function ServicesPage() {
   const actionRunning = useRef(false);
 
   const loadPorts = useCallback(async () => {
-    if (portRead.current) return;
+    if (portRead.current) {
+      return;
+    }
     portRead.current = true;
     setReadingPorts(true);
     try {
@@ -90,12 +106,16 @@ export function ServicesPage() {
       }
     } finally {
       portRead.current = false;
-      if (live.current) setReadingPorts(false);
+      if (live.current) {
+        setReadingPorts(false);
+      }
     }
   }, []);
 
   const loadDocker = useCallback(async () => {
-    if (dockerRead.current) return;
+    if (dockerRead.current) {
+      return;
+    }
     dockerRead.current = true;
     setReadingDocker(true);
     try {
@@ -111,17 +131,23 @@ export function ServicesPage() {
       }
     } finally {
       dockerRead.current = false;
-      if (live.current) setReadingDocker(false);
+      if (live.current) {
+        setReadingDocker(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     live.current = true;
     const stopPorts = startVisiblePolling(async () => {
-      if (!actionRunning.current) await loadPorts();
+      if (!actionRunning.current) {
+        await loadPorts();
+      }
     }, 5000);
     const stopDocker = startVisiblePolling(async () => {
-      if (!actionRunning.current) await loadDocker();
+      if (!actionRunning.current) {
+        await loadDocker();
+      }
     }, 10000);
     return () => {
       live.current = false;
@@ -136,7 +162,9 @@ export function ServicesPage() {
   };
 
   const apply = async () => {
-    if (!pending || actionRunning.current) return;
+    if (!pending || actionRunning.current) {
+      return;
+    }
     const change = pending;
     actionRunning.current = true;
     setBusy(true);
@@ -149,14 +177,22 @@ export function ServicesPage() {
           startedAt: change.owner.startedAt,
           inode: change.row.inode,
         });
-        if (live.current) setMessage(result);
+        if (live.current) {
+          setMessage(result);
+        }
       } else {
         await ipc.dockerAction(change.endpoint, change.container.id, change.action);
-        if (live.current) setMessage(`${change.container.name}: ${change.action} completed.`);
+        if (live.current) {
+          setMessage(`${change.container.name}: ${change.action} completed.`);
+        }
       }
-      if (live.current) setPending(null);
+      if (live.current) {
+        setPending(null);
+      }
     } catch (error) {
-      if (live.current) setActionError(String(error));
+      if (live.current) {
+        setActionError(String(error));
+      }
     } finally {
       actionRunning.current = false;
       if (live.current) {
@@ -415,13 +451,14 @@ export function ServicesPage() {
                         size="small"
                         disabled={busy || docker.status !== "ready"}
                         onClick={() => {
-                          if (docker.endpoint)
+                          if (docker.endpoint) {
                             ask({
                               kind: "container",
                               container,
                               endpoint: docker.endpoint,
                               action,
                             });
+                          }
                         }}
                       >
                         {ACTION_LABEL[action]}
@@ -442,7 +479,9 @@ export function ServicesPage() {
       <ConfirmDialog
         open={pending !== null}
         onClose={() => {
-          if (!busy) setPending(null);
+          if (!busy) {
+            setPending(null);
+          }
         }}
         onConfirm={() => void apply()}
         busy={busy}

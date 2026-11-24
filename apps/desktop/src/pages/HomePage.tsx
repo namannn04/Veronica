@@ -76,9 +76,15 @@ const ZONE_SUGGESTIONS = [
 const MAX_ZONES = 2;
 
 function greeting(hour: number) {
-  if (hour >= 5 && hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  if (hour < 22) return "Good evening";
+  if (hour >= 5 && hour < 12) {
+    return "Good morning";
+  }
+  if (hour < 17) {
+    return "Good afternoon";
+  }
+  if (hour < 22) {
+    return "Good evening";
+  }
   return "Up late";
 }
 
@@ -120,7 +126,9 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      if (!document.hidden) setNow(new Date());
+      if (!document.hidden) {
+        setNow(new Date());
+      }
     }, 1_000);
     return () => window.clearInterval(timer);
   }, []);
@@ -135,7 +143,9 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       ipc.settingsAll(),
       ipc.presenterState(),
     ] as const);
-    if (requests.every((result) => result.status === "rejected")) setDesktopReady(false);
+    if (requests.every((result) => result.status === "rejected")) {
+      setDesktopReady(false);
+    }
     setData({
       usage: requests[0].status === "fulfilled" ? requests[0].value : null,
       limits: requests[1].status === "fulfilled" ? requests[1].value : null,
@@ -143,8 +153,12 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       agenda: requests[3].status === "fulfilled" ? requests[3].value : null,
       playing: requests[4].status === "fulfilled" ? requests[4].value : null,
     });
-    if (requests[5].status === "fulfilled") setSettings(requests[5].value);
-    if (requests[6].status === "fulfilled") setPresenter(requests[6].value);
+    if (requests[5].status === "fulfilled") {
+      setSettings(requests[5].value);
+    }
+    if (requests[6].status === "fulfilled") {
+      setPresenter(requests[6].value);
+    }
     setLoaded(true);
   };
 
@@ -161,7 +175,9 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
         ipc.systemSnapshot(),
         ipc.mediaNowPlaying(),
       ]);
-      if (!live) return;
+      if (!live) {
+        return;
+      }
       setData((current) => ({
         ...current,
         system: system.status === "fulfilled" ? system.value : current.system,
@@ -170,7 +186,9 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     });
     const stopLimits = every(LIMITS_POLL_MS, async () => {
       const limits = await ipc.usageLimits().catch(() => null);
-      if (live && limits) setData((current) => ({ ...current, limits }));
+      if (live && limits) {
+        setData((current) => ({ ...current, limits }));
+      }
     });
     return () => {
       live = false;
@@ -210,7 +228,9 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
   };
 
   const togglePresenter = async () => {
-    if (!presenter) return;
+    if (!presenter) {
+      return;
+    }
     const sharing = presenter.autoActive && presenter.autoEnabled && !presenter.autoPaused;
     const actions = !presenter.enabled
       ? ["enable", "start"]
@@ -218,7 +238,9 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
         ? ["start"]
         : [...(presenter.manual ? ["stop"] : []), ...(sharing ? ["dismiss"] : [])];
     try {
-      for (const action of actions) await ipc.presenterSet(action);
+      for (const action of actions) {
+        await ipc.presenterSet(action);
+      }
       setPresenter(await ipc.presenterState());
       setActionError("");
     } catch (error) {

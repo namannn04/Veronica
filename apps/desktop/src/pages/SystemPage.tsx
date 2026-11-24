@@ -82,14 +82,18 @@ export function SystemPage() {
         ipc.systemSnapshot(),
         ipc.systemProcesses(),
       ]);
-      if (!live) return;
+      if (!live) {
+        return;
+      }
       if (system.status === "fulfilled") {
         setSnapshot(system.value);
         setSnapshotError(null);
       } else {
         setSnapshotError(String(system.reason));
       }
-      if (apps.status === "fulfilled") setProcesses(apps.value);
+      if (apps.status === "fulfilled") {
+        setProcesses(apps.value);
+      }
       setProcessesRead(true);
     };
     const stop = startVisiblePolling(tick, TICK_MS);
@@ -120,15 +124,21 @@ export function SystemPage() {
         ipc.bluetoothState(),
         ipc.microphoneState(),
       ]);
-      if (!live) return;
-      if (microphone.status === "fulfilled") setMic(microphone.value);
+      if (!live) {
+        return;
+      }
+      if (microphone.status === "fulfilled") {
+        setMic(microphone.value);
+      }
       setStreams(mixer.status === "fulfilled" ? mixer.value : []);
       setMixerError(mixer.status === "rejected" ? String(mixer.reason) : null);
-      if (radio.status === "fulfilled") setBluetooth(radio.value);
-      else
+      if (radio.status === "fulfilled") {
+        setBluetooth(radio.value);
+      } else {
         setBluetooth(
           (current) => current ?? { adapters: [], devices: [], unavailable: String(radio.reason) },
         );
+      }
       setDevicesRead(true);
     };
     const stop = startVisiblePolling(tick, DEVICE_TICK_MS);
@@ -171,7 +181,9 @@ export function SystemPage() {
     () =>
       [...processes].sort((a, b) => {
         const direction = sort.ascending ? 1 : -1;
-        if (sort.key === "name") return a.name.localeCompare(b.name) * direction;
+        if (sort.key === "name") {
+          return a.name.localeCompare(b.name) * direction;
+        }
         return (
           (sort.key === "cpu" ? a.cpuPercent - b.cpuPercent : a.memoryBytes - b.memoryBytes) *
           direction
@@ -182,7 +194,9 @@ export function SystemPage() {
   const totalAppMemory = processes.reduce((sum, process) => sum + process.memoryBytes, 0);
 
   const quit = async () => {
-    if (!quitting) return;
+    if (!quitting) {
+      return;
+    }
     const process = quitting;
     setQuitBusy(true);
     try {
@@ -455,7 +469,9 @@ export function SystemPage() {
       <ConfirmDialog
         open={quitting !== null}
         onClose={() => {
-          if (!quitBusy) setQuitting(null);
+          if (!quitBusy) {
+            setQuitting(null);
+          }
         }}
         onConfirm={() => void quit()}
         title={quitting ? `Quit ${quitting.name}?` : "Quit app?"}
@@ -694,8 +710,12 @@ function usedPercent(total: number, available: number) {
 
 function temperatureTone(celsius: number, critical: number | null): Tone {
   const limit = critical ?? 95;
-  if (celsius >= limit * 0.9) return "critical";
-  if (celsius >= limit * 0.8) return "warning";
+  if (celsius >= limit * 0.9) {
+    return "critical";
+  }
+  if (celsius >= limit * 0.8) {
+    return "warning";
+  }
   return "neutral";
 }
 
@@ -716,14 +736,19 @@ function streamLabel(stream: AudioStream) {
     !name ||
     name === stream.application ||
     ["Playback", "playback", "RecordStream", "record"].includes(name)
-  )
+  ) {
     return stream.application;
+  }
   return `${stream.application}: ${name}`;
 }
 
 function bluetoothSummary(state: BluetoothState) {
-  if (state.unavailable) return "Unavailable";
-  if (!state.adapters.some((adapter) => adapter.powered)) return "Off";
+  if (state.unavailable) {
+    return "Unavailable";
+  }
+  if (!state.adapters.some((adapter) => adapter.powered)) {
+    return "Off";
+  }
   const connected = state.devices.filter((device) => device.connected).length;
   return connected === 0 ? "On" : `${connected} connected`;
 }

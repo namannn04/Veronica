@@ -141,7 +141,9 @@ export function BackupPane() {
                 setSummary(null);
               }}
               onKeyDown={(event) => {
-                if (event.key === "Enter") void inspect();
+                if (event.key === "Enter") {
+                  void inspect();
+                }
               }}
               placeholder="/home/you/Downloads/Veronica-backup.veronica-backup"
               aria-label="Backup archive path"

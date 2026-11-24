@@ -170,7 +170,9 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
   const set = async (key: string, value: unknown) => {
     setValues((current) => ({ ...current, [key]: value }));
-    if (key === "appearance") applyAppearance(value);
+    if (key === "appearance") {
+      applyAppearance(value);
+    }
     try {
       await ipc.settingsSet(key, value);
       confirm("Saved");
@@ -186,7 +188,9 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       try {
         const stored = await ipc.settingsAll();
         setValues(stored);
-        if (key === "appearance") applyAppearance(stored.appearance);
+        if (key === "appearance") {
+          applyAppearance(stored.appearance);
+        }
       } catch {
         return;
       }
@@ -206,8 +210,11 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     try {
       const status = await ipc.shellExtensionEnable();
       setShellExtension(status);
-      if (status.state === "active") confirm("Extension enabled");
-      else setFeedback({ tone: "neutral", text: status.detail });
+      if (status.state === "active") {
+        confirm("Extension enabled");
+      } else {
+        setFeedback({ tone: "neutral", text: status.detail });
+      }
     } catch (reason) {
       fail(reason);
     }
@@ -215,7 +222,9 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
   const feature = (id: string): ExtensionReport | undefined => {
     const entry = diagnostics?.extensions.find((candidate) => candidate.id === id);
-    if (!entry) return undefined;
+    if (!entry) {
+      return undefined;
+    }
     const stored = values[entry.defaultsKey];
     return typeof stored === "boolean" ? { ...entry, enabled: stored } : entry;
   };
@@ -596,7 +605,9 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 }
 
 function sessionEnds(remainingSecs: number | null | undefined) {
-  if (remainingSecs === null || remainingSecs === undefined) return "";
+  if (remainingSecs === null || remainingSecs === undefined) {
+    return "";
+  }
   return `, for another ${countdown(remainingSecs)}`;
 }
 

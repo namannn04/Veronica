@@ -8,19 +8,24 @@ export function startVisiblePolling(
     busy = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const clear = () => {
-    if (timer !== undefined) clearTimeout(timer);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
     timer = undefined;
   };
   const schedule = () => {
     clear();
-    if (live && !surface.hidden)
+    if (live && !surface.hidden) {
       timer = setTimeout(() => {
         void tick();
       }, intervalMs);
+    }
   };
   const tick = async () => {
     clear();
-    if (!live || surface.hidden || busy) return;
+    if (!live || surface.hidden || busy) {
+      return;
+    }
     busy = true;
     try {
       await task();
@@ -32,11 +37,16 @@ export function startVisiblePolling(
   };
   const visibility = () => {
     clear();
-    if (!surface.hidden) void tick();
+    if (!surface.hidden) {
+      void tick();
+    }
   };
   surface.addEventListener("visibilitychange", visibility);
-  if (immediate) void tick();
-  else schedule();
+  if (immediate) {
+    void tick();
+  } else {
+    schedule();
+  }
   return () => {
     live = false;
     clear();

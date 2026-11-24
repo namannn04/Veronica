@@ -80,7 +80,9 @@ export function MaintenancePage() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "installed" || installed !== null || installedError) return;
+    if (tab !== "installed" || installed !== null || installedError) {
+      return;
+    }
     loadInstalled();
   }, [tab, installed, installedError, loadInstalled]);
 
@@ -132,7 +134,9 @@ export function MaintenancePage() {
         }
       }
       setNotice(outcomes.join(" "));
-      if (failures.length > 0) setError(failures.join("\n\n"));
+      if (failures.length > 0) {
+        setError(failures.join("\n\n"));
+      }
     } catch (reason) {
       setError(String(reason));
     } finally {

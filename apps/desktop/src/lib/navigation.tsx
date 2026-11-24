@@ -259,7 +259,9 @@ export function routeFromSearch(search: string): Route {
 }
 
 export function visibleNavGroups(enabledExtensions?: ReadonlySet<string>): NavGroup[] {
-  if (enabledExtensions === undefined) return NAV_GROUPS;
+  if (enabledExtensions === undefined) {
+    return NAV_GROUPS;
+  }
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
@@ -280,7 +282,9 @@ export function routeIsVisible(route: Route, enabledExtensions?: ReadonlySet<str
 
 export function searchNav(query: string, items: NavItem[] = NAV_ITEMS): NavItem[] {
   const needle = query.trim().toLowerCase();
-  if (!needle) return items;
+  if (!needle) {
+    return items;
+  }
   const scored: { item: NavItem; score: number }[] = [];
   for (const item of items) {
     const label = item.label.toLowerCase();
@@ -293,7 +297,9 @@ export function searchNav(query: string, items: NavItem[] = NAV_ITEMS): NavItem[
           : item.keywords.includes(needle)
             ? 3
             : -1;
-    if (score >= 0) scored.push({ item, score });
+    if (score >= 0) {
+      scored.push({ item, score });
+    }
   }
   return scored
     .sort((a, b) => a.score - b.score || items.indexOf(a.item) - items.indexOf(b.item))

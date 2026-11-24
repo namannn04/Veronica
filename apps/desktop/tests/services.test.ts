@@ -25,8 +25,10 @@ const container: DockerContainer = {
   ports: "127.0.0.1:3000->80/tcp, [::]:4000-4005->90-95/tcp, 443/tcp",
 };
 test("container port search handles IPv6 and ranges without matching IP octets", () => {
-  for (const query of ["3000", "80", "4003", "92", "443", "NGINX"])
+  for (const query of ["3000", "80", "4003", "92", "443", "NGINX"]) {
     expect(matchesContainer(container, query)).toBe(true);
-  for (const query of ["300", "127", "4006", "postgres"])
+  }
+  for (const query of ["300", "127", "4006", "postgres"]) {
     expect(matchesContainer(container, query)).toBe(false);
+  }
 });

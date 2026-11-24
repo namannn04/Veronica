@@ -64,9 +64,13 @@ export function UsagePage() {
   useEffect(() => {
     const phases = listenEvent<CollectorEvent>("usage-progress", (event) => {
       const payload = event.payload;
-      if (payload.kind === "phase") setProgress(`${payload.name}: ${payload.detail}`);
-      else if (payload.kind === "note") setProgress(payload.message);
-      else if (payload.kind === "error") setError(payload.message);
+      if (payload.kind === "phase") {
+        setProgress(`${payload.name}: ${payload.detail}`);
+      } else if (payload.kind === "note") {
+        setProgress(payload.message);
+      } else if (payload.kind === "error") {
+        setError(payload.message);
+      }
     });
     const updated = listenEvent("usage-updated", () => {
       void load();
@@ -119,7 +123,9 @@ export function UsagePage() {
       const all = view?.sources.map((s) => s.id) ?? [];
       const active = current.length === 0 ? all : current;
       const next = active.includes(id) ? active.filter((s) => s !== id) : [...active, id];
-      if (next.length === 0) return [];
+      if (next.length === 0) {
+        return [];
+      }
       return next.length === all.length ? [] : next;
     });
   };
@@ -136,7 +142,9 @@ export function UsagePage() {
   const modelColor = useMemo(() => colorScale(view?.models ?? []), [view?.models]);
 
   const cacheHitRate = useMemo(() => {
-    if (!board) return null;
+    if (!board) {
+      return null;
+    }
     const total = board.totals.tokens;
     return total > 0 ? (board.totals.cacheReadTokens / total) * 100 : null;
   }, [board]);

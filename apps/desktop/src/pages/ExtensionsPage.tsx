@@ -152,7 +152,9 @@ export function ExtensionsPage({
 
   const toolsById = useMemo(() => {
     const index = new Map<string, ToolReport>();
-    for (const tool of survey?.tools ?? []) index.set(tool.id, tool);
+    for (const tool of survey?.tools ?? []) {
+      index.set(tool.id, tool);
+    }
     return index;
   }, [survey]);
 
@@ -403,9 +405,15 @@ function ExtensionRow({
 }
 
 function AvailabilityBadge({ entry, unmetTools }: { entry: ExtensionReport; unmetTools: boolean }) {
-  if (entry.availability === "unavailable") return <Badge tone="critical">Unavailable</Badge>;
-  if (unmetTools) return <Badge tone="warning">Needs setup</Badge>;
-  if (entry.availability === "degraded") return <Badge tone="warning">Partial</Badge>;
+  if (entry.availability === "unavailable") {
+    return <Badge tone="critical">Unavailable</Badge>;
+  }
+  if (unmetTools) {
+    return <Badge tone="warning">Needs setup</Badge>;
+  }
+  if (entry.availability === "degraded") {
+    return <Badge tone="warning">Partial</Badge>;
+  }
   return null;
 }
 
@@ -415,6 +423,8 @@ function toolNote(tool: ToolReport): string {
 
 function reasonFor(diagnostics: Diagnostics | null, capability: string): string {
   const state = diagnostics?.capabilities.states[capability];
-  if (!state) return "";
+  if (!state) {
+    return "";
+  }
   return "reason" in state ? state.reason : "";
 }

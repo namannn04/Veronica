@@ -73,7 +73,9 @@ export function DatabasePage() {
       .databaseConnections()
       .then((all) => {
         setConnections(all);
-        if (all.length > 0) setSelected((current) => current || all[0].id);
+        if (all.length > 0) {
+          setSelected((current) => current || all[0].id);
+        }
       })
       .catch((reason) => setConnectionsError(String(reason)));
   }, []);
@@ -96,12 +98,16 @@ export function DatabasePage() {
   }, []);
 
   useEffect(() => {
-    if (!selected || tab !== "browse") return;
+    if (!selected || tab !== "browse") {
+      return;
+    }
     void browse(selected, []);
   }, [selected, tab, browse]);
 
   useEffect(() => {
-    if (tab !== "history") return;
+    if (tab !== "history") {
+      return;
+    }
     void ipc
       .databaseOperations(50)
       .then(setHistory)
@@ -136,12 +142,16 @@ export function DatabasePage() {
   }, [selected]);
 
   const open = async (object: DatabaseObject) => {
-    if (object.kind === "column") return;
+    if (object.kind === "column") {
+      return;
+    }
     await fetchPage({ kind: "read", path: object.path, size: 100 }, 0);
   };
 
   const run = async () => {
-    if (!statement.trim()) return;
+    if (!statement.trim()) {
+      return;
+    }
     setPage(null);
     await fetchPage({ kind: "query", statement, size: 200 }, 0);
   };
@@ -307,7 +317,9 @@ export function DatabasePage() {
                             object.kind === "column"
                               ? undefined
                               : () => {
-                                  if (!busy) void browse(selected, object.path);
+                                  if (!busy) {
+                                    void browse(selected, object.path);
+                                  }
                                 }
                           }
                           trailing={

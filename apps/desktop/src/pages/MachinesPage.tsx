@@ -63,8 +63,12 @@ function reachLabel(report: MachineReport) {
 }
 
 function containerTone(state: string): Tone {
-  if (state === "running") return "good";
-  if (state === "paused" || state === "restarting") return "warning";
+  if (state === "running") {
+    return "good";
+  }
+  if (state === "paused" || state === "restarting") {
+    return "warning";
+  }
   return "neutral";
 }
 
@@ -105,7 +109,9 @@ export function MachinesPage() {
   }, [load, loadDiscovered]);
 
   const add = async (sshTarget: string, label?: string) => {
-    if (!sshTarget.trim()) return;
+    if (!sshTarget.trim()) {
+      return;
+    }
     setBusy(true);
     try {
       await ipc.machinesAdd(sshTarget.trim(), label?.trim() || null, null);
@@ -262,7 +268,9 @@ export function MachinesPage() {
       <Dialog
         open={adding}
         onClose={() => {
-          if (!busy) setAdding(false);
+          if (!busy) {
+            setAdding(false);
+          }
         }}
         title="Add a machine"
         description="Anything ssh can already reach: config aliases, keys, agents and jump hosts all apply."
@@ -294,7 +302,9 @@ export function MachinesPage() {
                 aria-label="SSH target"
                 onChange={(event) => setTarget(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") void add(target, name);
+                  if (event.key === "Enter") {
+                    void add(target, name);
+                  }
                 }}
               />
             )}
@@ -308,7 +318,9 @@ export function MachinesPage() {
                 aria-label="Display name"
                 onChange={(event) => setName(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") void add(target, name);
+                  if (event.key === "Enter") {
+                    void add(target, name);
+                  }
                 }}
               />
             )}
@@ -407,7 +419,9 @@ function MachineDetail({
     }
   };
   const powerOff = async () => {
-    if (!power) return;
+    if (!power) {
+      return;
+    }
     setToolBusy(true);
     setToolError("");
     try {
@@ -448,9 +462,13 @@ function MachineDetail({
 
   const chooseTool = (next: Tool) => {
     setToolError("");
-    if (next === "files") void loadFiles(directory?.path ?? null);
-    else if (next === "containers") void loadContainers();
-    else setTool(next);
+    if (next === "files") {
+      void loadFiles(directory?.path ?? null);
+    } else if (next === "containers") {
+      void loadContainers();
+    } else {
+      setTool(next);
+    }
   };
 
   const remote = machine.reach.kind !== "local";
@@ -658,9 +676,14 @@ function MachineDetail({
                           ) : undefined
                         }
                         onClick={() => {
-                          if (toolBusy) return;
-                          if (entry.kind === "directory") void loadFiles(entry.path);
-                          else void openFile(entry.path);
+                          if (toolBusy) {
+                            return;
+                          }
+                          if (entry.kind === "directory") {
+                            void loadFiles(entry.path);
+                          } else {
+                            void openFile(entry.path);
+                          }
                         }}
                       />
                     ))}
@@ -841,7 +864,9 @@ function MachineDetail({
       <ConfirmDialog
         open={power !== null}
         onClose={() => {
-          if (!toolBusy) setPower(null);
+          if (!toolBusy) {
+            setPower(null);
+          }
         }}
         onConfirm={() => void powerOff()}
         title={`${verb} ${machine.name}?`}

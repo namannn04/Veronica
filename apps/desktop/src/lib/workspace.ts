@@ -19,31 +19,42 @@ export interface GraftDiscovery {
   installCommands: unknown;
 }
 export function methodArguments(text: string): Record<string, unknown> {
-  if (new TextEncoder().encode(text).length > 16384) throw new Error("Arguments exceed 16 KiB.");
+  if (new TextEncoder().encode(text).length > 16384) {
+    throw new Error("Arguments exceed 16 KiB.");
+  }
   const value: unknown = JSON.parse(text);
-  if (!value || Array.isArray(value) || typeof value !== "object")
+  if (!value || Array.isArray(value) || typeof value !== "object") {
     throw new Error("Arguments must be a JSON object.");
+  }
   return value as Record<string, unknown>;
 }
 export function methodResult(result: unknown): unknown {
-  if (!result || typeof result !== "object") return result;
+  if (!result || typeof result !== "object") {
+    return result;
+  }
   const value = result as {
     structuredContent?: unknown;
     content?: { type?: string; text?: string }[];
     isError?: boolean;
   };
-  if (value.isError) return result;
+  if (value.isError) {
+    return result;
+  }
   let display: unknown = value.structuredContent;
-  if (display && typeof display === "object" && "value" in display)
+  if (display && typeof display === "object" && "value" in display) {
     display = (display as { value: unknown }).value;
+  }
   if (
     display === undefined &&
     Array.isArray(value.content) &&
     value.content.length === 1 &&
     value.content[0].type === "text"
-  )
+  ) {
     display = value.content[0].text;
-  if (display === undefined) return result;
+  }
+  if (display === undefined) {
+    return result;
+  }
   for (let i = 0; i < 2 && typeof display === "string"; i++) {
     try {
       display = JSON.parse(display);

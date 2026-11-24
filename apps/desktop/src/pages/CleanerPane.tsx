@@ -61,14 +61,19 @@ export function CleanerPane() {
 
   const toggle = (id: string) => {
     const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     setSelected(next);
     setScan(null);
   };
 
   const clean = async () => {
-    if (!scan || scan.items.length === 0) return;
+    if (!scan || scan.items.length === 0) {
+      return;
+    }
     setBusy("clean");
     setError("");
     try {
@@ -183,7 +188,9 @@ export function CleanerPane() {
       <ConfirmDialog
         open={confirming}
         onClose={() => {
-          if (busy !== "clean") setConfirming(false);
+          if (busy !== "clean") {
+            setConfirming(false);
+          }
         }}
         onConfirm={() => void clean()}
         title={scan ? `Move ${items(scan.items.length)} to the Trash?` : "Move to the Trash?"}

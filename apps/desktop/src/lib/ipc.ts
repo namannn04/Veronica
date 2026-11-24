@@ -17,7 +17,9 @@ export function isDesktopApp(): boolean {
 }
 
 export function listenEvent<T>(event: EventName, handler: EventCallback<T>): Promise<UnlistenFn> {
-  if (!isDesktopApp()) return Promise.resolve(() => {});
+  if (!isDesktopApp()) {
+    return Promise.resolve(() => {});
+  }
   return tauriListen<T>(event, handler);
 }
 
@@ -25,8 +27,12 @@ function describe(reason: unknown): string {
   if (!isDesktopApp()) {
     return "Veronica is open outside the desktop app, so nothing on this page can load. Launch Veronica from the Ubuntu app grid, or run `vr` for the same data on the command line.";
   }
-  if (typeof reason === "string") return reason;
-  if (reason instanceof Error) return reason.message;
+  if (typeof reason === "string") {
+    return reason;
+  }
+  if (reason instanceof Error) {
+    return reason.message;
+  }
   return String(reason);
 }
 
