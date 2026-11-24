@@ -1,0 +1,92 @@
+.attn-focus {
+  gap: var(--space-4);
+}
+
+.attn-clock {
+  margin-top: var(--space-2);
+  color: var(--text-1);
+  font-size: var(--text-display);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.attn-clock-label {
+  margin: calc(var(--space-3) * -1) 0 0;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+.attn-focus-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.attn-duration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.attn-duration-label {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+}
+
+.attn-duration-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--control-gap);
+}
+
+.attn-minutes {
+  width: 120px;
+}
+
+.attn-unit {
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+.attn-focus-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.attn-category {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 2fr);
+  gap: var(--control-gap);
+}
+
+.attn-category-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--card-padding);
+}
+
+.attn-category-row + .attn-category-row {
+  border-top: 1px solid var(--separator);
+}
+
+.attn-category {
+  flex: 1;
+  min-width: 0;
+}
+
+.attn-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-xs);
+  flex: none;
+}
+
+@container main (max-width: 560px) {
+  .attn-category {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
