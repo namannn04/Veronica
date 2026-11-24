@@ -58,15 +58,29 @@ download_file() {
   return 1
 }
 
+app_version_pattern='^[0-9]+\.[0-9]+\.[0-9]+$'
+
+newest_app_version() {
+  fetch --header 'Accept: application/vnd.github+json' \
+    "https://api.github.com/repos/${repository}/releases?per_page=100" |
+    grep -oE '"tag_name": *"v[0-9]+\.[0-9]+\.[0-9]+"' |
+    sed -E 's/.*"v([0-9.]+)"/\1/' |
+    sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1
+}
+
 version="${VERONICA_VERSION:-}"
 if [ -z "$version" ]; then
   latest_url="$(fetch \
     --output /dev/null --write-out '%{url_effective}' "${release_root}/latest")"
-  version="${latest_url##*/}"
-  version="${version#v}"
+  latest_tag="${latest_url#*/releases/tag/}"
+  if [[ "$latest_tag" == v* ]] && [[ "${latest_tag#v}" =~ $app_version_pattern ]]; then
+    version="${latest_tag#v}"
+  else
+    version="$(newest_app_version)" || fail "cannot find the newest Veronica release."
+  fi
 fi
 
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "invalid release version: $version"
+[[ "$version" =~ $app_version_pattern ]] || fail "invalid release version: $version"
 
 asset="Veronica_${version}_amd64.deb"
 download_root="${release_root}/download/v${version}"

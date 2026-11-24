@@ -4,6 +4,7 @@ pub mod fingerprint;
 pub mod pack;
 pub mod repo;
 pub mod signing;
+pub mod trust;
 pub mod validate;
 
 use std::fmt::Write as _;

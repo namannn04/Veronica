@@ -25,6 +25,10 @@ pub(super) fn install_kind() -> &'static str {
 #[derive(Deserialize)]
 struct GithubRelease {
     tag_name: String,
+    #[serde(default)]
+    draft: bool,
+    #[serde(default)]
+    prerelease: bool,
     html_url: String,
     published_at: Option<String>,
     body: Option<String>,
@@ -61,6 +65,27 @@ fn version_parts(value: &str) -> Vec<u64> {
         .collect()
 }
 
+fn app_version(tag: &str) -> Option<Vec<u64>> {
+    let parts: Vec<&str> = tag.strip_prefix('v')?.split('.').collect();
+    if parts.len() != 3
+        || parts
+            .iter()
+            .any(|part| part.is_empty() || !part.bytes().all(|byte| byte.is_ascii_digit()))
+    {
+        return None;
+    }
+    parts.iter().map(|part| part.parse().ok()).collect()
+}
+
+fn app_release(releases: Vec<GithubRelease>) -> Option<GithubRelease> {
+    releases
+        .into_iter()
+        .filter(|release| !release.draft && !release.prerelease)
+        .filter_map(|release| app_version(&release.tag_name).map(|version| (version, release)))
+        .max_by(|(left, _), (right, _)| left.cmp(right))
+        .map(|(_, release)| release)
+}
+
 fn newer_version(latest: &str, current: &str) -> bool {
     let mut latest = version_parts(latest);
     let mut current = version_parts(current);
@@ -83,10 +108,14 @@ pub(crate) async fn update_check() -> CommandResult<UpdateInfo> {
             .output()
             .map_err(|error| format!("cannot run curl to check updates: {error}"));
         let current = env!("CARGO_PKG_VERSION").to_string();
-        let release_output = fetch("https://api.github.com/repos/namannn04/Veronica/releases/latest")?;
-        if release_output.status.success() {
-            let release: GithubRelease = serde_json::from_slice(&release_output.stdout)
-                .map_err(|error| format!("GitHub returned invalid release data: {error}"))?;
+        let release_output = fetch("https://api.github.com/repos/namannn04/Veronica/releases?per_page=100")?;
+        let releases: Vec<GithubRelease> = if release_output.status.success() {
+            serde_json::from_slice(&release_output.stdout)
+                .map_err(|error| format!("GitHub returned invalid release data: {error}"))?
+        } else {
+            Vec::new()
+        };
+        if let Some(release) = app_release(releases) {
             let package_url = package_asset(&release.assets, install_kind())
                 .map(|asset| asset.browser_download_url.clone());
             return Ok(UpdateInfo {
@@ -333,6 +362,37 @@ pub(crate) async fn cleaner_clean(
 #[cfg(test)]
 mod tests {
     use super::newer_version;
+
+    fn release(tag: &str, draft: bool, prerelease: bool) -> super::GithubRelease {
+        super::GithubRelease {
+            tag_name: tag.into(),
+            draft,
+            prerelease,
+            html_url: format!("https://example.test/{tag}"),
+            published_at: None,
+            body: None,
+            assets: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn only_app_version_tags_count_as_app_releases() {
+        let releases = vec![
+            release("ext/media/v1.0.9", false, false),
+            release("v0.1.9", false, false),
+            release("v0.1.30", false, true),
+            release("v0.2.0", true, false),
+            release("v0.1.12", false, false),
+            release("ext/usage/v9.9.9", false, false),
+            release("v0.1.x", false, false),
+        ];
+        let picked = super::app_release(releases).map(|release| release.tag_name);
+        assert_eq!(picked.as_deref(), Some("v0.1.12"));
+        assert!(super::app_release(vec![release("ext/media/v1.0.0", false, false)]).is_none());
+        assert_eq!(super::app_version("v1.2.3"), Some(vec![1, 2, 3]));
+        assert_eq!(super::app_version("ext/a/v1.2.3"), None);
+        assert_eq!(super::app_version("v1.2"), None);
+    }
 
     #[test]
     fn each_installation_is_offered_its_own_package() {

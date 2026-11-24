@@ -9,6 +9,8 @@ on:
       - "scripts/build-pages.sh"
       - "scripts/build-apt-repo.sh"
       - ".github/workflows/pages.yml"
+  schedule:
+    - cron: "23 5 * * 1"
   workflow_dispatch:
 
 permissions: {}
@@ -18,7 +20,104 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  catalog:
+    name: Sign the extension catalog
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: extension-catalog
+    permissions:
+      contents: read
+    outputs:
+      signed: ${{ steps.sign.outputs.signed }}
+    steps:
+      - name: Look for the signing key
+        id: secret
+        env:
+          SIGNING_KEY: ${{ secrets.EXTENSIONS_SIGNING_KEY }}
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::notice::EXTENSIONS_SIGNING_KEY is not set in the extension-catalog environment, so the site ships without an extension catalog."
+          else
+            echo "present=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the repository
+        if: steps.secret.outputs.present == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Build the packaging tool
+        if: steps.secret.outputs.present == 'true'
+        run: cargo build --release --locked -p veronica-pack
+
+      - name: Require a key the host trusts
+        id: trusted
+        if: steps.secret.outputs.present == 'true'
+        env:
+          EXTENSIONS_SIGNING_KEY: ${{ secrets.EXTENSIONS_SIGNING_KEY }}
+        run: |
+          status="$(target/release/vr-pack --json key-status --key env:EXTENSIONS_SIGNING_KEY)"
+          key_id="$(jq -r .keyId <<<"$status")"
+          if [ "$(jq -r .trusted <<<"$status")" != true ]; then
+            echo "::notice::The signing key $key_id is not a release key in crates/veronica-host/src/trust.rs, so the site ships without an extension catalog."
+            exit 0
+          fi
+          {
+            echo "ready=true"
+            echo "key_id=$key_id"
+            echo "public_key=$(jq -r --arg id "$key_id" '.compiled[] | select(.id == $id) | .public' <<<"$status")"
+          } >>"$GITHUB_OUTPUT"
+
+      - name: Collect every published extension release
+        id: metadata
+        if: steps.trusted.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          metadata="$RUNNER_TEMP/extension-metadata"
+          mkdir -p "$metadata"
+          mapfile -t tags < <(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --limit 1000 \
+            --json tagName --jq '.[].tagName | select(startswith("ext/"))')
+          for tag in "${tags[@]}"; do
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.tar.zst.json' \
+              --dir "$metadata/${tag//\//_}"
+          done
+          echo "dir=$metadata" >>"$GITHUB_OUTPUT"
+          echo "count=${#tags[@]}" >>"$GITHUB_OUTPUT"
+          [ "${#tags[@]}" -gt 0 ] || echo "::notice::No extension release is published yet, so the site ships without an extension catalog."
+
+      - name: Build, sign and verify the catalog
+        id: sign
+        if: steps.trusted.outputs.ready == 'true' && steps.metadata.outputs.count != '0'
+        env:
+          EXTENSIONS_SIGNING_KEY: ${{ secrets.EXTENSIONS_SIGNING_KEY }}
+          KEY_ID: ${{ steps.trusted.outputs.key_id }}
+          METADATA: ${{ steps.metadata.outputs.dir }}
+          TRUSTED_PUBLIC_KEY: ${{ steps.trusted.outputs.public_key }}
+        run: |
+          out="$RUNNER_TEMP/extension-catalog/extensions/v1"
+          mkdir -p "$out"
+          payload="$RUNNER_TEMP/catalog-payload.json"
+          target/release/vr-pack catalog --metadata "$METADATA" --out "$payload" \
+            --revision "$(date +%s)" --commit "$GITHUB_SHA"
+          target/release/vr-pack sign --key env:EXTENSIONS_SIGNING_KEY --key-id "$KEY_ID" \
+            --out "$out/catalog.signed.json" "$payload"
+          target/release/vr-pack verify --public "$TRUSTED_PUBLIC_KEY" --key-id "$KEY_ID" \
+            "$out/catalog.signed.json"
+          echo "signed=true" >>"$GITHUB_OUTPUT"
+
+      - name: Keep the signed catalog for the site
+        if: steps.sign.outputs.signed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: extension-catalog
+          path: ${{ runner.temp }}/extension-catalog/
+          if-no-files-found: error
+
   build:
+    needs: catalog
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -35,14 +134,26 @@ jobs:
       - name: Build the site and installer endpoint
         run: ./scripts/build-pages.sh target/pages
 
-      - name: Fetch the latest release packages
+      - name: Add the signed extension catalog
+        if: needs.catalog.outputs.signed == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: extension-catalog
+          path: target/pages
+
+      - name: Fetch the newest app release packages
         id: packages
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p target/release-packages
-          gh release download --repo "$GITHUB_REPOSITORY" --pattern '*.flatpak' --pattern '*.deb' \
-            --dir target/release-packages || true
+          tag="$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases \
+            --limit 1000 --json tagName --jq '[.[].tagName | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))]
+              | sort_by(ltrimstr("v") | split(".") | map(tonumber)) | last // ""')"
+          if [ -n "$tag" ]; then
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.flatpak' --pattern '*.deb' \
+              --dir target/release-packages || true
+          fi
           flatpak_bundle="$(find target/release-packages -name '*.flatpak' | head -1)"
           deb_count="$(find target/release-packages -name '*.deb' | wc -l)"
           echo "flatpak=${flatpak_bundle}" >> "$GITHUB_OUTPUT"

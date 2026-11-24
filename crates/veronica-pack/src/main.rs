@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use veronica_pack::catalog::{self, CatalogOptions};
 use veronica_pack::fingerprint::{self, stamp};
 use veronica_pack::pack::{pack, PackInputs};
-use veronica_pack::{audit, repo, signing, validate};
+use veronica_pack::{audit, repo, signing, trust, validate};
 use veronica_protocol::canonical;
 use veronica_protocol::catalog::SignedEnvelope;
 use veronica_protocol::manifest::Target;
@@ -85,6 +85,11 @@ enum Command {
         #[arg(long)]
         key_id: String,
         envelope: PathBuf,
+    },
+    #[command(about = "Check a private key against the keys the host trusts")]
+    KeyStatus {
+        #[arg(long, help = "Private key file, or env:NAME")]
+        key: String,
     },
     #[command(about = "Compare declared permissions with what the backend links")]
     Audit { package: PathBuf },
@@ -247,6 +252,20 @@ fn run(cli: &Cli) -> Result<Outcome> {
                     catalog.revision
                 ),
             )
+        }
+        Command::KeyStatus { key } => {
+            let path = trust::source_path(&root()?);
+            let source =
+                fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
+            let report = trust::status(&signing::load_private(key)?, &source)?;
+            let text = if report.trusted {
+                format!("{} is trusted by the host", report.key_id)
+            } else if report.development {
+                format!("{} is the development key", report.key_id)
+            } else {
+                format!("{} is not in a trust.rs KEYS slot", report.key_id)
+            };
+            Outcome::ok(report, text)
         }
         Command::Audit { package } => {
             let report = audit::audit(package)?;

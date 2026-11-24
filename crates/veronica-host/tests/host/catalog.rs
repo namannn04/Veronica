@@ -216,3 +216,22 @@ fn an_expired_catalog_is_served_with_a_stale_warning() {
     assert!(store.load(late).unwrap().stale);
     assert!(!store.load(now()).unwrap().stale);
 }
+
+#[test]
+fn the_publishing_workflows_read_the_same_keys_the_host_trusts() {
+    let source = include_str!("../../src/trust.rs");
+    let compiled: Vec<(String, String)> = veronica_pack::trust::compiled_keys(source)
+        .unwrap()
+        .into_iter()
+        .map(|key| (key.id, key.public))
+        .collect();
+    let trusted: Vec<(String, String)> = KEYS
+        .iter()
+        .flatten()
+        .map(|key| (key.id.to_string(), key.public.to_string()))
+        .collect();
+    assert_eq!(compiled, trusted);
+    let development = veronica_pack::trust::status(&development_key(), source).unwrap();
+    assert!(development.development);
+    assert!(!development.trusted);
+}
