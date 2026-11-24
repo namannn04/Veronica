@@ -1,0 +1,6 @@
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = ["ALL"]
+ignore = ["D", "COM812", "ISC001", "T201", "S603", "S607", "INP001", "PT009", "PT027"]
