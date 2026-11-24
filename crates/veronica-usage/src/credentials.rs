@@ -1,17 +1,3 @@
-//! Claude OAuth credentials.
-//!
-//! Claude Code stores its credentials in `~/.claude/.credentials.json`, and the
-//! access token lives about an hour. Veronica reads that file to ask the
-//! provider for rate-limit figures, and refreshes the token when it has expired.
-//!
-//! Writing to a file another program owns deserves care, so this module is built
-//! around one rule: **preserve everything that was there**. The document is
-//! round-tripped as arbitrary JSON and only the specific OAuth fields are
-//! replaced, the write is atomic, and the mode stays owner-only. Persisting a
-//! refresh is also the *safer* choice rather than a riskier one: the provider
-//! may rotate the refresh token, and dropping a rotated token on the floor would
-//! invalidate the user's Claude Code login.
-
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
@@ -19,36 +5,24 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde::Deserialize;
 use serde_json::Value;
 
-/// The key holding Claude Code's OAuth block.
 const OAUTH_KEY: &str = "claudeAiOauth";
 
-/// Refresh this long before the token actually expires, so a request is not
-/// made with a token that dies in flight.
 pub const REFRESH_LEEWAY_SECS: i64 = 60;
 
-/// Credentials as read from disk, plus the document they came from so nothing
-/// is lost when writing back.
 #[derive(Debug, Clone)]
 pub struct Credentials {
     pub access_token: String,
     pub refresh_token: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
     pub refresh_token_expires_at: Option<DateTime<Utc>>,
-    /// Everything else in the file, kept verbatim.
     document: Value,
 }
 
 impl Credentials {
-    /// Default location of Claude Code's credentials.
     pub fn default_path() -> Option<PathBuf> {
         crate::paths_home().map(|home| home.join(".claude/.credentials.json"))
     }
 
-    /// Parse a credentials document.
-    ///
-    /// Returns `None` rather than an error when the file is present but holds no
-    /// usable token: that means "not signed in", which is a normal state and not
-    /// a fault to report.
     pub fn parse(bytes: &[u8]) -> Option<Self> {
         let document: Value = serde_json::from_slice(bytes).ok()?;
         let oauth = document.get(OAUTH_KEY)?;
@@ -79,18 +53,13 @@ impl Credentials {
         }
     }
 
-    /// Whether the access token is expired, or close enough that it should be
-    /// replaced before use.
     pub fn needs_refresh(&self, now: DateTime<Utc>) -> bool {
         match self.expires_at {
-            // No expiry recorded: assume it is usable rather than churning the
-            // token on every read.
             None => false,
             Some(expires_at) => expires_at <= now + chrono::Duration::seconds(REFRESH_LEEWAY_SECS),
         }
     }
 
-    /// The refresh token, if there is one that has not itself expired.
     pub fn usable_refresh_token(&self, now: DateTime<Utc>) -> Option<&str> {
         let token = self.refresh_token.as_deref()?;
         if let Some(expires_at) = self.refresh_token_expires_at {
@@ -101,11 +70,6 @@ impl Credentials {
         Some(token)
     }
 
-    /// Apply a refresh response, returning the document to write.
-    ///
-    /// Only the OAuth fields the response carries are touched. A response with
-    /// no new refresh token leaves the existing one in place, which is what the
-    /// provider means by omitting it.
     pub fn applied(&self, response: &RefreshResponse, now: DateTime<Utc>) -> Value {
         let mut document = self.document.clone();
         let oauth = document.as_object_mut().and_then(|root| {
@@ -145,12 +109,6 @@ impl Credentials {
         document
     }
 
-    /// Write a document back, atomically and owner-only.
-    ///
-    /// The rename makes the replacement atomic so a crash cannot leave Claude
-    /// Code with a truncated credentials file, and the temporary file is created
-    /// with restrictive permissions from the outset rather than tightened after
-    /// the secret is already on disk.
     pub fn persist(path: &Path, document: &Value) -> Result<()> {
         use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
@@ -175,10 +133,6 @@ impl Credentials {
         Ok(())
     }
 
-    /// Redacted description, for logs and errors.
-    ///
-    /// A token must never reach a log or an error message, so this is the only
-    /// thing that should ever be printed about a credential.
     pub fn describe(&self) -> String {
         match self.expires_at {
             Some(expires_at) => format!("token expiring {}", expires_at.to_rfc3339()),
@@ -187,7 +141,6 @@ impl Credentials {
     }
 }
 
-/// The provider's answer to a refresh.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RefreshResponse {
     #[serde(rename = "access_token")]
@@ -209,7 +162,6 @@ fn time_to_millis(time: DateTime<Utc>) -> i64 {
     time.timestamp_millis()
 }
 
-/// Guard against a credentials file that is not ours to write.
 pub fn ensure_owner_only(path: &Path) -> Result<()> {
     use std::os::unix::fs::MetadataExt;
     let metadata =
@@ -221,7 +173,6 @@ pub fn ensure_owner_only(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// `getuid` without pulling in a libc dependency for one call.
 unsafe fn libc_getuid() -> u32 {
     extern "C" {
         fn getuid() -> u32;
@@ -237,7 +188,6 @@ mod tests {
         Utc.timestamp_opt(1_787_000_000 + secs, 0).unwrap()
     }
 
-    /// The real file's shape, with placeholder secrets.
     fn document() -> String {
         format!(
             r#"{{
@@ -286,7 +236,6 @@ mod tests {
     #[test]
     fn refresh_is_due_within_the_leeway_but_not_before() {
         let credentials = Credentials::parse(document().as_bytes()).unwrap();
-        // Expiry is at +3600.
         assert!(!credentials.needs_refresh(at(0)));
         assert!(!credentials.needs_refresh(at(3600 - REFRESH_LEEWAY_SECS - 1)));
         assert!(credentials.needs_refresh(at(3600 - REFRESH_LEEWAY_SECS)));
@@ -303,14 +252,11 @@ mod tests {
     fn an_expired_refresh_token_is_not_usable() {
         let credentials = Credentials::parse(document().as_bytes()).unwrap();
         assert_eq!(credentials.usable_refresh_token(at(0)), Some("refresh-1"));
-        // Refresh token expiry is at +600000.
         assert_eq!(credentials.usable_refresh_token(at(600_001)), None);
     }
 
     #[test]
     fn applying_a_refresh_preserves_every_other_field() {
-        // This is the whole safety argument: the file belongs to Claude Code,
-        // so anything Veronica does not understand must survive untouched.
         let credentials = Credentials::parse(document().as_bytes()).unwrap();
         let response = RefreshResponse {
             access_token: "access-2".into(),
@@ -331,7 +277,6 @@ mod tests {
             oauth["refreshTokenExpiresAt"].as_i64().unwrap(),
             at(1_000_010).timestamp_millis()
         );
-        // Untouched, including keys Veronica knows nothing about.
         assert_eq!(oauth["subscriptionType"], "team");
         assert_eq!(oauth["rateLimitTier"], "default_raven");
         assert_eq!(oauth["scopes"][0], "user:inference");
@@ -349,7 +294,6 @@ mod tests {
         };
         let updated = credentials.applied(&response, at(0));
         assert_eq!(updated["claudeAiOauth"]["refreshToken"], "refresh-1");
-        // And the old refresh expiry is left alone rather than cleared.
         assert_eq!(
             updated["claudeAiOauth"]["refreshTokenExpiresAt"]
                 .as_i64()
@@ -397,7 +341,6 @@ mod tests {
 
         let reloaded = Credentials::read(&path).unwrap().unwrap();
         assert_eq!(reloaded.access_token, "access-2");
-        // No temporary file left behind.
         assert!(!path.with_extension("json.veronica-tmp").exists());
 
         std::fs::remove_dir_all(&dir).ok();

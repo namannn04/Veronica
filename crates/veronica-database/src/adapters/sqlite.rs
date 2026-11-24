@@ -1,13 +1,3 @@
-//! SQLite.
-//!
-//! The simplest adapter and the one worth reading first: it is a file, so
-//! everything here can be tested against a real database with no server, and
-//! the other adapters follow the same shape.
-//!
-//! `rusqlite` is synchronous, so every call goes through `spawn_blocking`. A
-//! query against a large table on a slow disk would otherwise stall the runtime
-//! and freeze the interface it was called from.
-
 use anyhow::{Context, Result};
 use rusqlite::{Connection as Sqlite, OpenFlags};
 
@@ -26,13 +16,10 @@ pub struct SqliteAdapter {
 }
 
 impl SqliteAdapter {
-    /// Open from a stored definition.
     pub fn open(connection: &ConnectionDefinition) -> Result<Self> {
         let (path, access) = match &connection.location {
             Location::Sqlite { sqlite } => (sqlite.path.clone(), sqlite.access_mode),
             Location::Memory { name } => (
-                // A shared cache URI, so two handles see the same database
-                // rather than each getting a private empty one.
                 match name {
                     Some(name) => format!("file:{name}?mode=memory&cache=shared"),
                     None => ":memory:".to_string(),
@@ -52,8 +39,6 @@ impl SqliteAdapter {
 
     fn connect(&self) -> Result<Sqlite> {
         let mut flags = OpenFlags::SQLITE_OPEN_URI | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-        // Read-only is enforced by the file handle, not only by Veronica
-        // refusing to send a write. Two locks are better than one.
         flags |= if self.read_only {
             OpenFlags::SQLITE_OPEN_READ_ONLY
         } else {
@@ -63,7 +48,6 @@ impl SqliteAdapter {
             .with_context(|| format!("cannot open {}", self.path))
     }
 
-    /// Run something on the blocking pool.
     async fn blocking<T, F>(&self, work: F) -> Result<T>
     where
         T: Send + 'static,
@@ -80,22 +64,15 @@ impl SqliteAdapter {
     }
 }
 
-/// Quote an identifier the way SQLite does: double quotes, doubled inside.
-///
-/// This is what makes a table called `"; DROP TABLE --` a table with a silly
-/// name rather than an incident.
 pub fn quote(identifier: &str) -> String {
     format!("\"{}\"", identifier.replace('"', "\"\""))
 }
 
-/// Turn one column of one row into a value.
 fn read_value(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<Value> {
     use rusqlite::types::ValueRef;
     Ok(match row.get_ref(index)? {
         ValueRef::Null => Value::Null,
         ValueRef::Integer(value) => Value::SignedInteger(value),
-        // SQLite has no decimal type, so a float is a float and is reported as
-        // one rather than being dressed up as exact.
         ValueRef::Real(value) => Value::FloatingPoint(value),
         ValueRef::Text(bytes) => Value::String(String::from_utf8_lossy(bytes).into_owned()),
         ValueRef::Blob(bytes) => Value::Binary(if bytes.len() <= MAX_INLINE_BLOB {
@@ -105,7 +82,6 @@ fn read_value(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<Value> 
                 digest: None,
             }
         } else {
-            // A grid must be able to describe a large blob without carrying it.
             Binary::Preview {
                 byte_count: bytes.len() as u64,
                 bytes: base64::Engine::encode(
@@ -119,13 +95,8 @@ fn read_value(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<Value> 
     })
 }
 
-/// How much of a blob a page carries inline.
 const MAX_INLINE_BLOB: usize = 4 * 1024;
 
-/// Run a statement and shape the result into a page.
-///
-/// `client_paged` is for a statement that could not be wrapped in `LIMIT`: the
-/// offset is skipped here and reading stops one row past the page instead.
 fn page(connection: &Sqlite, sql: &str, request: &PageRequest, client_paged: bool) -> Result<Page> {
     let started = std::time::Instant::now();
     let mut statement = connection
@@ -170,7 +141,6 @@ fn page(connection: &Sqlite, sql: &str, request: &PageRequest, client_paged: boo
     ))
 }
 
-/// `LIMIT ?/OFFSET ?` with one extra row, so `has_more` is known.
 fn bounded(sql: &str, request: &PageRequest) -> String {
     format!(
         "SELECT * FROM ({sql}) LIMIT {} OFFSET {}",
@@ -189,8 +159,6 @@ impl Adapter for SqliteAdapter {
             Ok(ProductIdentity {
                 version: Some(Version::parse(&version)),
                 topology: Topology {
-                    // A file is not a server, and calling it standalone would
-                    // imply there is something to fail over to.
                     kind: TopologyKind::Embedded,
                     ..Topology::default()
                 },
@@ -206,7 +174,6 @@ impl Adapter for SqliteAdapter {
         parent: Option<&ObjectIdentifier>,
     ) -> Result<Vec<ObjectIdentifier>> {
         match parent {
-            // The top level is the tables and views in the file.
             None => {
                 self.blocking(|connection| {
                     let mut statement = connection.prepare(
@@ -233,7 +200,6 @@ impl Adapter for SqliteAdapter {
                 })
                 .await
             }
-            // Inside a table: its columns.
             Some(object) => {
                 let table = object.name().to_string();
                 self.blocking(move |connection| {
@@ -281,9 +247,6 @@ impl Adapter for SqliteAdapter {
         };
         let request = request.clone();
         self.blocking(move |connection| {
-            // Now that `PRAGMA` runs as written, some pragmas would write
-            // (`PRAGMA user_version = 5`). `query_only` makes this connection
-            // refuse every change; it is discarded after this one statement.
             connection.pragma_update(None, "query_only", true)?;
             page(&connection, &sql, &request, client_paged)
         })
@@ -318,8 +281,6 @@ impl Adapter for SqliteAdapter {
         let parameters = parameters.clone();
         self.blocking(move |connection| {
             let mut prepared = connection.prepare(&statement)?;
-            // Values are bound, never interpolated. The statement the guard
-            // signed is the statement that runs, character for character.
             let bound: Vec<rusqlite::types::Value> =
                 parameters.iter().map(|p| to_sqlite(&p.value)).collect();
             let affected = prepared.execute(rusqlite::params_from_iter(bound))?;
@@ -329,7 +290,6 @@ impl Adapter for SqliteAdapter {
     }
 }
 
-/// Map a value onto what SQLite can bind.
 fn to_sqlite(value: &Value) -> rusqlite::types::Value {
     use rusqlite::types::Value as S;
     match value {
@@ -338,8 +298,6 @@ fn to_sqlite(value: &Value) -> rusqlite::types::Value {
         Value::SignedInteger(value) => S::Integer(*value),
         Value::UnsignedInteger(value) => S::Integer(*value as i64),
         Value::FloatingPoint(value) => S::Real(*value),
-        // A decimal keeps its exact text: SQLite has no decimal type, and
-        // rounding it through a float here is how money goes missing.
         Value::Decimal(Decimal(text)) => S::Text(text.clone()),
         Value::String(value) => S::Text(value.clone()),
         Value::Uuid(value) => S::Text(value.to_string()),
@@ -352,8 +310,6 @@ fn to_sqlite(value: &Value) -> rusqlite::types::Value {
                 .map(S::Blob)
                 .unwrap_or(S::Null)
         }
-        // A structure has no SQLite column type; JSON text is what SQLite's own
-        // json1 functions read.
         Value::Array(_) | Value::Object(_) => {
             S::Text(serde_json::to_string(value).unwrap_or_else(|_| "null".to_string()))
         }
@@ -403,7 +359,6 @@ mod tests {
         }
     }
 
-    /// A real database on disk, seeded.
     async fn seeded() -> (tempfile::TempDir, SqliteAdapter) {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("app.db");
@@ -429,11 +384,8 @@ mod tests {
 
     #[test]
     fn an_identifier_with_a_quote_in_it_is_escaped_not_interpolated() {
-        // This is what makes a silly table name a silly name and not an incident.
         assert_eq!(quote("orders"), "\"orders\"");
         assert_eq!(quote(r#"a"b"#), r#""a""b""#);
-        // The leading quote is doubled, so the whole thing stays one
-        // identifier and the `DROP` is part of its name.
         assert_eq!(quote(r#""; DROP TABLE x --"#), r#""""; DROP TABLE x --""#);
     }
 
@@ -487,7 +439,6 @@ mod tests {
         assert_eq!(page.rows[0][0], Value::SignedInteger(1));
         assert_eq!(page.rows[0][1], Value::FloatingPoint(9.99));
         assert_eq!(page.rows[0][2], Value::String("first".into()));
-        // A NULL column is NULL, not an empty string.
         assert_eq!(page.rows[1][2], Value::Null);
         assert!(!page.has_more);
     }
@@ -602,7 +553,6 @@ mod tests {
             error.contains("only runs statements that read"),
             "got {error}"
         );
-        // And nothing was deleted.
         assert_eq!(
             adapter
                 .count(&ObjectIdentifier::new(
@@ -625,7 +575,6 @@ mod tests {
     #[tokio::test]
     async fn a_mutation_binds_its_values_rather_than_interpolating_them() {
         let (_directory, mut adapter) = seeded().await;
-        // A value that would be catastrophic if it reached the statement.
         let affected = adapter
             .execute(&Payload::Relational {
                 product: Product::Sqlite,
@@ -645,7 +594,6 @@ mod tests {
             .unwrap();
         assert_eq!(affected, 1);
 
-        // The table is still there, and the value went in verbatim.
         let page = adapter
             .query(
                 "SELECT note FROM orders WHERE id = 1",
@@ -673,7 +621,6 @@ mod tests {
             SqliteAccessMode::ReadOnly,
         ))
         .unwrap();
-        // Reading is fine.
         assert_eq!(
             adapter
                 .count(&ObjectIdentifier::new(ObjectKind::Table, vec!["t".into()]))
@@ -681,7 +628,6 @@ mod tests {
                 .unwrap(),
             Some(1)
         );
-        // Writing is refused before it reaches SQLite at all.
         let error = adapter
             .execute(&Payload::Relational {
                 product: Product::Sqlite,
@@ -767,7 +713,6 @@ mod tests {
 
     #[test]
     fn a_decimal_is_bound_as_its_exact_text() {
-        // Rounding it through a float is how money goes missing.
         let bound = to_sqlite(&Value::Decimal(Decimal("19.99".into())));
         assert_eq!(bound, rusqlite::types::Value::Text("19.99".into()));
     }

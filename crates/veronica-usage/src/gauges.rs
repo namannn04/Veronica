@@ -1,10 +1,3 @@
-//! Rate-limit gauges.
-//!
-//! One place that turns raw provider windows into everything a ring needs:
-//! percentage, countdown, risk, level and pacing zone. The CLI, the application
-//! and the shell extension all read this, so a ring can never disagree with the
-//! same figure shown elsewhere.
-
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -14,42 +7,29 @@ use crate::limits::{
     SESSION_WINDOW_SECS, WEEKLY_WINDOW_SECS,
 };
 
-/// How far ahead of a linear burn counts as merely on-pace, in percentage
-/// points. Matches the default Edith uses for its rings.
 pub const DEFAULT_PACING_MARGIN: f64 = 10.0;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Gauge {
-    /// "Claude" or "Codex".
     pub provider: String,
-    /// "Session", "Week", or a model-scoped label.
     pub window: String,
     pub percent: f64,
-    /// Seconds until the window resets, when the provider says.
     pub resets_in_secs: Option<i64>,
-    /// 0-1, blending absolute use, projected overrun and pace.
     pub risk: f64,
     pub level: UsageLevel,
     pub zone: PacingZone,
-    /// Percentage points ahead of a linear burn; negative means behind.
     pub pace_delta: Option<f64>,
 }
 
-/// What a limits read produced, including why anything is missing.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GaugeReport {
     pub gauges: Vec<Gauge>,
-    /// Human-readable reasons a provider contributed nothing.
     pub notes: Vec<String>,
 }
 
 impl GaugeReport {
-    /// The gauge most worth showing in a confined space such as a panel.
-    ///
-    /// Highest risk wins rather than highest percentage: a window at 60% with
-    /// minutes left matters more than one at 80% that resets in a week.
     pub fn most_pressing(&self) -> Option<&Gauge> {
         self.gauges.iter().max_by(|a, b| {
             a.risk
@@ -84,10 +64,6 @@ fn gauge(
     }
 }
 
-/// Read both providers and build their gauges.
-///
-/// Never fails as a whole: a provider that cannot be read contributes a note
-/// instead, so one signed-out account does not hide the other's figures.
 pub async fn collect(now: DateTime<Utc>, margin: f64) -> GaugeReport {
     let mut report = GaugeReport::default();
 
@@ -159,7 +135,6 @@ pub async fn collect(now: DateTime<Utc>, margin: f64) -> GaugeReport {
     report
 }
 
-/// Convenience wrapper with the default margin.
 pub async fn collect_now() -> Result<GaugeReport> {
     Ok(collect(Utc::now(), DEFAULT_PACING_MARGIN).await)
 }
@@ -175,8 +150,6 @@ mod tests {
 
     #[test]
     fn a_window_ahead_of_pace_reads_as_hot_and_high_risk() {
-        // 87% used with 2h13m left of a five-hour window: the live reading that
-        // prompted this feature.
         let window = LimitWindow {
             percent: 87.0,
             resets_at: Some(at(7988)),
@@ -202,7 +175,6 @@ mod tests {
 
     #[test]
     fn a_window_behind_pace_reads_as_chill() {
-        // 45% used with minutes left: nearly reset, so nothing to worry about.
         let window = LimitWindow {
             percent: 45.0,
             resets_at: Some(at(788)),
@@ -229,7 +201,6 @@ mod tests {
         );
         assert_eq!(g.resets_in_secs, None);
         assert_eq!(g.pace_delta, None);
-        // Falls back to absolute use, which at 70% is partway up the ramp.
         assert!(g.risk > 0.0 && g.risk < 1.0);
     }
 
@@ -252,7 +223,6 @@ mod tests {
 
     #[test]
     fn the_most_pressing_gauge_is_by_risk_not_percentage() {
-        // The 60% window is nearly out of time; the 80% one has a week left.
         let report = GaugeReport {
             gauges: vec![
                 gauge(

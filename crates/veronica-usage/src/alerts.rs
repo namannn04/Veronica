@@ -1,32 +1,3 @@
-//! Rate-limit alerts.
-//!
-//! A port of Edith's `LimitNotifierLogic`: the same five kinds of alert, the
-//! same edge-triggering, the same wording. Every alert fires on a *transition*,
-//! never on a level, so a window sitting at 90% produces one banner rather than
-//! one per poll.
-//!
-//! The five kinds:
-//!
-//! - **Escalation** — the window's level rose. Wording depends on whether it is
-//!   the session or the weekly window, how much time is left, and whether the
-//!   rise was driven by pace rather than by the absolute figure.
-//! - **Recovery** — the window fell back to green, i.e. it reset.
-//! - **Pacing** — the pacing zone entered warning or hot: ahead of a linear burn
-//!   without necessarily being near the cap.
-//! - **Reminder** — a fixed time before a window resets.
-//! - **Token expired** — the provider's credentials need a fresh login.
-//!
-//! Two things differ from macOS by necessity:
-//!
-//! 1. `UNCalendarNotificationTrigger` lets Edith hand a future notification to
-//!    the OS. freedesktop notifications cannot be scheduled, so the reminder is
-//!    fired by Veronica's own poll when its moment arrives, and the state
-//!    records which reset instant has already been covered so a poll every
-//!    thirty seconds does not fire it repeatedly.
-//! 2. macOS replaces a banner by reusing its string identifier. On freedesktop
-//!    the server hands back a numeric id, so the state remembers the last id per
-//!    alert so a rising threshold updates one banner instead of stacking five.
-
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, Duration, Local, Utc};
@@ -37,12 +8,8 @@ use crate::limits::{
     PacingZone, UsageLevel, UsageThresholds, DEFAULT_CRITICAL_PERCENT, DEFAULT_WARN_PERCENT,
 };
 
-/// How long after a token-expiry alert before another may fire. Matches Edith's
-/// one-hour debounce: a signed-out provider would otherwise alert every poll.
 pub const TOKEN_EXPIRED_DEBOUNCE: Duration = Duration::hours(1);
 
-/// One alert, ready to be posted. `id` is stable per kind and surface, which is
-/// what lets a later alert of the same kind replace the earlier banner.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LimitAlert {
@@ -61,10 +28,6 @@ impl LimitAlert {
     }
 }
 
-/// Every switch that governs alerts, with Edith's defaults.
-///
-/// `master` is off by default: Veronica does not start posting banners until the
-/// user turns alerts on.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotifySettings {
@@ -79,8 +42,6 @@ pub struct NotifySettings {
     pub reminder_weekly: bool,
     pub reminder_weekly_offset_min: i64,
     pub token_expired: bool,
-    /// When on, the level follows the blended risk rather than the raw
-    /// percentage, so time remaining counts as much as the figure.
     pub smart_color: bool,
     pub pacing_margin: f64,
     pub thresholds: UsageThresholds,
@@ -108,13 +69,8 @@ impl Default for NotifySettings {
 }
 
 impl NotifySettings {
-    /// Read from Veronica's settings file, under the same keys Edith uses so a
-    /// backup taken on either platform describes the same behaviour.
     pub fn from_settings(settings: &veronica_core::Settings) -> Self {
         let default = Self::default();
-        // An offset below one minute has no moment that is both past the
-        // reminder and before the reset, so it would be silently dead; and a
-        // negative one would fire after the reset. Both fall back.
         let minutes = |key: &str, fallback: i64| {
             settings
                 .get(key)
@@ -156,11 +112,6 @@ impl NotifySettings {
     }
 }
 
-/// Warn below Critical, or the defaults.
-///
-/// With Warn at 80 and Critical at 70 the orange level could never be
-/// reached: anything past 70 was already critical. A pair that is not in
-/// order is a mistake rather than a choice, so neither value is trusted.
 fn ordered_thresholds(warning_percent: i64, critical_percent: i64) -> UsageThresholds {
     if warning_percent < critical_percent {
         UsageThresholds {
@@ -175,8 +126,6 @@ fn ordered_thresholds(warning_percent: i64, critical_percent: i64) -> UsageThres
     }
 }
 
-/// What the notifier remembers between polls, so alerts stay edge-triggered
-/// across a restart rather than re-firing at every launch.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct NotifierState {
@@ -184,13 +133,9 @@ pub struct NotifierState {
     pub weekly_level: UsageLevel,
     pub session_pacing: PacingZone,
     pub weekly_pacing: PacingZone,
-    /// The reset instant a reminder has already been fired for, so the poll
-    /// that stands in for a scheduled notification fires it exactly once.
     pub session_reminder_for: Option<DateTime<Utc>>,
     pub weekly_reminder_for: Option<DateTime<Utc>>,
     pub token_expired_at: Option<DateTime<Utc>>,
-    /// Server-assigned banner id per alert id, so an alert replaces its own
-    /// previous banner instead of stacking.
     pub banners: BTreeMap<String, u32>,
 }
 
@@ -199,8 +144,6 @@ impl Default for NotifierState {
         Self {
             session_level: UsageLevel::Green,
             weekly_level: UsageLevel::Green,
-            // Edith starts both zones on-track rather than chill, so merely
-            // being relaxed at launch is not reported as a change.
             session_pacing: PacingZone::OnTrack,
             weekly_pacing: PacingZone::OnTrack,
             session_reminder_for: None,
@@ -212,8 +155,6 @@ impl Default for NotifierState {
 }
 
 impl NotifierState {
-    /// Load, treating a missing or unreadable file as a fresh state: losing the
-    /// alert history is harmless, and refusing to start is not.
     pub fn load(path: &std::path::Path) -> Self {
         std::fs::read(path)
             .ok()
@@ -231,13 +172,6 @@ impl NotifierState {
         Ok(())
     }
 
-    /// Whether there is any tracking left to forget.
-    ///
-    /// The runner clears while alerts are off, and it must do so on a fresh
-    /// launch as well as when the switch is flipped — Veronica may well have been
-    /// restarted in between. Asking the state rather than remembering "we were
-    /// enabled a moment ago" is what makes that work, and it also makes the
-    /// clear idempotent, so an idle loop does not rewrite the file every tick.
     pub fn has_tracking(&self) -> bool {
         let fresh = Self::default();
         self.session_level != fresh.session_level
@@ -249,9 +183,6 @@ impl NotifierState {
             || self.token_expired_at.is_some()
     }
 
-    /// Forget every level and zone, so turning alerts back on does not
-    /// immediately fire for a state the user never saw. Edith clears the same
-    /// four keys when the master switch goes off.
     pub fn reset_tracking(&mut self) {
         let banners = std::mem::take(&mut self.banners);
         *self = Self {
@@ -264,9 +195,6 @@ impl NotifierState {
         self.banners.get(alert_id).copied()
     }
 
-    /// Remember the banner the server created, so the next alert of this kind
-    /// updates it in place. A returned id of zero means the server declined to
-    /// give one, which is not worth remembering.
     pub fn record_banner(&mut self, alert_id: &str, notification_id: u32) {
         if notification_id == 0 {
             self.banners.remove(alert_id);
@@ -276,10 +204,6 @@ impl NotifierState {
     }
 }
 
-/// Decide what to post, mutating `state` to reflect the new levels and zones.
-///
-/// Ported from Edith's `decide`: the master switch short-circuits, both windows
-/// are evaluated for a level change, and both pacing zones for a zone change.
 pub fn decide(
     session: Option<LimitWindow>,
     week: Option<LimitWindow>,
@@ -344,10 +268,6 @@ pub fn decide(
     alerts
 }
 
-/// Reminders that are due now, marking each as fired.
-///
-/// Separate from `decide` because these are time-triggered rather than
-/// state-triggered: on macOS the OS holds them, and here the poll does.
 pub fn due_reminders(
     session: Option<LimitWindow>,
     week: Option<LimitWindow>,
@@ -393,11 +313,6 @@ pub fn due_reminders(
     alerts
 }
 
-/// Whether a reminder should fire now, and for which reset.
-///
-/// Fires once the offset has been reached and while the reset is still ahead. A
-/// reset instant already covered is skipped, which is what stops a thirty-second
-/// poll from re-firing for the same window.
 fn reminder_due(
     window: Option<LimitWindow>,
     enabled: bool,
@@ -413,8 +328,6 @@ fn reminder_due(
         return None;
     }
     let fire_at = resets_at - Duration::minutes(offset_minutes.max(0));
-    // Between the offset and the reset itself. Past the reset there is nothing
-    // to warn about, and the recovery alert covers that moment instead.
     (now >= fire_at && now < resets_at).then_some(resets_at)
 }
 
@@ -434,7 +347,6 @@ fn reminder_alert(kind: LimitWindowKind, offset_minutes: i64) -> LimitAlert {
     }
 }
 
-/// The token-expiry alert, debounced to once an hour.
 pub fn token_expired(
     settings: &NotifySettings,
     state: &mut NotifierState,
@@ -494,8 +406,6 @@ fn check_surface(
     let prior = *previous;
     *previous = current;
 
-    // A weekly window can rise on pace alone while the figure is still low.
-    // Saying "almost capped" there would be wrong, so it gets its own wording.
     let pace_driven = settings.smart_color && current > absolute && kind == LimitWindowKind::Weekly;
 
     if current > prior {
@@ -637,7 +547,6 @@ fn recovery(kind: LimitWindowKind, window: LimitWindow, now: DateTime<Utc>) -> L
     }
 }
 
-/// "45 min", "2 h 14 min", "1 d 3 h" — Edith's thresholds exactly.
 pub fn countdown(from: DateTime<Utc>, to: DateTime<Utc>) -> String {
     let minutes = ((to - from).num_seconds() / 60).max(0);
     let hours = minutes / 60;
@@ -655,8 +564,6 @@ pub fn countdown(from: DateTime<Utc>, to: DateTime<Utc>) -> String {
     format!("{minutes} min")
 }
 
-/// A reset moment in local time, e.g. "Thu, Aug 28, 3:00 PM". Local rather than
-/// UTC because it is read by a person deciding whether to keep working.
 pub fn date_time(value: DateTime<Utc>) -> String {
     value
         .with_timezone(&Local)
@@ -668,7 +575,6 @@ pub fn time(value: DateTime<Utc>) -> String {
     value.with_timezone(&Local).format("%-I:%M %p").to_string()
 }
 
-/// "30 min", "2 h" — whole hours read as hours, anything else as minutes.
 pub fn offset_label(minutes: i64) -> String {
     if minutes >= 60 && minutes % 60 == 0 {
         format!("{} h", minutes / 60)
@@ -677,8 +583,6 @@ pub fn offset_label(minutes: i64) -> String {
     }
 }
 
-/// When a reminder for this reset would fire, or `None` when that is already
-/// past. Kept public because the settings screen previews it.
 pub fn reminder_fire_at(
     resets_at: Option<DateTime<Utc>>,
     offset_minutes: i64,
@@ -754,12 +658,9 @@ mod tests {
         let heavy = window(87.0, 7988);
 
         let first = decide(Some(heavy), None, &on(), &mut state, at(0));
-        // A window this far ahead crosses a level *and* a pacing zone, so both
-        // fire — one about the cap, one about the rate.
         let ids: Vec<&str> = first.iter().map(|a| a.id.as_str()).collect();
         assert_eq!(ids, vec!["escalation_session", "pacing_session_hot"]);
 
-        // Same window a moment later: the level has not changed, so silence.
         let second = decide(Some(heavy), None, &on(), &mut state, at(1));
         assert!(
             second.is_empty(),
@@ -770,7 +671,6 @@ mod tests {
     #[test]
     fn the_session_escalation_names_the_time_left_and_the_pace() {
         let mut state = NotifierState::default();
-        // 87% with 2h13m left of five hours: well ahead of pace and past red.
         let alerts = decide(Some(window(87.0, 7988)), None, &on(), &mut state, at(0));
         assert_eq!(alerts[0].title, "5h almost capped");
         assert_eq!(alerts[0].body, "Easy until reset, 2 h 13 min left");
@@ -786,7 +686,6 @@ mod tests {
             "90% with ten minutes left should not be green"
         );
 
-        // The window reset: a fresh five hours, barely used.
         let alerts = decide(Some(window(2.0, 17_900)), None, &on(), &mut state, at(700));
         let recovery = alerts
             .iter()
@@ -820,14 +719,11 @@ mod tests {
             !quiet.iter().any(|alert| alert.id.starts_with("recovery_")),
             "recovery is switched off, got {quiet:?}"
         );
-        // The level still moves, so the next rise is still an edge.
         assert_eq!(state.session_level, UsageLevel::Green);
     }
 
     #[test]
     fn a_weekly_window_ahead_of_pace_says_so_rather_than_claiming_a_cap() {
-        // 40% of the week used a fifth of the way in: way ahead of an even burn,
-        // nowhere near the cap. Saying "almost capped" here would be wrong.
         let mut state = NotifierState::default();
         let week = window(40.0, WEEK - WEEK / 5);
         let alerts = decide(None, Some(week), &on(), &mut state, at(0));
@@ -843,7 +739,6 @@ mod tests {
 
     #[test]
     fn pacing_alerts_fire_on_entering_a_zone_and_respect_their_switches() {
-        // A session at 70% with four hours still to go: ahead of pace.
         let mut state = NotifierState::default();
         let alerts = decide(Some(window(70.0, 14_400)), None, &on(), &mut state, at(0));
         let pacing: Vec<&LimitAlert> = alerts
@@ -854,7 +749,6 @@ mod tests {
         assert_eq!(pacing[0].id, "pacing_session_hot");
         assert_eq!(state.session_pacing, PacingZone::Hot);
 
-        // With the hot switch off, the zone still updates but nothing is posted.
         let mut quiet_state = NotifierState::default();
         let settings = NotifySettings {
             pacing_hot: false,
@@ -879,7 +773,6 @@ mod tests {
         let settings = NotifySettings {
             track_session: false,
             track_weekly: true,
-            // Isolate the level alerts from the pacing ones.
             pacing_hot: false,
             pacing_warning: false,
             ..on()
@@ -904,8 +797,6 @@ mod tests {
 
     #[test]
     fn with_smart_colour_off_the_level_follows_the_raw_percentage() {
-        // 70% with the whole window left: risk-blended this is not yet red, but
-        // the raw thresholds put 70% above the 60% warning line.
         let settings = NotifySettings {
             smart_color: false,
             pacing_hot: false,
@@ -957,7 +848,6 @@ mod tests {
         assert_eq!(reloaded, state);
         assert_eq!(reloaded.banner("escalation_session"), Some(42));
 
-        // The reloaded state is at red, so the same window is silent.
         let mut restarted = reloaded;
         let quiet = decide(Some(window(90.0, 600)), None, &on(), &mut restarted, at(5));
         assert!(
@@ -983,9 +873,6 @@ mod tests {
 
     #[test]
     fn a_fresh_state_has_nothing_to_clear_but_a_used_one_does() {
-        // The runner clears while alerts are off, including on a fresh launch,
-        // so it asks the state rather than remembering whether the switch was
-        // flipped during *this* run.
         let mut state = NotifierState::default();
         assert!(!state.has_tracking(), "nothing has happened yet");
 
@@ -998,8 +885,6 @@ mod tests {
 
     #[test]
     fn a_recorded_banner_alone_is_not_tracking_to_clear() {
-        // Banner ids survive a clear, so counting them as tracking would make
-        // the runner rewrite the file on every idle tick forever.
         let mut state = NotifierState::default();
         state.record_banner("escalation_session", 7);
         assert!(!state.has_tracking());
@@ -1038,15 +923,11 @@ mod tests {
 
     #[test]
     fn a_banner_id_of_zero_is_not_remembered() {
-        // The spec allows a server to return 0; storing it would ask the next
-        // alert to replace notification zero, which is not a notification.
         let mut state = NotifierState::default();
         state.record_banner("escalation_session", 5);
         state.record_banner("escalation_session", 0);
         assert_eq!(state.banner("escalation_session"), None);
     }
-
-    // -- reminders ----------------------------------------------------------
 
     #[test]
     fn a_reminder_fires_once_inside_its_offset_and_not_before() {
@@ -1055,7 +936,6 @@ mod tests {
             reminder_session_offset_min: 30,
             ..on()
         };
-        // Reset in 45 minutes: outside a 30-minute offset, so nothing yet.
         let mut state = NotifierState::default();
         let early = due_reminders(
             Some(window(50.0, 45 * 60)),
@@ -1067,7 +947,6 @@ mod tests {
         assert!(early.is_empty(), "got {early:?}");
         assert_eq!(state.session_reminder_for, None);
 
-        // Reset in 20 minutes: inside the offset.
         let due = due_reminders(
             Some(window(50.0, 20 * 60)),
             None,
@@ -1080,7 +959,6 @@ mod tests {
         assert_eq!(due[0].title, "Session resets in 30 min");
         assert_eq!(state.session_reminder_for, Some(at(20 * 60)));
 
-        // Polled again for the same reset: already covered.
         let again = due_reminders(
             Some(window(50.0, 20 * 60)),
             None,
@@ -1106,7 +984,6 @@ mod tests {
             &mut state,
             at(0),
         );
-        // A different reset instant is a different window.
         let next = due_reminders(
             Some(window(50.0, 5 * 3600 + 20 * 60)),
             None,
@@ -1164,8 +1041,6 @@ mod tests {
         assert_eq!(due[0].body, "Last lap on the cycle");
     }
 
-    /// The alerts pane reads these names directly, and a nested struct does not
-    /// inherit its parent's rename, so the shape is pinned rather than assumed.
     #[test]
     fn the_settings_reach_the_interface_as_camel_case_throughout() {
         let json = serde_json::to_value(NotifySettings::default()).unwrap();
@@ -1187,7 +1062,6 @@ mod tests {
         ] {
             assert!(json.get(key).is_some(), "missing {key} in {json}");
         }
-        // The nested struct is the one that silently keeps snake_case.
         let thresholds = &json["thresholds"];
         assert_eq!(thresholds["warningPercent"], DEFAULT_WARN_PERCENT);
         assert_eq!(thresholds["criticalPercent"], DEFAULT_CRITICAL_PERCENT);
@@ -1196,16 +1070,12 @@ mod tests {
             "snake_case leaked into the wire shape: {thresholds}"
         );
 
-        // And it still reads back, so a stored document round trips.
         let back: NotifySettings = serde_json::from_value(json).unwrap();
         assert_eq!(back, NotifySettings::default());
     }
 
     #[test]
     fn a_negative_or_zero_offset_falls_back_instead_of_going_silent() {
-        // Edith computes `reset - offset` unguarded, so a negative offset there
-        // lands *after* the reset. Zero is no better: there is no instant both
-        // at-or-past the reminder and before the reset, so it would never fire.
         for nonsense in [-30, 0] {
             let mut stored = veronica_core::Settings::default();
             stored.set(
@@ -1218,8 +1088,6 @@ mod tests {
             assert_eq!(read.reminder_weekly_offset_min, 120, "offset {nonsense}");
         }
     }
-
-    // -- token expiry -------------------------------------------------------
 
     #[test]
     fn token_expiry_is_debounced_to_once_an_hour() {
@@ -1246,8 +1114,6 @@ mod tests {
             "a suppressed alert must not debounce"
         );
     }
-
-    // -- settings and formatting -------------------------------------------
 
     #[test]
     fn settings_read_ediths_keys_and_fall_back_to_ediths_defaults() {
@@ -1278,7 +1144,6 @@ mod tests {
         assert_eq!(countdown(at(0), at(2 * 3600)), "2 h");
         assert_eq!(countdown(at(0), at(2 * 3600 + 14 * 60)), "2 h 14 min");
         assert_eq!(countdown(at(0), at(27 * 3600)), "1 d 3 h");
-        // A reset already past reads as zero, not a negative.
         assert_eq!(countdown(at(0), at(-600)), "0 min");
     }
 
@@ -1297,7 +1162,6 @@ mod tests {
             reminder_fire_at(Some(at(3600)), 30, at(0)),
             Some(at(3600 - 1800))
         );
-        // The offset is bigger than the time left, so the moment has gone.
         assert_eq!(reminder_fire_at(Some(at(600)), 30, at(0)), None);
     }
 }

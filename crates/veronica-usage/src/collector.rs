@@ -1,10 +1,3 @@
-//! Driving the `refresh-usage` collector.
-//!
-//! Veronica ships Edith's collector script verbatim apart from one collation
-//! fix, so both apps produce byte-identical `usage.json` from the same machine.
-//! The script reports progress on stdout as tab-separated records; this module
-//! turns those into typed events and hands back the parsed document.
-
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -15,25 +8,19 @@ use tokio::process::Command;
 
 use crate::models::UsageDocument;
 
-/// The collector script, compiled into the binary so a single-file AppImage
-/// has no external dependency to lose.
 pub const COLLECTOR_SCRIPT: &str = include_str!("../../../resources/refresh-usage");
 
-/// One progress record from the collector.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum CollectorEvent {
-    /// A completed stage, with how long it took.
     Phase {
         name: String,
         detail: String,
         seconds: f64,
     },
-    /// Human-readable progress, e.g. "walking 6 transcript files".
     Note {
         message: String,
     },
-    /// A headline the UI shows when the run finishes.
     Summary {
         name: String,
         detail: String,
@@ -41,18 +28,15 @@ pub enum CollectorEvent {
     Error {
         message: String,
     },
-    /// Terminal record, carrying the total wall time.
     Done {
         seconds: f64,
     },
-    /// Anything unrecognised, kept so a newer collector still logs usefully.
     Unknown {
         line: String,
     },
 }
 
 impl CollectorEvent {
-    /// Parse one stdout line. Records are tab-separated with the kind first.
     pub fn parse(line: &str) -> Option<Self> {
         let line = line.trim_end_matches(['\r', '\n']);
         if line.trim().is_empty() {
@@ -73,7 +57,6 @@ impl CollectorEvent {
                 detail: rest.get(1).unwrap_or(&"").to_string(),
                 seconds: seconds(rest.get(2)),
             },
-            // Notes may legitimately contain tabs, so rejoin the remainder.
             "note" => CollectorEvent::Note {
                 message: rest.join("\t"),
             },
@@ -98,14 +81,11 @@ impl CollectorEvent {
     }
 }
 
-/// Outcome of one collector run.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RefreshOutcome {
     pub events: Vec<CollectorEvent>,
     pub document: UsageDocument,
-    /// True when the collector reported `done`. A run can produce a usable
-    /// document without it if a late stage failed.
     pub completed: bool,
 }
 
@@ -131,10 +111,6 @@ impl RefreshOutcome {
     }
 }
 
-/// Write the bundled script to `path` and mark it executable.
-///
-/// Rewritten on every launch so an upgraded Veronica never runs a stale
-/// collector left behind by an older build.
 pub fn install_script(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
@@ -148,7 +124,6 @@ pub fn install_script(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Read a previously collected document without running the collector.
 pub fn read_document(path: &Path) -> Result<Option<UsageDocument>> {
     match std::fs::read(path) {
         Ok(bytes) => {
@@ -169,11 +144,6 @@ pub fn read_document(path: &Path) -> Result<Option<UsageDocument>> {
     }
 }
 
-/// Run the collector, reporting each event through `on_event` as it arrives.
-///
-/// `output_dir` receives `usage.json` and `machines/`. The collector is a bash
-/// script, so it is invoked through bash explicitly rather than relying on the
-/// executable bit surviving packaging.
 pub async fn refresh<F>(
     script: &Path,
     output_dir: &Path,
@@ -186,11 +156,6 @@ where
     std::fs::create_dir_all(output_dir)
         .with_context(|| format!("cannot create {}", output_dir.display()))?;
 
-    // The script honours EDITH_CACHE_DIR to keep its own tool cache (jq, bun)
-    // inside Veronica's directories instead of the user's home. It runs on the
-    // host so it finds the same git, perl and agents it would without a sandbox.
-    // A full history scan must yield CPU to the interactive desktop. The
-    // priority is inherited by the script's parsers; no global scheduler changes.
     let nice = veronica_core::host::which("nice");
     let program = nice.as_deref().unwrap_or_else(|| Path::new("bash"));
     let mut command = Command::from(veronica_core::host::command_with_env(
@@ -212,8 +177,6 @@ where
     let stdout = child.stdout.take().context("collector stdout missing")?;
     let stderr = child.stderr.take().context("collector stderr missing")?;
 
-    // Stderr is drained concurrently; the script logs diagnostics there and a
-    // full pipe buffer would otherwise block it forever.
     let stderr_task = tokio::spawn(async move {
         let mut lines = BufReader::new(stderr).lines();
         let mut collected = std::collections::VecDeque::new();
@@ -242,8 +205,6 @@ where
     let stderr_lines = stderr_task.await.unwrap_or_default();
 
     if !status.success() && !completed {
-        // The script reports expected failures as `error` records on stdout and
-        // only crashes on stderr, so the last error record is the better reason.
         let reported = events.iter().rev().find_map(|event| match event {
             CollectorEvent::Error { message } if !message.trim().is_empty() => {
                 Some(message.as_str())
@@ -273,7 +234,6 @@ where
     })
 }
 
-/// Default location of the collector output.
 pub fn output_dir(data_dir: &Path) -> PathBuf {
     data_dir.join("usage")
 }
@@ -329,7 +289,6 @@ mod tests {
 
     #[test]
     fn a_summary_containing_tabs_keeps_its_whole_detail() {
-        // The real collector emits "window\t2026-06-07 to 2026-08-20 · 23 days".
         assert_eq!(
             CollectorEvent::parse("summary\twindow\t23 days\t7 models"),
             Some(CollectorEvent::Summary {
@@ -363,7 +322,6 @@ mod tests {
     #[test]
     fn the_bundled_script_is_present_and_is_the_collector() {
         assert!(COLLECTOR_SCRIPT.starts_with("#!/usr/bin/env bash"));
-        // The Linux collation fix must survive; without it `comm` aborts the run.
         assert!(
             COLLECTOR_SCRIPT.contains(r#"| LC_ALL=C sort >"$TMP/cwds.txt""#),
             "the LC_ALL=C collation fix is missing from the bundled collector"

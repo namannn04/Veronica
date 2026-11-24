@@ -1,8 +1,3 @@
-//! MySQL and MariaDB.
-//!
-//! One adapter for both: they speak the same protocol and differ in details the
-//! identity report names rather than the code branches on.
-
 use anyhow::{Context, Result};
 use mysql_async::prelude::*;
 use mysql_async::{Conn, Opts, OptsBuilder, Row};
@@ -54,7 +49,6 @@ impl MysqlAdapter {
 
         let read_only = definition.read_only_policy == ReadOnlyPolicy::Required;
         if read_only {
-            // The server enforces it too, not only Veronica declining to send.
             connection
                 .query_drop("SET SESSION TRANSACTION READ ONLY")
                 .await
@@ -69,7 +63,6 @@ impl MysqlAdapter {
     }
 }
 
-/// Quote an identifier the way MySQL does: backticks, doubled inside.
 pub fn quote(identifier: &str) -> String {
     format!("`{}`", identifier.replace('`', "``"))
 }
@@ -92,8 +85,6 @@ fn read_value(row: &Row, index: usize) -> Value {
         Some(M::Float(value)) => Value::FloatingPoint(*value as f64),
         Some(M::Double(value)) => Value::FloatingPoint(*value),
         Some(M::Date(year, month, day, hour, minute, second, micros)) => {
-            // A zero date is MySQL's way of saying "none"; rendering it as
-            // 0000-00-00 would be a date that does not exist.
             if *year == 0 && *month == 0 && *day == 0 {
                 Value::Null
             } else if *hour == 0 && *minute == 0 && *second == 0 && *micros == 0 {
@@ -113,7 +104,6 @@ fn read_value(row: &Row, index: usize) -> Value {
         )),
         Some(M::Bytes(bytes)) => match std::str::from_utf8(bytes) {
             Ok(text) => Value::String(text.to_string()),
-            // Not text: a real blob rather than a string that failed to decode.
             Err(_) => Value::Binary(Binary::Complete {
                 data: base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes),
                 media_type: None,
@@ -152,7 +142,6 @@ fn bounded(sql: &str, request: &PageRequest) -> String {
     )
 }
 
-/// Bind a value as something MySQL accepts.
 fn bind(value: &Value) -> mysql_async::Value {
     use mysql_async::Value as M;
     match value {
@@ -161,7 +150,6 @@ fn bind(value: &Value) -> mysql_async::Value {
         Value::SignedInteger(value) => M::Int(*value),
         Value::UnsignedInteger(value) => M::UInt(*value),
         Value::FloatingPoint(value) => M::Double(*value),
-        // Exact as text, so the server parses the decimal rather than a float.
         Value::Decimal(Decimal(text)) => M::Bytes(text.clone().into_bytes()),
         Value::String(value) => M::Bytes(value.clone().into_bytes()),
         Value::Uuid(value) => M::Bytes(value.to_string().into_bytes()),
@@ -187,9 +175,6 @@ fn bind(value: &Value) -> mysql_async::Value {
 }
 
 impl MysqlAdapter {
-    /// Run a statement the text check called a read inside a `READ ONLY`
-    /// transaction that is always rolled back, so a `SELECT` calling a
-    /// function with side effects cannot change data either.
     async fn read_only_rows(&mut self, sql: String) -> Result<Vec<Row>> {
         self.connection
             .query_drop("START TRANSACTION READ ONLY")
@@ -208,8 +193,6 @@ impl Adapter for MysqlAdapter {
             .query_first("SELECT VERSION(), @@version_comment, DATABASE()")
             .await?;
         let (version, comment, database) = row.unwrap_or_default();
-        // MariaDB reports itself in its own version string, so the product is
-        // read from the server rather than trusted from the connection.
         let product = if version.to_lowercase().contains("mariadb") {
             Product::MariaDb
         } else {
@@ -326,8 +309,6 @@ impl Adapter for MysqlAdapter {
         let rows: Vec<Row> = if super::is_wrappable_query(body) {
             self.read_only_rows(bounded(body, request)).await?
         } else {
-            // `SHOW`/`DESCRIBE`/`EXPLAIN` cannot sit inside a subquery, so
-            // page by hand.
             super::client_window(self.read_only_rows(body.to_string()).await?, request)
         };
         Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
@@ -385,7 +366,6 @@ mod tests {
     #[test]
     fn a_zero_date_is_null_rather_than_a_date_that_does_not_exist() {
         let row_value = mysql_async::Value::Date(0, 0, 0, 0, 0, 0, 0);
-        // Exercised through the same branch the reader uses.
         let rendered = match row_value {
             mysql_async::Value::Date(y, m, d, _, _, _, _) if y == 0 && m == 0 && d == 0 => {
                 Value::Null

@@ -1,33 +1,3 @@
-//! The guard between wanting to change a database and changing it.
-//!
-//! A port of Edith's `ConfirmationAuthority`. The mechanism is worth stating
-//! plainly, because every safety property here follows from it:
-//!
-//! 1. `preview` takes a plan, checks it is allowed at all, works out how loud
-//!    the confirmation has to be, and returns a **token**. The token is
-//!    `base64url(payload).base64url(HMAC-SHA256(payload))`, and the payload
-//!    holds two digests — one over what would *run*, one over what was *shown*.
-//! 2. `authorize` takes the token and a plan back. It verifies the signature,
-//!    checks the clock, recomputes both digests from the plan it was handed,
-//!    and requires them to match the ones inside the token.
-//!
-//! So a plan cannot be edited between the preview and the apply. Change the
-//! statement, the parameters, the target, the connection, the scope — anything
-//! — and the execution digest no longer matches, the token is rejected, and
-//! nothing runs. Not "a warning is logged": nothing runs.
-//!
-//! Three more properties matter:
-//!
-//! - **Single use.** Issuing a preview registers a receipt; authorising
-//!   consumes it. Replaying a token, even a valid unexpired one, is refused.
-//! - **It expires.** A preview is good for two minutes by default. A token left
-//!   in a shell history is not a standing permission to drop a table.
-//! - **The signing key never leaves the secret store.** Without it a token
-//!   cannot be forged, and the digests cannot even be computed.
-//!
-//! The digests are keyed (HMAC, not a bare hash) so that knowing the plan is
-//! not enough to produce a matching digest.
-
 use base64::Engine;
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
@@ -45,15 +15,12 @@ use crate::mutation::{
 
 type HmacSha256 = Hmac<Sha256>;
 
-/// How long a preview is good for, and the bounds on that.
 pub const DEFAULT_LIFETIME_SECONDS: i64 = 120;
 pub const MIN_LIFETIME_SECONDS: i64 = 5;
 pub const MAX_LIFETIME_SECONDS: i64 = 900;
 
-/// Edith's signing key size.
 pub const SIGNING_KEY_BYTES: usize = 32;
 
-/// A token longer than this is not one Veronica issued.
 pub const MAX_TOKEN_BYTES: usize = 4_096;
 
 const TOKEN_SCHEMA_VERSION: u32 = 1;
@@ -90,7 +57,6 @@ pub enum GuardError {
     ConfirmationMismatch,
 }
 
-/// What `preview` returns.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Preview {
@@ -103,7 +69,6 @@ pub struct Preview {
     pub token: String,
 }
 
-/// The signed part of a token.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct TokenPayload {
     version: u32,
@@ -115,7 +80,6 @@ struct TokenPayload {
     expires_at_millis: i64,
 }
 
-/// What a preview leaves behind so it can only be spent once.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Receipt {
@@ -124,23 +88,12 @@ pub struct Receipt {
     pub expires_at_millis: i64,
 }
 
-/// Where receipts live between the preview and the apply.
-///
-/// A trait rather than a concrete store so the guard's logic is testable
-/// without a database, and so the same guard works against the persistent store
-/// and an in-memory one.
 pub trait ReceiptStore {
-    /// Record a receipt. Fails if one with that identifier already exists.
     fn register(&mut self, receipt: Receipt) -> anyhow::Result<()>;
-    /// Take a receipt, removing it. `None` means it was never issued, or has
-    /// already been spent — both of which refuse the apply.
     fn consume(&mut self, identifier: Uuid) -> anyhow::Result<Option<Receipt>>;
-    /// Drop everything that has expired, so the store does not grow forever.
     fn purge_expired(&mut self, now_millis: i64) -> anyhow::Result<usize>;
 }
 
-/// So a caller can lend a store to a guard for one call rather than moving it
-/// in. The guard needs `&mut` for the length of a preview, not ownership.
 impl<S: ReceiptStore + ?Sized> ReceiptStore for &mut S {
     fn register(&mut self, receipt: Receipt) -> anyhow::Result<()> {
         (**self).register(receipt)
@@ -155,7 +108,6 @@ impl<S: ReceiptStore + ?Sized> ReceiptStore for &mut S {
     }
 }
 
-/// A receipt store that lives only as long as the process.
 #[derive(Debug, Default)]
 pub struct MemoryReceiptStore {
     receipts: std::collections::HashMap<Uuid, Receipt>,
@@ -192,17 +144,10 @@ fn from_base64url(text: &str) -> Option<Vec<u8>> {
         .ok()
 }
 
-/// Canonical JSON, so two encodings of the same value produce the same digest.
-///
-/// `serde_json` sorts map keys only with `preserve_order` off, and every type
-/// here is a struct with a fixed field order, so this is deterministic as it
-/// stands. Going through `to_vec` rather than `to_string` keeps it byte-exact.
 fn canonical<T: Serialize>(value: &T) -> anyhow::Result<Vec<u8>> {
     serde_json::to_vec(value).map_err(Into::into)
 }
 
-/// Bind a digest to what it is for, so a display digest can never be replayed
-/// as an execution digest.
 fn domain_separated(data: &[u8], domain: &str) -> Vec<u8> {
     let mut out = Vec::with_capacity(domain.len() + data.len() + 9);
     out.extend_from_slice(&(domain.len() as u64).to_be_bytes());
@@ -212,15 +157,11 @@ fn domain_separated(data: &[u8], domain: &str) -> Vec<u8> {
     out
 }
 
-/// The guard.
 pub struct Guard<S: ReceiptStore> {
     signing_key: Vec<u8>,
     receipts: S,
 }
 
-/// Written by hand, not derived. A derived `Debug` would put the signing key
-/// into any panic message or trace that formats a guard, and the key is the one
-/// thing that makes a token unforgeable.
 impl<S: ReceiptStore> std::fmt::Debug for Guard<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Guard")
@@ -254,7 +195,6 @@ impl<S: ReceiptStore> Guard<S> {
             .collect()
     }
 
-    /// Check a plan is one Veronica is willing to act on at all.
     fn validate(plan: &Plan, connection: &ConnectionDefinition) -> Result<(), GuardError> {
         if let Some(prohibition) = connection.mutation_prohibition() {
             return Err(GuardError::Prohibited(prohibition));
@@ -278,9 +218,6 @@ impl<S: ReceiptStore> Guard<S> {
                 "the plan targets a different connection".into(),
             ));
         }
-        // A predicate-scoped mutation with no predicate is an unbounded one
-        // wearing a bounded label, which is the single most dangerous shape a
-        // plan can have.
         if plan.scope == Scope::Predicate && plan.predicate.is_none() {
             return Err(GuardError::InvalidPlan(
                 "the plan says it is bounded by a predicate but carries none".into(),
@@ -299,7 +236,6 @@ impl<S: ReceiptStore> Guard<S> {
         Ok(())
     }
 
-    /// How loud the confirmation has to be. Edith's rule, unchanged.
     pub fn required_confirmation(
         plan: &Plan,
         connection: &ConnectionDefinition,
@@ -339,7 +275,6 @@ impl<S: ReceiptStore> Guard<S> {
         }
     }
 
-    /// The two digests, plus the effect and redacted request they cover.
     fn prepare(
         &self,
         plan: &Plan,
@@ -347,9 +282,6 @@ impl<S: ReceiptStore> Guard<S> {
     ) -> Result<(Effect, MutationPreview, Vec<Warning>, RequiredConfirmation), GuardError> {
         Self::validate(plan, connection)?;
 
-        // The execution digest covers the plan *and* the connection's policy,
-        // so flipping a connection to read-only between the preview and the
-        // apply invalidates the token rather than being ignored.
         let execution_digest = self.digest(
             &canonical(&(plan, &policy_snapshot(connection)))
                 .map_err(|error| GuardError::InvalidPlan(error.to_string()))?,
@@ -376,8 +308,6 @@ impl<S: ReceiptStore> Guard<S> {
             display_digest: String::new(),
         };
 
-        // The display digest covers what the user was shown, so a preview
-        // cannot be re-rendered more mildly and then applied.
         let display_digest = self.digest(
             &canonical(&(&effect, &request, &warnings, &required_confirmation))
                 .map_err(|error| GuardError::InvalidPlan(error.to_string()))?,
@@ -395,7 +325,6 @@ impl<S: ReceiptStore> Guard<S> {
         ))
     }
 
-    /// Issue a preview and the token that authorises it.
     pub fn preview(
         &mut self,
         plan: &Plan,
@@ -461,8 +390,6 @@ impl<S: ReceiptStore> Guard<S> {
         }
         let encoded = from_base64url(payload_part).ok_or(GuardError::MalformedToken)?;
         let signature = from_base64url(signature_part).ok_or(GuardError::MalformedToken)?;
-        // Re-encoding must reproduce the input, so a token cannot be padded or
-        // re-cased into a second form that verifies.
         if base64url(&encoded) != payload_part || base64url(&signature) != signature_part {
             return Err(GuardError::MalformedToken);
         }
@@ -470,7 +397,6 @@ impl<S: ReceiptStore> Guard<S> {
         let mut mac =
             HmacSha256::new_from_slice(&self.signing_key).expect("HMAC takes a key of any size");
         mac.update(&domain_separated(&encoded, "token"));
-        // Constant-time, so a forger learns nothing from how long it took.
         mac.verify_slice(&signature)
             .map_err(|_| GuardError::InvalidSignature)?;
 
@@ -479,19 +405,12 @@ impl<S: ReceiptStore> Guard<S> {
         if payload.version != TOKEN_SCHEMA_VERSION || payload.audience != TOKEN_AUDIENCE {
             return Err(GuardError::MalformedToken);
         }
-        // The encoding must be canonical, so no second byte sequence decodes to
-        // the same payload and verifies under a different signature.
         if canonical(&payload).map_err(|_| GuardError::MalformedToken)? != encoded {
             return Err(GuardError::MalformedToken);
         }
         Ok(payload)
     }
 
-    /// Authorise an apply.
-    ///
-    /// Everything is checked before anything is returned: the signature, the
-    /// clock, the receipt, the plan, and the typed confirmation. Only then does
-    /// the caller get permission to run.
     pub fn authorize(
         &mut self,
         token: &str,
@@ -502,13 +421,10 @@ impl<S: ReceiptStore> Guard<S> {
     ) -> Result<Effect, GuardError> {
         let payload = self.authenticate(token)?;
         if payload.expires_at_millis <= now.timestamp_millis() {
-            // Consume it anyway, so an expired token cannot sit in the store.
             let _ = self.receipts.consume(payload.identifier);
             return Err(GuardError::Expired);
         }
 
-        // Recompute from the plan in hand. This is the check that makes editing
-        // a plan between preview and apply impossible.
         let (effect, _, _, required_confirmation) = self.prepare(plan, connection)?;
         if effect.execution_digest != payload.execution_digest
             || effect.display_digest != payload.display_digest
@@ -523,7 +439,6 @@ impl<S: ReceiptStore> Guard<S> {
             return Err(GuardError::ConfirmationMismatch);
         }
 
-        // Spent last, so a failed confirmation does not burn the preview.
         let receipt = self
             .receipts
             .consume(payload.identifier)
@@ -537,7 +452,6 @@ impl<S: ReceiptStore> Guard<S> {
     }
 }
 
-/// Compare without leaking where two strings first differ.
 fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
     if left.len() != right.len() {
         return false;
@@ -548,7 +462,6 @@ fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
         == 0
 }
 
-/// The parts of a connection a mutation's safety depends on.
 #[derive(Serialize)]
 struct PolicySnapshot<'a> {
     id: Uuid,
@@ -574,11 +487,6 @@ fn policy_snapshot(connection: &ConnectionDefinition) -> PolicySnapshot<'_> {
     }
 }
 
-/// Render a target as confirmation text.
-///
-/// Length-prefixed, so `table["a", "bc"]` and `table["ab", "c"]` cannot produce
-/// the same string. Confirming one and dropping the other is exactly the bug
-/// this shape prevents.
 fn render_target(target: &TargetIdentifier) -> String {
     match &target.object {
         Some(object) => {
@@ -598,8 +506,6 @@ fn length_prefixed(value: &str) -> String {
     format!("{}:{rendered}", rendered.len())
 }
 
-/// Strip what a terminal would swallow or reinterpret, so the text a user is
-/// asked to type is the text they can see.
 fn printable(value: &str) -> String {
     value
         .chars()
@@ -728,7 +634,6 @@ mod tests {
 
     #[test]
     fn editing_the_statement_after_the_preview_stops_the_apply() {
-        // This is the property the whole design exists for.
         let mut guard = guard();
         let connection = connection();
         let preview = guard
@@ -825,7 +730,6 @@ mod tests {
 
     #[test]
     fn flipping_the_connection_to_read_only_after_the_preview_stops_the_apply() {
-        // The token covers the policy, not just the plan.
         let mut guard = guard();
         let preview = guard
             .preview(&plan(), &connection(), now(), DEFAULT_LIFETIME_SECONDS)
@@ -867,7 +771,6 @@ mod tests {
 
     #[test]
     fn a_preview_expires() {
-        // A token in a shell history is not standing permission to drop a table.
         let mut guard = guard();
         let connection = connection();
         let preview = guard.preview(&plan(), &connection, now(), 60).unwrap();
@@ -968,7 +871,6 @@ mod tests {
                 .unwrap_err(),
             GuardError::ConfirmationMismatch
         );
-        // A typo must not cost the user their preview.
         assert!(guard
             .authorize(
                 &preview.token,
@@ -1029,8 +931,6 @@ mod tests {
 
     #[test]
     fn two_different_targets_cannot_produce_the_same_confirmation_text() {
-        // Confirming one table and dropping another is exactly the bug the
-        // length prefix prevents.
         let build = |first: &str, second: &str| {
             let mut plan = plan();
             plan.scope = Scope::SelectedRecords;
@@ -1061,8 +961,6 @@ mod tests {
 
     #[test]
     fn a_predicate_scoped_plan_with_no_predicate_is_refused() {
-        // An unbounded mutation wearing a bounded label is the single most
-        // dangerous shape a plan can have.
         let mut guard = guard();
         let mut plan = plan();
         plan.scope = Scope::Predicate;
@@ -1186,7 +1084,6 @@ mod tests {
 
     #[test]
     fn the_two_digests_are_domain_separated() {
-        // Otherwise a display digest could be replayed as an execution digest.
         let guard = guard();
         let data = b"the same bytes";
         assert_ne!(

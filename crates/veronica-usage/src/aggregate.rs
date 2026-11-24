@@ -1,18 +1,9 @@
-//! Dashboard aggregations.
-//!
-//! `usage.json` is stored per day; every chart Edith draws is a different
-//! rollup of that. Each function here takes the document plus the user's source
-//! selection so a deselected collector disappears from every figure at once,
-//! which is what makes the source filter feel consistent across the dashboard.
-
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use serde::Serialize;
 
 use crate::models::{ChatEntry, ModelRow, ProjectEntry, Totals, UsageDocument};
 
-/// Which sources to include. `All` follows the collector's `defaultSources`,
-/// so a machine that has never been deselected shows everything it found.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SourceSelection {
     All,
@@ -31,8 +22,6 @@ impl SourceSelection {
     }
 }
 
-/// Inclusive day range, as `YYYY-MM-DD`. String comparison is correct for this
-/// format, so no date parsing is needed to filter.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DayRange {
     pub start: Option<String>,
@@ -45,12 +34,6 @@ impl DayRange {
             && self.end.as_deref().is_none_or(|e| period <= e)
     }
 
-    /// The last `days` calendar days, ending today.
-    ///
-    /// This used to be the last `days` days *with data*, ending on the last
-    /// collected day: with the machine idle since August, "7d" in October
-    /// showed a week of August and the notch called it "this week". Idle days
-    /// are now part of the window, and show as idle.
     pub fn last_days(days: usize, today: chrono::NaiveDate) -> Self {
         let back = days.max(1) as u64 - 1;
         let start = today
@@ -75,7 +58,6 @@ pub struct DayPoint {
 #[serde(rename_all = "camelCase")]
 pub struct NamedAmount {
     pub name: String,
-    /// Present for sources, where the id and the label differ.
     pub label: String,
     pub cost: f64,
     pub tokens: u64,
@@ -99,7 +81,6 @@ pub struct HeatmapCell {
     pub period: String,
     pub cost: f64,
     pub tokens: u64,
-    /// 0-4 bucket, matching GitHub's contribution scale.
     pub level: u8,
 }
 
@@ -115,7 +96,6 @@ pub struct ProjectRollup {
     pub chats: Vec<ChatEntry>,
 }
 
-/// Everything the dashboard needs from one pass over the document.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Dashboard {
@@ -126,7 +106,6 @@ pub struct Dashboard {
     pub by_hour: Vec<HourPoint>,
     pub heatmap: Vec<HeatmapCell>,
     pub projects: Vec<ProjectRollup>,
-    /// Distinct days that carry any spend, for the "N days" KPI.
     pub active_days: usize,
     pub session_count: usize,
 }
@@ -140,9 +119,6 @@ fn accumulate(target: &mut NamedAmount, row: &ModelRow) {
     target.cache_read_tokens += row.cache_read_tokens;
 }
 
-/// Totals over the selected sources and range. Recomputed rather than read from
-/// `document.totals`, because that field covers every source and the whole
-/// history and would contradict a filtered view.
 pub fn totals(document: &UsageDocument, range: &DayRange, selection: &SourceSelection) -> Totals {
     let mut totals = Totals::default();
     for day in &document.daily {
@@ -195,8 +171,6 @@ pub fn per_day(
             point
         })
         .collect();
-    // A bounded window shows its idle days as zero, so a gap reads as a gap
-    // rather than as neighbouring bars.
     if let (Some(start), Some(end)) = (&range.start, &range.end) {
         let parse = |day: &str| chrono::NaiveDate::parse_from_str(day, "%Y-%m-%d").ok();
         if let (Some(mut day), Some(last)) = (parse(start), parse(end)) {
@@ -276,7 +250,6 @@ pub fn by_source(
 
 fn sorted_by_cost(map: BTreeMap<String, NamedAmount>) -> Vec<NamedAmount> {
     let mut list: Vec<NamedAmount> = map.into_values().collect();
-    // Highest spend first, name as the tiebreak so the order is stable.
     list.sort_by(|a, b| {
         b.cost
             .partial_cmp(&a.cost)
@@ -286,8 +259,6 @@ fn sorted_by_cost(map: BTreeMap<String, NamedAmount>) -> Vec<NamedAmount> {
     list
 }
 
-/// Spend by hour of day, always 24 buckets so the chart has a fixed axis even
-/// when the machine was only used in the evening.
 pub fn by_hour(
     document: &UsageDocument,
     range: &DayRange,
@@ -305,8 +276,6 @@ pub fn by_hour(
             continue;
         }
         for (index, bucket) in day.hours.iter().enumerate().take(24) {
-            // Per-source detail is the only way to honour the filter; the
-            // bucket's own totals cover every source.
             let mut cost = 0.0;
             let mut tokens = 0u64;
             for (source, amount) in &bucket.by_source {
@@ -323,8 +292,6 @@ pub fn by_hour(
     buckets
 }
 
-/// GitHub-style calendar. Levels are quartiles of the non-zero days, so the
-/// scale adapts to the user's own spend instead of a fixed dollar cutoff.
 pub fn heatmap(
     document: &UsageDocument,
     range: &DayRange,
@@ -334,12 +301,6 @@ pub fn heatmap(
     let mut spent: Vec<f64> = days.iter().map(|d| d.cost).filter(|c| *c > 0.0).collect();
     spent.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-    // Level by percentile rank among active days rather than by fixed
-    // quartile values. With only a handful of active days the quartile
-    // boundaries collapse onto the maximum, which pushed the busiest day into
-    // the middle of the scale; ranking keeps the busiest day at 4 and the
-    // quietest at 1 for any number of days. Days sharing a cost share a level,
-    // because the rank counts every value at or below it.
     let active = spent.len();
     let level_for = |cost: f64| -> u8 {
         if cost <= 0.0 || active == 0 {
@@ -363,8 +324,6 @@ pub fn heatmap(
         .collect()
 }
 
-/// Projects rolled up across the range, keyed by repository when the collector
-/// identified one so the same repo checked out twice counts once.
 pub fn projects(
     document: &UsageDocument,
     range: &DayRange,
@@ -402,7 +361,6 @@ pub fn projects(
                     entry.chats.push(chat.clone());
                 }
             }
-            // A worktree's chats belong to the same repository.
             for worktree in &project.worktrees {
                 for chat in &worktree.chats {
                     if selection.includes(&chat.source, document) {
@@ -415,9 +373,6 @@ pub fn projects(
 
     let mut list: Vec<ProjectRollup> = map.into_values().collect();
     for project in &mut list {
-        // The same chat appears on every day it was active, and each record
-        // holds only that day's share. Merge them into one row per id whose
-        // spend is the sum, so the drilldown agrees with the project total.
         let mut merged: HashMap<String, ChatEntry> = HashMap::new();
         for chat in project.chats.drain(..) {
             match merged.get_mut(&chat.id) {
@@ -429,7 +384,6 @@ pub fn projects(
                         (a, b) => a.or(b),
                     };
                     if chat.last_ts > row.last_ts {
-                        // The latest record carries the most current title.
                         row.last_ts = chat.last_ts;
                         if !chat.title.is_empty() {
                             row.title = chat.title;
@@ -460,8 +414,6 @@ fn project_amount(
     document: &UsageDocument,
     selection: &SourceSelection,
 ) -> (f64, u64) {
-    // Prefer the per-source breakdown so the filter applies; fall back to the
-    // project total when a collector wrote no breakdown.
     if project.by_source.is_empty() {
         return (project.cost, project.tokens);
     }
@@ -476,11 +428,6 @@ fn project_amount(
     (cost, tokens)
 }
 
-/// Distinct chats active on any day in the range, for the selected sources.
-///
-/// The document's own `sessions` list has no dates, so counting it ignored
-/// the range: "Sessions" read the same for one day, a week and all time.
-/// Across all days the two counts agree, since every session is a chat.
 fn sessions_in(document: &UsageDocument, range: &DayRange, selection: &SourceSelection) -> usize {
     let mut ids: HashSet<&str> = HashSet::new();
     for day in document
@@ -500,7 +447,6 @@ fn sessions_in(document: &UsageDocument, range: &DayRange, selection: &SourceSel
     ids.len()
 }
 
-/// One pass producing every rollup the dashboard renders.
 pub fn dashboard(
     document: &UsageDocument,
     range: &DayRange,
@@ -628,7 +574,6 @@ mod tests {
             ..Default::default()
         });
         day1.projects.push(project.clone());
-        // The same chat recurs the next day; the drilldown must not list it twice.
         day2.projects.push(project);
 
         doc.daily = vec![day1, day2];
@@ -681,7 +626,6 @@ mod tests {
 
         let sources = by_source(&doc, &DayRange::default(), &SourceSelection::All);
         assert_eq!(sources[0].name, "cli");
-        // The label comes from sourceMeta, the id when there is none.
         assert_eq!(sources[0].label, "Claude Code");
         assert_eq!(sources[1].label, "codex");
     }
@@ -707,9 +651,6 @@ mod tests {
         let doc = document();
         let cells = heatmap(&doc, &DayRange::default(), &SourceSelection::All);
         assert_eq!(cells.len(), 2);
-        // $1 is the low day and $15 the high one, so they land in different bands
-        // and the busiest day reaches the top of the scale even with only two
-        // active days.
         let low = cells.iter().find(|c| c.period == "2026-08-19").unwrap();
         let high = cells.iter().find(|c| c.period == "2026-08-18").unwrap();
         assert_eq!(high.level, 4);
@@ -722,8 +663,6 @@ mod tests {
 
     #[test]
     fn heatmap_gives_the_busiest_day_the_top_level_at_any_scale() {
-        // Regression: fixed quartile boundaries collapsed onto the maximum when
-        // few days were active, so the busiest day rendered mid-scale.
         for count in 1..=40usize {
             let doc = UsageDocument {
                 schema_version: 8,
@@ -794,9 +733,7 @@ mod tests {
         let doc = document();
         let rollups = projects(&doc, &DayRange::default(), &SourceSelection::All);
         assert_eq!(rollups.len(), 1);
-        // Present on both days, so the spend adds up.
         assert_eq!(rollups[0].cost, 30.0);
-        // But the chat is the same one, listed once.
         assert_eq!(rollups[0].chats.len(), 1);
         assert_eq!(rollups[0].chats[0].id, "chat1");
     }
@@ -804,7 +741,6 @@ mod tests {
     #[test]
     fn a_chat_active_on_several_days_shows_the_sum_of_its_days() {
         let mut doc = document();
-        // Day two's record is that day's share, not a running total.
         doc.daily[1].projects[0].chats[0] = ChatEntry {
             id: "chat1".into(),
             source: "cli".into(),
@@ -847,13 +783,11 @@ mod tests {
         assert_eq!(week.end.as_deref(), Some("2026-10-26"));
         let one = DayRange::last_days(1, today);
         assert_eq!(one.start.as_deref(), Some("2026-10-26"));
-        // Zero is treated as today alone rather than an empty window.
         assert_eq!(DayRange::last_days(0, today), one);
     }
 
     #[test]
     fn an_idle_window_has_nothing_from_older_days() {
-        // The fixture's data is from August; a week ending in October is idle.
         let doc = document();
         let today = chrono::NaiveDate::from_ymd_opt(2026, 10, 26).unwrap();
         let range = DayRange::last_days(7, today);
@@ -885,7 +819,6 @@ mod tests {
         let doc = document();
         let board = dashboard(&doc, &DayRange::default(), &SourceSelection::All);
         assert_eq!(board.active_days, 2);
-        // One chat, active on both days.
         assert_eq!(board.session_count, 1);
 
         let cli = dashboard(

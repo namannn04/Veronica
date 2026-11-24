@@ -1,15 +1,6 @@
-//! Rate-limit maths.
-//!
-//! A line-for-line port of Edith's `LimitMath`. Every constant and threshold is
-//! kept identical so a ring in Veronica reads exactly the same as the ring on
-//! macOS for the same input. The parity tests below pin the values that the
-//! Swift implementation produces.
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Seconds in each window kind. Claude's session window is five hours and its
-/// weekly window is seven days.
 pub const SESSION_WINDOW_SECS: f64 = 5.0 * 3600.0;
 pub const WEEKLY_WINDOW_SECS: f64 = 7.0 * 24.0 * 3600.0;
 
@@ -55,7 +46,6 @@ impl LimitProvider {
 pub enum LimitWindowSlot {
     Session,
     Week,
-    /// Claude's model-scoped weekly window.
     Fable,
 }
 
@@ -83,10 +73,6 @@ impl ProviderLimits {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-// Serialised inside `NotifySettings` and read by the alerts pane, so the field
-// names have to be camelCase like every other type the interface sees. Without
-// this the nested struct keeps its snake_case names while its parent renames,
-// and the interface reads two undefineds.
 #[serde(rename_all = "camelCase")]
 pub struct UsageThresholds {
     pub warning_percent: i64,
@@ -147,8 +133,6 @@ impl LimitWindowKind {
     }
 }
 
-/// Cubic smoothstep, clamped. Returns a hard step when the range is empty,
-/// matching the Swift guard rather than dividing by zero.
 pub fn smoothstep(a: f64, b: f64, x: f64) -> f64 {
     if a >= b {
         return if x >= b { 1.0 } else { 0.0 };
@@ -157,15 +141,10 @@ pub fn smoothstep(a: f64, b: f64, x: f64) -> f64 {
     t * t * (3.0 - 2.0 * t)
 }
 
-/// How much to trust a projection: near zero early in a window, approaching one
-/// as the window elapses.
 pub fn confidence(e: f64) -> f64 {
     1.0 - (-K * e.max(0.0)).exp()
 }
 
-/// Blend of three risk signals: absolute usage, projected overrun, and how far
-/// ahead of pace the user is. The maximum wins, so any one signal can raise the
-/// alarm on its own.
 pub fn combined_risk(u: f64, e: f64, m: f64) -> f64 {
     if u >= 1.0 {
         return 1.0;
@@ -189,8 +168,6 @@ pub fn combined_risk(u: f64, e: f64, m: f64) -> f64 {
     a.max(b).max(c)
 }
 
-/// Risk for one window. `utilization` is a percentage, `pacing_margin` is a
-/// percentage, and the result is 0...1.
 pub fn smart_risk(
     utilization: f64,
     resets_at: Option<DateTime<Utc>>,
@@ -224,8 +201,6 @@ pub fn level_for_risk(risk: f64) -> UsageLevel {
     }
 }
 
-/// Pacing zone with hysteresis: once a zone is entered it takes a larger move
-/// to leave it, so the menu bar tint does not flicker between two states.
 pub fn zone_for_risk(risk: f64, previous: Option<PacingZone>) -> PacingZone {
     let r = risk.clamp(0.0, 1.0);
     let rising = |r: f64| {
@@ -282,7 +257,6 @@ pub fn zone_for_risk(risk: f64, previous: Option<PacingZone>) -> PacingZone {
     }
 }
 
-/// How far ahead of a linear burn the user is, in percentage points.
 pub fn pacing_delta(
     utilization: f64,
     resets_at: DateTime<Utc>,
@@ -306,8 +280,6 @@ pub fn pacing_zone(delta: f64, margin: f64) -> PacingZone {
         PacingZone::Hot
     }
 }
-
-// -- Budgets ---------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -336,7 +308,6 @@ pub struct BudgetStatus {
     pub daily_budget_percent: Option<f64>,
 }
 
-/// Where a linear spend of `cap_percent` should have reached by `now`.
 pub fn budget_target(
     cap_percent: f64,
     start: DateTime<Utc>,
@@ -351,8 +322,6 @@ pub fn budget_target(
     t * cap_percent
 }
 
-/// Remaining allowance spread over the whole days left, so the figure never
-/// divides by a fraction of a day and spike as a reset approaches.
 pub fn daily_budget(
     actual: f64,
     cap_percent: f64,
@@ -407,7 +376,6 @@ mod tests {
         assert_eq!(smoothstep(0.0, 1.0, -1.0), 0.0);
         assert_eq!(smoothstep(0.0, 1.0, 2.0), 1.0);
         assert_eq!(smoothstep(0.0, 1.0, 0.5), 0.5);
-        // Empty range degenerates to a step, as the Swift guard does.
         assert_eq!(smoothstep(1.0, 1.0, 1.0), 1.0);
         assert_eq!(smoothstep(1.0, 1.0, 0.9), 0.0);
     }
@@ -426,8 +394,6 @@ mod tests {
 
     #[test]
     fn without_a_reset_time_risk_falls_back_to_absolute_usage_only() {
-        // 50% is the bottom of the absolute ramp, so risk is zero there and
-        // rises to one at 100%.
         assert_eq!(
             smart_risk(50.0, None, SESSION_WINDOW_SECS, 10.0, at(0)),
             0.0
@@ -437,7 +403,6 @@ mod tests {
 
     #[test]
     fn burning_exactly_on_pace_is_low_risk_but_double_pace_is_not() {
-        // Half the window elapsed: resets in 2.5h of a 5h window.
         let now = at(0);
         let resets = at((SESSION_WINDOW_SECS / 2.0) as i64);
         let on_pace = smart_risk(50.0, Some(resets), SESSION_WINDOW_SECS, 10.0, now);
@@ -457,8 +422,6 @@ mod tests {
 
     #[test]
     fn zone_hysteresis_holds_a_zone_until_the_falling_threshold() {
-        // 0.52 is above FALLING_WARNING (0.50) but below RISING_WARNING (0.55),
-        // so a warning stays a warning while a chill would not become one.
         assert_eq!(
             zone_for_risk(0.52, Some(PacingZone::Warning)),
             PacingZone::Warning
@@ -485,7 +448,6 @@ mod tests {
 
     #[test]
     fn pacing_delta_is_zero_when_usage_tracks_elapsed_time() {
-        // Half of a 5h window gone, half the quota used.
         let resets = at((SESSION_WINDOW_SECS / 2.0) as i64);
         let delta = pacing_delta(50.0, resets, SESSION_WINDOW_SECS, at(0));
         assert!(delta.abs() < 1e-9, "delta was {delta}");
@@ -513,7 +475,6 @@ mod tests {
         assert_eq!(budget_target(80.0, start, deadline, at(500)), 40.0);
         assert_eq!(budget_target(80.0, start, deadline, at(-100)), 0.0);
         assert_eq!(budget_target(80.0, start, deadline, at(2000)), 80.0);
-        // A collapsed window cannot be divided, so the cap is the answer.
         assert_eq!(budget_target(80.0, start, start, at(0)), 80.0);
     }
 
@@ -532,10 +493,8 @@ mod tests {
 
     #[test]
     fn daily_budget_rounds_up_to_whole_days_so_it_does_not_spike() {
-        // 36 hours left rounds to two days, so half the remainder per day.
         let remaining = daily_budget(40.0, 80.0, at(36 * 3600), at(0));
         assert!((remaining - 20.0).abs() < 1e-9, "got {remaining}");
-        // Never divides by less than one day.
         let last_hour = daily_budget(40.0, 80.0, at(600), at(0));
         assert!((last_hour - 40.0).abs() < 1e-9, "got {last_hour}");
     }

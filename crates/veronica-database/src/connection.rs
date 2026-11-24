@@ -1,16 +1,3 @@
-//! What Veronica stores about a database it can reach.
-//!
-//! A port of Edith's `ConnectionDefinition.swift`, including the parts that
-//! look like ceremony and are not: every bounded value refuses out-of-range
-//! input at construction, so a port of 0 or a timeout of a fortnight cannot be
-//! stored and then surprise somebody later.
-//!
-//! **No secret is in here.** Passwords, tokens and private keys live in the
-//! secret store and are referenced by identifier, so a definition can be
-//! printed, logged, exported and synced without leaking anything. That is
-//! Edith's rule and it is the reason this type exists separately from a
-//! connection string.
-
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -18,8 +5,6 @@ use crate::product::Product;
 
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// Where a database sits in your life, which decides how careful Veronica is
-/// with it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum EnvironmentKind {
@@ -60,15 +45,12 @@ impl EnvironmentKind {
     }
 }
 
-/// How much friction to put in front of a change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum EnvironmentProtection {
     #[default]
     Standard,
-    /// Every mutation needs the strongest confirmation text.
     ConfirmationRequired,
-    /// No mutation is allowed at all.
     ReadOnly,
 }
 
@@ -90,14 +72,8 @@ impl Default for EnvironmentMetadata {
     }
 }
 
-/// Edith's bounded values. Each refuses out-of-range input at construction
-/// rather than clamping, because a port of 70000 is a mistake to report, not a
-/// number to round down.
 macro_rules! bounded {
     ($name:ident, $inner:ty, $inner_name:literal, $min:expr, $max:expr, $what:literal) => {
-        // `try_from`/`into` are what make the bound survive a hand-edited file:
-        // decoding goes through the constructor rather than around it. Serde
-        // needs the type as a string literal, which is why it is passed twice.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
         #[serde(try_from = $inner_name, into = $inner_name)]
         pub struct $name($inner);
@@ -187,7 +163,6 @@ pub struct SqliteLocation {
     pub access_mode: SqliteAccessMode,
 }
 
-/// How to reach it: over the network, as a file, or in memory.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Location {
@@ -197,7 +172,6 @@ pub enum Location {
 }
 
 impl Location {
-    /// The endpoint a client should dial first.
     pub fn primary_endpoint(&self) -> Option<&NetworkEndpoint> {
         match self {
             Location::Network { endpoints } => endpoints
@@ -208,7 +182,6 @@ impl Location {
         }
     }
 
-    /// A one-line description for a listing, with no secret in it.
     pub fn summary(&self) -> String {
         match self {
             Location::Network { endpoints } => match self.primary_endpoint() {
@@ -296,8 +269,6 @@ impl SecretPurpose {
     }
 }
 
-/// A pointer to a secret, never the secret. This is what makes a definition
-/// safe to print.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretReference {
@@ -311,8 +282,6 @@ pub struct Authentication {
     pub kind: AuthenticationKind,
     #[serde(default)]
     pub secret_references: Vec<SecretReference>,
-    /// Where the credential came from, e.g. an environment variable's name.
-    /// Never its value.
     pub source: Option<String>,
 }
 
@@ -324,8 +293,6 @@ impl Authentication {
             .copied()
     }
 
-    /// Whether a credential has been configured. The only thing a report may
-    /// say about authentication beyond its kind.
     pub fn is_configured(&self) -> bool {
         self.kind != AuthenticationKind::None && !self.secret_references.is_empty()
     }
@@ -355,7 +322,6 @@ pub struct TlsConfiguration {
     pub mode: TlsMode,
     pub verification: TlsVerification,
     pub server_name: Option<String>,
-    /// A path, not the certificate. Same rule as secrets.
     pub certificate_authority_path: Option<String>,
     pub client_certificate_path: Option<String>,
     pub client_private_key: Option<SecretReference>,
@@ -383,19 +349,15 @@ impl Default for ConnectionLimits {
     }
 }
 
-/// Whether Veronica should refuse to write at all.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ReadOnlyPolicy {
     #[default]
     Disabled,
-    /// Read-only where the product supports it, but writes are not refused.
     Preferred,
-    /// No write reaches the server.
     Required,
 }
 
-/// The extra care a production database gets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ProductionPolicy {
@@ -405,13 +367,9 @@ pub enum ProductionPolicy {
     ProhibitMutations,
 }
 
-/// A tunnel through one of Veronica's machines, so a database that is only
-/// reachable from a jump host still is.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TunnelDefinition {
-    /// A machine id from `vr machines ls`, so the user's own SSH config, keys
-    /// and jump hosts apply and Veronica never handles a credential.
     pub machine_identifier: String,
     pub remote_endpoint: NetworkEndpoint,
     #[serde(default = "loopback")]
@@ -438,7 +396,6 @@ pub struct ConnectionIdentity {
     pub environment: EnvironmentMetadata,
 }
 
-/// One saved connection. No secret, ever.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDefinition {
@@ -492,10 +449,6 @@ impl ConnectionDefinition {
         }
     }
 
-    /// Why a mutation is refused outright, before anything is previewed.
-    ///
-    /// Three separate switches say no, and the report names which one, because
-    /// "not allowed" without a reason leaves the user hunting through settings.
     pub fn mutation_prohibition(&self) -> Option<Prohibition> {
         if self.read_only_policy == ReadOnlyPolicy::Required {
             return Some(Prohibition::ConnectionReadOnly);
@@ -509,7 +462,6 @@ impl ConnectionDefinition {
         None
     }
 
-    /// A short line for a listing.
     pub fn summary(&self) -> String {
         format!(
             "{} · {} · {}",
@@ -583,7 +535,6 @@ mod tests {
 
     #[test]
     fn a_bounded_value_refuses_out_of_range_input_rather_than_clamping() {
-        // A port of 70000 is a mistake to report, not a number to round down.
         assert!(Port::new(0).is_err());
         assert!(Port::new(65_535).is_ok());
         assert!(TimeoutMillis::new(50).is_err());
@@ -602,7 +553,6 @@ mod tests {
 
     #[test]
     fn an_out_of_range_value_in_a_stored_file_fails_to_decode() {
-        // Otherwise a hand-edited definition would smuggle one past the bound.
         assert!(serde_json::from_str::<Port>("0").is_err());
         assert!(serde_json::from_str::<Port>("443").is_ok());
         assert!(serde_json::from_str::<TimeoutMillis>("1").is_err());
@@ -618,7 +568,6 @@ mod tests {
 
     #[test]
     fn a_definition_never_carries_a_secret() {
-        // This is the whole reason the type exists rather than a URL string.
         let mut connection = definition();
         connection.authentication = Authentication {
             kind: AuthenticationKind::UsernameAndPassword,
@@ -630,7 +579,6 @@ mod tests {
         };
         let json = serde_json::to_string(&connection).unwrap();
         assert!(!json.contains("password\":\"") || !json.contains("hunter2"));
-        // What it does carry is a pointer and the fact that one is configured.
         assert!(connection.authentication.is_configured());
         assert!(connection
             .authentication
@@ -670,7 +618,6 @@ mod tests {
 
     #[test]
     fn preferred_read_only_does_not_refuse_a_write() {
-        // Only `required` is a refusal; `preferred` is a hint to the driver.
         let mut connection = definition();
         connection.read_only_policy = ReadOnlyPolicy::Preferred;
         assert_eq!(connection.mutation_prohibition(), None);

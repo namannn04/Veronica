@@ -1,17 +1,3 @@
-//! Where Veronica keeps what it knows about your databases.
-//!
-//! Edith stores this in SQLite, and so does Veronica — which is the answer to
-//! "does Edith use a database itself": yes, one, for this feature's own
-//! bookkeeping. Saved connections, saved queries, the operation history and the
-//! confirmation receipts all live in one file under the state directory.
-//!
-//! **No secret is in this file.** Definitions carry references; the values are
-//! in the keyring. The file is still written 0600, because knowing which hosts
-//! and databases somebody connects to is worth something on its own.
-//!
-//! The schema is versioned and migrated forward on open. A file from a newer
-//! build is refused rather than read with the wrong assumptions.
-
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -22,15 +8,12 @@ use uuid::Uuid;
 use crate::connection::ConnectionDefinition;
 use crate::guard::{Receipt, ReceiptStore};
 
-/// Bumped whenever the schema changes. A file from a newer build is refused.
 pub const SCHEMA_VERSION: i64 = 1;
 
-/// Nothing unbounded, so one runaway page cannot fill the disk with history.
 pub const MAX_OPERATIONS: usize = 5_000;
 pub const MAX_SAVED_QUERIES: usize = 2_000;
 pub const MAX_QUERY_BYTES: usize = 256 * 1024;
 
-/// A query somebody kept.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SavedQuery {
@@ -42,14 +25,11 @@ pub struct SavedQuery {
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
-/// What happened, so a mutation is not a thing that occurs invisibly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum OperationOutcome {
     Succeeded,
     Failed,
-    /// Previewed and never applied. Worth recording: it says somebody looked at
-    /// dropping a table and thought better of it.
     Abandoned,
 }
 
@@ -59,9 +39,7 @@ pub struct OperationRecord {
     pub id: Uuid,
     pub connection_id: Uuid,
     pub connection_name: String,
-    /// `query`, `browse`, `mutation` — what kind of thing this was.
     pub kind: String,
-    /// The redacted summary. Never a parameter value.
     pub summary: String,
     pub outcome: OperationOutcome,
     pub affected_records: Option<u64>,
@@ -70,7 +48,6 @@ pub struct OperationRecord {
     pub at: chrono::DateTime<chrono::Utc>,
 }
 
-/// The metadata store.
 pub struct MetadataStore {
     connection: Sqlite,
     path: PathBuf,
@@ -85,7 +62,6 @@ impl std::fmt::Debug for MetadataStore {
 }
 
 impl MetadataStore {
-    /// Open, creating and migrating as needed.
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref().to_path_buf();
         if let Some(parent) = path.parent() {
@@ -95,9 +71,6 @@ impl MetadataStore {
         let connection =
             Sqlite::open(&path).with_context(|| format!("cannot open {}", path.display()))?;
 
-        // Write-ahead logging so a reader — the CLI — does not block the app
-        // mid-write, and foreign keys so a saved query cannot outlive its
-        // connection.
         connection.pragma_update(None, "journal_mode", "WAL")?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
 
@@ -107,7 +80,6 @@ impl MetadataStore {
         Ok(store)
     }
 
-    /// In memory, for tests and for a dry run.
     pub fn in_memory() -> Result<Self> {
         let connection = Sqlite::open_in_memory()?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
@@ -121,8 +93,6 @@ impl MetadataStore {
 
     fn restrict_permissions(&self) -> Result<()> {
         use std::os::unix::fs::PermissionsExt;
-        // Which hosts and databases somebody connects to is worth something on
-        // its own, even with no password in the file.
         for suffix in ["", "-wal", "-shm"] {
             let path = PathBuf::from(format!("{}{suffix}", self.path.display()));
             if path.exists() {
@@ -197,8 +167,6 @@ impl MetadataStore {
         Ok(())
     }
 
-    // ---------------------------------------------------------- connections
-
     pub fn save_connection(&self, connection: &ConnectionDefinition) -> Result<()> {
         self.connection.execute(
             "INSERT INTO connections (id, display_name, product, environment, definition, updated_at)
@@ -228,8 +196,6 @@ impl MetadataStore {
         let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
         let mut connections = Vec::new();
         for row in rows {
-            // One unreadable row — written by a newer build, or edited by hand
-            // — must not lose the others.
             match serde_json::from_str(&row?) {
                 Ok(definition) => connections.push(definition),
                 Err(error) => tracing::warn!("skipping an unreadable connection: {error}"),
@@ -250,11 +216,6 @@ impl MetadataStore {
         Ok(row.map(|json| serde_json::from_str(&json)).transpose()?)
     }
 
-    /// Find one by id, or by a unique prefix of its id, or by its name.
-    ///
-    /// Typing a full UUID is not something anybody does willingly. An ambiguous
-    /// prefix is an error rather than a guess: picking one of two production
-    /// databases at random is not a thing to do.
     pub fn resolve(&self, needle: &str) -> Result<ConnectionDefinition> {
         let needle = needle.trim();
         if let Ok(id) = Uuid::parse_str(needle) {
@@ -294,8 +255,6 @@ impl MetadataStore {
         )?;
         Ok(removed > 0)
     }
-
-    // -------------------------------------------------------- saved queries
 
     pub fn save_query(&self, query: &SavedQuery) -> Result<()> {
         if query.text.len() > MAX_QUERY_BYTES {
@@ -376,8 +335,6 @@ impl MetadataStore {
         )? > 0)
     }
 
-    // ------------------------------------------------------------ operations
-
     pub fn record_operation(&self, record: &OperationRecord) -> Result<()> {
         self.connection.execute(
             "INSERT INTO operations
@@ -397,7 +354,6 @@ impl MetadataStore {
                 record.at.to_rfc3339(),
             ],
         )?;
-        // Bounded, so history cannot fill the disk. Oldest first out.
         self.connection.execute(
             "DELETE FROM operations WHERE id NOT IN
                 (SELECT id FROM operations ORDER BY at DESC LIMIT ?1)",
@@ -437,9 +393,6 @@ fn parse_time(raw: &str) -> chrono::DateTime<chrono::Utc> {
         .unwrap_or_else(|_| chrono::DateTime::UNIX_EPOCH)
 }
 
-/// The store is where single-use is enforced: deleting the row is what spends
-/// the token, and SQLite's own atomicity is what makes it exactly once even
-/// with the app and the CLI both running.
 impl ReceiptStore for MetadataStore {
     fn register(&mut self, receipt: Receipt) -> Result<()> {
         let inserted = self.connection.execute(
@@ -458,8 +411,6 @@ impl ReceiptStore for MetadataStore {
     }
 
     fn consume(&mut self, identifier: Uuid) -> Result<Option<Receipt>> {
-        // `DELETE ... RETURNING` so the read and the removal are one statement
-        // and two processes cannot both spend the same token.
         let receipt = self
             .connection
             .query_row(
@@ -587,7 +538,6 @@ mod tests {
 
     #[test]
     fn an_ambiguous_name_is_an_error_rather_than_a_guess() {
-        // Picking one of two production databases at random is not a thing to do.
         let store = store();
         let mut first = definition("App", Product::Postgresql);
         first.id = Uuid::parse_str("aaaaaaaa-0000-0000-0000-000000000001").unwrap();
@@ -681,7 +631,6 @@ mod tests {
 
     #[test]
     fn an_abandoned_preview_is_recorded_too() {
-        // It says somebody looked at dropping a table and thought better of it.
         let store = store();
         store
             .record_operation(&OperationRecord {
@@ -788,7 +737,6 @@ mod tests {
     #[test]
     fn the_file_is_not_readable_by_anyone_else() {
         use std::os::unix::fs::PermissionsExt;
-        // Which hosts somebody connects to is worth something on its own.
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("db.sqlite");
         let store = MetadataStore::open(&path).unwrap();

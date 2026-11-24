@@ -1,10 +1,3 @@
-//! Claude rate limits.
-//!
-//! The figures come from the provider's own usage endpoint, using the OAuth
-//! token Claude Code already holds. Nothing is proxied: the request goes from
-//! this machine straight to Anthropic, which is the same arrangement Edith
-//! describes, and no usage data is sent anywhere.
-
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -13,27 +6,20 @@ use serde_json::Value;
 use crate::credentials::{Credentials, RefreshResponse};
 use crate::limits::LimitWindow;
 
-/// Where the limits come from.
 pub const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
-/// Where an expired access token is exchanged for a fresh one.
 pub const TOKEN_URL: &str = "https://platform.claude.com/v1/oauth/token";
-/// Claude Code's public OAuth client identifier.
 pub const CLIENT_ID: &str = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-/// The beta header the usage endpoint requires.
 pub const OAUTH_BETA: &str = "oauth-2025-04-20";
 
 const REQUEST_TIMEOUT_SECS: u64 = 20;
 
-/// A window that applies to particular models rather than the whole account.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScopedWindow {
-    /// What to call it, e.g. "Opus".
     pub label: String,
     pub window: LimitWindow,
 }
 
-/// Extra usage bought beyond the plan's included allowance.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtraUsage {
@@ -43,15 +29,11 @@ pub struct ExtraUsage {
     pub currency: Option<String>,
 }
 
-/// Everything the usage endpoint reported.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaudeLimits {
-    /// The five-hour rolling window.
     pub session: Option<LimitWindow>,
-    /// The seven-day window.
     pub week: Option<LimitWindow>,
-    /// Model-scoped weekly windows, when the account has any.
     pub scoped: Vec<ScopedWindow>,
     pub extra_usage: Option<ExtraUsage>,
 }
@@ -62,10 +44,8 @@ impl ClaudeLimits {
     }
 }
 
-/// Read one window object.
 fn window(value: &Value) -> Option<LimitWindow> {
     let object = value.as_object()?;
-    // Older responses call it `percent`, current ones `utilization`.
     let percent = object
         .get("utilization")
         .or_else(|| object.get("percent"))
@@ -83,7 +63,6 @@ fn parse_time(value: &Value) -> Option<DateTime<Utc>> {
         .map(|time| time.with_timezone(&Utc))
 }
 
-/// Turn a response key like `seven_day_opus` into a label like "Opus".
 pub fn scoped_label(key: &str) -> String {
     let suffix = key.trim_start_matches("seven_day_");
     suffix
@@ -100,12 +79,6 @@ pub fn scoped_label(key: &str) -> String {
         .join(" ")
 }
 
-/// Parse the usage endpoint's answer.
-///
-/// Two response shapes exist and both are handled: an older one carrying a
-/// `limits` array of scoped windows, and the current one where each scoped
-/// window is its own `seven_day_*` key. Keys whose value is null are simply
-/// windows this account does not have.
 pub fn parse_limits(body: &Value) -> ClaudeLimits {
     let mut limits = ClaudeLimits {
         session: body.get("five_hour").and_then(window),
@@ -113,7 +86,6 @@ pub fn parse_limits(body: &Value) -> ClaudeLimits {
         ..Default::default()
     };
 
-    // Current shape: seven_day_<something> keys alongside the main windows.
     if let Some(object) = body.as_object() {
         for (key, value) in object {
             if key == "seven_day" || !key.starts_with("seven_day_") {
@@ -128,7 +100,6 @@ pub fn parse_limits(body: &Value) -> ClaudeLimits {
         }
     }
 
-    // Older shape: an array of scoped limits.
     if let Some(entries) = body.get("limits").and_then(Value::as_array) {
         for entry in entries {
             if entry.get("kind").and_then(Value::as_str) != Some("weekly_scoped") {
@@ -151,7 +122,6 @@ pub fn parse_limits(body: &Value) -> ClaudeLimits {
         }
     }
 
-    // Stable order regardless of the map's iteration order.
     limits.scoped.sort_by(|a, b| a.label.cmp(&b.label));
 
     limits.extra_usage = body.get("extra_usage").and_then(|value| {
@@ -181,7 +151,6 @@ fn client() -> Result<reqwest::Client> {
         .context("cannot build an HTTPS client")
 }
 
-/// Exchange a refresh token for a fresh access token.
 pub async fn refresh_token(refresh_token: &str) -> Result<RefreshResponse> {
     let response = client()?
         .post(TOKEN_URL)
@@ -211,12 +180,9 @@ pub async fn refresh_token(refresh_token: &str) -> Result<RefreshResponse> {
         .context("the token endpoint returned an unexpected document")
 }
 
-/// Fetch the limits for an access token.
 pub async fn fetch_limits(access_token: &str) -> Result<ClaudeLimits> {
     let response = client()?
         .get(USAGE_URL)
-        // The token travels as a header, never as a process argument: /proc
-        // makes argument lists readable to other processes.
         .bearer_auth(access_token)
         .header("anthropic-beta", OAUTH_BETA)
         .send()
@@ -241,14 +207,8 @@ pub async fn fetch_limits(access_token: &str) -> Result<ClaudeLimits> {
     Ok(parse_limits(&body))
 }
 
-/// Held while an expired token is being refreshed.
 static REFRESHING: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-/// Read the credentials, refreshing and saving if the token has expired, then
-/// fetch the limits.
-///
-/// Returns `None` when there are no credentials at all, which means Claude Code
-/// is not signed in on this machine — a normal state, not a failure.
 pub async fn limits_for_user(now: DateTime<Utc>) -> Result<Option<ClaudeLimits>> {
     let Some(path) = Credentials::default_path() else {
         return Ok(None);
@@ -260,12 +220,6 @@ pub async fn limits_for_user(now: DateTime<Utc>) -> Result<Option<ClaudeLimits>>
     let mut access_token = credentials.access_token.clone();
 
     if credentials.needs_refresh(now) {
-        // Home, the rate-limit rings and the alerts poll can all arrive here
-        // at once. A provider that rotates refresh tokens accepts each one
-        // only once, so two concurrent refreshes leave one caller with a token
-        // already spent, and whichever saves last can keep the dead one. One
-        // refresh at a time, and a waiter reads again: by then another caller
-        // has usually done the work.
         let _refreshing = REFRESHING.lock().await;
         let Some(credentials) = Credentials::read(&path)? else {
             return Ok(None);
@@ -278,8 +232,6 @@ pub async fn limits_for_user(now: DateTime<Utc>) -> Result<Option<ClaudeLimits>>
             Some(refresh) => {
                 let response = refresh_token(refresh).await?;
                 access_token = response.access_token.clone();
-                // Persisted because the provider may rotate the refresh token:
-                // dropping a rotated one would invalidate the user's login.
                 crate::credentials::ensure_owner_only(&path)?;
                 Credentials::persist(&path, &credentials.applied(&response, now))?;
                 tracing::debug!("refreshed the Claude access token");
@@ -297,7 +249,6 @@ pub async fn limits_for_user(now: DateTime<Utc>) -> Result<Option<ClaudeLimits>>
 mod tests {
     use super::*;
 
-    /// The live response from this machine, values as returned.
     const CURRENT_SHAPE: &str = r#"{
       "five_hour": {
         "utilization": 81.0,
@@ -319,7 +270,6 @@ mod tests {
       }
     }"#;
 
-    /// The shape carrying a scoped-limits array.
     const ARRAY_SHAPE: &str = r#"{
       "five_hour": {"utilization": 10.0, "resets_at": "2026-08-20T18:00:00Z"},
       "seven_day": {"utilization": 20.0, "resets_at": "2026-08-25T18:00:00Z"},
@@ -342,8 +292,6 @@ mod tests {
 
     #[test]
     fn null_scoped_windows_are_absent_rather_than_zero() {
-        // seven_day_opus is null: the account has no such window, which is very
-        // different from having one that is at 0%.
         let limits = parse_limits(&serde_json::from_str(CURRENT_SHAPE).unwrap());
         assert!(
             limits.scoped.is_empty(),
@@ -414,7 +362,6 @@ mod tests {
 
     #[test]
     fn scoped_labels_read_as_words() {
-        // Only ever called for `seven_day_*` keys; the caller filters the rest.
         assert_eq!(scoped_label("seven_day_opus"), "Opus");
         assert_eq!(scoped_label("seven_day_oauth_apps"), "Oauth Apps");
         assert_eq!(scoped_label("seven_day_omelette"), "Omelette");

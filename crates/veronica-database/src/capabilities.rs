@@ -1,39 +1,19 @@
-//! What a given database can actually be asked to do.
-//!
-//! A port of Edith's capability report. The point is that the interface never
-//! offers an operation a product cannot perform: Redis has no schemas, SQLite
-//! has no roles, and a search index is not something you run a transaction
-//! against. Rather than scattering `if product == …` through every screen, one
-//! report answers it, derived from the product and — where it matters — the
-//! version the server actually reported.
-
 use serde::{Deserialize, Serialize};
 
 use crate::product::{Family, Product, ProductIdentity};
 
-/// One thing a client might want to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Capability {
-    /// List catalogs, schemas, tables — whatever the product's hierarchy is.
     BrowseObjects,
-    /// Read a bounded page of records.
     ReadRecords,
-    /// Run a statement the user wrote.
     RunQuery,
-    /// Insert, update or delete a record.
     MutateRecords,
-    /// Wrap a mutation in a transaction that can be rolled back.
     Transactions,
-    /// Count matching records before mutating them.
     CountBeforeMutation,
-    /// Describe an object's columns or fields.
     DescribeSchema,
-    /// Read the server's query plan.
     ExplainQuery,
-    /// List the sessions connected to the server.
     ListSessions,
-    /// A server-side notion of read-only for a session.
     SessionReadOnly,
 }
 
@@ -67,19 +47,12 @@ impl Capability {
     }
 }
 
-/// Whether a capability is there, and if not, why not.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "camelCase")]
 pub enum State {
     Available,
-    /// The product cannot do this at all.
-    Unsupported {
-        reason: String,
-    },
-    /// The product could, but this server or this version cannot.
-    Unavailable {
-        reason: String,
-    },
+    Unsupported { reason: String },
+    Unavailable { reason: String },
 }
 
 impl State {
@@ -100,8 +73,6 @@ pub struct Report {
     pub product: Product,
     pub family: Family,
     pub states: std::collections::BTreeMap<Capability, State>,
-    /// The hierarchy this product's objects live in, outermost first. What the
-    /// browser's breadcrumb is built from.
     pub object_hierarchy: Vec<String>,
 }
 
@@ -118,13 +89,10 @@ impl Report {
         self.state(capability).is_available()
     }
 
-    /// Derive the report from a product, before a server has been reached.
     pub fn for_product(product: Product) -> Self {
         Self::resolve(product, None)
     }
 
-    /// Derive it from what the server turned out to be, which can narrow it —
-    /// an old server may not have a feature its product generally has.
     pub fn for_identity(identity: &ProductIdentity) -> Self {
         Self::resolve(identity.product, Some(identity))
     }
@@ -137,8 +105,6 @@ impl Report {
             states.insert(capability, state);
         };
 
-        // Every product can be browsed and read; that is what makes it a
-        // database rather than a socket.
         set(BrowseObjects, State::Available);
         set(ReadRecords, State::Available);
         set(RunQuery, State::Available);
@@ -153,9 +119,6 @@ impl Report {
                 Product::MongoDb => match identity.and_then(|identity| {
                     identity.version.as_ref().and_then(|version| version.major)
                 }) {
-                    // MongoDB gained multi-document transactions in 4.0, and
-                    // only on a replica set — a standalone server refuses them
-                    // however new it is.
                     Some(major) if major >= 4 => {
                         match identity.map(|identity| identity.topology.kind) {
                             Some(crate::product::TopologyKind::ReplicaSet)
@@ -273,7 +236,6 @@ impl Report {
     }
 }
 
-/// What an object path means for this product, outermost first.
 pub fn hierarchy(product: Product) -> Vec<String> {
     match product {
         Product::Postgresql => vec!["database".into(), "schema".into(), "table".into()],
@@ -307,7 +269,6 @@ mod tests {
 
     #[test]
     fn a_capability_a_product_cannot_do_says_why() {
-        // "Unavailable" with no reason leaves the user hunting.
         for product in Product::ALL {
             let report = Report::for_product(product);
             for capability in Capability::ALL {
@@ -329,7 +290,6 @@ mod tests {
         let report = Report::for_product(Product::Redis);
         assert!(!report.supports(Capability::DescribeSchema));
         assert!(!report.supports(Capability::Transactions));
-        // But it can still be browsed, read and changed.
         assert!(report.supports(Capability::BrowseObjects));
         assert!(report.supports(Capability::MutateRecords));
     }
@@ -343,7 +303,6 @@ mod tests {
 
     #[test]
     fn mongodb_transactions_depend_on_the_version_and_the_topology() {
-        // 4.0 brought them, and only on a replica set.
         let standalone = ProductIdentity {
             version: Some(Version::parse("7.0.5")),
             topology: Topology {
@@ -377,7 +336,6 @@ mod tests {
 
     #[test]
     fn an_unreached_server_is_given_the_benefit_of_the_doubt() {
-        // Before connecting, the product's general answer is the honest one.
         assert!(Report::for_product(Product::MongoDb).supports(Capability::Transactions));
     }
 
