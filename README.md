@@ -73,6 +73,18 @@ key as the Flatpak repository (fingerprint
 `91E3 2AE6 B669 8439 7E12 094F A5CE BD75 B2D1 5EB7`). Remove it with
 `sudo rm /etc/apt/sources.list.d/veronica.list /etc/apt/keyrings/veronica.gpg`.
 
+### Ubuntu PPA
+
+```bash
+sudo add-apt-repository ppa:namannn04/veronica
+sudo apt install veronica
+```
+
+Launchpad builds Veronica from source for Ubuntu 24.04 and 26.04, and upgrades
+arrive through `apt upgrade`. The package is the same as the Debian package:
+the app, `vr`, the GNOME Shell extension, the desktop entry and the AppStream
+metadata.
+
 ### Snap
 
 ```bash
