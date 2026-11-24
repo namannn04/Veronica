@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
 import { ScanSearch, Trash2 } from "lucide-react";
-
-import { ipc } from "../lib/ipc";
+import { useCallback, useEffect, useState } from "react";
 import { bytes } from "../lib/format";
+import { ipc } from "../lib/ipc";
 import type { CleanerCategory, CleanerScan } from "../lib/types";
-import { Button, Card, Checkbox, ConfirmDialog, EmptyState, Notice, Section, SkeletonRows, Toolbar } from "../ui";
+import {
+  Button,
+  Card,
+  Checkbox,
+  ConfirmDialog,
+  EmptyState,
+  Notice,
+  Section,
+  SkeletonRows,
+  Toolbar,
+} from "../ui";
 import "./CleanerPane.css";
 
 const STROKE = 1.75;
@@ -38,31 +47,50 @@ export function CleanerPane() {
   useEffect(loadCategories, [loadCategories]);
 
   const measure = useCallback(async (ids: Set<string>) => {
-    setBusy("scan"); setError(""); setNotice("");
-    try { setScan(await ipc.cleanerScan([...ids])); }
-    catch (reason) { setError(String(reason)); }
-    finally { setBusy(""); }
+    setBusy("scan");
+    setError("");
+    setNotice("");
+    try {
+      setScan(await ipc.cleanerScan([...ids]));
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy("");
+    }
   }, []);
 
   const toggle = (id: string) => {
     const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     setSelected(next);
     setScan(null);
   };
 
   const clean = async () => {
-    if (!scan || scan.items.length === 0) return;
-    setBusy("clean"); setError("");
+    if (!scan || scan.items.length === 0) {
+      return;
+    }
+    setBusy("clean");
+    setError("");
     try {
       const report = await ipc.cleanerClean(scan.items);
-      setNotice(`Moved ${items(report.trashed.length)} to the Trash, ${bytes(report.bytesReclaimed)}. Empty the Trash to actually free the space.`);
+      setNotice(
+        `Moved ${items(report.trashed.length)} to the Trash, ${bytes(report.bytesReclaimed)}. Empty the Trash to actually free the space.`,
+      );
       if (report.failed.length > 0) {
         setError(report.failed.map(([path, why]) => `${path}: ${why}`).join("\n"));
       }
       setScan(null);
-    } catch (reason) { setError(String(reason)); }
-    finally { setBusy(""); setConfirming(false); }
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy("");
+      setConfirming(false);
+    }
   };
 
   const summary = scan
@@ -77,19 +105,35 @@ export function CleanerPane() {
       description="Cleaning moves what the scan found to the Trash, so it stays recoverable from Files."
     >
       {categoriesError ? (
-        <Notice tone="critical" title="Cache categories could not be read" actions={<Button size="small" onClick={loadCategories}>Retry</Button>}>
+        <Notice
+          tone="critical"
+          title="Cache categories could not be read"
+          actions={
+            <Button size="small" onClick={loadCategories}>
+              Retry
+            </Button>
+          }
+        >
           {categoriesError}
         </Notice>
       ) : (
         <Card padding="none">
           {categories === null ? (
-            <div className="clean-pad"><SkeletonRows rows={4} label="Reading cache categories" /></div>
+            <div className="clean-pad">
+              <SkeletonRows rows={4} label="Reading cache categories" />
+            </div>
           ) : categories.length === 0 ? (
-            <EmptyState size="compact" title="No caches to clean">This system reports no developer caches Veronica knows how to sweep.</EmptyState>
+            <EmptyState size="compact" title="No caches to clean">
+              This system reports no developer caches Veronica knows how to sweep.
+            </EmptyState>
           ) : (
-            <div className="clean-list" role="list" aria-label="Cache categories">
+            <ul className="clean-list" aria-label="Cache categories">
               {categories.map((entry) => (
-                <div className="clean-row" role="listitem" key={entry.id} data-checked={selected.has(entry.id) || undefined}>
+                <li
+                  className="clean-row"
+                  key={entry.id}
+                  data-checked={selected.has(entry.id) || undefined}
+                >
                   <Checkbox
                     checked={selected.has(entry.id)}
                     onChange={() => toggle(entry.id)}
@@ -99,9 +143,9 @@ export function CleanerPane() {
                   {scan?.totals[entry.id] !== undefined && (
                     <span className="clean-size ui-num">{bytes(scan.totals[entry.id])}</span>
                   )}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
           {categories !== null && categories.length > 0 && (
             <div className="clean-footer">
@@ -133,12 +177,20 @@ export function CleanerPane() {
         </Card>
       )}
 
-      {error && <Notice tone="critical" title="Some items could not be cleaned"><span className="clean-error">{error}</span></Notice>}
+      {error && (
+        <Notice tone="critical" title="Some items could not be cleaned">
+          <span className="clean-error">{error}</span>
+        </Notice>
+      )}
       {notice && <Notice tone="good">{notice}</Notice>}
 
       <ConfirmDialog
         open={confirming}
-        onClose={() => { if (busy !== "clean") setConfirming(false); }}
+        onClose={() => {
+          if (busy !== "clean") {
+            setConfirming(false);
+          }
+        }}
         onConfirm={() => void clean()}
         title={scan ? `Move ${items(scan.items.length)} to the Trash?` : "Move to the Trash?"}
         message={`${scan ? bytes(scan.totalBytes) : "Nothing"} goes to the Trash. Nothing is deleted in place, so it stays recoverable from Files, but the Trash keeps occupying the disk until you empty it.`}

@@ -1,9 +1,8 @@
 import { ExternalLink } from "lucide-react";
-
+import veronicaLogo from "../assets/veronica-logo.png";
 import { ipc } from "../lib/ipc";
 import type { Diagnostics } from "../lib/types";
 import { Button, ButtonGroup, Card, KeyValueList, Page, Skeleton } from "../ui";
-import veronicaLogo from "../assets/veronica-logo.png";
 import "./About.css";
 
 const SOURCE_URL = "https://github.com/namannn04/veronica";
@@ -20,7 +19,14 @@ export function AboutPage({ diagnostics }: { diagnostics: Diagnostics | null }) 
         <KeyValueList
           className="about-facts"
           items={[
-            { label: "Version", value: diagnostics ? <span className="ui-num">{diagnostics.version}</span> : <Skeleton width={56} height={10} /> },
+            {
+              label: "Version",
+              value: diagnostics ? (
+                <span className="ui-num">{diagnostics.version}</span>
+              ) : (
+                <Skeleton width={56} height={10} />
+              ),
+            },
             { label: "Platform", value: "Ubuntu and GNOME" },
             { label: "License", value: "GNU GPL v3" },
             { label: "Built with", value: "Rust, Tauri and React" },
@@ -30,7 +36,10 @@ export function AboutPage({ diagnostics }: { diagnostics: Diagnostics | null }) 
           <Button icon={<ExternalLink />} onClick={() => void ipc.openExternal(SOURCE_URL)}>
             View source
           </Button>
-          <Button variant="plain" onClick={() => void ipc.openExternal(`${SOURCE_URL}/blob/main/LICENSE`)}>
+          <Button
+            variant="plain"
+            onClick={() => void ipc.openExternal(`${SOURCE_URL}/blob/main/LICENSE`)}
+          >
             Read the license
           </Button>
         </ButtonGroup>

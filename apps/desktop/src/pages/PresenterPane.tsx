@@ -92,10 +92,17 @@ export function PresenterPane() {
         </Notice>
       )}
 
-      <FormGroup title="Presenter" description="Blurs spend, token counts, rate limits, calendar entries and track names, while navigation and controls stay usable.">
+      <FormGroup
+        title="Presenter"
+        description="Blurs spend, token counts, rate limits, calendar entries and track names, while navigation and controls stay usable."
+      >
         <SwitchRow
           label="Enable presenter mode"
-          description={enabled ? "Available from here, the Home page's quick actions and the top bar." : "Off means nothing is blurred and no screen-share detection runs."}
+          description={
+            enabled
+              ? "Available from here, the Home page's quick actions and the top bar."
+              : "Off means nothing is blurred and no screen-share detection runs."
+          }
           checked={enabled}
           onChange={(value) => void act(value ? "enable" : "disable")}
         />
@@ -104,7 +111,12 @@ export function PresenterPane() {
       {enabled && (
         <>
           <FormGroup title="Turn it on" description="By hand, or when a screen share starts.">
-            <SwitchRow label="Blur now" description="Your own switch, independent of detection." checked={manual} onChange={(value) => void act(value ? "start" : "stop")} />
+            <SwitchRow
+              label="Blur now"
+              description="Your own switch, independent of detection."
+              checked={manual}
+              onChange={(value) => void act(value ? "start" : "stop")}
+            />
             <SwitchRow
               label="Detect screen sharing"
               description={
@@ -119,14 +131,20 @@ export function PresenterPane() {
               label="What detection sees"
               description={
                 share.unavailable ??
-                (share.sharing ? `${share.screencastSessions} screencast, ${share.remoteSessions} remote` : "Nothing is capturing the screen.")
+                (share.sharing
+                  ? `${share.screencastSessions} screencast, ${share.remoteSessions} remote`
+                  : "Nothing is capturing the screen.")
               }
               control={shareBadge}
             />
             {autoActive && (
               <FormRow
                 label="This share"
-                description={autoPaused ? "Dismissed. The next share will blur again." : "Dismiss to keep working unblurred until this share ends."}
+                description={
+                  autoPaused
+                    ? "Dismissed. The next share will blur again."
+                    : "Dismiss to keep working unblurred until this share ends."
+                }
                 control={
                   <Button size="small" onClick={() => void act(autoPaused ? "resume" : "dismiss")}>
                     {autoPaused ? "Blur again" : "Dismiss"}
@@ -136,13 +154,20 @@ export function PresenterPane() {
             )}
           </FormGroup>
 
-          <FormGroup title="What to blur" description="Reveal a category on purpose: a demo may want the calendar visible while spend stays hidden.">
+          <FormGroup
+            title="What to blur"
+            description="Reveal a category on purpose: a demo may want the calendar visible while spend stays hidden."
+          >
             {BLUR_CATEGORIES.map((category) => (
               <SwitchRow
                 key={category.id}
                 label={category.label}
                 description={
-                  view.blurredClasses.includes(category.css) ? "Blurred right now." : active ? "Visible right now." : "Blurred once presenter mode is on."
+                  view.blurredClasses.includes(category.css)
+                    ? "Blurred right now."
+                    : active
+                      ? "Visible right now."
+                      : "Blurred once presenter mode is on."
                 }
                 checked={view.categories.includes(category.id)}
                 onChange={(value) => void set(blurKey(category.id), value)}
