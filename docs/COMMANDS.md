@@ -51,7 +51,6 @@ vr maintenance remove <pkg>  what removing it would take with it
 vr database connections      your saved databases; add takes a password on stdin
 vr database query <c> "…"    run a statement that reads; a write is refused
 vr database mutations preview   what a change would do, and a one-shot token
-vr database mcp              two read-only tools for an agent, over stdio
 vr cleaner scan              what could be reclaimed, per category
 vr cleaner clean --yes       move it to the Trash; --root sweeps a project tree
 vr backup export             back up settings and persistent app data
@@ -60,7 +59,7 @@ vr backup import <file> --yes  validate and restore an archive atomically
 vr extensions                every extension, where it came from, and what it can run
 vr extensions install <id>   preview an install; --yes downloads, verifies and installs
 vr extensions doctor         exec permission, backends, tools and the catalog
-vr mcp                       every command as an MCP tool, over stdio
+vr mcp                       every command as an MCP tool, plus the read-only database tools
 vr tools                     the command line programs the extensions need
 vr tools install <tool>      fetch one, when there is a route Veronica can drive
 vr config set <key> <value>  every setting the UI exposes
