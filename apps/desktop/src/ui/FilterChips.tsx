@@ -20,8 +20,13 @@ export function FilterChips<T extends string>({
   label: string;
 }) {
   return (
-    <div className="ui-filter-chips" role="group" aria-label={label}>
-      <button type="button" className="ui-filter-chip" aria-pressed={selected.length === 0} onClick={onClear}>
+    <fieldset className="ui-filter-chips" aria-label={label}>
+      <button
+        type="button"
+        className="ui-filter-chip"
+        aria-pressed={selected.length === 0}
+        onClick={onClear}
+      >
         {allLabel}
       </button>
       {chips.map((chip) => (
@@ -36,6 +41,6 @@ export function FilterChips<T extends string>({
           {chip.label}
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }

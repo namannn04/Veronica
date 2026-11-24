@@ -1,7 +1,3 @@
-.models-table th.num .models-sort {
-  flex-direction: row-reverse;
-}
-
 .models-sort {
   display: inline-flex;
   align-items: center;
@@ -14,7 +10,9 @@
   color: inherit;
   font: inherit;
   white-space: nowrap;
-  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+  transition:
+    background-color var(--motion-feedback),
+    color var(--motion-feedback);
 }
 
 .models-sort:hover {
@@ -24,6 +22,10 @@
 
 .models-sort:active {
   background: var(--fill-pressed);
+}
+
+.models-table th.num .models-sort {
+  flex-direction: row-reverse;
 }
 
 .models-sort[data-active] {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 
 import "./Page.css";
 
@@ -22,14 +22,20 @@ export function Page({
 
   useEffect(() => {
     const node = sentinel.current;
-    if (!node) return;
+    if (!node) {
+      return;
+    }
     const observer = new IntersectionObserver(([entry]) => setScrolled(!entry.isIntersecting));
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div className={["ui-page", `ui-page-${width}`, fill && "ui-page-fill", className].filter(Boolean).join(" ")}>
+    <div
+      className={["ui-page", `ui-page-${width}`, fill && "ui-page-fill", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div ref={sentinel} className="ui-page-sentinel" aria-hidden="true" />
       {header && (
         <div className="ui-page-header-bar" data-scrolled={scrolled || undefined}>
@@ -121,7 +127,11 @@ export function Stack({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={["ui-stack", `ui-stack-${gap}`, className].filter(Boolean).join(" ")}>{children}</div>;
+  return (
+    <div className={["ui-stack", `ui-stack-${gap}`, className].filter(Boolean).join(" ")}>
+      {children}
+    </div>
+  );
 }
 
 export function Grid({
@@ -134,7 +144,10 @@ export function Grid({
   className?: string;
 }) {
   return (
-    <div className={["ui-grid", className].filter(Boolean).join(" ")} style={{ "--grid-min": `${min}px` } as CSSProperties}>
+    <div
+      className={["ui-grid", className].filter(Boolean).join(" ")}
+      style={{ "--grid-min": `${min}px` } as CSSProperties}
+    >
       {children}
     </div>
   );
@@ -149,5 +162,9 @@ export function Columns({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={["ui-columns", `ui-columns-${ratio}`, className].filter(Boolean).join(" ")}>{children}</div>;
+  return (
+    <div className={["ui-columns", `ui-columns-${ratio}`, className].filter(Boolean).join(" ")}>
+      {children}
+    </div>
+  );
 }

@@ -1,7 +1,7 @@
+import veronicaLogo from "../assets/veronica-logo.png";
 import { SearchIcon } from "../components/icons";
 import type { NavGroup, Route } from "../lib/navigation";
 import { Kbd } from "../ui";
-import veronicaLogo from "../assets/veronica-logo.png";
 
 export function Sidebar({
   groups,
@@ -32,7 +32,7 @@ export function Sidebar({
 
       <div className="shell-nav">
         {groups.map((group) => (
-          <div key={group.label} className="shell-nav-group" role="group" aria-label={group.label}>
+          <fieldset key={group.label} className="shell-nav-group" aria-label={group.label}>
             <div className="shell-nav-heading">{group.label}</div>
             {group.items.map((item) => (
               <button
@@ -46,7 +46,7 @@ export function Sidebar({
                 <span className="shell-nav-label">{item.label}</span>
               </button>
             ))}
-          </div>
+          </fieldset>
         ))}
       </div>
     </nav>

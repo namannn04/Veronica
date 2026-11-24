@@ -22,7 +22,15 @@ export function Toolbar({
   );
 }
 
-export function Table({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
+export function Table({
+  children,
+  className,
+  label,
+}: {
+  children: ReactNode;
+  className?: string;
+  label?: string;
+}) {
   return (
     <div className={["ui-table-wrap", className].filter(Boolean).join(" ")}>
       <table className="ui-table" aria-label={label}>

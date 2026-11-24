@@ -223,7 +223,12 @@
 .ui-skeleton {
   display: block;
   border-radius: var(--radius-xs);
-  background: linear-gradient(90deg, var(--fill-control) 25%, var(--fill-hover) 50%, var(--fill-control) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--fill-control) 25%,
+    var(--fill-hover) 50%,
+    var(--fill-control) 75%
+  );
   background-size: 300% 100%;
   animation: ui-shimmer 1600ms ease-in-out infinite;
 }

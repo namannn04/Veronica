@@ -1,9 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, PlugZap } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ipc } from "../lib/ipc";
-import { methodArguments, methodResult, type GraftDiscovery } from "../lib/workspace";
-import { Badge, Button, ButtonGroup, Card, CardHeader, EmptyState, Field, IconButton, Notice, Select, TextArea, TextField } from "../ui";
+import { type GraftDiscovery, methodArguments, methodResult } from "../lib/workspace";
+import {
+  Badge,
+  Button,
+  ButtonGroup,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  IconButton,
+  Notice,
+  Select,
+  TextArea,
+  TextField,
+} from "../ui";
 
 const ICON = { strokeWidth: 1.75 };
 
@@ -43,7 +56,9 @@ export function GraftPlayground() {
   };
 
   const execute = async (call: boolean) => {
-    if (running.current) return;
+    if (running.current) {
+      return;
+    }
     running.current = true;
     setBusy(true);
     setError("");
@@ -51,7 +66,9 @@ export function GraftPlayground() {
     try {
       const connection = { endpoint: endpoint.trim(), token };
       if (call) {
-        if (!pending) return;
+        if (!pending) {
+          return;
+        }
         setResult(undefined);
         const value = await ipc.graftCall(connection, name, pending, true);
         if (live.current) {
@@ -74,7 +91,9 @@ export function GraftPlayground() {
       }
     } finally {
       running.current = false;
-      if (live.current) setBusy(false);
+      if (live.current) {
+        setBusy(false);
+      }
     }
   };
 
@@ -90,13 +109,23 @@ export function GraftPlayground() {
 
   const tool = discovery?.tools.find((t) => t.name === name);
   const displayResult = useMemo(() => methodResult(result), [result]);
-  const failed = Boolean((result as { isError?: boolean } | null)?.isError || (displayResult as { error?: unknown } | null)?.error);
+  const failed = Boolean(
+    (result as { isError?: boolean } | null)?.isError ||
+      (displayResult as { error?: unknown } | null)?.error,
+  );
 
   const keepDraft = () => {
     try {
       const value = methodArguments(argumentsText);
-      if ("sessionToken" in value) throw new Error("Put the session token in the access-token field before keeping a call.");
-      setDrafts((items) => [...items.filter((item) => item.name !== name || item.text !== argumentsText), { name, text: argumentsText }].slice(-8));
+      if ("sessionToken" in value) {
+        throw new Error("Put the session token in the access-token field before keeping a call.");
+      }
+      setDrafts((items) =>
+        [
+          ...items.filter((item) => item.name !== name || item.text !== argumentsText),
+          { name, text: argumentsText },
+        ].slice(-8),
+      );
     } catch (e) {
       setError(String(e));
     }
@@ -113,12 +142,17 @@ export function GraftPlayground() {
     <div className="ws-panes">
       <div className="ws-pane ws-pane-stack">
         <Card>
-          <CardHeader title="Gateway" subtitle="Veronica never installs packages, starts a Gateway or runs project files on its own." />
+          <CardHeader
+            title="Gateway"
+            subtitle="Veronica never installs packages, starts a Gateway or runs project files on its own."
+          />
           <form
             className="ws-form"
             onSubmit={(event) => {
               event.preventDefault();
-              if (endpoint.trim()) void execute(false);
+              if (endpoint.trim()) {
+                void execute(false);
+              }
             }}
           >
             <Field label="Gateway MCP endpoint">
@@ -136,7 +170,10 @@ export function GraftPlayground() {
                 />
               )}
             </Field>
-            <Field label="Session access token" hint="Only if required. Sent as a bearer header and as a declared sessionToken argument; kept on this page only.">
+            <Field
+              label="Session access token"
+              hint="Only if required. Sent as a bearer header and as a declared sessionToken argument; kept on this page only."
+            >
               {(id) => (
                 <TextField
                   id={id}
@@ -163,12 +200,21 @@ export function GraftPlayground() {
               >
                 Clear session
               </Button>
-              <Button type="submit" variant="primary" icon={<PlugZap {...ICON} />} busy={busy && !discovery} disabled={busy || !endpoint.trim()}>
+              <Button
+                type="submit"
+                variant="primary"
+                icon={<PlugZap {...ICON} />}
+                busy={busy && !discovery}
+                disabled={busy || !endpoint.trim()}
+              >
                 {busy && !discovery ? "Waiting for Gateway…" : "Connect and discover"}
               </Button>
             </div>
           </form>
-          <p className="ws-footnote">Loopback only, no polling, up to 64 tools and a 256 KiB response limit. Calls can change your project; inspect a method before confirming.</p>
+          <p className="ws-footnote">
+            Loopback only, no polling, up to 64 tools and a 256 KiB response limit. Calls can change
+            your project; inspect a method before confirming.
+          </p>
         </Card>
 
         {error && (
@@ -212,10 +258,19 @@ export function GraftPlayground() {
                   )}
                 </Field>
                 <div className="ws-disclosure">
-                  <Button size="small" variant="plain" aria-expanded={showSchema} onClick={() => setShowSchema(!showSchema)}>
+                  <Button
+                    size="small"
+                    variant="plain"
+                    aria-expanded={showSchema}
+                    onClick={() => setShowSchema(!showSchema)}
+                  >
                     {showSchema ? "Hide input schema" : "Show input schema"}
                   </Button>
-                  {showSchema && <pre className="ws-code ui-mono ui-selectable">{JSON.stringify(tool?.inputSchema || {}, null, 2)}</pre>}
+                  {showSchema && (
+                    <pre className="ws-code ui-mono ui-selectable">
+                      {JSON.stringify(tool?.inputSchema || {}, null, 2)}
+                    </pre>
+                  )}
                 </div>
                 <Field label="Arguments" hint="A JSON object, up to 16 KiB.">
                   {(id) => (
@@ -252,7 +307,7 @@ export function GraftPlayground() {
                       >
                         <option value="">Load a saved call</option>
                         {drafts.map((draft, i) => (
-                          <option key={i} value={i}>
+                          <option key={`${draft.name}\n${draft.text}`} value={i}>
                             {i + 1}. {draft.name}
                           </option>
                         ))}
@@ -269,14 +324,24 @@ export function GraftPlayground() {
                         <Button size="small" disabled={busy} onClick={() => setPending(null)}>
                           Cancel
                         </Button>
-                        <Button size="small" variant="destructive" busy={busy} onClick={() => void execute(true)}>
+                        <Button
+                          size="small"
+                          variant="destructive"
+                          busy={busy}
+                          onClick={() => void execute(true)}
+                        >
                           Confirm and run
                         </Button>
                       </ButtonGroup>
                     }
                   >
-                    <p>This runs code behind {endpoint}. A timeout does not guarantee the method stopped, and calls are never retried.</p>
-                    <pre className="ws-code ui-mono ui-selectable">{JSON.stringify(pending, null, 2)}</pre>
+                    <p>
+                      This runs code behind {endpoint}. A timeout does not guarantee the method
+                      stopped, and calls are never retried.
+                    </p>
+                    <pre className="ws-code ui-mono ui-selectable">
+                      {JSON.stringify(pending, null, 2)}
+                    </pre>
                   </Notice>
                 ) : (
                   <div className="ws-form-actions">
@@ -298,12 +363,23 @@ export function GraftPlayground() {
         <Card className="ws-response" aria-live="polite">
           <CardHeader
             title="Response"
-            subtitle={result === undefined ? "The method result appears here after you confirm a call." : undefined}
+            subtitle={
+              result === undefined
+                ? "The method result appears here after you confirm a call."
+                : undefined
+            }
             actions={
               result !== undefined && (
                 <>
-                  <Badge tone={failed ? "critical" : "good"}>{failed ? "Method returned an error" : "Method result"}</Badge>
-                  <IconButton size="small" label={copied ? "Copied" : "Copy result"} icon={copied ? <Check {...ICON} /> : <Copy {...ICON} />} onClick={copyResult} />
+                  <Badge tone={failed ? "critical" : "good"}>
+                    {failed ? "Method returned an error" : "Method result"}
+                  </Badge>
+                  <IconButton
+                    size="small"
+                    label={copied ? "Copied" : "Copy result"}
+                    icon={copied ? <Check {...ICON} /> : <Copy {...ICON} />}
+                    onClick={copyResult}
+                  />
                 </>
               )
             }
@@ -312,12 +388,23 @@ export function GraftPlayground() {
             <pre className="ws-code ws-code-placeholder ui-mono">{"{ }"}</pre>
           ) : (
             <>
-              <pre className="ws-code ui-mono ui-selectable">{JSON.stringify(displayResult, null, 2)}</pre>
+              <pre className="ws-code ui-mono ui-selectable">
+                {JSON.stringify(displayResult, null, 2)}
+              </pre>
               <div className="ws-disclosure">
-                <Button size="small" variant="plain" aria-expanded={showProtocol} onClick={() => setShowProtocol(!showProtocol)}>
+                <Button
+                  size="small"
+                  variant="plain"
+                  aria-expanded={showProtocol}
+                  onClick={() => setShowProtocol(!showProtocol)}
+                >
                   {showProtocol ? "Hide protocol response" : "Show protocol response"}
                 </Button>
-                {showProtocol && <pre className="ws-code ui-mono ui-selectable">{JSON.stringify(result, null, 2)}</pre>}
+                {showProtocol && (
+                  <pre className="ws-code ui-mono ui-selectable">
+                    {JSON.stringify(result, null, 2)}
+                  </pre>
+                )}
               </div>
             </>
           )}
@@ -330,10 +417,19 @@ export function GraftPlayground() {
               subtitle="Install commands the Gateway advertises, shown as text only. Review their registry and package before using them. Package generation may need a metadata upload; the private Doctor launcher turns it off by default."
             />
             <div className="ws-disclosure">
-              <Button size="small" variant="plain" aria-expanded={showInstall} onClick={() => setShowInstall(!showInstall)}>
+              <Button
+                size="small"
+                variant="plain"
+                aria-expanded={showInstall}
+                onClick={() => setShowInstall(!showInstall)}
+              >
                 {showInstall ? "Hide install commands" : "Show install commands"}
               </Button>
-              {showInstall && <pre className="ws-code ui-mono ui-selectable">{JSON.stringify(discovery.installCommands, null, 2)}</pre>}
+              {showInstall && (
+                <pre className="ws-code ui-mono ui-selectable">
+                  {JSON.stringify(discovery.installCommands, null, 2)}
+                </pre>
+              )}
             </div>
           </Card>
         )}
@@ -341,10 +437,15 @@ export function GraftPlayground() {
         <Card tone="inset">
           <CardHeader title="Connect your project" />
           <p className="ws-text">
-            Use Graftcode Gateway with a supported Node.js, Python, .NET, Java, PHP or Ruby module. The optional Veronica Project Doctor receiver exposes only read-only checks
-            for one chosen workspace. Setup steps are in <span className="ui-mono">docs/GRAFTCODE.md</span> in the repository.
+            Use Graftcode Gateway with a supported Node.js, Python, .NET, Java, PHP or Ruby module.
+            The optional Veronica Project Doctor receiver exposes only read-only checks for one
+            chosen workspace. Setup steps are in <span className="ui-mono">docs/GRAFTCODE.md</span>{" "}
+            in the repository.
           </p>
-          <p className="ws-text">You own the Gateway: clearing this page does not stop a Gateway you started. No methods run during discovery.</p>
+          <p className="ws-text">
+            You own the Gateway: clearing this page does not stop a Gateway you started. No methods
+            run during discovery.
+          </p>
         </Card>
       </div>
     </div>

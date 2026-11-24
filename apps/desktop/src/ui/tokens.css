@@ -97,7 +97,9 @@
   --tone-critical-text: color-mix(in srgb, var(--status-critical) 80%, var(--ink));
 
   --shadow-card: 0 1px 1px color-mix(in srgb, #000 4%, transparent);
-  --shadow-pop: 0 0 0 1px var(--separator), 0 4px 12px color-mix(in srgb, #000 10%, transparent), 0 18px 48px color-mix(in srgb, #000 16%, transparent);
+  --shadow-pop:
+    0 0 0 1px var(--separator), 0 4px 12px color-mix(in srgb, #000 10%, transparent),
+    0 18px 48px color-mix(in srgb, #000 16%, transparent);
   --focus-ring-color: color-mix(in srgb, var(--accent) 75%, transparent);
 
   --radius: var(--radius-l);

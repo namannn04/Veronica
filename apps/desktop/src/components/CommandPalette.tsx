@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { searchNav, type NavItem, type Route } from "../lib/navigation";
+import { type NavItem, type Route, searchNav } from "../lib/navigation";
 import { Kbd } from "../ui";
 import { SearchIcon } from "./icons";
 
@@ -24,20 +24,24 @@ export function CommandPalette({
   const index = Math.min(active, Math.max(results.length - 1, 0));
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     setQuery("");
     setActive(0);
     const frame = requestAnimationFrame(() => input.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [open]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies(index): scrolls the newly highlighted option into view
+  // biome-ignore lint/correctness/useExhaustiveDependencies(query): scrolls the highlighted option into view after the results change
   useEffect(() => {
-    listRef.current
-      ?.querySelector('[aria-selected="true"]')
-      ?.scrollIntoView({ block: "nearest" });
+    listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
   }, [index, query]);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   const choose = (route: Route) => {
     onNavigate(route);
@@ -54,7 +58,9 @@ export function CommandPalette({
     } else if (event.key === "Enter") {
       event.preventDefault();
       const chosen = results[index];
-      if (chosen) choose(chosen.id);
+      if (chosen) {
+        choose(chosen.id);
+      }
     } else if (event.key === "Escape") {
       event.preventDefault();
       onClose();
@@ -62,6 +68,7 @@ export function CommandPalette({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: pointer dismissal on the backdrop; Escape is the keyboard path
     <div className="palette-scrim" onMouseDown={onClose}>
       <div
         className="palette"
@@ -90,9 +97,7 @@ export function CommandPalette({
         </div>
 
         <div className="palette-results" id="palette-results" role="listbox" ref={listRef}>
-          {results.length === 0 && (
-            <p className="palette-none">No page matches “{query}”.</p>
-          )}
+          {results.length === 0 && <p className="palette-none">No page matches “{query}”.</p>}
           {results.map((item, position) => (
             <button
               key={item.id}

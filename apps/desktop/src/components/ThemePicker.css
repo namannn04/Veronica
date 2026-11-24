@@ -40,6 +40,11 @@
   background: var(--fill-hover);
 }
 
+.theme-option:has(:focus-visible) {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
 .theme-option:active {
   background: var(--fill-pressed);
 }
@@ -55,8 +60,10 @@
   transition: box-shadow var(--motion-feedback);
 }
 
-.theme-option[aria-checked="true"] .theme-tile {
-  box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--accent);
+.theme-option[data-selected] .theme-tile {
+  box-shadow:
+    0 0 0 2px var(--bg-card),
+    0 0 0 4px var(--accent);
 }
 
 .theme-tile-half {
@@ -111,7 +118,7 @@
   line-height: 1.3;
 }
 
-.theme-option[aria-checked="true"] .theme-option-label {
+.theme-option[data-selected] .theme-option-label {
   color: var(--accent-text);
   font-weight: var(--weight-semibold);
 }

@@ -12,7 +12,10 @@ export function Slider({
   disabled,
   className,
   ...rest
-}: Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type" | "min" | "max" | "step"> & {
+}: Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "type" | "min" | "max" | "step"
+> & {
   value: number;
   onChange: (value: number) => void;
   min?: number;

@@ -1,6 +1,26 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Apple, Car, Clock, Flag, Hand, Heart, Lamp, Leaf, SmilePlus, Trophy, X } from "lucide-react";
+import {
+  Apple,
+  Car,
+  Clock,
+  Flag,
+  Hand,
+  Heart,
+  Lamp,
+  Leaf,
+  SmilePlus,
+  Trophy,
+  X,
+} from "lucide-react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ipc } from "../lib/ipc";
 import { applyAppearance } from "../lib/preferences";
@@ -36,19 +56,32 @@ export function EmojiPicker() {
   const [message, setMessage] = useState<Message | null>(null);
   const [active, setActive] = useState(0);
   const search = useRef<HTMLInputElement>(null);
-  const grid = useRef<HTMLDivElement>(null);
+  const grid = useRef<HTMLElement>(null);
 
   const close = useCallback(() => {
-    void getCurrentWindow().close().catch((reason) => setMessage({ tone: "critical", text: String(reason) }));
+    void getCurrentWindow()
+      .close()
+      .catch((reason) => setMessage({ tone: "critical", text: String(reason) }));
   }, []);
 
   useEffect(() => {
-    void ipc.emojiGroups().then(setGroups).catch((reason) => setMessage({ tone: "critical", text: String(reason) }));
-    void ipc.emojiRecents(18).then(setRecents).catch(() => {});
-    void ipc.settingsAll().then((settings) => applyAppearance(settings.appearance)).catch(() => {});
+    void ipc
+      .emojiGroups()
+      .then(setGroups)
+      .catch((reason) => setMessage({ tone: "critical", text: String(reason) }));
+    void ipc
+      .emojiRecents(18)
+      .then(setRecents)
+      .catch(() => {});
+    void ipc
+      .settingsAll()
+      .then((settings) => applyAppearance(settings.appearance))
+      .catch(() => {});
 
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key === "Escape") {
+        close();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -68,19 +101,26 @@ export function EmojiPicker() {
         }
       })
       .catch((reason) => {
-        if (live) setMessage({ tone: "critical", text: String(reason) });
+        if (live) {
+          setMessage({ tone: "critical", text: String(reason) });
+        }
       });
     return () => {
       live = false;
     };
   }, [activeGroup, query]);
 
-  const visibleRecents = useMemo(() => (!query.trim() && activeGroup === null ? recents : []), [activeGroup, query, recents]);
+  const visibleRecents = useMemo(
+    () => (!query.trim() && activeGroup === null ? recents : []),
+    [activeGroup, query, recents],
+  );
   const cells = useMemo(() => [...visibleRecents, ...(emoji ?? [])], [emoji, visibleRecents]);
   const current = cells[Math.min(active, cells.length - 1)];
 
   const pick = async (row: EmojiRow) => {
-    if (busy) return;
+    if (busy) {
+      return;
+    }
     setBusy(true);
     try {
       const settings = await ipc.settingsAll().catch(() => ({}) as Record<string, unknown>);
@@ -88,10 +128,16 @@ export function EmojiPicker() {
       const result = await ipc.emojiCopy(row.character, insert);
       setMessage(
         insert && !result.inserted
-          ? { tone: "neutral", text: "Copied. Focus your text field, then choose another emoji to insert." }
+          ? {
+              tone: "neutral",
+              text: "Copied. Focus your text field, then choose another emoji to insert.",
+            }
           : null,
       );
-      void ipc.emojiRecents(18).then(setRecents).catch(() => {});
+      void ipc
+        .emojiRecents(18)
+        .then(setRecents)
+        .catch(() => {});
     } catch (reason) {
       setMessage({ tone: "critical", text: String(reason) });
     } finally {
@@ -106,8 +152,9 @@ export function EmojiPicker() {
   };
 
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") close();
-    else if (event.key === "ArrowDown" && cells.length > 0) {
+    if (event.key === "Escape") {
+      close();
+    } else if (event.key === "ArrowDown" && cells.length > 0) {
       event.preventDefault();
       focusCell(0);
     } else if (event.key === "Enter" && cells[0]) {
@@ -116,20 +163,34 @@ export function EmojiPicker() {
     }
   };
 
-  const onGridKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: COLUMNS, ArrowUp: -COLUMNS };
+  const onGridKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    const moves: Record<string, number> = {
+      ArrowRight: 1,
+      ArrowLeft: -1,
+      ArrowDown: COLUMNS,
+      ArrowUp: -COLUMNS,
+    };
     if (event.key in moves) {
       event.preventDefault();
       const next = active + moves[event.key];
-      if (next < 0 && event.key === "ArrowUp") search.current?.focus();
-      else focusCell(next);
+      if (next < 0 && event.key === "ArrowUp") {
+        search.current?.focus();
+      } else {
+        focusCell(next);
+      }
     } else if (event.key === "Home") {
       event.preventDefault();
       focusCell(0);
     } else if (event.key === "End") {
       event.preventDefault();
       focusCell(cells.length - 1);
-    } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey && event.key !== " ") {
+    } else if (
+      event.key.length === 1 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      event.key !== " "
+    ) {
       search.current?.focus();
     }
   };
@@ -139,7 +200,11 @@ export function EmojiPicker() {
     setQuery("");
   };
 
-  const heading = query.trim() ? "Results" : activeGroup === null ? "All emoji" : groups[activeGroup]?.name;
+  const heading = query.trim()
+    ? "Results"
+    : activeGroup === null
+      ? "All emoji"
+      : groups[activeGroup]?.name;
 
   return (
     <main className="emoji-picker" aria-label="Emoji picker">
@@ -187,13 +252,26 @@ export function EmojiPicker() {
         </div>
       )}
 
-      <div className="emoji-picker-scroll" ref={grid} onKeyDown={onGridKeyDown}>
+      <section
+        className="emoji-picker-scroll"
+        aria-label="Emoji"
+        ref={grid}
+        onKeyDown={onGridKeyDown}
+      >
         {visibleRecents.length > 0 && (
           <section aria-label="Recently used">
             <h2 className="emoji-picker-label">Recently used</h2>
             <div className="emoji-picker-grid">
               {visibleRecents.map((row, index) => (
-                <PickerCell key={`recent-${row.character}`} row={row} index={index} active={index === active} disabled={busy} onPick={pick} onFocus={setActive} />
+                <PickerCell
+                  key={`recent-${row.character}`}
+                  row={row}
+                  index={index}
+                  active={index === active}
+                  disabled={busy}
+                  onPick={pick}
+                  onFocus={setActive}
+                />
               ))}
             </div>
           </section>
@@ -205,21 +283,35 @@ export function EmojiPicker() {
               <div className="emoji-picker-grid">
                 {emoji.map((row, offset) => {
                   const index = visibleRecents.length + offset;
-                  return <PickerCell key={row.character} row={row} index={index} active={index === active} disabled={busy} onPick={pick} onFocus={setActive} />;
+                  return (
+                    <PickerCell
+                      key={row.character}
+                      row={row}
+                      index={index}
+                      active={index === active}
+                      disabled={busy}
+                      onPick={pick}
+                      onFocus={setActive}
+                    />
+                  );
                 })}
               </div>
             ) : (
-              <p className="emoji-picker-empty">{query.trim() ? `No emoji match “${query.trim()}”` : "No emoji loaded"}</p>
+              <p className="emoji-picker-empty">
+                {query.trim() ? `No emoji match “${query.trim()}”` : "No emoji loaded"}
+              </p>
             )}
           </section>
         )}
-      </div>
+      </section>
 
       <footer className="emoji-picker-foot">
         <span className="emoji-picker-current" aria-live="polite">
           {current ? (
             <>
-              <span className="emoji-picker-current-glyph" aria-hidden="true">{current.character}</span>
+              <span className="emoji-picker-current-glyph" aria-hidden="true">
+                {current.character}
+              </span>
               <span className="emoji-picker-current-name">{current.name}</span>
             </>
           ) : null}

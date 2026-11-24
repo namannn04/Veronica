@@ -1,14 +1,14 @@
 import {
   cloneElement,
   isValidElement,
+  type ReactElement,
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
   useLayoutEffect,
   useRef,
   useState,
-  type ReactElement,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 
@@ -29,7 +29,13 @@ type TriggerProps = {
   "aria-describedby"?: string;
 };
 
-export function Tooltip({ content, children }: { content: ReactNode; children: ReactElement<TriggerProps> }) {
+export function Tooltip({
+  content,
+  children,
+}: {
+  content: ReactNode;
+  children: ReactElement<TriggerProps>;
+}) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<Placement | null>(null);
@@ -37,29 +43,39 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
   const bubble = useRef<HTMLDivElement>(null);
   const timer = useRef<number | undefined>(undefined);
 
-  const clear = () => window.clearTimeout(timer.current);
+  const clear = useCallback(() => window.clearTimeout(timer.current), []);
 
-  const show = useCallback((target: Element, immediate: boolean) => {
-    anchor.current = target;
-    clear();
-    const warm = Date.now() - lastClosedAt < WARM_WINDOW_MS;
-    if (immediate || warm) setOpen(true);
-    else timer.current = window.setTimeout(() => setOpen(true), OPEN_DELAY_MS);
-  }, []);
+  const show = useCallback(
+    (target: Element, immediate: boolean) => {
+      anchor.current = target;
+      clear();
+      const warm = Date.now() - lastClosedAt < WARM_WINDOW_MS;
+      if (immediate || warm) {
+        setOpen(true);
+      } else {
+        timer.current = window.setTimeout(() => setOpen(true), OPEN_DELAY_MS);
+      }
+    },
+    [clear],
+  );
 
   const hide = useCallback(() => {
     clear();
     setOpen((current) => {
-      if (current) lastClosedAt = Date.now();
+      if (current) {
+        lastClosedAt = Date.now();
+      }
       return false;
     });
     setPlacement(null);
-  }, []);
+  }, [clear]);
 
-  useEffect(() => clear, []);
+  useEffect(() => clear, [clear]);
 
   useLayoutEffect(() => {
-    if (!open || !anchor.current || !bubble.current) return;
+    if (!open || !anchor.current || !bubble.current) {
+      return;
+    }
     const rect = anchor.current.getBoundingClientRect();
     const tip = bubble.current.getBoundingClientRect();
     const gap = 6;
@@ -70,7 +86,9 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
     setPlacement({ left, top, side: below ? "bottom" : "top" });
   }, [open]);
 
-  if (!isValidElement(children) || content === null || content === undefined || content === "") return children;
+  if (!isValidElement(children) || content === null || content === undefined || content === "") {
+    return children;
+  }
 
   const props = children.props;
   const trigger = cloneElement(children, {
@@ -84,7 +102,9 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
     },
     onFocus: (event: React.FocusEvent) => {
       props.onFocus?.(event);
-      if (event.currentTarget.matches(":focus-visible")) show(event.currentTarget, true);
+      if (event.currentTarget.matches(":focus-visible")) {
+        show(event.currentTarget, true);
+      }
     },
     onBlur: (event: React.FocusEvent) => {
       props.onBlur?.(event);
@@ -108,7 +128,9 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
             role="tooltip"
             className="ui-tooltip"
             data-side={placement?.side}
-            style={placement ? { left: placement.left, top: placement.top } : { left: -9999, top: -9999 }}
+            style={
+              placement ? { left: placement.left, top: placement.top } : { left: -9999, top: -9999 }
+            }
           >
             {content}
           </div>,
