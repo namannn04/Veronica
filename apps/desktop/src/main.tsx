@@ -4,7 +4,6 @@ import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import { EmojiPicker } from "./components/EmojiPicker";
 import { isEmojiPickerSurface } from "./lib/surfaces";
-import "./styles.css";
 import "./ui";
 
 const root = document.getElementById("root");
