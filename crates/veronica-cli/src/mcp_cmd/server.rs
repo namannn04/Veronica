@@ -13,7 +13,7 @@ use super::protocol::{
     self, Message, RpcError, INTERNAL_ERROR, INVALID_PARAMS, INVALID_REQUEST, METHOD_NOT_FOUND,
 };
 use super::tools::{self, CatalogCall, Invocation, CATALOG_TOOL};
-use super::resources;
+use super::{database, resources};
 
 const SERVER_NAME: &str = "veronica";
 const SETTLE: Duration = Duration::from_millis(150);
@@ -71,6 +71,7 @@ impl Server {
     fn list_tools() -> Value {
         let routes = tools::current_routes();
         let mut listed = vec![tools::catalog_tool()];
+        listed.extend(database::tools());
         listed.extend(tools::discover(&routes).iter().map(tools::Tool::describe));
         json!({ "tools": listed })
     }
@@ -85,6 +86,9 @@ impl Server {
             Value::Object(input) => input.clone(),
             _ => return Err(RpcError::new(INVALID_PARAMS, "arguments must be an object")),
         };
+        if database::owns(name) {
+            return database::call(name.to_string(), Value::Object(input)).await;
+        }
         if name == CATALOG_TOOL {
             return match tools::catalog_call(&input)? {
                 CatalogCall::Preview(preview) => Ok(tools::document_result(&preview, version)),
