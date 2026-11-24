@@ -61,16 +61,19 @@ impl Notification {
         }
     }
 
+    #[must_use]
     pub fn urgency(mut self, urgency: Urgency) -> Self {
         self.urgency = urgency;
         self
     }
 
+    #[must_use]
     pub fn timeout(mut self, timeout: Timeout) -> Self {
         self.timeout = timeout;
         self
     }
 
+    #[must_use]
     pub fn replacing(mut self, id: u32) -> Self {
         self.replaces_id = id;
         self

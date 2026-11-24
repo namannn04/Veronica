@@ -77,7 +77,7 @@ impl std::fmt::Debug for InhibitorLock {
             .field("what", &self.what.as_str())
             .field("reason", &self.reason)
             .field("session", &self.gnome_session_lock.is_some())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

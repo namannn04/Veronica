@@ -65,7 +65,7 @@ impl Project {
         available
             .iter()
             .find(|worktree| worktree.current)
-            .or(available.first())
+            .or_else(|| available.first())
             .copied()
     }
 }

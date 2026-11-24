@@ -261,10 +261,11 @@ fn rpc_result(value: Value, id: u64) -> Result<Value> {
                 .collect::<String>()
         );
     }
-    value
-        .get("result")
-        .cloned()
-        .context("Gateway returned no result")
+    match value {
+        Value::Object(mut fields) => fields.remove("result"),
+        _ => None,
+    }
+    .context("Gateway returned no result")
 }
 pub async fn discover(connection: Connection) -> Result<Discovery> {
     let _permit = REQUESTS

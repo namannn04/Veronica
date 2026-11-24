@@ -1,5 +1,7 @@
 use anyhow::{ensure, Context, Result};
 use serde_json::{json, Value};
+use std::io::Write as _;
+use std::os::unix::fs::{OpenOptionsExt as _, PermissionsExt as _};
 use std::path::Path;
 const SCRIPT: &str = include_str!("../../../integrations/agents/claude-status.py");
 const EVENTS: [&str; 7] = [
@@ -52,8 +54,6 @@ pub fn configure(home: &Path, root: &Path, enabled: bool) -> Result<()> {
     }
     if enabled {
         std::fs::create_dir_all(root)?;
-        use std::io::Write;
-        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
         ensure!(
             !std::fs::symlink_metadata(root)?.file_type().is_symlink(),
             "Agent directory must not be a symlink"

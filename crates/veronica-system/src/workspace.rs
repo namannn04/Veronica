@@ -151,7 +151,7 @@ pub async fn doctor(request: DoctorRequest) -> Result<DoctorReport> {
     );
     let root = request.root;
     let mut report = tokio::task::spawn_blocking(move || inspect(&root)).await??;
-    for port in request.ports.into_iter() {
+    for port in request.ports {
         let open = matches!(
             tokio::time::timeout(
                 Duration::from_millis(250),
@@ -165,7 +165,7 @@ pub async fn doctor(request: DoctorRequest) -> Result<DoctorReport> {
     if !request.containers.is_empty() {
         match tokio::time::timeout(Duration::from_secs(6), crate::docker::snapshot()).await {
             Ok(snapshot) if snapshot.status == "ready" => {
-                for name in request.containers.into_iter() {
+                for name in request.containers {
                     let state = snapshot
                         .containers
                         .iter()
@@ -226,7 +226,7 @@ mod tests {
         std::os::unix::fs::symlink("/etc/passwd", &path).unwrap();
         assert!(read_file(&path).is_err());
         std::fs::remove_file(&path).unwrap();
-        std::fs::write(&path, vec![0; MAX_FILE as usize + 1]).unwrap();
+        std::fs::write(&path, vec![0; usize::try_from(MAX_FILE).unwrap() + 1]).unwrap();
         assert!(read_file(&path).is_err());
         std::fs::remove_file(&path).unwrap();
         let name = std::ffi::CString::new(path.as_os_str().as_encoded_bytes()).unwrap();
