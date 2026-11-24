@@ -161,7 +161,8 @@ jobs:
             echo "::notice::LAUNCHPAD_SIGNING_KEY is not set, so the PPA sources were built but not uploaded"
             exit 0
           fi
-          export GNUPGHOME="$(mktemp -d)"
+          GNUPGHOME="$(mktemp -d)"
+          export GNUPGHOME
           printf '%s' "$LAUNCHPAD_SIGNING_KEY" | gpg --batch --import
           key_id="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')"
           for changes in "$RUNNER_TEMP"/ppa/*_source.changes; do
