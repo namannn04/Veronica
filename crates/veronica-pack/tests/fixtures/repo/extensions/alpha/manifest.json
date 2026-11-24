@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "id": "alpha",
+  "version": "1.2",
+  "title": "Alpha",
+  "summary": "A fixture with a backend and an interface.",
+  "icon": "assets/icon.svg",
+  "category": "agents",
+  "guide": "guide.md",
+  "engines": { "host": ">=0.2.0", "hostApi": 1, "backendProtocol": 1 },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "backend": { "entry": "bin/backend" },
+  "ui": {
+    "root": "ui",
+    "pages": [{ "id": "main", "title": "Alpha", "entry": "index.html" }]
+  },
+  "commands": [
+    {
+      "name": "alpha",
+      "aliases": ["al"],
+      "subcommands": [
+        { "name": "status", "effect": "read", "json": true },
+        { "name": "run", "effect": "write", "json": true }
+      ]
+    }
+  ],
+  "permissions": { "dbus": { "session": ["org.example.Alpha"] } },
+  "contracts": {
+    "provides": [{ "id": "alpha.status@1", "kind": "topic" }],
+    "uses": ["host.presenter@1"]
+  }
+}

@@ -132,6 +132,7 @@ pub struct PackageMetadata {
     pub unpacked_size: u64,
     pub fingerprint: String,
     pub commit: String,
+    pub published_at: String,
     pub engines: Engines,
     pub manifest: Manifest,
 }
