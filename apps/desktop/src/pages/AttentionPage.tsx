@@ -27,7 +27,10 @@ import {
   Segmented,
   Select,
   Skeleton,
-  SkeletonRows,
+  SkeletonText,
+  StatSkeleton,
+  ListSkeleton,
+  BarListSkeleton,
   Stat,
   StatGrid,
   Switch,
@@ -246,12 +249,12 @@ export function AttentionPage() {
         <>
           <StatGrid min={150}>
             {firstLoad || !overview ? (
-              [0, 1, 2, 3].map((index) => (
-                <div className="ui-stat" key={index} aria-hidden="true">
-                  <Skeleton width={72} height={11} />
-                  <Skeleton width={96} height={22} />
-                </div>
-              ))
+              <>
+                <StatSkeleton />
+                <StatSkeleton />
+                <StatSkeleton />
+                <StatSkeleton />
+              </>
             ) : (
               <>
                 <Stat
@@ -279,7 +282,7 @@ export function AttentionPage() {
           <Section title="Applications" description="Local only, never uploaded">
             <Card>
               {firstLoad ? (
-                <SkeletonRows rows={4} label="Reading activity" />
+                <BarListSkeleton rows={6} label="Reading activity" />
               ) : overview?.applications.length ? (
                 <BarList
                   label="Time per application"
@@ -309,6 +312,14 @@ export function AttentionPage() {
             </Card>
           </Section>
 
+          {firstLoad && (
+            <Section title="Categories" description="Grouped by the rules in Settings">
+              <Card>
+                <BarListSkeleton rows={3} label="Reading categories" />
+              </Card>
+            </Section>
+          )}
+
           {overview && overview.categories.length > 0 && (
             <Section title="Categories" description="Grouped by the rules in Settings">
               <Card>
@@ -334,9 +345,7 @@ export function AttentionPage() {
       {!failedEmpty && view === "timeline" && (
         <Section title="Events">
           {firstLoad ? (
-            <List label="Loading events">
-              <SkeletonRows rows={6} label="Reading the timeline" />
-            </List>
+            <ListSkeleton rows={8} leading={0} meta={40} label="Reading the timeline" />
           ) : overview?.events.length ? (
             <List label="Timeline">
               {overview.events
@@ -368,7 +377,18 @@ export function AttentionPage() {
       {!failedEmpty && view === "focus" && (
         <>
           <Card className="attn-focus">
-            {active ? (
+            {firstLoad ? (
+              <>
+                <CardHeader
+                  title={<SkeletonText width="36%" />}
+                  subtitle={<SkeletonText width="58%" />}
+                />
+                <div className="attn-focus-form" role="status" aria-label="Reading focus state">
+                  <Skeleton height={52} radius={8} />
+                  <Skeleton height={32} radius={8} />
+                </div>
+              </>
+            ) : active ? (
               <>
                 <CardHeader title={active.name} subtitle="Focus session in progress" />
                 <div className="attn-clock ui-num" aria-live="off">
@@ -452,7 +472,9 @@ export function AttentionPage() {
           </Card>
 
           <Section title="Focus history">
-            {history.length ? (
+            {firstLoad ? (
+              <ListSkeleton rows={3} leading={0} meta={40} label="Reading focus history" />
+            ) : history.length ? (
               <List label="Focus history">
                 {history.map((item) => (
                   <ListRow
@@ -585,9 +607,7 @@ export function AttentionPage() {
       )}
 
       {view === "settings" && !settings && firstLoad && (
-        <List label="Loading settings">
-          <SkeletonRows rows={3} label="Reading settings" />
-        </List>
+        <ListSkeleton rows={3} leading={0} trailing={140} label="Reading settings" />
       )}
     </Page>
   );
