@@ -290,6 +290,9 @@ fn host_commands_print_canonical_json() {
     }
     let listed = document(&home.vr(&["--json", "config", "list"]));
     assert_eq!(listed["alpha"], true);
+    let surfaces = home.vr(&["--json", "surfaces"]);
+    assert_eq!(code(&surfaces), 0, "{}", stderr(&surfaces));
+    assert_eq!(document(&surfaces), json!([]));
     let diagnosed = home.vr(&["--json", "diagnose"]);
     assert_eq!(code(&diagnosed), 0, "{}", stderr(&diagnosed));
     document(&diagnosed);
