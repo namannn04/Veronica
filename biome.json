@@ -46,6 +46,10 @@
           "correctness": { "noUnknownProperty": "off", "noUnknownTypeSelector": "off" }
         }
       }
+    },
+    {
+      "includes": ["extension/**/*.js", "extension/**/*.mjs", "extension/**/*.css"],
+      "formatter": { "enabled": false }
     }
   ]
 }
