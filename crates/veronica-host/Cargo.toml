@@ -1,0 +1,28 @@
+[package]
+name = "veronica-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+veronica-core = { workspace = true }
+veronica-protocol = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+rustix = { version = "1", features = ["fs"] }
+semver = "1"
+sha2 = "0.10"
+tar = { version = "0.4", default-features = false }
+tempfile = "3"
+walkdir = "2"
+zstd = { version = "0.13", default-features = false }
+
+[dev-dependencies]
+proptest = { version = "1", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true
