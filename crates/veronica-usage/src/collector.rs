@@ -52,32 +52,32 @@ impl CollectorEvent {
         };
 
         Some(match kind {
-            "phase" => CollectorEvent::Phase {
+            "phase" => Self::Phase {
                 name: rest.first().unwrap_or(&"").to_string(),
                 detail: rest.get(1).unwrap_or(&"").to_string(),
                 seconds: seconds(rest.get(2)),
             },
-            "note" => CollectorEvent::Note {
+            "note" => Self::Note {
                 message: rest.join("\t"),
             },
-            "summary" => CollectorEvent::Summary {
+            "summary" => Self::Summary {
                 name: rest.first().unwrap_or(&"").to_string(),
                 detail: rest.get(1..).map(|r| r.join("\t")).unwrap_or_default(),
             },
-            "error" => CollectorEvent::Error {
+            "error" => Self::Error {
                 message: rest.join("\t"),
             },
-            "done" => CollectorEvent::Done {
+            "done" => Self::Done {
                 seconds: seconds(rest.first()),
             },
-            _ => CollectorEvent::Unknown {
+            _ => Self::Unknown {
                 line: line.to_string(),
             },
         })
     }
 
     pub fn is_terminal(&self) -> bool {
-        matches!(self, CollectorEvent::Done { .. })
+        matches!(self, Self::Done { .. })
     }
 }
 

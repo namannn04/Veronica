@@ -56,7 +56,7 @@ impl SqliteAdapter {
         let path = self.path.clone();
         let read_only = self.read_only;
         tokio::task::spawn_blocking(move || {
-            let adapter = SqliteAdapter { path, read_only };
+            let adapter = Self { path, read_only };
             work(adapter.connect()?)
         })
         .await
@@ -144,7 +144,7 @@ fn page(connection: &Sqlite, sql: &str, request: &PageRequest, client_paged: boo
 fn bounded(sql: &str, request: &PageRequest) -> String {
     format!(
         "SELECT * FROM ({sql}) LIMIT {} OFFSET {}",
-        request.page_size.get() as u64 + 1,
+        u64::from(request.page_size.get()) + 1,
         request.offset
     )
 }
@@ -307,8 +307,7 @@ fn to_sqlite(value: &Value) -> rusqlite::types::Value {
                 Binary::Complete { data, .. } | Binary::Preview { bytes: data, .. } => data,
             };
             base64::Engine::decode(&base64::engine::general_purpose::STANDARD, encoded)
-                .map(S::Blob)
-                .unwrap_or(S::Null)
+                .map_or(S::Null, S::Blob)
         }
         Value::Array(_) | Value::Object(_) => {
             S::Text(serde_json::to_string(value).unwrap_or_else(|_| "null".to_string()))

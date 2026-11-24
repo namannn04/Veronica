@@ -174,10 +174,12 @@ pub fn ensure_owner_only(path: &Path) -> Result<()> {
 }
 
 unsafe fn libc_getuid() -> u32 {
-    extern "C" {
-        fn getuid() -> u32;
+    unsafe {
+        extern "C" {
+            fn getuid() -> u32;
+        }
+        getuid()
     }
-    getuid()
 }
 
 #[cfg(test)]

@@ -120,8 +120,8 @@ pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
                     return text(json!({ "error": error.to_string() }), true);
                 }
             };
-            match arguments.get("id").and_then(Json::as_str) {
-                Some(id) => match connections
+            if let Some(id) = arguments.get("id").and_then(Json::as_str) {
+                match connections
                     .iter()
                     .find(|connection| connection.id.to_string() == id)
                 {
@@ -130,23 +130,22 @@ pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
                         json!({ "error": format!("no connection with id {id}") }),
                         true,
                     ),
-                },
-                None => {
-                    let total = connections.len();
-                    let projections: Vec<Projection> = connections
-                        .iter()
-                        .take(MAX_CONNECTIONS)
-                        .map(Projection::of)
-                        .collect();
-                    text(
-                        json!({
-                            "connections": projections,
-                            "total": total,
-                            "complete": total <= MAX_CONNECTIONS
-                        }),
-                        false,
-                    )
                 }
+            } else {
+                let total = connections.len();
+                let projections: Vec<Projection> = connections
+                    .iter()
+                    .take(MAX_CONNECTIONS)
+                    .map(Projection::of)
+                    .collect();
+                text(
+                    json!({
+                        "connections": projections,
+                        "total": total,
+                        "complete": total <= MAX_CONNECTIONS
+                    }),
+                    false,
+                )
             }
         }
 

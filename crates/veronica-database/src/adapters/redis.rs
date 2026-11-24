@@ -126,7 +126,7 @@ async fn read_key(
     let value = match kind.as_str() {
         "string" => {
             let value: Option<String> = connection.get(key).await?;
-            value.map(Value::String).unwrap_or(Value::Null)
+            value.map_or(Value::Null, Value::String)
         }
         "list" => {
             let items: Vec<String> = connection.lrange(key, 0, 99).await?;
@@ -214,9 +214,8 @@ impl Adapter for RedisAdapter {
         &mut self,
         parent: Option<&ObjectIdentifier>,
     ) -> Result<Vec<ObjectIdentifier>> {
-        let pattern = parent
-            .map(|object| format!("{}*", object.name()))
-            .unwrap_or_else(|| "*".to_string());
+        let pattern =
+            parent.map_or_else(|| "*".to_string(), |object| format!("{}*", object.name()));
         let (keys, _) = self.scan_keys(&pattern, 0, 200).await?;
         Ok(keys
             .into_iter()

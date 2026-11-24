@@ -13,11 +13,11 @@ pub enum SourceSelection {
 impl SourceSelection {
     pub fn includes(&self, source: &str, document: &UsageDocument) -> bool {
         match self {
-            SourceSelection::All => {
+            Self::All => {
                 document.default_sources.is_empty()
                     || document.default_sources.iter().any(|s| s == source)
             }
-            SourceSelection::Only(list) => list.iter().any(|s| s == source),
+            Self::Only(list) => list.iter().any(|s| s == source),
         }
     }
 }
@@ -174,7 +174,7 @@ pub fn per_day(
     if let (Some(start), Some(end)) = (&range.start, &range.end) {
         let parse = |day: &str| chrono::NaiveDate::parse_from_str(day, "%Y-%m-%d").ok();
         if let (Some(mut day), Some(last)) = (parse(start), parse(end)) {
-            let present: std::collections::HashSet<String> =
+            let present: HashSet<String> =
                 points.iter().map(|point| point.period.clone()).collect();
             while day <= last {
                 let period = day.format("%Y-%m-%d").to_string();

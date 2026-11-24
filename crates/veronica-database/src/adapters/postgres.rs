@@ -184,7 +184,7 @@ fn to_page(rows: Vec<tokio_postgres::Row>, request: &PageRequest, elapsed: u64) 
 fn bounded(sql: &str, request: &PageRequest) -> String {
     format!(
         "SELECT * FROM ({sql}) AS veronica_page LIMIT {} OFFSET {}",
-        request.page_size.get() as u64 + 1,
+        u64::from(request.page_size.get()) + 1,
         request.offset
     )
 }

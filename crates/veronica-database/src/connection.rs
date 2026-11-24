@@ -18,28 +18,28 @@ pub enum EnvironmentKind {
 }
 
 impl EnvironmentKind {
-    pub const ALL: [EnvironmentKind; 6] = [
-        EnvironmentKind::Local,
-        EnvironmentKind::Development,
-        EnvironmentKind::Testing,
-        EnvironmentKind::Staging,
-        EnvironmentKind::Production,
-        EnvironmentKind::Other,
+    pub const ALL: [Self; 6] = [
+        Self::Local,
+        Self::Development,
+        Self::Testing,
+        Self::Staging,
+        Self::Production,
+        Self::Other,
     ];
 
     pub fn key(self) -> &'static str {
         match self {
-            EnvironmentKind::Local => "local",
-            EnvironmentKind::Development => "development",
-            EnvironmentKind::Testing => "testing",
-            EnvironmentKind::Staging => "staging",
-            EnvironmentKind::Production => "production",
-            EnvironmentKind::Other => "other",
+            Self::Local => "local",
+            Self::Development => "development",
+            Self::Testing => "testing",
+            Self::Staging => "staging",
+            Self::Production => "production",
+            Self::Other => "other",
         }
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
-        EnvironmentKind::ALL
+        Self::ALL
             .into_iter()
             .find(|kind| kind.key().eq_ignore_ascii_case(raw))
     }
@@ -174,7 +174,7 @@ pub enum Location {
 impl Location {
     pub fn primary_endpoint(&self) -> Option<&NetworkEndpoint> {
         match self {
-            Location::Network { endpoints } => endpoints
+            Self::Network { endpoints } => endpoints
                 .iter()
                 .find(|endpoint| endpoint.role == EndpointRole::Primary)
                 .or_else(|| endpoints.first()),
@@ -184,7 +184,7 @@ impl Location {
 
     pub fn summary(&self) -> String {
         match self {
-            Location::Network { endpoints } => match self.primary_endpoint() {
+            Self::Network { endpoints } => match self.primary_endpoint() {
                 Some(endpoint) if endpoints.len() > 1 => format!(
                     "{}:{} +{}",
                     endpoint.host,
@@ -194,8 +194,8 @@ impl Location {
                 Some(endpoint) => format!("{}:{}", endpoint.host, endpoint.port.get()),
                 None => "no endpoint".to_string(),
             },
-            Location::Sqlite { sqlite } => sqlite.path.clone(),
-            Location::Memory { name } => match name {
+            Self::Sqlite { sqlite } => sqlite.path.clone(),
+            Self::Memory { name } => match name {
                 Some(name) => format!("in memory ({name})"),
                 None => "in memory".to_string(),
             },
@@ -257,14 +257,14 @@ pub enum SecretPurpose {
 impl SecretPurpose {
     pub fn key(self) -> &'static str {
         match self {
-            SecretPurpose::Password => "password",
-            SecretPurpose::Token => "token",
-            SecretPurpose::ApiKeyIdentifier => "apiKeyIdentifier",
-            SecretPurpose::ApiKeySecret => "apiKeySecret",
-            SecretPurpose::ClientPrivateKey => "clientPrivateKey",
-            SecretPurpose::Passphrase => "passphrase",
-            SecretPurpose::ConfirmationSigningKey => "confirmationSigningKey",
-            SecretPurpose::ContinuationSigningKey => "continuationSigningKey",
+            Self::Password => "password",
+            Self::Token => "token",
+            Self::ApiKeyIdentifier => "apiKeyIdentifier",
+            Self::ApiKeySecret => "apiKeySecret",
+            Self::ClientPrivateKey => "clientPrivateKey",
+            Self::Passphrase => "passphrase",
+            Self::ConfirmationSigningKey => "confirmationSigningKey",
+            Self::ContinuationSigningKey => "continuationSigningKey",
         }
     }
 }
@@ -483,13 +483,11 @@ pub enum Prohibition {
 impl Prohibition {
     pub fn reason(self) -> &'static str {
         match self {
-            Prohibition::ConnectionReadOnly => {
+            Self::ConnectionReadOnly => {
                 "this connection is set to read-only (readOnlyPolicy = required)"
             }
-            Prohibition::EnvironmentReadOnly => "this connection's environment is marked read-only",
-            Prohibition::ProductionPolicy => {
-                "this connection's production policy prohibits mutations"
-            }
+            Self::EnvironmentReadOnly => "this connection's environment is marked read-only",
+            Self::ProductionPolicy => "this connection's production policy prohibits mutations",
         }
     }
 }

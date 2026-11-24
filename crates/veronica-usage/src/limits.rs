@@ -35,8 +35,8 @@ pub enum LimitProvider {
 impl LimitProvider {
     pub fn label(self) -> &'static str {
         match self {
-            LimitProvider::Codex => "Codex",
-            LimitProvider::Claude => "Claude",
+            Self::Codex => "Codex",
+            Self::Claude => "Claude",
         }
     }
 }
@@ -99,11 +99,11 @@ pub enum UsageLevel {
 impl UsageLevel {
     pub fn from_percent(pct: f64, thresholds: UsageThresholds) -> Self {
         if pct >= thresholds.critical_percent as f64 {
-            UsageLevel::Red
+            Self::Red
         } else if pct >= thresholds.warning_percent as f64 {
-            UsageLevel::Orange
+            Self::Orange
         } else {
-            UsageLevel::Green
+            Self::Green
         }
     }
 }
@@ -127,8 +127,8 @@ pub enum LimitWindowKind {
 impl LimitWindowKind {
     pub fn duration_secs(self) -> f64 {
         match self {
-            LimitWindowKind::Session => SESSION_WINDOW_SECS,
-            LimitWindowKind::Weekly => WEEKLY_WINDOW_SECS,
+            Self::Session => SESSION_WINDOW_SECS,
+            Self::Weekly => WEEKLY_WINDOW_SECS,
         }
     }
 }

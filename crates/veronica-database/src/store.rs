@@ -33,7 +33,7 @@ pub enum OperationOutcome {
     Abandoned,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OperationRecord {
     pub id: Uuid,
@@ -117,7 +117,7 @@ impl MetadataStore {
         }
 
         self.connection.execute_batch(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS connections (
                 id           TEXT PRIMARY KEY NOT NULL,
                 display_name TEXT NOT NULL,
@@ -160,7 +160,7 @@ impl MetadataStore {
                 effect_digest     TEXT NOT NULL,
                 expires_at_millis INTEGER NOT NULL
             );
-            "#,
+            ",
         )?;
         self.connection
             .pragma_update(None, "user_version", SCHEMA_VERSION)?;
@@ -388,9 +388,10 @@ impl MetadataStore {
 }
 
 fn parse_time(raw: &str) -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::parse_from_rfc3339(raw)
-        .map(|time| time.with_timezone(&chrono::Utc))
-        .unwrap_or_else(|_| chrono::DateTime::UNIX_EPOCH)
+    chrono::DateTime::parse_from_rfc3339(raw).map_or_else(
+        |_| chrono::DateTime::UNIX_EPOCH,
+        |time| time.with_timezone(&chrono::Utc),
+    )
 }
 
 impl ReceiptStore for MetadataStore {

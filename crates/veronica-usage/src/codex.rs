@@ -190,10 +190,10 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
     let _ = child.start_kill();
     let diagnostics = stderr_task.await.unwrap_or_default();
     result.with_context(|| {
-        diagnostics
-            .last()
-            .map(|line| format!("codex app-server: {line}"))
-            .unwrap_or_else(|| "codex app-server returned no diagnostics".to_string())
+        diagnostics.last().map_or_else(
+            || "codex app-server returned no diagnostics".to_string(),
+            |line| format!("codex app-server: {line}"),
+        )
     })
 }
 

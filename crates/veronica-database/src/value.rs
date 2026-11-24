@@ -24,13 +24,13 @@ pub enum Binary {
 impl Binary {
     pub fn byte_count(&self) -> u64 {
         match self {
-            Binary::Complete { data, .. } => data.len() as u64,
-            Binary::Preview { byte_count, .. } => *byte_count,
+            Self::Complete { data, .. } => data.len() as u64,
+            Self::Preview { byte_count, .. } => *byte_count,
         }
     }
 
     pub fn is_complete(&self) -> bool {
-        matches!(self, Binary::Complete { .. })
+        matches!(self, Self::Complete { .. })
     }
 }
 
@@ -64,7 +64,7 @@ pub enum Value {
     Time(String),
     Timestamp(String),
     Uuid(Uuid),
-    Array(Vec<Value>),
+    Array(Vec<Self>),
     Object(Vec<ObjectField>),
     ProductSpecific(ProductValue),
 }
@@ -93,36 +93,36 @@ pub enum ValueKind {
 impl Value {
     pub fn kind(&self) -> ValueKind {
         match self {
-            Value::Missing => ValueKind::Missing,
-            Value::Null => ValueKind::Null,
-            Value::Boolean(_) => ValueKind::Boolean,
-            Value::SignedInteger(_) => ValueKind::SignedInteger,
-            Value::UnsignedInteger(_) => ValueKind::UnsignedInteger,
-            Value::Decimal(_) => ValueKind::Decimal,
-            Value::FloatingPoint(_) => ValueKind::FloatingPoint,
-            Value::String(_) => ValueKind::String,
-            Value::Binary(_) => ValueKind::Binary,
-            Value::Date(_) => ValueKind::Date,
-            Value::Time(_) => ValueKind::Time,
-            Value::Timestamp(_) => ValueKind::Timestamp,
-            Value::Uuid(_) => ValueKind::Uuid,
-            Value::Array(_) => ValueKind::Array,
-            Value::Object(_) => ValueKind::Object,
-            Value::ProductSpecific(_) => ValueKind::ProductSpecific,
+            Self::Missing => ValueKind::Missing,
+            Self::Null => ValueKind::Null,
+            Self::Boolean(_) => ValueKind::Boolean,
+            Self::SignedInteger(_) => ValueKind::SignedInteger,
+            Self::UnsignedInteger(_) => ValueKind::UnsignedInteger,
+            Self::Decimal(_) => ValueKind::Decimal,
+            Self::FloatingPoint(_) => ValueKind::FloatingPoint,
+            Self::String(_) => ValueKind::String,
+            Self::Binary(_) => ValueKind::Binary,
+            Self::Date(_) => ValueKind::Date,
+            Self::Time(_) => ValueKind::Time,
+            Self::Timestamp(_) => ValueKind::Timestamp,
+            Self::Uuid(_) => ValueKind::Uuid,
+            Self::Array(_) => ValueKind::Array,
+            Self::Object(_) => ValueKind::Object,
+            Self::ProductSpecific(_) => ValueKind::ProductSpecific,
         }
     }
 
     pub fn render(&self, limit: usize) -> String {
         let rendered = match self {
-            Value::Missing => "-".to_string(),
-            Value::Null => "NULL".to_string(),
-            Value::Boolean(value) => value.to_string(),
-            Value::SignedInteger(value) => value.to_string(),
-            Value::UnsignedInteger(value) => value.to_string(),
-            Value::Decimal(value) => value.0.clone(),
-            Value::FloatingPoint(value) => value.to_string(),
-            Value::String(value) => value.clone(),
-            Value::Binary(binary) => format!(
+            Self::Missing => "-".to_string(),
+            Self::Null => "NULL".to_string(),
+            Self::Boolean(value) => value.to_string(),
+            Self::SignedInteger(value) => value.to_string(),
+            Self::UnsignedInteger(value) => value.to_string(),
+            Self::Decimal(value) => value.0.clone(),
+            Self::FloatingPoint(value) => value.to_string(),
+            Self::String(value) => value.clone(),
+            Self::Binary(binary) => format!(
                 "{} bytes{}",
                 binary.byte_count(),
                 if binary.is_complete() {
@@ -131,37 +131,37 @@ impl Value {
                     " (preview)"
                 }
             ),
-            Value::Date(value) | Value::Time(value) | Value::Timestamp(value) => value.clone(),
-            Value::Uuid(value) => value.to_string(),
-            Value::Array(values) => format!("[{} items]", values.len()),
-            Value::Object(fields) => format!("{{{} fields}}", fields.len()),
-            Value::ProductSpecific(value) => value.rendered.clone(),
+            Self::Date(value) | Self::Time(value) | Self::Timestamp(value) => value.clone(),
+            Self::Uuid(value) => value.to_string(),
+            Self::Array(values) => format!("[{} items]", values.len()),
+            Self::Object(fields) => format!("{{{} fields}}", fields.len()),
+            Self::ProductSpecific(value) => value.rendered.clone(),
         };
         truncate(&rendered, limit)
     }
 
-    pub fn from_json(json: &serde_json::Value) -> Value {
+    pub fn from_json(json: &serde_json::Value) -> Self {
         match json {
-            serde_json::Value::Null => Value::Null,
-            serde_json::Value::Bool(value) => Value::Boolean(*value),
+            serde_json::Value::Null => Self::Null,
+            serde_json::Value::Bool(value) => Self::Boolean(*value),
             serde_json::Value::Number(number) => {
                 if let Some(value) = number.as_i64() {
-                    Value::SignedInteger(value)
+                    Self::SignedInteger(value)
                 } else if let Some(value) = number.as_u64() {
-                    Value::UnsignedInteger(value)
+                    Self::UnsignedInteger(value)
                 } else {
-                    Value::FloatingPoint(number.as_f64().unwrap_or_default())
+                    Self::FloatingPoint(number.as_f64().unwrap_or_default())
                 }
             }
-            serde_json::Value::String(value) => Value::String(value.clone()),
+            serde_json::Value::String(value) => Self::String(value.clone()),
             serde_json::Value::Array(values) => {
-                Value::Array(values.iter().map(Value::from_json).collect())
+                Self::Array(values.iter().map(Self::from_json).collect())
             }
-            serde_json::Value::Object(map) => Value::Object(
+            serde_json::Value::Object(map) => Self::Object(
                 map.iter()
                     .map(|(name, value)| ObjectField {
                         name: name.clone(),
-                        value: Value::from_json(value),
+                        value: Self::from_json(value),
                     })
                     .collect(),
             ),

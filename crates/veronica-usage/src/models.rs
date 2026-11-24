@@ -35,8 +35,7 @@ impl UsageDocument {
     pub fn label_for(&self, source: &str) -> String {
         self.source_meta
             .get(source)
-            .map(|meta| meta.label.clone())
-            .unwrap_or_else(|| source.to_string())
+            .map_or_else(|| source.to_string(), |meta| meta.label.clone())
     }
 }
 

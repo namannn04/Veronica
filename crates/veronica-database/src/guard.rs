@@ -26,7 +26,7 @@ pub const MAX_TOKEN_BYTES: usize = 4_096;
 const TOKEN_SCHEMA_VERSION: u32 = 1;
 const TOKEN_AUDIENCE: &str = "veronica.database.confirmation";
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum GuardError {
     #[error("the signing key must be {SIGNING_KEY_BYTES} bytes, not {0}")]
     InvalidSigningKey(usize),
@@ -80,7 +80,7 @@ struct TokenPayload {
     expires_at_millis: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Receipt {
     pub identifier: Uuid,
@@ -304,7 +304,7 @@ impl<S: ReceiptStore> Guard<S> {
             transaction_behavior: plan.transaction_behavior,
             rollback_availability: plan.rollback_availability,
             execution_mode: plan.execution_mode,
-            execution_digest: execution_digest.clone(),
+            execution_digest,
             display_digest: String::new(),
         };
 
