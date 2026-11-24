@@ -1,3 +1,4 @@
+pub mod archive;
 pub mod layout;
 pub mod lock;
 
