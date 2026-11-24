@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "id": "media",
+  "version": "1.0",
+  "title": "Music",
+  "summary": "Controls every player through MPRIS and plays your local library.",
+  "icon": "assets/icon.svg",
+  "category": "media",
+  "labs": false,
+  "guide": "guide.md",
+  "engines": { "host": ">=0.2.0", "hostApi": 1, "backendProtocol": 1 },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "suggestFor": [{ "path": "~/Music" }, { "desktopEntry": "org.gnome.Rhythmbox3.desktop" }],
+  "activation": { "mode": "background", "idleStopSeconds": 0 },
+  "backend": { "entry": "bin/backend" },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Music",
+        "entry": "index.html",
+        "icon": "music",
+        "nav": { "group": "tools", "order": 10 },
+        "hint": "Local library and players",
+        "keywords": ["player", "mpris", "tracks"]
+      }
+    ]
+  },
+  "homeCards": [
+    {
+      "id": "now-playing",
+      "template": "nowPlaying",
+      "title": "Now playing",
+      "source": "media.nowPlaying@1",
+      "opens": "main",
+      "actions": [{ "id": "toggle", "label": "Play or pause", "run": ["media", "toggle"] }]
+    }
+  ],
+  "notchActivities": [
+    {
+      "id": "now-playing",
+      "template": "nowPlaying",
+      "source": "media.nowPlaying@1",
+      "priority": 50,
+      "blurCategory": null,
+      "actions": [{ "id": "next", "run": ["media", "next"] }]
+    }
+  ],
+  "commands": [
+    {
+      "name": "media",
+      "about": "Control whatever is playing, through MPRIS",
+      "aliases": [],
+      "subcommands": [
+        { "name": "status", "about": "What is playing right now", "effect": "read", "json": true },
+        {
+          "name": "players",
+          "about": "Every MPRIS player on the session bus",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "library",
+          "aliases": ["lib"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            { "name": "query", "kind": "positional", "type": "string", "default": "" },
+            { "name": "limit", "kind": "option", "long": "limit", "type": "integer", "default": 40 }
+          ]
+        },
+        {
+          "name": "toggle",
+          "about": "Play if paused, pause if playing",
+          "effect": "write",
+          "json": true
+        },
+        { "name": "next", "effect": "write", "json": true },
+        { "name": "previous", "aliases": ["prev"], "effect": "write", "json": true },
+        { "name": "stop", "effect": "write", "json": true }
+      ]
+    }
+  ],
+  "shortcuts": [
+    { "id": "toggle", "title": "Play or pause", "default": null, "run": ["media", "toggle"] }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [{ "path": "~/Music", "access": "read" }],
+    "dbus": { "session": ["org.mpris.MediaPlayer2.*"], "system": [] },
+    "spawn": [],
+    "shell": [],
+    "host": ["surfaces", "contracts"]
+  },
+  "requires": {
+    "tools": [],
+    "capabilities": ["externalMediaControl"],
+    "optionalCapabilities": ["localMusicPlayback", "mediaControls"],
+    "systemPackages": ["gstreamer1.0-plugins-good"]
+  },
+  "contracts": {
+    "provides": [
+      { "id": "media.nowPlaying@1", "kind": "topic" },
+      { "id": "media.control@1", "kind": "request" }
+    ],
+    "uses": ["host.presenter@1"]
+  },
+  "data": { "migrate": [] }
+}
