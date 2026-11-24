@@ -59,9 +59,11 @@ export function UpdatePane({ current }: { current: string }) {
   const how =
     update?.installKind === "flatpak"
       ? "Updates through Flatpak."
-      : update?.installKind === "appimage"
-        ? "An AppImage is replaced by downloading the new file."
-        : "Downloads the release and verifies its checksum, then Ubuntu asks for your password before installing.";
+      : update?.installKind === "snap"
+        ? "Updates through Snap; snapd also refreshes it on its own."
+        : update?.installKind === "appimage"
+          ? "An AppImage is replaced by downloading the new file."
+          : "Downloads the release and verifies its checksum, then Ubuntu asks for your password before installing.";
 
   const action = installed ? (
     <Button variant="primary" icon={<RotateCcw />} onClick={() => void ipc.appRestart().catch((reason) => setError(String(reason)))}>
@@ -120,7 +122,7 @@ export function UpdatePane({ current }: { current: string }) {
             <p className="settings-notes ui-selectable">{update.notes}</p>
           </FormRow>
         )}
-        {available && update?.installKind !== "flatpak" && (
+        {available && update?.installKind !== "flatpak" && update?.installKind !== "snap" && (
           <FormRow label="Or update from a terminal" description="Installs the latest release in one step." stacked>
             <pre className="settings-code ui-mono ui-selectable">{INSTALL_COMMAND}</pre>
           </FormRow>
