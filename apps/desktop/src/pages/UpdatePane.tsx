@@ -5,7 +5,7 @@ import { ipc } from "../lib/ipc";
 import type { UpdateInfo } from "../lib/types";
 import { Badge, Button, FormGroup, FormRow, Notice, Stack } from "../ui";
 
-const INSTALL_COMMAND = "curl -fsSL https://namannn04.github.io/Veronica/install | bash";
+const INSTALL_COMMAND = "curl -fsSL https://namannn04.github.io/veronica/install | bash";
 
 export function UpdatePane({ current }: { current: string }) {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);

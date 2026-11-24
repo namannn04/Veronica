@@ -13,7 +13,7 @@ description: |
   so this snap uses classic confinement and the GTK and WebKitGTK libraries of
   the Ubuntu desktop it runs on.
 license: GPL-3.0-only
-website: https://namannn04.github.io/Veronica/
+website: https://namannn04.github.io/veronica/
 source-code: https://github.com/namannn04/Veronica
 issues: https://github.com/namannn04/Veronica/issues
 icon: veronica.png

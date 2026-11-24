@@ -35,7 +35,7 @@ the latest GitHub release, verifies its published SHA-256 checksum, and installs
 it through `apt` (which may ask for your sudo password):
 
 ```bash
-curl -fsSL https://namannn04.github.io/Veronica/install | bash
+curl -fsSL https://namannn04.github.io/veronica/install | bash
 ```
 
 It also turns on the GNOME Shell extension and opens Veronica. GNOME only
@@ -43,7 +43,7 @@ loads new extensions at login, so log out and back in once to see the notch.
 Running the same command again later updates to the newest release.
 
 See screenshots, shortcuts and download choices on the
-[Veronica website](https://namannn04.github.io/Veronica/).
+[Veronica website](https://namannn04.github.io/veronica/).
 
 To install a package you downloaded yourself instead:
 
@@ -62,8 +62,8 @@ signed apt repository once:
 
 ```bash
 sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://namannn04.github.io/Veronica/apt/veronica.gpg | sudo tee /etc/apt/keyrings/veronica.gpg >/dev/null
-echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/veronica.gpg] https://namannn04.github.io/Veronica/apt stable main" | sudo tee /etc/apt/sources.list.d/veronica.list >/dev/null
+curl -fsSL https://namannn04.github.io/veronica/apt/veronica.gpg | sudo tee /etc/apt/keyrings/veronica.gpg >/dev/null
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/veronica.gpg] https://namannn04.github.io/veronica/apt stable main" | sudo tee /etc/apt/sources.list.d/veronica.list >/dev/null
 sudo apt update
 sudo apt install veronica
 ```
@@ -122,7 +122,7 @@ package for Veronica's complete Ubuntu integration.
 Veronica is also published as a Flatpak from its own signed repository:
 
 ```bash
-flatpak install --user https://namannn04.github.io/Veronica/flatpak/veronica.flatpakref
+flatpak install --user https://namannn04.github.io/veronica/flatpak/veronica.flatpakref
 flatpak run io.github.namannn04.Veronica
 ```
 
