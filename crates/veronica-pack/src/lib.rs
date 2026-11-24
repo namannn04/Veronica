@@ -1,4 +1,5 @@
 pub mod audit;
+pub mod bundle;
 pub mod catalog;
 pub mod fingerprint;
 pub mod pack;

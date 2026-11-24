@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use veronica_pack::catalog::{self, CatalogOptions};
 use veronica_pack::fingerprint::{self, stamp};
 use veronica_pack::pack::{pack, PackInputs};
-use veronica_pack::{audit, repo, signing, trust, validate};
+use veronica_pack::{audit, bundle, repo, signing, trust, validate};
 use veronica_protocol::canonical;
 use veronica_protocol::catalog::SignedEnvelope;
 use veronica_protocol::manifest::Target;
@@ -85,6 +85,13 @@ enum Command {
         #[arg(long)]
         key_id: String,
         envelope: PathBuf,
+    },
+    #[command(about = "Gather built packages and their index for the desktop packages")]
+    Bundle {
+        #[arg(long)]
+        packages: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
     },
     #[command(about = "Check a private key against the keys the host trusts")]
     KeyStatus {
@@ -252,6 +259,15 @@ fn run(cli: &Cli) -> Result<Outcome> {
                     catalog.revision
                 ),
             )
+        }
+        Command::Bundle { packages, out } => {
+            let index = bundle::bundle(packages, out)?;
+            let text = format!(
+                "{} extension(s) bundled in {}",
+                index.extensions.len(),
+                out.display()
+            );
+            Outcome::ok(index, text)
         }
         Command::KeyStatus { key } => {
             let path = trust::source_path(&root()?);

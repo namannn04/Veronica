@@ -1,3 +1,4 @@
+pub mod bundled;
 pub mod canonical;
 pub mod catalog;
 pub mod contract_id;
