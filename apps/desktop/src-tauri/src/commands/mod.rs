@@ -5,7 +5,10 @@ mod clipboard;
 mod color;
 mod emoji;
 mod legacy;
+mod maintenance;
 mod media;
+mod system;
+mod usage;
 
 pub(crate) use attention::*;
 pub(crate) use audit::*;
@@ -14,7 +17,10 @@ pub(crate) use clipboard::*;
 pub(crate) use color::*;
 pub(crate) use emoji::*;
 pub(crate) use legacy::*;
+pub(crate) use maintenance::*;
 pub(crate) use media::*;
+pub(crate) use system::*;
+pub(crate) use usage::*;
 
 type CommandResult<T> = Result<T, String>;
 
