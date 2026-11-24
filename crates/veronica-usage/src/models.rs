@@ -288,7 +288,7 @@ mod tests {
         assert_eq!(doc.daily.len(), 1);
         let project = &doc.daily[0].projects[0];
         assert_eq!(project.repository_id.as_deref(), Some("github.com/x/edith"));
-        assert_eq!(project.chats[0].first_ts, Some(1787165247000));
+        assert_eq!(project.chats[0].first_ts, Some(1_787_165_247_000));
         assert_eq!(doc.daily[0].by_source["cli"][0].tokens(), 1_565_233);
     }
 }

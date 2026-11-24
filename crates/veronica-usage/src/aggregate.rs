@@ -307,8 +307,8 @@ pub fn heatmap(
             return 0;
         }
         let rank = spent.partition_point(|value| *value <= cost);
-        let fraction = rank as f64 / active as f64;
-        (1 + (4.0 * fraction).floor() as u8).min(4)
+        let quartile = (4 * rank / active).min(3);
+        1 + u8::try_from(quartile).unwrap_or(3)
     };
 
     days.into_iter()

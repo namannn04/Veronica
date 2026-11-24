@@ -74,7 +74,7 @@ impl Credentials {
         let mut document = self.document.clone();
         let oauth = document.as_object_mut().and_then(|root| {
             root.entry(OAUTH_KEY)
-                .or_insert_with(|| Value::Object(Default::default()))
+                .or_insert_with(|| Value::Object(serde_json::Map::default()))
                 .as_object_mut()
         });
         let Some(oauth) = oauth else {
@@ -88,7 +88,7 @@ impl Credentials {
         oauth.insert(
             "expiresAt".into(),
             Value::from(time_to_millis(
-                now + chrono::Duration::seconds(response.expires_in as i64),
+                now + chrono::Duration::seconds(crate::truncate_to_i64(response.expires_in)),
             )),
         );
         if let Some(refresh_token) = response
@@ -102,7 +102,7 @@ impl Credentials {
             oauth.insert(
                 "refreshTokenExpiresAt".into(),
                 Value::from(time_to_millis(
-                    now + chrono::Duration::seconds(expires_in as i64),
+                    now + chrono::Duration::seconds(crate::truncate_to_i64(expires_in)),
                 )),
             );
         }
@@ -155,7 +155,8 @@ pub struct RefreshResponse {
 
 fn millis_to_time(value: Option<&Value>) -> Option<DateTime<Utc>> {
     let millis = value?.as_f64()?;
-    Utc.timestamp_millis_opt(millis as i64).single()
+    Utc.timestamp_millis_opt(crate::truncate_to_i64(millis))
+        .single()
 }
 
 fn time_to_millis(time: DateTime<Utc>) -> i64 {
