@@ -20,6 +20,7 @@ mod invoke_cmd;
 mod keystroke_cmd;
 mod machines_cmd;
 mod maintenance_cmd;
+mod mcp_cmd;
 mod media_cmd;
 mod power_cmd;
 mod presenter_cmd;
@@ -210,6 +211,11 @@ enum Command {
         #[command(subcommand)]
         command: Option<tools_cmd::ToolCommand>,
     },
+    #[command(about = "Give agents Veronica's commands over MCP")]
+    Mcp {
+        #[command(subcommand)]
+        command: Option<mcp_cmd::McpCommand>,
+    },
     #[command(
         name = "extensions",
         alias = "ext",
@@ -315,6 +321,9 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
                 cli.yes,
             )
             .await
+        }
+        Command::Mcp { command } => {
+            mcp_cmd::run(command.as_ref().unwrap_or(&mcp_cmd::McpCommand::Serve)).await
         }
         Command::Invoke { id, request } => invoke_cmd::run(id, request, output).await,
         Command::Tools { command } => {
