@@ -14,7 +14,8 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "paths": { "@veronica/extension-api": ["../../packages/extension-api/src/index.ts"] }
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/extension-api/src"]
 }

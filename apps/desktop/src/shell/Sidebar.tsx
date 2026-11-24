@@ -48,6 +48,7 @@ export function Sidebar({
               >
                 <span className="shell-nav-icon">{item.icon}</span>
                 <span className="shell-nav-label">{item.label}</span>
+                {item.badge !== undefined && <span className="shell-nav-badge">{item.badge}</span>}
               </button>
             ))}
           </fieldset>

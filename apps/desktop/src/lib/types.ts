@@ -1,3 +1,5 @@
+import type { BackendState, Granted } from "@veronica/extension-api";
+
 export type CapabilityState =
   | { state: "available" }
   | { state: "permissionRequired"; reason: string }
@@ -860,3 +862,30 @@ export type DockerSnapshot = {
   version: string | null;
   containers: DockerContainer[];
 };
+
+export interface ExtensionUiPage {
+  id: string;
+  title: string;
+  entry: string;
+  icon?: string;
+  nav?: { group: string; order: number };
+  hint?: string;
+  keywords?: string[];
+}
+
+export interface ExtensionManifest {
+  id: string;
+  title: string;
+  summary: string;
+  icon?: string;
+  ui?: { root: string; pages: ExtensionUiPage[] };
+  permissions: Granted;
+}
+
+export interface InstalledExtension {
+  id: string;
+  version: string;
+  enabled: boolean;
+  state: BackendState;
+  manifest: ExtensionManifest | null;
+}
