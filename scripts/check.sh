@@ -5,7 +5,7 @@ cd "$(git rev-parse --show-toplevel)"
 shell_files() { git ls-files -z '*.sh' install.sh resources/refresh-usage | sort -zu; }
 
 em_dash() {
-  if git grep -nI $'—' -- ':!packaging/flatpak/shared-modules'; then
+  if git grep -nI $'\xe2\x80\x94' -- ':!packaging/flatpak/shared-modules'; then
     echo "em-dash characters are not allowed; rewrite with a comma, colon or a new sentence" >&2
     return 1
   fi
