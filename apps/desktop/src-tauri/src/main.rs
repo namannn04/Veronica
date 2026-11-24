@@ -9,6 +9,7 @@ mod logging;
 mod main_window;
 mod notch_tools;
 mod presenter;
+mod shortcuts;
 mod single_instance;
 mod state;
 mod tray;
@@ -16,7 +17,7 @@ mod usage_schedule;
 
 use anyhow::Result;
 use tauri::{Emitter, Manager, RunEvent, WindowEvent};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::ShortcutState;
 use veronica_core::AppDirectories;
 
 use state::AppState;
@@ -54,120 +55,10 @@ fn force_x11_backend() {
     }
 }
 
-fn matches(shortcut: &Shortcut, code: Code) -> bool {
-    shortcut.matches(Modifiers::CONTROL | Modifiers::ALT, code)
-}
-
-#[derive(Clone, Copy)]
-struct ShortcutBinding {
-    accelerator: &'static str,
-    extension_id: Option<&'static str>,
-}
-
-const SHORTCUTS: [ShortcutBinding; 6] = [
-    ShortcutBinding {
-        accelerator: "Ctrl+Alt+V",
-        extension_id: None,
-    },
-    ShortcutBinding {
-        accelerator: "Ctrl+Alt+B",
-        extension_id: Some("clipboard"),
-    },
-    ShortcutBinding {
-        accelerator: "Ctrl+Alt+M",
-        extension_id: Some("micMute"),
-    },
-    ShortcutBinding {
-        accelerator: "Ctrl+Alt+P",
-        extension_id: Some("colorPicker"),
-    },
-    ShortcutBinding {
-        accelerator: "Ctrl+Alt+K",
-        extension_id: None,
-    },
-    ShortcutBinding {
-        accelerator: "Ctrl+Alt+E",
-        extension_id: Some("emoji"),
-    },
-];
-
-fn extension_enabled(settings: &veronica_core::Settings, id: &str) -> bool {
-    veronica_core::extensions::entry(id).is_some_and(|entry| settings.extension_enabled(entry))
-}
-
-fn shortcut_enabled(settings: &veronica_core::Settings, binding: ShortcutBinding) -> bool {
-    binding
-        .extension_id
-        .is_none_or(|id| extension_enabled(settings, id))
-}
-
-pub(crate) fn sync_global_shortcuts(app: &tauri::AppHandle, settings: &veronica_core::Settings) {
-    let manager = app.global_shortcut();
-    for binding in SHORTCUTS {
-        let wanted = shortcut_enabled(settings, binding);
-        let registered = manager.is_registered(binding.accelerator);
-        let result = match (wanted, registered) {
-            (true, false) => manager.register(binding.accelerator),
-            (false, true) => manager.unregister(binding.accelerator),
-            _ => continue,
-        };
-        if let Err(error) = result {
-            tracing::warn!(
-                target: "veronica",
-                "cannot {} {}: {error}",
-                if wanted { "register" } else { "unregister" },
-                binding.accelerator
-            );
-        }
-    }
-}
-
-fn show_route(app: &tauri::AppHandle, route: &str) {
-    if let Err(error) = main_window::show(app, Some(route)) {
-        tracing::warn!(target: "veronica", "cannot open {route}: {error:#}");
-    }
-}
-
-fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
-    let settings = app.state::<AppState>().settings_snapshot();
-    if matches(shortcut, Code::KeyV) {
-        if let Err(error) = main_window::show(app, None) {
-            tracing::warn!(target: "veronica", "cannot open Veronica: {error:#}");
-        }
-    } else if matches(shortcut, Code::KeyB) && extension_enabled(&settings, "clipboard") {
-        let handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            if commands::call_shell_method("ShowClipboard").await.is_err() {
-                show_route(&handle, "clipboard");
-            }
-        });
-    } else if matches(shortcut, Code::KeyM) && extension_enabled(&settings, "micMute") {
-        let handle = app.clone();
-        tauri::async_runtime::spawn(async move {
-            match veronica_system::audio::toggle_microphone().await {
-                Ok(state) => {
-                    let _ = handle.emit("microphone-updated", state);
-                }
-                Err(error) => tracing::warn!(target: "veronica", "mic shortcut failed: {error:#}"),
-            }
-        });
-    } else if matches(shortcut, Code::KeyP) && extension_enabled(&settings, "colorPicker") {
-        tauri::async_runtime::spawn(async {
-            if let Err(error) = commands::call_shell_method("PickColor").await {
-                tracing::warn!(target: "veronica", "color shortcut failed: {error}");
-            }
-        });
-    } else if matches(shortcut, Code::KeyE) && extension_enabled(&settings, "emoji") {
-        if let Err(error) = emoji_picker::show(app) {
-            tracing::warn!(target: "veronica", "cannot open the emoji picker: {error:#}");
-        }
-    } else if matches(shortcut, Code::KeyK) {
-        tauri::async_runtime::spawn(async {
-            if let Err(error) = commands::call_shell_method("CleanKeys").await {
-                tracing::warn!(target: "veronica", "clean-keys shortcut failed: {error}");
-            }
-        });
-    }
+fn modified(path: &std::path::Path) -> Option<std::time::SystemTime> {
+    std::fs::metadata(path)
+        .and_then(|meta| meta.modified())
+        .ok()
 }
 
 #[expect(
@@ -198,11 +89,12 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         .register_uri_scheme_protocol(extensions::protocol::SCHEME, move |_context, request| {
             bundles.respond(&request)
         })
+        .manage(shortcuts::Shortcuts::default())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     if event.state() == ShortcutState::Pressed {
-                        handle_shortcut(app, shortcut);
+                        shortcuts::fire(app, shortcut);
                     }
                 })
                 .build(),
@@ -349,6 +241,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             extensions::commands::ext_auto_update,
             extensions::commands::ext_auto_update_set,
             extensions::commands::ext_onboarding_detect,
+            commands::shortcuts_list,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -381,7 +274,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
 
             tray::install(&handle)?;
 
-            sync_global_shortcuts(&handle, &handle.state::<AppState>().settings_snapshot());
+            shortcuts::sync(&handle, &handle.state::<AppState>().settings_snapshot());
 
             if let Some(probe) = extensions::probe::requested() {
                 probe.start(&handle)?;
@@ -398,6 +291,12 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             let watch_settings = handle.clone();
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+                let installed = watch_settings
+                    .state::<AppState>()
+                    .extensions
+                    .layout()
+                    .installed_file();
+                let mut installed_at = modified(&installed);
                 loop {
                     interval.tick().await;
                     let path = watch_settings
@@ -450,8 +349,12 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                     {
                         tracing::warn!(target: "veronica", "cannot apply Keep Awake: {error}");
                     }
+                    let reinstalled = modified(&installed);
+                    if changed || reinstalled != installed_at {
+                        installed_at = reinstalled;
+                        shortcuts::sync(&watch_settings, &settings);
+                    }
                     if changed {
-                        sync_global_shortcuts(&watch_settings, &settings);
                         let _ = watch_settings.emit("settings-updated", "external");
                     }
                 }
@@ -607,42 +510,5 @@ mod tests {
             ]
         );
         assert!(granted(include_str!("../capabilities/default.json")).is_empty());
-    }
-
-    fn wanted(settings: &veronica_core::Settings) -> Vec<&'static str> {
-        SHORTCUTS
-            .iter()
-            .copied()
-            .filter(|binding| shortcut_enabled(settings, *binding))
-            .map(|binding| binding.accelerator)
-            .collect()
-    }
-
-    #[test]
-    fn default_shortcuts_follow_the_catalogues_featured_switches() {
-        assert_eq!(
-            wanted(&veronica_core::Settings::default()),
-            ["Ctrl+Alt+V", "Ctrl+Alt+B", "Ctrl+Alt+K"]
-        );
-    }
-
-    #[test]
-    fn extension_switches_add_and_remove_their_shortcuts() {
-        let mut settings = veronica_core::Settings::default();
-        settings.set("clipboardEnabled", serde_json::Value::Bool(false));
-        settings.set("micMuteEnabled", serde_json::Value::Bool(true));
-        settings.set("colorPickerEnabled", serde_json::Value::Bool(true));
-        settings.set("emojiEnabled", serde_json::Value::Bool(true));
-
-        assert_eq!(
-            wanted(&settings),
-            [
-                "Ctrl+Alt+V",
-                "Ctrl+Alt+M",
-                "Ctrl+Alt+P",
-                "Ctrl+Alt+K",
-                "Ctrl+Alt+E",
-            ]
-        );
     }
 }
