@@ -16,7 +16,9 @@ import {
   PageHeader,
   SearchField,
   Section,
-  SkeletonRows,
+  ListSkeleton,
+  Skeleton,
+  SkeletonText,
   Spinner,
   Tabs,
   Toolbar,
@@ -281,11 +283,30 @@ export function MaintenancePage() {
               {updatesError}
             </Notice>
           ) : updates === null ? (
-            <List label="Updates">
-              <div className="mnt-pad">
-                <SkeletonRows rows={5} label="Looking for updates" />
-              </div>
-            </List>
+            <>
+              {sources.length === 0 && !sourcesError && (
+                <div className="mnt-sources" aria-hidden="true">
+                  {[40, 48, 60].map((width) => (
+                    <Skeleton key={width} width={width} height={20} radius={10} />
+                  ))}
+                  <span className="mnt-sources-note">Checking never installs anything.</span>
+                </div>
+              )}
+              {[4, 2].map((rows) => (
+                <Section
+                  key={rows}
+                  title={<SkeletonText width={48} />}
+                  description={<SkeletonText width={200} />}
+                >
+                  <ListSkeleton
+                    rows={rows}
+                    leading={0}
+                    meta={220}
+                    label="Looking for updates"
+                  />
+                </Section>
+              ))}
+            </>
           ) : updates.length === 0 ? (
             <List label="Updates">
               <EmptyState
@@ -361,12 +382,18 @@ export function MaintenancePage() {
               />
             }
             trailing={
-              installed && (
+              installed === null && !installedError ? (
+                <span className="mnt-count">
+                  <SkeletonText width={80} />
+                </span>
+              ) : (
+                installed && (
                 <span className="mnt-count ui-num">
                   {visibleInstalled.length === installed.length
                     ? packages(installed.length)
                     : `${visibleInstalled.length} of ${installed.length}`}
                 </span>
+                )
               )
             }
           />
@@ -383,11 +410,7 @@ export function MaintenancePage() {
               {installedError}
             </Notice>
           ) : installed === null ? (
-            <List label="Installed packages">
-              <div className="mnt-pad">
-                <SkeletonRows rows={6} label="Reading what is installed" />
-              </div>
-            </List>
+            <ListSkeleton rows={8} leading={0} meta={120} label="Reading what is installed" />
           ) : visibleInstalled.length === 0 ? (
             <List label="Installed packages">
               {needle ? (

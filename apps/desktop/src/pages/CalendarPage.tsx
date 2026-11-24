@@ -15,7 +15,8 @@ import {
   Page,
   PageHeader,
   Section,
-  SkeletonRows,
+  ListSkeleton,
+  SkeletonText,
   Stack,
 } from "../ui";
 import "./CalendarPage.css";
@@ -107,10 +108,8 @@ export function CalendarPage() {
       )}
 
       {!view && loading && (
-        <Section title="Today">
-          <List label="Loading events">
-            <SkeletonRows rows={4} label="Reading calendar" />
-          </List>
+        <Section title="Today" description={<SkeletonText width={132} />}>
+          <ListSkeleton rows={5} leading={0} trailing={52} label="Reading calendar" />
         </Section>
       )}
 

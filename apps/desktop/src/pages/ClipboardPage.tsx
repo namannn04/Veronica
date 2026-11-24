@@ -25,7 +25,8 @@ import {
   Page,
   PageHeader,
   SearchField,
-  SkeletonRows,
+  ListSkeleton,
+  SkeletonText,
   Toolbar,
 } from "../ui";
 import "./ClipboardPage.css";
@@ -133,11 +134,16 @@ export function ClipboardPage() {
           />
         }
         trailing={
-          loaded &&
-          !error && (
+          !loaded ? (
+            <span className="clip-count">
+              <SkeletonText width={64} />
+            </span>
+          ) : (
+            !error && (
             <span className="clip-count ui-num">
               {query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}
             </span>
+            )
           )
         }
       />
@@ -157,9 +163,7 @@ export function ClipboardPage() {
       )}
 
       {!loaded && (
-        <List label="Loading clipboard history">
-          <SkeletonRows rows={6} label="Reading clipboard history" />
-        </List>
+        <ListSkeleton rows={10} trailing={56} label="Reading clipboard history" />
       )}
 
       {loaded &&
