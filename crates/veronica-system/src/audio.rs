@@ -117,7 +117,7 @@ impl AudioStream {
                     && !self.application.eq_ignore_ascii_case(name)
                     && !matches!(name, "Playback" | "playback" | "RecordStream" | "record") =>
             {
-                format!("{} — {name}", self.application)
+                format!("{} ({name})", self.application)
             }
             _ => self.application.clone(),
         }
@@ -369,7 +369,7 @@ mod tests {
         let streams = parse_streams(&dump).unwrap();
         assert_eq!(
             streams.iter().find(|s| s.id == 84).unwrap().label(),
-            "Google Chrome — Tab: Radio"
+            "Google Chrome (Tab: Radio)"
         );
     }
 

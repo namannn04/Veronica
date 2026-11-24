@@ -211,7 +211,7 @@ async fn npm_prefix_problem() -> Option<String> {
     else {
         return Some(
             "npm is not installed, and this tool is published as an npm package. Install \
-             Node.js — `sudo apt install nodejs npm` — and try again."
+             Node.js with `sudo apt install nodejs npm` and try again."
                 .to_string(),
         );
     };
@@ -244,7 +244,7 @@ async fn npm_prefix_problem() -> Option<String> {
         Err(_) => Some(format!(
             "npm's global prefix is {}, which you cannot write to, and Veronica will not run \
              npm as root: that installs the tool into root's prefix, where you cannot run it. \
-             Point npm at a prefix you own instead — `npm config set prefix ~/.npm-global` — \
+             Point npm at a prefix you own instead, with `npm config set prefix ~/.npm-global`, \
              and make sure ~/.npm-global/bin is on your PATH. Veronica already looks there.",
             existing.display()
         )),

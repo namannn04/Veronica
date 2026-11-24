@@ -44,7 +44,7 @@ pub async fn write(text: &str) -> Result<Writer> {
 
     bail!(
         "cannot put text on the clipboard. Enable Veronica's GNOME extension, or \
-         install wl-clipboard (Wayland) or xclip (X11). Tried — {}",
+         install wl-clipboard (Wayland) or xclip (X11). Tried: {}",
         attempts.join("; ")
     )
 }
