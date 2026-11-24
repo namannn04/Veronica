@@ -11,7 +11,7 @@ SCRIPT = pathlib.Path(__file__).with_name("claude-status.py")
 
 
 class StatusHookTests(unittest.TestCase):
-    def run_hook(self, root, event):
+    def run_hook(self, root: pathlib.Path, event: str) -> None:
         program = """import ctypes,json,subprocess,sys
 ctypes.CDLL(None).prctl(15,b'claude',0,0,0)
 subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':sys.argv[2],'prompt':'PRIVATE_PROMPT','tool_input':{'secret':'PRIVATE_KEY'}}),text=True,check=True)
@@ -20,7 +20,7 @@ subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':
             ["python3", "-c", program, str(root / "status.py"), event], check=True, timeout=5
         )
 
-    def test_only_status_is_stored_and_unknown_files_are_preserved(self):
+    def test_only_status_is_stored_and_unknown_files_are_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             shutil.copy(SCRIPT, root / "status.py")
@@ -38,7 +38,7 @@ subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':
             self.assertNotIn("PRIVATE", files[0].read_text())
             self.assertEqual(keep.read_text(), "unrelated")
 
-    def test_symlink_events_directory_is_never_followed(self):
+    def test_symlink_events_directory_is_never_followed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             shutil.copy(SCRIPT, root / "status.py")
