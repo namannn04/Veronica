@@ -55,7 +55,7 @@ aborted at `comm -23`, because one input was sorted under the shell's UTF-8
 collation while the other came from `jq`'s codepoint ordering, and `comm`
 compares bytes. Forcing `LC_ALL=C` on both sorts makes the orderings agree:
 
-```
+```sh
 jq -r '...' | LC_ALL=C sort      >"$TMP/cwds.txt"
 jq -r '.cwd' | LC_ALL=C sort -u  >"$TMP/cwds-have.txt"
 ```
@@ -118,7 +118,7 @@ whether it can be undone. `preview` validates the plan against the connection's
 policy, measures the impact against the server, derives the warnings it earns,
 and returns a token:
 
-```
+```text
 base64url(payload) . base64url(HMAC-SHA256(payload))
 ```
 
@@ -231,7 +231,7 @@ Three switches, not one: `presenterEnabled` (does the feature exist),
 `presenterMode` (the user's own toggle) and `presenterAutoActive` (Veronica
 noticed a share). The gate is Edith's, unchanged:
 
-```
+```text
 active = enabled && (manual || auto_active)
 ```
 
@@ -245,7 +245,7 @@ browser tab, Zoom, OBS, GNOME's own recorder) goes through xdg-desktop-portal,
 which asks Mutter for a session, and Mutter exports one object per live session
 under a collection:
 
-```
+```text
 /org/gnome/Mutter/ScreenCast/Session/u8
 /org/gnome/Mutter/RemoteDesktop/Session/u3
 ```
