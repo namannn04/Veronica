@@ -30,6 +30,7 @@ pub(crate) fn write(root: &Path, path: &str, contents: &str) {
 pub(crate) fn run(root: &Path, program: &str, args: &[&str]) {
     let status = Command::new(program)
         .current_dir(root)
+        .env("GIT_COMMITTER_DATE", "2026-11-20T10:00:00+05:30")
         .args(args)
         .status()
         .unwrap();

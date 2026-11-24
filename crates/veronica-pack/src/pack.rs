@@ -206,6 +206,7 @@ pub fn pack(inputs: &PackInputs<'_>, stamp: &Stamp) -> Result<Packed> {
         unpacked_size: entries.iter().map(|entry| entry.bytes.len() as u64).sum(),
         fingerprint: stamp.fingerprint.clone(),
         commit: stamp.commit.clone(),
+        published_at: stamp.published_at.clone(),
         engines: manifest.engines.clone(),
         manifest,
     };

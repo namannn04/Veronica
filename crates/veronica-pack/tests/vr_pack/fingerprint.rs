@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use veronica_pack::fingerprint::{fingerprint, input_paths, stamp};
+use veronica_pack::fingerprint::{fingerprint, input_paths, published_at, stamp};
 
 use crate::common::{commit_all, repo, write};
 
@@ -85,6 +85,18 @@ fn fingerprints_change_only_with_their_inputs() {
 
     write(root, "packages/kit/index.js", "export const kit = 2;\n");
     assert_ne!(print(root, "beta"), beta);
+}
+
+#[test]
+fn publish_time_comes_from_the_commit_or_source_date_epoch() {
+    let dir = repo();
+    let root = dir.path();
+    assert_eq!(published_at(root, None).unwrap(), "2026-11-20T04:30:00Z");
+    assert_eq!(
+        published_at(root, Some("1795564800")).unwrap(),
+        "2026-11-25T00:00:00Z"
+    );
+    assert!(published_at(root, Some("soon")).is_err());
 }
 
 #[test]

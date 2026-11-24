@@ -92,12 +92,9 @@ fn the_package_tree_is_sorted_stamped_and_indexed() {
     let dir = repo();
     let root = dir.path();
     let binary = backend(root, "binary");
-    let packed = pack_into(
-        root,
-        &stamp(root, "alpha").unwrap(),
-        &binary,
-        &root.join("out"),
-    );
+    let stamped = stamp(root, "alpha").unwrap();
+    let packed = pack_into(root, &stamped, &binary, &root.join("out"));
+    assert_eq!(packed.metadata.published_at, stamped.published_at);
     let members = members(&packed.archive);
     let names: Vec<_> = members.iter().map(|(name, _)| name.as_str()).collect();
     assert_eq!(

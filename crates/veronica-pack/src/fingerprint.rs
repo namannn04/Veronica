@@ -5,6 +5,7 @@ use std::path::Path;
 use std::process::Command;
 
 use anyhow::{bail, Context, Result};
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use veronica_protocol::PackageVersion;
@@ -22,6 +23,7 @@ pub struct Stamp {
     pub version: PackageVersion,
     pub fingerprint: String,
     pub commit: String,
+    pub published_at: String,
     pub inputs: Vec<String>,
 }
 
@@ -187,6 +189,22 @@ pub fn change_count(root: &Path, paths: &[String]) -> Result<u32> {
         .with_context(|| format!("git printed an unexpected count {count:?}"))
 }
 
+pub fn published_at(root: &Path, source_date_epoch: Option<&str>) -> Result<String> {
+    let instant = if let Some(epoch) = source_date_epoch {
+        let seconds: i64 = epoch
+            .trim()
+            .parse()
+            .with_context(|| format!("SOURCE_DATE_EPOCH {epoch:?} is not a number"))?;
+        DateTime::from_timestamp(seconds, 0).context("SOURCE_DATE_EPOCH is out of range")?
+    } else {
+        let raw = git(root, &["log", "-1", "--format=%cI", "HEAD"])?;
+        DateTime::parse_from_rfc3339(raw.trim())
+            .with_context(|| format!("git printed an unexpected commit time {raw:?}"))?
+            .with_timezone(&Utc)
+    };
+    Ok(instant.to_rfc3339_opts(SecondsFormat::Secs, true))
+}
+
 pub fn stamp(root: &Path, id: &str) -> Result<Stamp> {
     let manifest = read_manifest(&extension_dir(root, id))?;
     let inputs = input_paths(root, id)?;
@@ -195,6 +213,7 @@ pub fn stamp(root: &Path, id: &str) -> Result<Stamp> {
         version: manifest.version.with_patch(change_count(root, &inputs)?),
         fingerprint: fingerprint(root, &inputs)?,
         commit: crate::repo::head_commit(root)?,
+        published_at: published_at(root, std::env::var("SOURCE_DATE_EPOCH").ok().as_deref())?,
         inputs,
     })
 }

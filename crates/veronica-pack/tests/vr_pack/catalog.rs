@@ -11,6 +11,7 @@ use crate::common::{fixtures, write};
 const REVISION: u64 = 1_795_564_800;
 
 fn metadata(id: &str, version: &str) -> PackageMetadata {
+    let patch: u32 = version.rsplit('.').next().unwrap().parse().unwrap();
     let path = fixtures().join(format!("repo/extensions/{id}/manifest.json"));
     let manifest = Manifest::parse(&fs::read_to_string(path).unwrap()).unwrap();
     PackageMetadata {
@@ -22,6 +23,7 @@ fn metadata(id: &str, version: &str) -> PackageMetadata {
         unpacked_size: 400,
         fingerprint: format!("sha256:{id}-{version}"),
         commit: "0123abcd".to_string(),
+        published_at: format!("2026-11-{:02}T08:30:00Z", 10 + patch),
         engines: manifest.engines.clone(),
         manifest,
     }
@@ -71,6 +73,19 @@ fn the_catalog_keeps_three_versions_and_derives_profiles() {
         .map(|v| v.version.to_string())
         .collect();
     assert_eq!(kept, ["1.2.5", "1.2.4", "1.2.3"]);
+    let published: Vec<_> = alpha
+        .versions
+        .iter()
+        .map(|v| v.published_at.as_str())
+        .collect();
+    assert_eq!(
+        published,
+        [
+            "2026-11-15T08:30:00Z",
+            "2026-11-14T08:30:00Z",
+            "2026-11-13T08:30:00Z"
+        ]
+    );
     assert!(
         alpha.latest_version().unwrap().targets[&Target::LinuxX86_64]
             .url

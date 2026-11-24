@@ -80,7 +80,6 @@ fn version_entry(
     id: &str,
     version: PackageVersion,
     builds: &[PackageMetadata],
-    published_at: &str,
 ) -> Result<CatalogVersion> {
     let first = &builds[0];
     let mut targets = BTreeMap::new();
@@ -101,7 +100,7 @@ fn version_entry(
     Ok(CatalogVersion {
         version,
         engines: first.engines.clone(),
-        published_at: published_at.to_string(),
+        published_at: first.published_at.clone(),
         fingerprint: first.fingerprint.clone(),
         yanked: false,
         targets,
@@ -152,7 +151,7 @@ pub fn build(metadata: Vec<PackageMetadata>, options: &CatalogOptions) -> Result
             latest: *latest,
             versions: kept
                 .iter()
-                .map(|(version, builds)| version_entry(id, **version, builds, &generated_at))
+                .map(|(version, builds)| version_entry(id, **version, builds))
                 .collect::<Result<_>>()?,
         });
     }

@@ -62,7 +62,7 @@
             "hostApi": 1
           },
           "fingerprint": "sha256:alpha-1.2.5",
-          "publishedAt": "2026-11-25T00:00:00Z",
+          "publishedAt": "2026-11-15T08:30:00Z",
           "targets": {
             "linux-x86_64": {
               "sha256": "alpha-1.2.5-sha",
@@ -81,7 +81,7 @@
             "hostApi": 1
           },
           "fingerprint": "sha256:alpha-1.2.4",
-          "publishedAt": "2026-11-25T00:00:00Z",
+          "publishedAt": "2026-11-14T08:30:00Z",
           "targets": {
             "linux-x86_64": {
               "sha256": "alpha-1.2.4-sha",
@@ -100,7 +100,7 @@
             "hostApi": 1
           },
           "fingerprint": "sha256:alpha-1.2.3",
-          "publishedAt": "2026-11-25T00:00:00Z",
+          "publishedAt": "2026-11-13T08:30:00Z",
           "targets": {
             "linux-x86_64": {
               "sha256": "alpha-1.2.3-sha",
@@ -151,7 +151,7 @@
             "hostApi": 1
           },
           "fingerprint": "sha256:beta-0.3.1",
-          "publishedAt": "2026-11-25T00:00:00Z",
+          "publishedAt": "2026-11-11T08:30:00Z",
           "targets": {
             "linux-x86_64": {
               "sha256": "beta-0.3.1-sha",
