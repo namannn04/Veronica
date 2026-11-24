@@ -1,0 +1,149 @@
+.comp-recording {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--tone-critical-text);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.comp-loading {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+}
+
+.comp-panes {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.5fr);
+  gap: var(--card-gap);
+  height: 100%;
+  min-height: 0;
+}
+
+.comp-list-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.comp-search {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--separator);
+}
+
+.comp-search .ui-field {
+  width: 100%;
+}
+
+.comp-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.comp-list-scroll > .ui-empty {
+  padding-top: var(--space-8);
+}
+
+.comp-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.comp-pin {
+  width: 12px;
+  height: 12px;
+  color: var(--accent-text);
+}
+
+.comp-editor {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.comp-editor-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.comp-editor-time {
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+.comp-spacer {
+  flex: 1;
+}
+
+.comp-title {
+  width: 100%;
+  padding: var(--space-1) 0 var(--space-2);
+  border: 0;
+  border-bottom: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text-1);
+  font-size: var(--text-title-2);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.012em;
+  outline: none;
+}
+
+.comp-title:focus-visible {
+  border-bottom-color: var(--accent);
+}
+
+.comp-audio {
+  width: 100%;
+  height: 36px;
+}
+
+.comp-body {
+  flex: 1;
+  min-height: 220px;
+  resize: none;
+  line-height: 1.6;
+}
+
+.comp-editor-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--separator);
+}
+
+.comp-count {
+  color: var(--text-3);
+  font-size: var(--text-caption);
+}
+
+.comp-editor-empty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+}
+
+@container main (max-width: 720px) {
+  .comp-page.ui-page-fill {
+    height: auto;
+  }
+
+  .comp-panes {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .comp-list-scroll {
+    max-height: 320px;
+  }
+
+  .comp-editor {
+    min-height: 460px;
+  }
+}

@@ -1,17 +1,58 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Activity, AudioLines, Mic, NotebookPen, Pin, Plus, Save, Trash2 } from "lucide-react";
 
 import { countdown, stopwatch, timeAgo } from "../lib/format";
 import { ipc, listenEvent } from "../lib/ipc";
 import type { AttentionOverview, CompanionItem } from "../lib/types";
+import {
+  BarList,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  ConfirmDialog,
+  EmptyState,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  SearchField,
+  Section,
+  Spinner,
+  Stat,
+  StatGrid,
+  StatusDot,
+  Tabs,
+  TextArea,
+} from "../ui";
+import "./CompanionPage.css";
 
-const CompanionChat=lazy(()=>import("../components/CompanionChat").then(m=>({default:m.CompanionChat})));
-type Section = "all" | "notes" | "voice" | "activity" | "chat";
+const CompanionChat = lazy(() => import("../components/CompanionChat").then((m) => ({ default: m.CompanionChat })));
+
+type View = "all" | "notes" | "voice" | "activity" | "chat";
+
+const ICON = { strokeWidth: 1.75 };
+const VIEWS = [
+  { id: "all", label: "Everything" },
+  { id: "notes", label: "Notes" },
+  { id: "voice", label: "Voice" },
+  { id: "activity", label: "Activity" },
+  { id: "chat", label: "Conversation" },
+] as const;
+const SUBTITLES: Record<View, string> = {
+  all: "Local notes and voice memos, searchable in one place",
+  notes: "Notes you write, kept on this device",
+  voice: "Voice memos recorded on this device",
+  activity: "Private application activity from the last 7 days",
+  chat: "An opt-in conversation with a model you connect",
+};
 
 export function CompanionPage() {
   const [items, setItems] = useState<CompanionItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [section, setSection] = useState<Section>("all");
+  const [view, setView] = useState<View>("all");
   const [query, setQuery] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -21,29 +62,46 @@ export function CompanionPage() {
   const [elapsed, setElapsed] = useState(0);
   const [activity, setActivity] = useState<AttentionOverview | null>(null);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const queryRef = useRef("");
 
   const refresh = useCallback(async (search: string) => {
     const next = await ipc.companionList(search);
     setItems(next);
-    setSelectedId((current) => current && next.some((item) => item.id === current) ? current : next[0]?.id ?? null);
+    setLoaded(true);
+    setSelectedId((current) => (current && next.some((item) => item.id === current) ? current : next[0]?.id ?? null));
   }, []);
 
-  useEffect(() => { queryRef.current = query; }, [query]);
+  const loadFailed = (reason: unknown) => {
+    setError(String(reason));
+    setLoaded(true);
+  };
 
   useEffect(() => {
-    void refresh("").catch((reason) => setNotice(String(reason)));
+    queryRef.current = query;
+  }, [query]);
+
+  useEffect(() => {
+    void refresh("").catch(loadFailed);
     void ipc.attentionOverview(7).then(setActivity).catch(() => {});
-    void ipc.companionRecordingStatus().then((status) => {
-      setRecording(status.recording); setElapsed(status.elapsedSeconds);
-    }).catch(() => {});
+    void ipc
+      .companionRecordingStatus()
+      .then((status) => {
+        setRecording(status.recording);
+        setElapsed(status.elapsedSeconds);
+      })
+      .catch(() => {});
     const updated = listenEvent("companion-updated", () => void refresh(queryRef.current));
-    return () => { void updated.then((unlisten) => unlisten()); };
+    return () => {
+      void updated.then((unlisten) => unlisten());
+    };
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void refresh(query).catch((reason) => setNotice(String(reason))), 180);
+    const timer = window.setTimeout(() => void refresh(query).catch(loadFailed), 180);
     return () => window.clearTimeout(timer);
   }, [query]);
 
@@ -55,60 +113,300 @@ export function CompanionPage() {
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
   useEffect(() => {
-    setTitle(selected?.title ?? ""); setBody(selected?.body ?? ""); setPinned(selected?.pinned ?? false); setAudio("");
-    if (selected?.kind === "voice") void ipc.companionAudio(selected.id).then((path) => setAudio(convertFileSrc(path))).catch((reason) => setNotice(String(reason)));
+    setTitle(selected?.title ?? "");
+    setBody(selected?.body ?? "");
+    setPinned(selected?.pinned ?? false);
+    setAudio("");
+    setSaved(false);
+    if (selected?.kind === "voice") void ipc.companionAudio(selected.id).then((path) => setAudio(convertFileSrc(path))).catch((reason) => setError(String(reason)));
   }, [selectedId, selected?.updatedAt]);
 
-  const visible = useMemo(() => items.filter((item) => section === "all" || section === "activity" || item.kind === section), [items, section]);
+  const visible = useMemo(
+    () => items.filter((item) => view === "all" || view === "activity" || (view === "notes" ? item.kind === "note" : item.kind === view)),
+    [items, view],
+  );
 
   const createNote = async () => {
-    setBusy(true); setNotice("");
-    try { const item = await ipc.companionNoteCreate("Untitled note", ""); setQuery(""); await refresh(""); setSelectedId(item.id); setSection("notes"); }
-    catch (reason) { setNotice(String(reason)); } finally { setBusy(false); }
+    setBusy(true);
+    setError("");
+    try {
+      const item = await ipc.companionNoteCreate("Untitled note", "");
+      setQuery("");
+      await refresh("");
+      setSelectedId(item.id);
+      setView("notes");
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy(false);
+    }
   };
   const save = async () => {
     if (!selected) return;
-    setBusy(true); setNotice("");
-    try { await ipc.companionUpdate(selected.id, title, body, pinned); await refresh(query); setNotice("Saved locally"); }
-    catch (reason) { setNotice(String(reason)); } finally { setBusy(false); }
+    setBusy(true);
+    setError("");
+    try {
+      await ipc.companionUpdate(selected.id, title, body, pinned);
+      await refresh(query);
+      setSaved(true);
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy(false);
+    }
   };
   const remove = async () => {
-    if (!selected || !window.confirm(`Delete “${selected.title}”?`)) return;
+    if (!selected) return;
+    setConfirmDelete(false);
     setBusy(true);
-    try { await ipc.companionRemove(selected.id); setSelectedId(null); await refresh(query); }
-    catch (reason) { setNotice(String(reason)); } finally { setBusy(false); }
+    try {
+      await ipc.companionRemove(selected.id);
+      setSelectedId(null);
+      await refresh(query);
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy(false);
+    }
   };
   const startRecording = async () => {
-    setBusy(true); setNotice("");
-    try { await ipc.companionRecordStart(); setElapsed(0); setRecording(true); setSection("voice"); }
-    catch (reason) { setNotice(String(reason)); } finally { setBusy(false); }
+    setBusy(true);
+    setError("");
+    try {
+      await ipc.companionRecordStart();
+      setElapsed(0);
+      setRecording(true);
+      setView("voice");
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy(false);
+    }
   };
   const stopRecording = async () => {
     setBusy(true);
-    try { const item = await ipc.companionRecordStop(); setRecording(false); setQuery(""); await refresh(""); setSelectedId(item.id); }
-    catch (reason) {
-      setNotice(String(reason));
+    try {
+      const item = await ipc.companionRecordStop();
+      setRecording(false);
+      setQuery("");
+      await refresh("");
+      setSelectedId(item.id);
+    } catch (reason) {
+      setError(String(reason));
       const status = await ipc.companionRecordingStatus().catch(() => null);
-      if (status) { setRecording(status.recording); setElapsed(status.elapsedSeconds); }
-    } finally { setBusy(false); }
+      if (status) {
+        setRecording(status.recording);
+        setElapsed(status.elapsedSeconds);
+      }
+    } finally {
+      setBusy(false);
+    }
   };
   const cancelRecording = async () => {
     setBusy(true);
-    try { await ipc.companionRecordCancel(); setRecording(false); setElapsed(0); }
-    catch (reason) { setNotice(String(reason)); } finally { setBusy(false); }
+    try {
+      await ipc.companionRecordCancel();
+      setRecording(false);
+      setElapsed(0);
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return <div className="companion-page">
-    <div className="page-head edith-head"><div><h1>Companion</h1><div className="page-sub">Local notes, voice memos and opt-in model conversations</div></div><div className="head-actions"><button className="button" disabled={busy} onClick={() => void createNote()}>＋ New note</button>{recording ? <><span className="recording-clock"><i />{stopwatch(elapsed)}</span><button className="button primary" disabled={busy} onClick={() => void stopRecording()}>Stop & save</button><button className="button" disabled={busy} onClick={() => void cancelRecording()}>Cancel</button></> : <button className="button primary" disabled={busy} onClick={() => void startRecording()}>● Voice memo</button>}</div></div>
-    {notice && <div className={`banner ${notice.includes("Saved") ? "" : "error"}`}>{notice}</div>}
-    <div className="pill-tabs"><button className={section === "chat" ? "active" : ""} onClick={() => setSection("chat")}>AI conversation</button><button className={section === "all" ? "active" : ""} onClick={() => setSection("all")}>Everything</button><button className={section === "notes" ? "active" : ""} onClick={() => setSection("notes")}>Notes</button><button className={section === "voice" ? "active" : ""} onClick={() => setSection("voice")}>Voice</button><button className={section === "activity" ? "active" : ""} onClick={() => setSection("activity")}>Activity</button></div>
-    {section === "chat" ? <Suspense fallback={<p>Opening Companion conversation…</p>}><CompanionChat/></Suspense> : section === "activity" ? <ActivityPanel overview={activity}/> : <div className="companion-layout"><aside className="card companion-list"><div className="companion-search"><input className="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search everything"/></div><div>{visible.map((item) => <button key={item.id} className={item.id === selectedId ? "active" : ""} onClick={() => setSelectedId(item.id)}><span className="companion-kind">{item.kind === "voice" ? "◉" : "▤"}</span><span><strong>{item.pinned ? "◆ " : ""}{item.title}</strong><small>{item.body || (item.kind === "voice" ? `${stopwatch(item.durationSeconds ?? 0)} recording` : "Empty note")}</small><em>{timeAgo(item.updatedAt)}</em></span></button>)}{visible.length === 0 && <div className="empty compact"><p>{query ? "Nothing matches your search." : "Create a note or record a voice memo."}</p></div>}</div></aside><section className="card companion-editor">{selected ? <><div className="companion-editor-head"><span className="pill">{selected.kind === "voice" ? "Voice memo" : "Note"}</span><label><input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.target.checked)}/> Pinned</label><span>{timeAgo(selected.updatedAt)}</span></div><input className="companion-title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} aria-label="Title"/>{selected.kind === "voice" && audio && <audio className="companion-audio" src={audio} controls preload="metadata"/>}<textarea className="companion-body" value={body} maxLength={100000} onChange={(event) => setBody(event.target.value)} placeholder={selected.kind === "voice" ? "Add searchable notes about this recording…" : "Write anything…"}/><div className="companion-editor-actions"><span>{body.length.toLocaleString()} characters</span><button className="button danger" disabled={busy} onClick={() => void remove()}>Delete</button><button className="button primary" disabled={busy} onClick={() => void save()}>Save</button></div></> : <div className="empty"><h3>Your private memory</h3><p>Select an item, create a note, or record a voice memo.</p></div>}</section></div>}
-  </div>;
+  const listView = view !== "chat" && view !== "activity";
+  const dirty = selected !== null && (title !== selected.title || body !== selected.body || pinned !== selected.pinned);
+
+  return (
+    <Page
+      fill={listView}
+      className="comp-page"
+      header={
+        <PageHeader
+          title="Companion"
+          subtitle={SUBTITLES[view]}
+          actions={
+            recording ? (
+              <>
+                <span className="comp-recording ui-num" role="status">
+                  <StatusDot tone="critical" />
+                  Recording {stopwatch(elapsed)}
+                </span>
+                <Button variant="plain" disabled={busy} onClick={() => void cancelRecording()}>
+                  Cancel
+                </Button>
+                <Button variant="primary" busy={busy} onClick={() => void stopRecording()}>
+                  Stop and save
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button icon={<Plus {...ICON} />} disabled={busy} onClick={() => void createNote()}>
+                  New note
+                </Button>
+                <Button variant={view === "chat" ? "secondary" : "primary"} icon={<Mic {...ICON} />} disabled={busy} onClick={() => void startRecording()}>
+                  Record memo
+                </Button>
+              </>
+            )
+          }
+          accessory={<Tabs items={VIEWS} value={view} onChange={setView} label="Companion views" />}
+        />
+      }
+    >
+      {error && (
+        <Notice tone="critical" title="Companion hit a problem" actions={<Button size="small" onClick={() => { setError(""); void refresh(query).catch(loadFailed); }}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
+
+      {view === "chat" ? (
+        <Suspense
+          fallback={
+            <div className="comp-loading">
+              <Spinner label="Opening the conversation" />
+            </div>
+          }
+        >
+          <CompanionChat />
+        </Suspense>
+      ) : view === "activity" ? (
+        <ActivityPanel overview={activity} />
+      ) : (
+        <div className="comp-panes">
+          <Card padding="none" className="comp-list-pane">
+            <div className="comp-search">
+              <SearchField value={query} onChange={setQuery} placeholder="Search notes and memos" />
+            </div>
+            <div className="comp-list-scroll">
+              {!loaded ? (
+                <div className="comp-loading">
+                  <Spinner label="Reading notes" />
+                </div>
+              ) : visible.length ? (
+                <List inset={false} label="Notes and memos">
+                  {visible.map((item) => (
+                    <ListRow
+                      key={item.id}
+                      leading={item.kind === "voice" ? <AudioLines {...ICON} aria-label="Voice memo" /> : <NotebookPen {...ICON} aria-label="Note" />}
+                      title={item.title}
+                      subtitle={item.body || (item.kind === "voice" ? `${stopwatch(item.durationSeconds ?? 0)} recording` : "Empty note")}
+                      meta={
+                        <span className="comp-row-meta">
+                          {item.pinned && <Pin {...ICON} aria-label="Pinned" className="comp-pin" />}
+                          {timeAgo(item.updatedAt)}
+                        </span>
+                      }
+                      selected={item.id === selectedId}
+                      onClick={() => setSelectedId(item.id)}
+                    />
+                  ))}
+                </List>
+              ) : (
+                <EmptyState
+                  size="compact"
+                  title={query ? "Nothing matches" : view === "voice" ? "No voice memos" : "No notes yet"}
+                  action={
+                    query ? (
+                      <Button size="small" onClick={() => setQuery("")}>
+                        Clear search
+                      </Button>
+                    ) : view === "voice" ? undefined : (
+                      <Button size="small" onClick={() => void createNote()}>
+                        New note
+                      </Button>
+                    )
+                  }
+                >
+                  {query ? "Try different words." : view === "voice" ? "Record a memo and it appears here." : "Write a note or record a voice memo."}
+                </EmptyState>
+              )}
+            </div>
+          </Card>
+
+          <Card className="comp-editor">
+            {selected ? (
+              <>
+                <div className="comp-editor-head">
+                  <Badge tone={selected.kind === "voice" ? "accent" : "neutral"}>{selected.kind === "voice" ? "Voice memo" : "Note"}</Badge>
+                  <span className="comp-editor-time">Edited {timeAgo(selected.updatedAt)}</span>
+                  <span className="comp-spacer" />
+                  <Checkbox label="Pinned" checked={pinned} onChange={setPinned} />
+                </div>
+                <input className="comp-title" value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} aria-label="Title" spellCheck />
+                {selected.kind === "voice" && audio && <audio className="comp-audio" src={audio} controls preload="metadata" />}
+                <TextArea
+                  className="comp-body"
+                  value={body}
+                  maxLength={100000}
+                  onChange={(event) => setBody(event.target.value)}
+                  aria-label="Body"
+                  placeholder={selected.kind === "voice" ? "Add searchable notes about this recording" : "Write anything"}
+                />
+                <div className="comp-editor-foot">
+                  <span className="comp-count ui-num">{dirty ? "Unsaved changes" : saved ? "Saved on this device" : `${body.length.toLocaleString()} characters`}</span>
+                  <span className="comp-spacer" />
+                  <Button variant="destructive-plain" icon={<Trash2 {...ICON} />} disabled={busy} onClick={() => setConfirmDelete(true)}>
+                    Delete
+                  </Button>
+                  <Button variant="primary" icon={<Save {...ICON} />} busy={busy} onClick={() => void save()}>
+                    Save
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="comp-editor-empty">
+                <EmptyState icon={<NotebookPen {...ICON} />} title="Your private memory" action={<Button onClick={() => void createNote()}>New note</Button>}>
+                  Select an item, write a note, or record a voice memo.
+                </EmptyState>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => void remove()}
+        title={`Delete “${selected?.title ?? ""}”?`}
+        message="This removes it from this device."
+        confirmLabel="Delete"
+        destructive
+      />
+    </Page>
+  );
 }
 
 function ActivityPanel({ overview }: { overview: AttentionOverview | null }) {
-  if (!overview) return <div className="empty"><h3>No activity yet</h3><p>Enable Attention to build a private application timeline.</p></div>;
+  if (!overview)
+    return (
+      <Card>
+        <EmptyState icon={<Activity {...ICON} />} title="No activity yet">
+          Turn on Attention to build a private application timeline.
+        </EmptyState>
+      </Card>
+    );
   const applications = overview.applications.slice(0, 8);
-  const maximum = Math.max(1, ...applications.map(([, seconds]) => seconds));
-  return <div className="companion-activity"><div className="grid tiles"><div className="card"><span className="tile-label">Active time</span><strong className="tile-value">{countdown(overview.activeSeconds)}</strong></div><div className="card"><span className="tile-label">Focused</span><strong className="tile-value">{countdown(overview.focusedSeconds)}</strong></div><div className="card"><span className="tile-label">Context switches</span><strong className="tile-value">{overview.contextSwitches}</strong></div></div><section className="card"><div className="card-head"><h2>Last 7 days</h2><span className="card-note">Private application activity</span></div><div className="attention-bars">{applications.map(([name, seconds]) => <div className="attention-bar" key={name}><span>{name}</span><div><i style={{ width: `${seconds / maximum * 100}%` }}/></div><b>{countdown(seconds)}</b></div>)}{applications.length === 0 && <div className="empty compact"><p>No focused applications recorded.</p></div>}</div></section></div>;
+  return (
+    <>
+      <StatGrid>
+        <Stat label="Active time" value={<span className="ui-num">{countdown(overview.activeSeconds)}</span>} />
+        <Stat label="Focused" value={<span className="ui-num">{countdown(overview.focusedSeconds)}</span>} />
+        <Stat label="Context switches" value={<span className="ui-num">{overview.contextSwitches}</span>} />
+      </StatGrid>
+      <Section title="Applications" description="Private application activity, last 7 days">
+        <Card>
+          {applications.length ? (
+            <BarList label="Time per application" items={applications.map(([name, seconds]) => ({ id: name, label: name, value: seconds, display: countdown(seconds) }))} />
+          ) : (
+            <EmptyState size="compact" title="Nothing recorded">
+              No focused applications were recorded this week.
+            </EmptyState>
+          )}
+        </Card>
+      </Section>
+    </>
+  );
 }
