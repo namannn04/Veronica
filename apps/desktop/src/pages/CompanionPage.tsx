@@ -8,6 +8,7 @@ import type { AttentionOverview, CompanionItem } from "../lib/types";
 import {
   Badge,
   BarList,
+  BarListSkeleton,
   Button,
   Card,
   Checkbox,
@@ -15,14 +16,18 @@ import {
   EmptyState,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   SearchField,
   Section,
+  Skeleton,
+  SkeletonText,
   Spinner,
   Stat,
   StatGrid,
+  StatSkeleton,
   StatusDot,
   Tabs,
   TextArea,
@@ -62,7 +67,7 @@ export function CompanionPage() {
   const [audio, setAudio] = useState("");
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [activity, setActivity] = useState<AttentionOverview | null>(null);
+  const [activity, setActivity] = useState<AttentionOverview | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -93,7 +98,7 @@ export function CompanionPage() {
     void ipc
       .attentionOverview(7)
       .then(setActivity)
-      .catch(() => {});
+      .catch(() => setActivity(null));
     void ipc
       .companionRecordingStatus()
       .then((status) => {
@@ -333,9 +338,13 @@ export function CompanionPage() {
             </div>
             <div className="comp-list-scroll">
               {!loaded ? (
-                <div className="comp-loading">
-                  <Spinner label="Reading notes" />
-                </div>
+                <ListSkeleton
+                  rows={6}
+                  inset={false}
+                  leading={16}
+                  meta={40}
+                  label="Reading notes"
+                />
               ) : visible.length ? (
                 <List inset={false} label="Notes and memos">
                   {visible.map((item) => (
@@ -393,7 +402,9 @@ export function CompanionPage() {
           </Card>
 
           <Card className="comp-editor">
-            {selected ? (
+            {!loaded ? (
+              <EditorSkeleton />
+            ) : selected ? (
               <>
                 <div className="comp-editor-head">
                   <Badge tone={selected.kind === "voice" ? "accent" : "neutral"}>
@@ -482,7 +493,55 @@ export function CompanionPage() {
   );
 }
 
-function ActivityPanel({ overview }: { overview: AttentionOverview | null }) {
+function EditorSkeleton() {
+  return (
+    <>
+      <div className="comp-editor-head" aria-hidden="true">
+        <Skeleton width={40} height={20} radius={4} />
+        <SkeletonText width={88} className="comp-editor-time" />
+        <span className="comp-spacer" />
+        <Skeleton width={64} height={16} radius={4} />
+      </div>
+      <div className="comp-title comp-title-skeleton">
+        <SkeletonText width="42%" />
+      </div>
+      <div className="ui-textarea comp-body comp-body-skeleton" aria-hidden="true">
+        <SkeletonText width="46%" />
+        <SkeletonText width="38%" />
+        <SkeletonText width="52%" />
+        <SkeletonText width="30%" />
+      </div>
+      <div className="comp-editor-foot" aria-hidden="true">
+        <SkeletonText width={88} className="comp-count" />
+        <span className="comp-spacer" />
+        <Skeleton width={72} height={32} radius={8} />
+        <Skeleton width={72} height={32} radius={8} />
+      </div>
+    </>
+  );
+}
+
+function ActivitySkeleton() {
+  return (
+    <>
+      <StatGrid>
+        <StatSkeleton note={false} />
+        <StatSkeleton note={false} />
+        <StatSkeleton note={false} />
+      </StatGrid>
+      <Section title="Applications" description="Private application activity, last 7 days">
+        <Card>
+          <BarListSkeleton rows={6} label="Reading activity" />
+        </Card>
+      </Section>
+    </>
+  );
+}
+
+function ActivityPanel({ overview }: { overview: AttentionOverview | null | undefined }) {
+  if (overview === undefined) {
+    return <ActivitySkeleton />;
+  }
   if (!overview) {
     return (
       <Card>
