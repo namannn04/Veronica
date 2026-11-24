@@ -20,6 +20,7 @@ export function Tabs<T extends string>({
   const host = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items change the ruler's width, so collapse must be remeasured even when the host does not resize
   useLayoutEffect(() => {
     const node = host.current;
     const ruler = measure.current;

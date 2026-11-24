@@ -15,7 +15,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ringStatus, SpendCalendar } from "../components/charts";
 import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
@@ -133,7 +133,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     return () => window.clearInterval(timer);
   }, []);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const requests = await Promise.allSettled([
       ipc.usageView(null, []),
       ipc.usageLimits(),
@@ -160,11 +160,11 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       setPresenter(requests[6].value);
     }
     setLoaded(true);
-  };
+  }, []);
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     let live = true;
@@ -213,7 +213,7 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       void changed.then((unlisten) => unlisten());
       void usage.then((unlisten) => unlisten());
     };
-  }, []);
+  }, [refresh]);
 
   const set = async (key: string, value: unknown) => {
     const previous = settings[key];

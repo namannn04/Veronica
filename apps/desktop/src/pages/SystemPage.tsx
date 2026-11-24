@@ -75,6 +75,7 @@ export function SystemPage() {
   const [quitting, setQuitting] = useState<RunningProcess | null>(null);
   const [quitBusy, setQuitBusy] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt is the retry trigger: bumping it restarts polling
   useEffect(() => {
     let live = true;
     const tick = async () => {

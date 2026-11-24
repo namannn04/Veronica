@@ -135,11 +135,15 @@ export function DatabasePage() {
     }
   };
 
-  useEffect(() => {
+  const selectConnection = (id: string) => {
+    if (id === selected) {
+      return;
+    }
+    setSelected(id);
     setPage(null);
     setSource(null);
     setOffset(0);
-  }, [selected]);
+  };
 
   const open = async (object: DatabaseObject) => {
     if (object.kind === "column") {
@@ -257,7 +261,7 @@ export function DatabasePage() {
                 subtitle={`${entry.productHint} · ${entry.environment.label}`}
                 trailing={isReadOnly(entry) ? <Badge>Read-only</Badge> : undefined}
                 selected={entry.id === selected}
-                onClick={() => setSelected(entry.id)}
+                onClick={() => selectConnection(entry.id)}
               />
             ))}
           </List>
