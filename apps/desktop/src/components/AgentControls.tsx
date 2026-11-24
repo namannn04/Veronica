@@ -12,6 +12,7 @@ import {
   ConfirmDialog,
   Dialog,
   EmptyState,
+  ListSkeleton,
   Field,
   FormGroup,
   FormRow,
@@ -44,10 +45,11 @@ type Confirmation = {
 
 export function AgentControls({ requestedId }: { requestedId?: string }) {
   const [profiles, setProfiles] = useState<AgentProfile[]>([]);
+  const [profilesRead, setProfilesRead] = useState(false);
   const [provider, setProvider] = useState("");
   const [cwd, setCwd] = useState("");
   const [owned, setOwned] = useState<AgentView[]>([]);
-  const [external, setExternal] = useState<AgentView[]>([]);
+  const [external, setExternal] = useState<AgentView[] | null>(null);
   const [selected, setSelected] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,7 +67,12 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
   const terminalAnchor = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async () => {
-    const [a, b] = await Promise.all([ipc.agentList(), ipc.agentExternal()]);
+    const [a, b] = await Promise.all([ipc.agentList(), ipc.agentExternal()]).catch((reason) => {
+      if (live.current) {
+        setExternal((current) => current ?? []);
+      }
+      throw reason;
+    });
     if (live.current) {
       setOwned(a);
       const ids = new Set(a.map((v) => v.pid));
@@ -83,7 +90,12 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
           setProvider(p[0]?.id || "");
         }
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => setError(String(e)))
+      .finally(() => {
+        if (live.current) {
+          setProfilesRead(true);
+        }
+      });
     return () => {
       live.current = false;
     };
@@ -325,8 +337,9 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
                     id={id}
                     value={provider}
                     onChange={(e) => setProvider(e.target.value)}
-                    disabled={busy}
+                    disabled={busy || !profilesRead}
                   >
+                    {!profilesRead && <option value="">Reading providers…</option>}
                     {profiles.map((p) => (
                       <option value={p.id} key={p.id}>
                         {p.name}
@@ -487,7 +500,14 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
         title="Detected external agents"
         description="Your own processes, read-only. A running process does not prove an active turn. Desktop apps and existing terminal sessions keep their own lifecycle."
       >
-        {external.length ? (
+        {external === null ? (
+          <ListSkeleton
+            rows={2}
+            leading={8}
+            meta={96}
+            label="Looking for external agents"
+          />
+        ) : external.length ? (
           <List label="External agents">
             {external.map((a) => (
               <ListRow
