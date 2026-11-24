@@ -33,6 +33,14 @@
   display: contents;
 }
 
+.ui-card > .ui-skeleton-block > .ui-list {
+  margin: 0 calc(var(--card-padding) * -1);
+}
+
+.ui-card > .ui-skeleton-block:last-child > .ui-list {
+  margin-bottom: calc(var(--card-padding) * -1);
+}
+
 .ui-skeleton-block .ui-list-row-leading .ui-skeleton,
 .ui-skeleton-block .ui-list-row-trailing .ui-skeleton {
   flex: none;

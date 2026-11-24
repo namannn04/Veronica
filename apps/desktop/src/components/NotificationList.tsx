@@ -11,9 +11,9 @@ import {
   EmptyState,
   IconButton,
   List,
+  ListSkeleton,
   ListRow,
   Notice,
-  SkeletonRows,
 } from "../ui";
 import "./NotificationList.css";
 
@@ -107,7 +107,16 @@ export function NotificationList({ limit, className }: { limit?: number; classNa
         </Notice>
       )}
 
-      {!loaded && <SkeletonRows rows={3} label="Loading notifications" />}
+      {!loaded && (
+        <ListSkeleton
+          rows={4}
+          inset={false}
+          leading={0}
+          meta={40}
+          trailing={22}
+          label="Loading notifications"
+        />
+      )}
 
       {loaded && rows.length === 0 && !error && (
         <EmptyState size="compact" icon={<BellOff />} title="No notifications yet">
