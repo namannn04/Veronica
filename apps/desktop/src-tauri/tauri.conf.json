@@ -109,14 +109,18 @@
           "/usr/share/veronica/graftcode/package.json": "../../../integrations/graftcode/package.json",
           "/usr/share/veronica/graftcode/package-lock.json": "../../../integrations/graftcode/package-lock.json",
           "/usr/share/doc/veronica/AI_FEATURES.md": "../../../docs/AI_FEATURES.md",
-          "/usr/share/doc/veronica/GRAFTCODE.md": "../../../docs/GRAFTCODE.md"
+          "/usr/share/doc/veronica/GRAFTCODE.md": "../../../docs/GRAFTCODE.md",
+          "/usr/share/doc/veronica/LICENSE": "../../../LICENSE",
+          "/usr/share/doc/veronica/NOTICE": "../../../NOTICE"
         }
       },
       "appimage": {
         "bundleMediaFramework": false
       }
     },
-    "publisher": "Veronica contributors",
+    "publisher": "Naman Dadhich and Pulkit",
+    "copyright": "Copyright (C) 2026 Naman Dadhich and Pulkit",
+    "license": "GPL-3.0-only",
     "homepage": "https://github.com/namannn04/veronica"
   }
 }

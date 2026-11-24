@@ -1,10 +1,21 @@
-# Veronica
+<p align="center">
+  <img src="branding/veronica-logo.png" width="96" height="96" alt="Veronica logo">
+</p>
+
+<h1 align="center">Veronica</h1>
+
+<p align="center">
+  <a href="https://github.com/namannn04/Veronica/actions/workflows/ci.yml"><img src="https://github.com/namannn04/Veronica/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/namannn04/Veronica/releases/latest"><img src="https://img.shields.io/github/v/release/namannn04/Veronica" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0%20%2B%20attribution-blue.svg" alt="License: GPL-3.0 with attribution"></a>
+</p>
 
 A native desktop control center for Ubuntu. Veronica replaces a shelf of
 single-purpose utilities with one application.
 
-Free and open source under the [GPL-3.0](LICENSE). Every feature is in the one
-app. No licence key, no account, no paid tier.
+Free and open source under the [GPL-3.0](LICENSE) with an attribution term in
+[NOTICE](NOTICE). Every feature is in the one app. No licence key, no account,
+no paid tier.
 
 Veronica is a port of [Edith](https://github.com/pulkitxm/edith), a macOS
 control center, to Linux. It keeps Edith's models — the capability map, the
@@ -535,7 +546,24 @@ cd apps/desktop && bun install && bunx tauri build --bundles deb
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the crate layout, the
 capability model, and why this is a reimplementation rather than a Swift port.
 
+## Contributing
+
+Bug reports, ideas, documentation and code are welcome. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and follow the
+[Code of Conduct](CODE_OF_CONDUCT.md). Questions go through
+[SUPPORT.md](SUPPORT.md), vulnerabilities through [SECURITY.md](SECURITY.md),
+and how decisions are made is in [GOVERNANCE.md](GOVERNANCE.md).
+
 ## Licence
 
-Veronica is free software licensed under the GNU General Public License v3.0,
-matching Edith, from which its models are derived.
+Copyright (C) 2026 [Naman Dadhich](https://github.com/namannn04) and
+[Pulkit](https://github.com/pulkitxm).
+
+Veronica is free software under the [GNU General Public License v3.0](LICENSE),
+with additional terms under section 7 that are set out in [NOTICE](NOTICE). You
+may use, study, change and share it. Anything you distribute that contains
+Veronica or is based on it must stay under the same license, keep the NOTICE
+file, and visibly credit the project:
+
+> Based on Veronica by Naman Dadhich and Pulkit,
+> https://github.com/namannn04/Veronica

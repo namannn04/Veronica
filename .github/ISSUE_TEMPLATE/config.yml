@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/namannn04/Veronica/security/advisories/new
+    about: Send suspected security vulnerabilities directly to the maintainers.
