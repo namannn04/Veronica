@@ -1,7 +1,9 @@
 use std::fs::{self, OpenOptions};
+use std::future::Future;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::pin::Pin;
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use anyhow::Result;
 use chrono::{SecondsFormat, Utc};
@@ -11,13 +13,15 @@ use veronica_core::paths::AppDirectories;
 use veronica_core::settings::Settings;
 use veronica_protocol::manifest::Permissions;
 use veronica_protocol::rpc::{
-    error_code, ErrorObject, EventEmit, HostLog, HostNotify, HostSettingsGet, HostSettingsSet,
-    HostSurfaceUpdate, Notification, NotifyParams, Progress, ProgressParams, Request,
-    RequestMethod, SurfaceUpdateParams, TopicParams, ValueResult,
+    error_code, ErrorObject, EventEmit, HostContractPublish, HostContractRequest, HostLog,
+    HostNotify, HostSettingsGet, HostSettingsSet, HostSurfaceUpdate, Notification, NotifyParams,
+    Progress, ProgressParams, Request, RequestMethod, TopicParams, ValueResult,
 };
+use veronica_protocol::{ContractId, Manifest};
 
 use crate::layout::Layout;
-use crate::permissions;
+use crate::surfaces::SurfaceStore;
+use crate::{contracts, permissions};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Grant {
@@ -28,13 +32,23 @@ pub struct Grant {
 pub trait Frontend: Send + Sync {
     fn notify(&self, extension: &str, params: NotifyParams) -> Result<(), ErrorObject>;
 
-    fn surface(&self, _extension: &str, _params: SurfaceUpdateParams) -> Result<(), ErrorObject> {
-        Err(unavailable("surfaces need the desktop app"))
+    fn accepts_surfaces(&self) -> bool {
+        false
     }
+
+    fn surfaces_changed(&self, _extension: &str) {}
+
+    fn contract_published(&self, _extension: &str, _contract: &ContractId, _payload: &Value) {}
 
     fn event(&self, _extension: &str, _params: TopicParams) {}
 
     fn progress(&self, _extension: &str, _params: ProgressParams) {}
+}
+
+pub type Answer = Pin<Box<dyn Future<Output = Result<Value, ErrorObject>> + Send>>;
+
+pub trait ContractRouter: Send + Sync {
+    fn request(&self, caller: &str, contract: ContractId, params: Value) -> Answer;
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -64,15 +78,19 @@ pub struct HostServices {
     settings_file: PathBuf,
     frontend: Arc<dyn Frontend>,
     settings_lock: Mutex<()>,
+    surfaces: SurfaceStore,
+    contracts: OnceLock<Arc<dyn ContractRouter>>,
 }
 
 impl HostServices {
     pub fn new(layout: Layout, settings_file: PathBuf) -> Self {
         Self {
+            surfaces: SurfaceStore::new(layout.surfaces_file()),
             layout,
             settings_file,
             frontend: Arc::new(Headless),
             settings_lock: Mutex::new(()),
+            contracts: OnceLock::new(),
         }
     }
 
@@ -92,6 +110,42 @@ impl HostServices {
 
     pub fn layout(&self) -> &Layout {
         &self.layout
+    }
+
+    pub fn surfaces(&self) -> &SurfaceStore {
+        &self.surfaces
+    }
+
+    pub fn set_contract_router(&self, router: Arc<dyn ContractRouter>) {
+        let _ = self.contracts.set(router);
+    }
+
+    pub fn manifest(&self, id: &str) -> Result<Manifest, ErrorObject> {
+        let path = self.layout.current_link(id).join("manifest.json");
+        let raw = fs::read_to_string(&path)
+            .map_err(|_| unavailable(&format!("{id} is not installed")))?;
+        Manifest::parse(&raw).map_err(|error| {
+            ErrorObject::new(error_code::INTERNAL_ERROR, format!("{id}: {error}"))
+        })
+    }
+
+    pub fn answers_later(request: &Request) -> bool {
+        request.method == HostContractRequest::NAME
+    }
+
+    pub async fn handle_later(&self, grant: &Grant, request: &Request) -> Result<Value, ErrorObject> {
+        permissions::check(&grant.id, &grant.permissions, request)?;
+        let params = request.params::<HostContractRequest>()?;
+        let manifest = self.manifest(&grant.id)?;
+        contracts::may_use(&manifest, &params.contract)?;
+        let router = self
+            .contracts
+            .get()
+            .cloned()
+            .ok_or_else(|| unavailable("contract requests need the desktop app"))?;
+        router
+            .request(&grant.id, params.contract, params.params)
+            .await
     }
 
     pub fn log(&self, id: &str, message: &str) {
@@ -146,7 +200,27 @@ impl HostServices {
             }
             HostSurfaceUpdate::NAME => {
                 let params = request.params::<HostSurfaceUpdate>()?;
-                self.frontend.surface(&grant.id, params)?;
+                if !self.frontend.accepts_surfaces() {
+                    return Err(unavailable("surfaces need the desktop app"));
+                }
+                let manifest = self.manifest(&grant.id)?;
+                let changed = self
+                    .surfaces
+                    .update(&manifest, &params.surface, &params.state)
+                    .map_err(|error| {
+                        ErrorObject::new(error_code::INVALID_PARAMS, error.to_string())
+                    })?;
+                if changed {
+                    self.frontend.surfaces_changed(&grant.id);
+                }
+                Ok(Value::Null)
+            }
+            HostContractPublish::NAME => {
+                let params = request.params::<HostContractPublish>()?;
+                let manifest = self.manifest(&grant.id)?;
+                contracts::may_publish(&manifest, &params.contract)?;
+                self.frontend
+                    .contract_published(&grant.id, &params.contract, &params.payload);
                 Ok(Value::Null)
             }
             method => Err(unavailable(&format!(
