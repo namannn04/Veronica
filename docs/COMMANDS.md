@@ -60,6 +60,7 @@ vr backup import <file> --yes  validate and restore an archive atomically
 vr extensions                every extension, where it came from, and what it can run
 vr extensions install <id>   preview an install; --yes downloads, verifies and installs
 vr extensions doctor         exec permission, backends, tools and the catalog
+vr mcp                       every command as an MCP tool, over stdio
 vr tools                     the command line programs the extensions need
 vr tools install <tool>      fetch one, when there is a route Veronica can drive
 vr config set <key> <value>  every setting the UI exposes

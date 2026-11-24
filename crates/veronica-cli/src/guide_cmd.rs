@@ -3,16 +3,17 @@ use std::fmt::Write as _;
 use anyhow::Result;
 use clap::{ArgMatches, CommandFactory as _};
 use serde::Serialize;
-use serde_json::json;
-use veronica_protocol::manifest::{Arg, Command, Effect};
-use veronica_protocol::ExitCode;
+use serde_json::{json, Value};
+use veronica_protocol::manifest::{Arg, Command, Effect, MAX_MCP_TOOL_NAME};
+use veronica_protocol::{ExitCode, Manifest};
 
 use crate::format::Output;
 use crate::routes::Routes;
 
 const HOST: &str = "host";
 const HOST_FLAGS: [&str; 3] = ["json", "yes", "verbose"];
-const WITHOUT_JSON: [&str; 1] = ["database mcp"];
+const WITHOUT_JSON: [&str; 2] = ["database mcp", "mcp serve"];
+const WITHOUT_MCP: [&str; 2] = ["database", "mcp"];
 const SELF_PREVIEW: [&str; 7] = [
     "cleaner clean",
     "extensions install",
@@ -147,6 +148,7 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("media next", Effect::Write),
     ("media pause", Effect::Write),
     ("media play", Effect::Write),
+    ("mcp serve", Effect::Read),
     ("media players", Effect::Read),
     ("media previous", Effect::Write),
     ("media status", Effect::Read),
@@ -310,19 +312,25 @@ effect and whether it prints JSON:
 Run commands with --json and read the exit code. A destructive command run
 without --yes exits 5 and prints what it would do, which is the preview to show
 the person. Commands that need the desktop session exit 4 when there is none.
-`vr database mcp` serves read-only database tools over stdin and stdout.";
 
-#[derive(Serialize)]
+`vr mcp` serves the same commands as MCP tools over stdin and stdout, one tool
+per command, named veronica_<area>_<action>. A destructive tool changes nothing
+until it is called with confirm set, and veronica_catalog finds and installs
+extensions. `vr database mcp` serves read-only database tools.";
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Leaf<'a> {
-    path: String,
-    origin: &'a str,
+pub(crate) struct Leaf {
+    pub(crate) path: String,
+    pub(crate) origin: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    about: Option<&'a str>,
+    pub(crate) about: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    effect: Option<Effect>,
-    json: bool,
-    args: Vec<&'a Arg>,
+    pub(crate) effect: Option<Effect>,
+    pub(crate) json: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) mcp_tool: Option<String>,
+    pub(crate) args: Vec<Arg>,
 }
 
 fn host_tree() -> Vec<Command> {
@@ -330,7 +338,20 @@ fn host_tree() -> Vec<Command> {
         .expect("every host command declares its effect")
 }
 
-fn leaves<'a>(origin: &'a str, command: &'a Command, parent: &str, out: &mut Vec<Leaf<'a>>) {
+fn mcp_tool(host: bool, path: &str, command: &Command, json: bool) -> Option<String> {
+    let hidden = host
+        && WITHOUT_MCP
+            .iter()
+            .any(|root| path == *root || path.starts_with(&format!("{root} ")));
+    if !json || hidden || !command.mcp_exposed() {
+        return None;
+    }
+    let route: Vec<&str> = path.split(' ').collect();
+    let name = Manifest::mcp_tool_name(&route, command);
+    (name.len() <= MAX_MCP_TOOL_NAME).then_some(name)
+}
+
+fn leaves(origin: &str, command: &Command, parent: &str, out: &mut Vec<Leaf>) {
     let path = if parent.is_empty() {
         command.name.clone()
     } else {
@@ -343,18 +364,48 @@ fn leaves<'a>(origin: &'a str, command: &'a Command, parent: &str, out: &mut Vec
         return;
     }
     let host = origin == HOST;
+    let json = command.json && !(host && WITHOUT_JSON.contains(&path.as_str()));
     out.push(Leaf {
-        json: command.json && !(host && WITHOUT_JSON.contains(&path.as_str())),
+        json,
+        mcp_tool: mcp_tool(host, &path, command, json),
         args: command
             .args
             .iter()
             .filter(|arg| !(host && HOST_FLAGS.contains(&arg.name.as_str())))
+            .cloned()
             .collect(),
-        about: command.about.as_deref(),
+        about: command.about.clone(),
         effect: command.effect,
-        origin,
+        origin: origin.to_string(),
         path,
     });
+}
+
+pub(crate) fn catalog(routes: &Routes) -> Vec<Leaf> {
+    let mut commands = Vec::new();
+    for command in &host_tree() {
+        leaves(HOST, command, "", &mut commands);
+    }
+    for (id, root) in routes.roots() {
+        leaves(id, root, "", &mut commands);
+    }
+    commands.sort_by(|left, right| left.path.cmp(&right.path));
+    commands
+}
+
+pub(crate) fn document(routes: &Routes) -> Value {
+    json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "topics": Topic::ALL
+            .iter()
+            .map(|topic| json!({ "id": topic.id(), "title": topic.title() }))
+            .collect::<Vec<_>>(),
+        "exitCodes": ExitCode::ALL
+            .iter()
+            .map(|code| json!({ "code": code.code(), "meaning": code.meaning() }))
+            .collect::<Vec<_>>(),
+        "commands": catalog(routes),
+    })
 }
 
 pub(crate) fn effect(path: &str) -> Option<Effect> {
@@ -385,30 +436,7 @@ pub(crate) fn run(routes: &Routes, topic: Option<Topic>, output: Output) -> Resu
             let document = json!({ "id": topic.id(), "title": topic.title(), "text": body });
             output.emit(&document, || format!("{}\n\n{body}", topic.title()))
         }
-        (None, Output::Json) => {
-            let host = host_tree();
-            let mut commands = Vec::new();
-            for command in &host {
-                leaves(HOST, command, "", &mut commands);
-            }
-            for (id, root) in routes.roots() {
-                leaves(id, root, "", &mut commands);
-            }
-            commands.sort_by(|left, right| left.path.cmp(&right.path));
-            let document = json!({
-                "version": env!("CARGO_PKG_VERSION"),
-                "topics": Topic::ALL
-                    .iter()
-                    .map(|topic| json!({ "id": topic.id(), "title": topic.title() }))
-                    .collect::<Vec<_>>(),
-                "exitCodes": ExitCode::ALL
-                    .iter()
-                    .map(|code| json!({ "code": code.code(), "meaning": code.meaning() }))
-                    .collect::<Vec<_>>(),
-                "commands": commands,
-            });
-            output.emit(&document, String::new)
-        }
+        (None, Output::Json) => output.emit(&document(routes), String::new),
         (None, Output::Text) => {
             let mut text = String::new();
             for topic in Topic::ALL {
@@ -426,11 +454,7 @@ mod tests {
 
     #[test]
     fn every_host_leaf_declares_an_effect() {
-        let tree = host_tree();
-        let mut found = Vec::new();
-        for command in &tree {
-            leaves(HOST, command, "", &mut found);
-        }
+        let found = catalog(&Routes::default());
         assert_eq!(found.len(), HOST_EFFECTS.len());
         for path in SELF_PREVIEW.iter().chain(WITHOUT_JSON.iter()) {
             assert!(effect(path).is_some(), "{path}");
