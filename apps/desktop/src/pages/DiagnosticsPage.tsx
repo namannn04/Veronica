@@ -1,5 +1,14 @@
 import type { CapabilityState, Diagnostics } from "../lib/types";
-import { Badge, FormGroup, FormRow, KeyValueList, SkeletonRows, Stack, type Tone } from "../ui";
+import {
+  Badge,
+  FormGroup,
+  FormRow,
+  KeyValueList,
+  Skeleton,
+  SkeletonText,
+  Stack,
+  type Tone,
+} from "../ui";
 
 const STATE_BADGES: Record<string, { tone: Tone; label: string }> = {
   available: { tone: "good", label: "Available" },
@@ -24,7 +33,13 @@ export function DiagnosticsPage({ diagnostics }: { diagnostics: Diagnostics | nu
   if (!diagnostics) {
     return (
       <FormGroup title="Capabilities">
-        <SkeletonRows rows={5} label="Reading the environment" />
+        {[0, 1, 2, 3, 4].map((slot) => (
+          <FormRow
+            key={slot}
+            label={<SkeletonText width={120 + ((slot * 37) % 80)} />}
+            control={<Skeleton width={64} height={20} radius={10} />}
+          />
+        ))}
       </FormGroup>
     );
   }

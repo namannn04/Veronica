@@ -34,7 +34,10 @@ import {
   Page,
   PageHeader,
   Segmented,
-  SkeletonRows,
+  ListSkeleton,
+  Skeleton,
+  SkeletonText,
+  StatSkeleton,
   StatGrid,
   StatusDot,
   Table,
@@ -196,13 +199,23 @@ export function MachinesPage() {
       {reports.length === 0 ? (
         loading ? (
           <div className="mach-layout">
-            <List label="Machines">
-              <div className="mach-pad">
-                <SkeletonRows rows={3} label="Probing this computer and your SSH hosts" />
-              </div>
-            </List>
-            <Card>
-              <SkeletonRows rows={4} />
+            <div className="mach-sidebar">
+              <ListSkeleton
+                rows={4}
+                leading={8}
+                meta={56}
+                label="Probing this computer and your SSH hosts"
+              />
+            </div>
+            <Card className="mach-detail" aria-hidden="true">
+              <CardHeader title={<SkeletonText width="32%" />} subtitle={<SkeletonText width="64%" />} />
+              <Toolbar className="mach-actions" leading={<Skeleton width={84} height={26} radius={6} />} />
+              <Skeleton width="100%" height={26} radius={6} />
+              <StatGrid min={150}>
+                <StatSkeleton meter />
+                <StatSkeleton meter />
+                <StatSkeleton meter />
+              </StatGrid>
             </Card>
           </div>
         ) : (
@@ -649,9 +662,7 @@ function MachineDetail({
               </div>
               <div className="mach-scroll">
                 {!directory && toolBusy ? (
-                  <div className="mach-pad">
-                    <SkeletonRows rows={5} label="Reading the folder" />
-                  </div>
+                  <ListSkeleton rows={6} inset={false} leading={16} label="Reading the folder" />
                 ) : directory && directory.entries.length > 0 ? (
                   <List label="Folder contents" inset={false}>
                     {directory.entries.map((entry) => (
@@ -705,9 +716,7 @@ function MachineDetail({
             <div className="mach-tool">
               <div className="mach-scroll">
                 {containers === null && toolBusy ? (
-                  <div className="mach-pad">
-                    <SkeletonRows rows={3} label="Reading containers" />
-                  </div>
+                  <ListSkeleton rows={3} inset={false} leading={8} trailing={72} label="Reading containers" />
                 ) : containers && containers.length > 0 ? (
                   <List label="Containers" inset={false}>
                     {containers.map((container) => (

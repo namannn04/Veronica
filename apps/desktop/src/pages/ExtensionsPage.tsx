@@ -47,7 +47,6 @@ import type {
 import {
   Badge,
   Button,
-  Card,
   EmptyState,
   List,
   ListRow,
@@ -56,7 +55,8 @@ import {
   SearchField,
   Section,
   Segmented,
-  SkeletonRows,
+  ListSkeleton,
+  SkeletonText,
   Stack,
   Switch,
   Toolbar,
@@ -218,9 +218,17 @@ export function ExtensionsPage({
   let body: ReactNode;
   if (diagnostics === null) {
     body = (
-      <Card>
-        <SkeletonRows rows={6} label="Reading the extension catalogue" />
-      </Card>
+      <>
+        {[4, 5].map((rows) => (
+          <Section
+            key={rows}
+            title={<SkeletonText width={72} />}
+            description={<SkeletonText width={64} />}
+          >
+            <ListSkeleton rows={rows} trailing={40} label="Reading the extension catalogue" />
+          </Section>
+        ))}
+      </>
     );
   } else if (entries.length === 0) {
     body = (
