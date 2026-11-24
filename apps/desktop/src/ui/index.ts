@@ -14,8 +14,8 @@ export { Checkbox, Field, FormGroup, FormRow, SearchField, Select, Switch, TextA
 export { KeyValueList, List, ListRow } from "./List";
 export { Columns, Grid, Page, PageHeader, Section, SectionHeader, Stack, type PageWidth } from "./Page";
 export { Segmented, type SegmentedOption } from "./Segmented";
-export { Slider } from "./Slider";
 export { Stat, StatGrid } from "./Stat";
 export { Tabs, type TabItem } from "./Tabs";
 export { Table, Toolbar } from "./Toolbar";
 export { Tooltip } from "./Tooltip";
+export { Slider } from "./Slider";
