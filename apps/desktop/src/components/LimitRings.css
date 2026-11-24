@@ -5,16 +5,15 @@
   padding: var(--space-1) 0;
 }
 
-.limits-skeleton {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+.limits-skeleton-ring {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border: 6px solid var(--fill-control);
+  border-radius: 50%;
 }
 
-.limits-skeleton-lines {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1-5);
+.limits-skeleton-meta {
   flex: 1;
 }
 
