@@ -1,51 +1,60 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AtSign, Check, ClipboardList, Copy, Link2, TextAlignStart, Trash, Type, X } from "lucide-react";
 
 import { startVisiblePolling } from "../lib/polling";
 import { ipc } from "../lib/ipc";
 import { bytes, timeAgo } from "../lib/format";
 import type { ClipRow } from "../lib/types";
+import {
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  IconButton,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  SearchField,
+  SkeletonRows,
+  Toolbar,
+} from "../ui";
+import "./ClipboardPage.css";
 
-/** How often to pick up newly captured entries. */
 const TICK_MS = 3000;
 
-/**
- * The clipboard history.
- *
- * Capture happens in the GNOME Shell extension, because on Wayland only the
- * compositor may watch the selection. This page reads what was captured, and
- * copying back uses the browser clipboard API, which is allowed here because it
- * happens in response to a click in a focused window.
- */
+type ClearRequest = { total: number; matching: number; query: string };
+
 export function ClipboardPage() {
   const [rows, setRows] = useState<ClipRow[]>([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [clearRequest, setClearRequest] = useState<ClearRequest | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const search = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
       setRows(await ipc.clipboardList(query));
       setError(null);
-    } catch (e) {
-      setError(String(e));
+    } catch (reason) {
+      setError(String(reason));
     } finally {
       setLoaded(true);
     }
   }, [query]);
 
-  useEffect(() => {
-    return startVisiblePolling(load, TICK_MS);
-  }, [load]);
+  useEffect(() => startVisiblePolling(load, TICK_MS), [load]);
 
   const copy = async (row: ClipRow) => {
     try {
       await navigator.clipboard.writeText(row.text);
       setCopied(row.id);
-      // A brief confirmation; the row is otherwise unchanged.
       setTimeout(() => setCopied((current) => (current === row.id ? null : current)), 1200);
-    } catch (e) {
-      setError(`Cannot write to the clipboard: ${e}`);
+    } catch (reason) {
+      setError(`Cannot write to the clipboard: ${reason}`);
     }
   };
 
@@ -53,107 +62,145 @@ export function ClipboardPage() {
     try {
       await ipc.clipboardRemove(id);
       await load();
-    } catch (e) {
-      setError(String(e));
+    } catch (reason) {
+      setError(String(reason));
+    }
+  };
+
+  const askToClear = async () => {
+    try {
+      const total = query ? (await ipc.clipboardList("")).length : rows.length;
+      if (total === 0) return;
+      setClearRequest({ total, matching: rows.length, query });
+    } catch (reason) {
+      setError(String(reason));
     }
   };
 
   const clear = async () => {
+    setClearing(true);
     try {
-      // Clearing removes the whole history, not the search's matches, so the
-      // confirmation counts the whole history.
-      const total = query ? (await ipc.clipboardList("")).length : rows.length;
-      if (total === 0) return;
-      const scope = query ? `, not only the ${rows.length} matching “${query}”` : "";
-      if (!window.confirm(`Delete all ${total} clipboard entries${scope}?\n\nThis cannot be undone.`)) return;
       await ipc.clipboardClear();
       await load();
-    } catch (e) {
-      setError(String(e));
+    } catch (reason) {
+      setError(String(reason));
+    } finally {
+      setClearing(false);
+      setClearRequest(null);
     }
   };
 
+  const count = `${rows.length} ${rows.length === 1 ? "entry" : "entries"}`;
+
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>Clipboard</h1>
-          <div className="page-sub">
-            Everything you have copied, kept on this computer
-          </div>
-        </div>
-        <button className="button danger" onClick={clear} disabled={!query && rows.length === 0}>
-          Clear all
-        </button>
-      </div>
-
-      {error && <div className="banner error">{error}</div>}
-
-      <div className="toolbar">
-        <input
-          className="button"
-          style={{ minWidth: 260 }}
-          placeholder="Search the history"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          aria-label="Search the clipboard history"
+    <Page
+      header={
+        <PageHeader
+          title="Clipboard"
+          subtitle="Everything you have copied, kept on this computer"
+          actions={
+            <Button variant="destructive-plain" icon={<Trash />} onClick={() => void askToClear()} disabled={!query && rows.length === 0}>
+              Clear all
+            </Button>
+          }
         />
-        <span className="spacer" />
-        <span className="card-note">
-          {rows.length} {rows.length === 1 ? "entry" : "entries"}
-        </span>
-      </div>
+      }
+    >
+      <Toolbar
+        leading={<SearchField ref={search} className="clip-search" value={query} onChange={setQuery} placeholder="Search the history" />}
+        trailing={loaded && <span className="clip-count ui-num">{query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}</span>}
+      />
 
-      {loaded && rows.length === 0 && (
-        <div className="empty">
-          <h3>{query ? "Nothing matches" : "Nothing captured yet"}</h3>
-          <p>
-            {query
-              ? "Try a different search."
-              : "Copy something, and it appears here. Capture needs the GNOME Shell " +
-                "extension, because on Wayland only the compositor may watch the clipboard."}
-          </p>
-        </div>
+      {error && (
+        <Notice tone="critical" title="Clipboard history is unavailable" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
+
+      {!loaded && (
+        <List label="Loading clipboard history">
+          <SkeletonRows rows={6} label="Reading clipboard history" />
+        </List>
+      )}
+
+      {loaded && rows.length === 0 && !error && (
+        query ? (
+          <EmptyState
+            icon={<ClipboardList />}
+            title={`Nothing matches “${query}”`}
+            action={<Button icon={<X />} onClick={() => { setQuery(""); search.current?.focus(); }}>Clear search</Button>}
+          >
+            Try a different word from what you copied.
+          </EmptyState>
+        ) : (
+          <EmptyState icon={<ClipboardList />} title="Nothing captured yet">
+            Copy something and it appears here. Capture needs the GNOME Shell extension, because on Wayland only the compositor may watch the clipboard.
+          </EmptyState>
+        )
       )}
 
       {rows.length > 0 && (
-        <section className="card">
+        <List label="Clipboard history">
           {rows.map((row) => (
-            <div className="clip-row" key={row.id}>
-              <button
-                className="clip-preview"
-                onClick={() => void copy(row)}
-                title="Click to copy"
-              >
-                <span className="clip-text">{row.preview}</span>
-                <span className="clip-meta">
-                  {row.lines > 1 && <span className="pill">{row.lines} lines</span>}
-                  {row.count > 1 && <span className="pill">copied {row.count}×</span>}
-                  <span className="card-note">{bytes(row.bytes)}</span>
-                  <span className="card-note">{timeAgo(row.lastSeen)}</span>
-                </span>
-              </button>
-              <div className="clip-actions">
-                {copied === row.id ? (
-                  <span className="pill good">Copied</span>
-                ) : (
-                  <button className="button" onClick={() => void copy(row)}>
-                    Copy
-                  </button>
-                )}
-                <button
-                  className="button"
-                  onClick={() => void remove(row.id)}
-                  aria-label="Forget this entry"
-                  title="Forget"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
+            <ListRow
+              key={row.id}
+              className="clip-row"
+              leading={<span className="clip-kind">{kindIcon(row)}</span>}
+              title={<span className="clip-text ui-selectable">{row.preview}</span>}
+              subtitle={details(row)}
+              onClick={() => void copy(row)}
+              trailing={
+                <>
+                  <IconButton
+                    size="small"
+                    label={copied === row.id ? "Copied" : "Copy"}
+                    tooltip={copied === row.id ? "Copied to the clipboard" : "Copy to the clipboard"}
+                    icon={copied === row.id ? <Check className="clip-copied" /> : <Copy />}
+                    onClick={() => void copy(row)}
+                  />
+                  <IconButton size="small" label="Forget entry" tooltip="Forget this entry" icon={<X />} onClick={() => void remove(row.id)} />
+                </>
+              }
+            />
           ))}
-        </section>
+        </List>
       )}
-    </>
+
+      <ConfirmDialog
+        open={clearRequest !== null}
+        onClose={() => setClearRequest(null)}
+        onConfirm={() => void clear()}
+        busy={clearing}
+        destructive
+        title="Clear clipboard history?"
+        message={
+          clearRequest
+            ? clearRequest.query
+              ? `This deletes all ${clearRequest.total} entries, not only the ${clearRequest.matching} matching “${clearRequest.query}”. It cannot be undone.`
+              : `This deletes all ${clearRequest.total} entries. It cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Clear all"
+      />
+    </Page>
   );
+}
+
+function kindIcon(row: ClipRow) {
+  const text = row.text.trim();
+  if (/^https?:\/\/\S+$/i.test(text)) return <Link2 aria-label="Link" />;
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return <AtSign aria-label="Email address" />;
+  if (row.lines > 1) return <TextAlignStart aria-label="Multiline text" />;
+  return <Type aria-label="Text" />;
+}
+
+function details(row: ClipRow): string {
+  return [
+    timeAgo(row.lastSeen),
+    row.lines > 1 ? `${row.lines} lines` : null,
+    row.count > 1 ? `copied ${row.count}×` : null,
+    bytes(row.bytes),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
