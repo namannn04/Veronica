@@ -209,17 +209,17 @@ impl PaneRecord {
             .is_some_and(|status| self::status(status) != "unknown")
     }
 
-    fn merging(&self, incoming: &PaneRecord) -> PaneRecord {
+    fn merging(&self, incoming: &Self) -> Self {
         let status = match (&incoming.status, &self.status) {
             (Some(incoming), Some(existing))
-                if self::status(incoming) == "unknown" && self::status(existing) != "unknown" =>
+                if status(incoming) == "unknown" && status(existing) != "unknown" =>
             {
                 Some(existing.clone())
             }
             (Some(incoming), _) => Some(incoming.clone()),
             (None, existing) => existing.clone(),
         };
-        PaneRecord {
+        Self {
             pane: if incoming.pane.is_empty() {
                 self.pane.clone()
             } else {
@@ -327,8 +327,7 @@ fn agent(session: &str, record: &PaneRecord, labels: &BTreeMap<String, String>) 
     let kind = record
         .kind
         .as_deref()
-        .map(display_kind)
-        .unwrap_or_else(|| "Unknown".to_string());
+        .map_or_else(|| "Unknown".to_string(), display_kind);
     let workspace = record
         .workspace_id
         .as_ref()
@@ -346,8 +345,7 @@ fn agent(session: &str, record: &PaneRecord, labels: &BTreeMap<String, String>) 
         status: record
             .status
             .as_deref()
-            .map(status)
-            .unwrap_or_else(|| "unknown".to_string()),
+            .map_or_else(|| "unknown".to_string(), status),
         title,
         workspace,
         cwd: record.cwd.clone().unwrap_or_default(),

@@ -21,14 +21,14 @@ pub enum Urgency {
 impl Urgency {
     fn from_hint(value: u8) -> Self {
         match value {
-            0 => Urgency::Low,
-            2 => Urgency::Critical,
-            _ => Urgency::Normal,
+            0 => Self::Low,
+            2 => Self::Critical,
+            _ => Self::Normal,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Notification {
     pub id: u64,
@@ -77,9 +77,7 @@ pub fn from_body(body: NotifyBody, id: u64, received_at: i64) -> Notification {
         app_icon,
         summary,
         body: notification_body,
-        urgency: hint_u8(&hints, "urgency")
-            .map(Urgency::from_hint)
-            .unwrap_or(Urgency::Normal),
+        urgency: hint_u8(&hints, "urgency").map_or(Urgency::Normal, Urgency::from_hint),
         received_at,
         desktop_entry: hint_text(&hints, "desktop-entry"),
     }
@@ -128,10 +126,10 @@ where
 
     while let Some(Ok(message)) = futures_util::StreamExt::next(&mut stream).await {
         let header = message.header();
-        if header.member().map(|m| m.as_str()) != Some("Notify") {
+        if header.member().map(zbus::names::MemberName::as_str) != Some("Notify") {
             continue;
         }
-        if header.destination().map(|d| d.to_string()).as_deref() != Some(server.as_str()) {
+        if header.destination().map(ToString::to_string).as_deref() != Some(server.as_str()) {
             continue;
         }
 

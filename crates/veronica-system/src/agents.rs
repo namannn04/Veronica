@@ -176,7 +176,7 @@ impl AgentManager {
                     .map(|t| {
                         let mut v = t.view.clone();
                         if let Ok(Some(status)) = t.child.try_wait() {
-                            v.status = format!("exited ({})", status.exit_code())
+                            v.status = format!("exited ({})", status.exit_code());
                         }
                         v
                     })
@@ -256,7 +256,7 @@ impl AgentManager {
             .map_err(|_| anyhow::anyhow!("Terminal lock failed"))?
             .remove(id)
         {
-            terminate(&mut t)
+            terminate(&mut t);
         }
         Ok(())
     }
@@ -265,14 +265,14 @@ impl AgentManager {
         self.epoch.fetch_add(1, Ordering::SeqCst);
         if let Ok(mut all) = self.terminals.lock() {
             for (_, mut t) in all.drain() {
-                terminate(&mut t)
+                terminate(&mut t);
             }
         }
     }
 }
 impl Drop for AgentManager {
     fn drop(&mut self) {
-        self.stop_all()
+        self.stop_all();
     }
 }
 fn terminate(t: &mut Terminal) {
@@ -299,14 +299,15 @@ pub(crate) fn resolve(value: &str) -> Option<PathBuf> {
     if value.contains('/') {
         return None;
     }
-    if let Some(path) = veronica_core::tools::spec(value).and_then(|spec| spec.locate()) {
+    if let Some(path) = veronica_core::tools::spec(value).and_then(veronica_core::ToolSpec::locate)
+    {
         return Some(path);
     }
     let mut dirs =
         std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()).collect::<Vec<_>>();
     if let Some(home) = std::env::var_os("HOME") {
         for d in [".local/bin", ".cargo/bin"] {
-            dirs.push(PathBuf::from(&home).join(d))
+            dirs.push(PathBuf::from(&home).join(d));
         }
     }
     dirs.extend(["/usr/local/bin", "/usr/bin", "/usr/lib/chatgpt/resources"].map(PathBuf::from));
@@ -352,7 +353,7 @@ pub fn external() -> Vec<AgentView> {
         let Ok(pid) = entry.file_name().to_string_lossy().parse::<u32>() else {
             continue;
         };
-        if entry.metadata().map(|m| m.uid() != uid).unwrap_or(true) {
+        if entry.metadata().map_or(true, |m| m.uid() != uid) {
             continue;
         }
         let Ok(comm) = std::fs::read_to_string(entry.path().join("comm")) else {
@@ -499,7 +500,7 @@ mod tests {
                 panic!("A reaped PID must never be signalled")
             }
             fn clone_killer(&self) -> Box<dyn portable_pty::ChildKiller + Send + Sync> {
-                Box::new(ExitedChild)
+                Box::new(Self)
             }
         }
         impl portable_pty::Child for ExitedChild {

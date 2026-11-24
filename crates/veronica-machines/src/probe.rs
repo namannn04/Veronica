@@ -76,7 +76,7 @@ impl CpuSample {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiskUsage {
     pub mount_point: String,
@@ -203,7 +203,7 @@ pub fn parse(output: &str) -> MachineStats {
             "kernel" => stats.kernel = rest.to_string(),
             "os" => stats.os = rest.to_string(),
             "uptime" => {
-                stats.uptime_secs = rest.parse::<f64>().map(|v| v as u64).unwrap_or(0);
+                stats.uptime_secs = rest.parse::<f64>().map_or(0, |v| v as u64);
             }
             "load" => {
                 let values: Vec<f64> = rest

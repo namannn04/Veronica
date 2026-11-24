@@ -6,7 +6,7 @@ pub(crate) fn stop(key: &str, owner: &str) {
     let expected = format!("{key}={owner}");
     let uid = unsafe { libc::geteuid() };
     for entry in entries.take(8192).flatten() {
-        if entry.metadata().map(|m| m.uid() != uid).unwrap_or(true) {
+        if entry.metadata().map_or(true, |m| m.uid() != uid) {
             continue;
         }
         let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() else {

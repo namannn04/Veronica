@@ -17,9 +17,9 @@ pub enum Timeout {
 impl Timeout {
     fn as_i32(self) -> i32 {
         match self {
-            Timeout::Default => -1,
-            Timeout::Never => 0,
-            Timeout::Milliseconds(ms) => ms,
+            Self::Default => -1,
+            Self::Never => 0,
+            Self::Milliseconds(ms) => ms,
         }
     }
 }
@@ -34,9 +34,9 @@ pub enum Urgency {
 impl Urgency {
     fn as_u8(self) -> u8 {
         match self {
-            Urgency::Low => 0,
-            Urgency::Normal => 1,
-            Urgency::Critical => 2,
+            Self::Low => 0,
+            Self::Normal => 1,
+            Self::Critical => 2,
         }
     }
 }

@@ -11,32 +11,32 @@ pub enum Source {
 }
 
 impl Source {
-    pub const ALL: [Source; 3] = [Source::Apt, Source::Snap, Source::Flatpak];
+    pub const ALL: [Self; 3] = [Self::Apt, Self::Snap, Self::Flatpak];
 
     pub fn title(self) -> &'static str {
         match self {
-            Source::Apt => "apt",
-            Source::Snap => "snap",
-            Source::Flatpak => "flatpak",
+            Self::Apt => "apt",
+            Self::Snap => "snap",
+            Self::Flatpak => "flatpak",
         }
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
-        Source::ALL
+        Self::ALL
             .into_iter()
             .find(|source| source.title().eq_ignore_ascii_case(raw))
     }
 
     fn program(self) -> &'static str {
         match self {
-            Source::Apt => "apt",
-            Source::Snap => "snap",
-            Source::Flatpak => "flatpak",
+            Self::Apt => "apt",
+            Self::Snap => "snap",
+            Self::Flatpak => "flatpak",
         }
     }
 
     pub fn needs_root(self) -> bool {
-        !matches!(self, Source::Flatpak)
+        !matches!(self, Self::Flatpak)
     }
 }
 
@@ -467,8 +467,7 @@ fn is_root() -> bool {
                 .parse::<u32>()
                 .ok()
         })
-        .map(|euid| euid == 0)
-        .unwrap_or(false)
+        .is_some_and(|euid| euid == 0)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

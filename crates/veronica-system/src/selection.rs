@@ -19,10 +19,10 @@ pub enum Writer {
 impl Writer {
     pub fn title(self) -> &'static str {
         match self {
-            Writer::ShellExtension => "the Veronica GNOME extension",
-            Writer::WlCopy => "wl-copy",
-            Writer::Xclip => "xclip",
-            Writer::Xsel => "xsel",
+            Self::ShellExtension => "the Veronica GNOME extension",
+            Self::WlCopy => "wl-copy",
+            Self::Xclip => "xclip",
+            Self::Xsel => "xsel",
         }
     }
 }

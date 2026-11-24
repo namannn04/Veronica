@@ -194,9 +194,9 @@ impl ChatRuntime {
             .map_err(|_| anyhow::anyhow!("Chat storage is busy"))?;
         let mut doc: ChatDocument = crate::private_store::load(&self.path())?;
         if memory {
-            doc.memory.clear()
+            doc.memory.clear();
         } else {
-            doc.messages.clear()
+            doc.messages.clear();
         }
         crate::private_store::save(&self.path(), &doc)
     }
@@ -373,7 +373,7 @@ impl ChatRuntime {
                 let endpoint = self.endpoint(&config, epoch).await?;
                 let response = client()?
                     .post(format!("{endpoint}/api/pull"))
-                    .timeout(Duration::from_secs(600))
+                    .timeout(Duration::from_mins(10))
                     .json(&json!({"model":config.model,"stream":false}))
                     .send()
                     .await?;
@@ -644,7 +644,7 @@ fn client() -> Result<reqwest::Client> {
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(5))
-        .timeout(Duration::from_secs(120))
+        .timeout(Duration::from_mins(2))
         .build()?)
 }
 async fn read_response(mut response: reqwest::Response) -> Result<Value> {
@@ -906,7 +906,7 @@ mod provider_tests {
             let worker = runtime.clone();
             let task = tokio::spawn(async move {
                 if download {
-                    worker.pull(config, true).await.map(|_| ())
+                    worker.pull(config, true).await.map(|()| ())
                 } else {
                     worker.models(config).await.map(|_| ())
                 }

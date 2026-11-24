@@ -211,7 +211,7 @@ impl MetricsSampler {
                 .first()
                 .map(|c| c.brand().to_string())
                 .unwrap_or_default(),
-            frequency_mhz: cpus.first().map(sysinfo::Cpu::frequency).unwrap_or(0),
+            frequency_mhz: cpus.first().map_or(0, sysinfo::Cpu::frequency),
         };
 
         let memory = MemoryStats {
@@ -286,8 +286,7 @@ fn read_temperatures() -> Vec<TemperatureReading> {
             continue;
         };
         let label = std::fs::read_to_string(path.join("type"))
-            .map(|s| s.trim().to_string())
-            .unwrap_or_else(|_| "thermal".into());
+            .map_or_else(|_| "thermal".into(), |s| s.trim().to_string());
         readings.push(TemperatureReading {
             label,
             celsius,

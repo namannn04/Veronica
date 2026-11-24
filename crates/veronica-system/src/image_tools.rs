@@ -105,7 +105,7 @@ fn qr_code(link: &str) -> Result<qrcode::QrCode> {
 }
 pub fn qr(link: &str) -> Result<Vec<u8>> {
     Ok(qr_code(link)?
-        .render::<qrcode::render::svg::Color>()
+        .render::<qrcode::render::svg::Color<'_>>()
         .min_dimensions(320, 320)
         .quiet_zone(true)
         .build()

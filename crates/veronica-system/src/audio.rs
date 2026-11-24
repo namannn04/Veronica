@@ -137,7 +137,7 @@ fn display_volume(channel_volumes: &[f64]) -> f32 {
 
 #[cfg(test)]
 fn storage_volume(display: f32) -> f64 {
-    let clamped = display.clamp(0.0, 1.0) as f64;
+    let clamped = f64::from(display.clamp(0.0, 1.0));
     clamped * clamped * clamped
 }
 
@@ -262,8 +262,7 @@ pub async fn toggle_stream_muted(id: u32) -> Result<bool> {
         .await?
         .into_iter()
         .find(|stream| stream.id == id)
-        .map(|stream| stream.muted)
-        .unwrap_or(false))
+        .is_some_and(|stream| stream.muted))
 }
 
 #[cfg(test)]

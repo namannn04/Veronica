@@ -1,7 +1,6 @@
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeSet,
     fs::OpenOptions,
     io::Read,
     os::unix::fs::OpenOptionsExt,
@@ -152,7 +151,7 @@ pub async fn doctor(request: DoctorRequest) -> Result<DoctorReport> {
     );
     let root = request.root;
     let mut report = tokio::task::spawn_blocking(move || inspect(&root)).await??;
-    for port in request.ports.into_iter().collect::<BTreeSet<_>>() {
+    for port in request.ports.into_iter() {
         let open = matches!(
             tokio::time::timeout(
                 Duration::from_millis(250),
@@ -166,7 +165,7 @@ pub async fn doctor(request: DoctorRequest) -> Result<DoctorReport> {
     if !request.containers.is_empty() {
         match tokio::time::timeout(Duration::from_secs(6), crate::docker::snapshot()).await {
             Ok(snapshot) if snapshot.status == "ready" => {
-                for name in request.containers.into_iter().collect::<BTreeSet<_>>() {
+                for name in request.containers.into_iter() {
                     let state = snapshot
                         .containers
                         .iter()
