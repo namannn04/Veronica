@@ -1665,7 +1665,7 @@ pub(crate) async fn packages_sources() -> Vec<PackageSource> {
     let mut sources = Vec::new();
     for source in veronica_system::packages::Source::ALL {
         sources.push(PackageSource {
-            available: veronica_system::packages::available(source).await,
+            available: veronica_system::packages::available(source),
             needs_root: source.needs_root(),
             source: source.title().to_string(),
         });
