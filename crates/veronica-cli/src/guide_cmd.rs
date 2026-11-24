@@ -14,7 +14,7 @@ const HOST: &str = "host";
 const HOST_FLAGS: [&str; 3] = ["json", "yes", "verbose"];
 const WITHOUT_JSON: [&str; 2] = ["database mcp", "mcp serve"];
 const WITHOUT_MCP: [&str; 2] = ["database", "mcp"];
-const SELF_PREVIEW: [&str; 7] = [
+const SELF_PREVIEW: [&str; 9] = [
     "cleaner clean",
     "extensions install",
     "extensions remove",
@@ -22,6 +22,8 @@ const SELF_PREVIEW: [&str; 7] = [
     "extensions update",
     "maintenance remove",
     "maintenance update",
+    "mcp install",
+    "mcp uninstall",
 ];
 
 pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
@@ -148,7 +150,10 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("media next", Effect::Write),
     ("media pause", Effect::Write),
     ("media play", Effect::Write),
+    ("mcp install", Effect::Destructive),
     ("mcp serve", Effect::Read),
+    ("mcp status", Effect::Read),
+    ("mcp uninstall", Effect::Destructive),
     ("media players", Effect::Read),
     ("media previous", Effect::Write),
     ("media status", Effect::Read),
@@ -318,7 +323,12 @@ per command, named veronica_<area>_<action>. A destructive tool changes nothing
 until it is called with confirm set, and veronica_catalog finds and installs
 extensions. The server also lists the read-only database tools
 database_connections and database_capabilities, and the resources
-veronica://guide, veronica://guide/<topic> and veronica://extensions/<id>.";
+veronica://guide, veronica://guide/<topic> and veronica://extensions/<id>.
+
+`vr mcp install --client claude|codex|cursor|vscode|all` registers the server
+with an agent client: it previews the change until given --yes, keeps every
+other entry and leaves a backup beside the file. `vr mcp status` shows which
+clients have it, and `vr mcp uninstall` takes it out again.";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -393,7 +393,7 @@ pub(crate) async fn run(
             eprintln!(
                 "vr: `vr database mcp` is deprecated and goes away in the next release; it now runs `vr mcp`, which serves the same read-only database tools"
             );
-            crate::mcp_cmd::run(&crate::mcp_cmd::McpCommand::Serve).await
+            crate::mcp_cmd::serve().await
         }
 
         DatabaseCommand::Operations { limit } => {

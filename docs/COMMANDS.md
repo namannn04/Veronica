@@ -60,6 +60,8 @@ vr extensions                every extension, where it came from, and what it ca
 vr extensions install <id>   preview an install; --yes downloads, verifies and installs
 vr extensions doctor         exec permission, backends, tools and the catalog
 vr mcp                       every command as an MCP tool, plus the read-only database tools
+vr mcp install --client all  register that server with every agent client found; --yes writes
+vr mcp status                which agent clients have it registered
 vr tools                     the command line programs the extensions need
 vr tools install <tool>      fetch one, when there is a route Veronica can drive
 vr config set <key> <value>  every setting the UI exposes
