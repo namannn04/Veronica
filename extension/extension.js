@@ -1,12 +1,3 @@
-/* Veronica's GNOME Shell entry point.
- *
- * GNOME already owns Wi-Fi, Bluetooth, volume, battery and Quick Settings.
- * Veronica never creates copies of those actors and never inserts content into
- * GNOME's calendar/notification dropdown. It replaces only the centre clock
- * button with the compact Edith shelf; disabling the extension restores the
- * stock clock and its original menu unchanged.
- */
-
 import Gio from 'gi://Gio';
 
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -27,22 +18,15 @@ export default class VeronicaExtension extends Extension {
     enable() {
         this._cancellable = new Gio.Cancellable();
 
-        // One watcher for the whole extension, so anything needing a stored
-        // value reacts to a change rather than polling for one.
         this._settings = new SettingsWatcher();
         this._settings.enable();
 
-        // Dimming behind the focused window needs the compositor, which is why
-        // it lives here rather than in the app.
         this._focusDim = new FocusDim(this._settings);
         this._focusDim.enable();
 
         this._attention = new AttentionTracker(this._settings);
         this._attention.enable();
 
-        // Reading key presses is the compositor's job on Wayland for the same
-        // reason dimming is: no client may observe input meant for another
-        // window. It stays listen-only and never consumes an event.
         this._keystrokes = new KeystrokeHighlight(this._settings);
         this._keystrokes.enable();
 
@@ -68,8 +52,6 @@ export default class VeronicaExtension extends Extension {
         this._lifecycleUnsubscribe = this._settings.subscribe(values => {
             this._clipboardSwitch?.update(values);
             this._notchSwitch?.update(values);
-            // The notch shows the CPU/memory readout itself; without it, the
-            // readout needs a place of its own.
             if (booleanSetting(values, 'notchShelfEnabled', true))
                 this._standaloneStats?.hide();
             else
@@ -85,8 +67,6 @@ export default class VeronicaExtension extends Extension {
                 if (!this._panelReplacement?.showClipboard())
                     throw new Error('the clipboard shelf action is disabled');
             },
-            // Silent: the caller reports the copy, so a second banner from
-            // inside the shell would be a duplicate.
             writeClipboard: text => this._clipboard?.write(text, false),
         });
         this._actionBridge.enable();

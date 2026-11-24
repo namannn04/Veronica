@@ -1,11 +1,3 @@
-/* The notch: Veronica's own replacement for the clock and its dropdown.
- *
- * The menu is intentionally not GNOME's date/calendar popup with extra rows.
- * It is the small 580px Edith shelf: tabs, now playing, two limit rings and
- * quick actions. Notifications remain real GNOME widgets, available from the
- * shelf's bell tab rather than permanently making the popup two columns wide.
- */
-
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -24,9 +16,6 @@ import { attachNotchBanners } from './notchBanners.js';
 import { NotchPanel } from './notchPanel.js';
 import { THEMES } from './themes.js';
 import { SystemStatsIndicator } from './systemStats.js';
-
-/** How often the clock label is redrawn. Minute precision does not need a
- * faster tick, and a faster one would only cost battery for no visible change. */
 
 export const NotchButton = GObject.registerClass(
 class NotchButton extends PanelMenu.Button {
@@ -48,16 +37,10 @@ class NotchButton extends PanelMenu.Button {
         });
         this.add_child(this._clockLabel);
 
-        // Edith's menu bar CPU/memory readout, in the position Ubuntu has for
-        // it. Governed by menuBarSystemStats; off means no timer at all.
         this._stats = new SystemStatsIndicator(settings);
         this.add_child(this._stats.actor);
         this._stats.enable();
 
-        // The same clock GNOME's own top bar uses: it changes exactly on the
-        // minute and follows timezone changes. A fifteen-second timer showed
-        // the new minute up to fifteen seconds late. The 12/24-hour choice in
-        // Settings is followed too, where a fixed %H:%M ignored it.
         this._wallClock = new GnomeDesktop.WallClock();
         this._wallClockId = this._wallClock.connect('notify::clock', () => this._tick());
         this._interfaceSettings = new Gio.Settings({ schema_id: 'org.gnome.desktop.interface' });
@@ -71,9 +54,6 @@ class NotchButton extends PanelMenu.Button {
             this._installNotchAnimation();
             this._bannerPresentation = attachNotchBanners(Main.messageTray, this, this._notchTheme ?? 'dark');
         } catch (error) {
-            // The caller never receives a button whose constructor threw, so
-            // it cannot destroy it; without this the clock timer and the CPU
-            // readout's subscription outlived it, again on every retry.
             this.destroy();
             throw error;
         }
@@ -89,8 +69,6 @@ class NotchButton extends PanelMenu.Button {
                 this._notchPanel?.onMenuClosed();
             }
         });
-        // Power/settings subscriptions initialize immediately. Expensive panel
-        // reads wait until the popup is actually open.
     }
 
     _tick() {
@@ -143,8 +121,6 @@ class NotchButton extends PanelMenu.Button {
     _queueOpenRefresh() {
         if (this._openRefreshId)
             GLib.Source.remove(this._openRefreshId);
-        // Run filesystem, subprocess and provider work after the reveal. One
-        // idle callback also handles non-animated opens before isOpen is set.
         this._openRefreshId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this._openRefreshId = 0;
             if (this.menu?.isOpen)
@@ -168,7 +144,6 @@ class NotchButton extends PanelMenu.Button {
         return true;
     }
 
-    /** What the shell's message-tray shortcut (Super+V) does to the clock. */
     toggleNotifications() {
         if (this.menu.isOpen) {
             this.menu.close();

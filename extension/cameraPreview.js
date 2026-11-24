@@ -1,11 +1,3 @@
-/* Live in-notch camera preview.
- *
- * GNOME Shell has no camera widget of its own. GStreamer provides frames via
- * AppSink and St.ImageContent uploads the latest RGBA frame to Clutter. The
- * pipeline is deliberately short-lived: the owning panel stops it whenever
- * the Camera tab or the notch itself is closed.
- */
-
 import Clutter from 'gi://Clutter';
 import Cogl from 'gi://Cogl';
 import GLib from 'gi://GLib';
@@ -39,13 +31,7 @@ export function cameraPipeline(flipHorizontal = false) {
         'appsink name=veronica_camera_sink emit-signals=false sync=false max-buffers=1 drop=true';
 }
 
-// GStreamer is loaded here rather than imported, so a machine without its
-// introspection data loses the camera and nothing else: a failed static import
-// stopped the whole extension (notch, clipboard and all) from loading. GNOME
-// Shell depends on Gst but not on GstApp, so this happens in practice where the
-// extension arrives without the Debian package (the Flatpak, a source install).
 let Gst = null;
-// Importing GstApp registers AppSink's pull_sample method with GJS.
 let GstApp = null;
 let GstVideo = null;
 try {
@@ -130,16 +116,10 @@ export class CameraPreview {
             const result = this._pipeline.set_state(Gst.State.PLAYING);
             if (result === Gst.StateChangeReturn.FAILURE)
                 throw new Error('The camera refused to start');
-            // AppSink emits new-sample from GStreamer's worker thread, while
-            // GJS only permits JS callbacks on Shell's main thread. Polling
-            // non-blockingly here is both safe and naturally capped at 15fps.
             this._framePollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 67, () => {
                 this._pullFrame();
                 return this.isRunning ? GLib.SOURCE_CONTINUE : GLib.SOURCE_REMOVE;
             });
-            // Some broken V4L2 drivers enter PLAYING but never deliver a frame
-            // or an error. Fail visibly instead of leaving "Starting camera…"
-            // on screen forever.
             this._startupTimeoutId = GLib.timeout_add_seconds(
                 GLib.PRIORITY_DEFAULT,
                 8,
@@ -182,7 +162,6 @@ export class CameraPreview {
                 height,
                 stride,
             ];
-            // GNOME 48+ requires the compositor's CoglContext explicitly.
             if (this._content.set_bytes.length === 6) {
                 const context = global.stage?.context?.get_backend?.()?.get_cogl_context?.();
                 if (!context)
@@ -250,6 +229,4 @@ export class CameraPreview {
     }
 }
 
-// Keep the namespace import alive; without it GJS does not install AppSink's
-// convenience methods on instances returned by Gst.parse_launch().
 void GstApp;

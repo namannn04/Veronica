@@ -1,30 +1,3 @@
-/* Keystroke Highlight: a keycap on screen for every key press.
- *
- * Edith installs a listen-only `CGEventTap`, which macOS grants after the user
- * approves Input Monitoring. Wayland has no such grant to give — a client
- * cannot observe key presses meant for another window, by design, and no
- * permission changes that. Nor, on GNOME, can an extension: Mutter hands an
- * application's key presses to it before the stage sees them, so this shows
- * only keys typed into the shell itself (Activities search, the run dialog).
- * The capability reports that limit rather than offering the feature as
- * working; see "Keystroke observation" in docs/ARCHITECTURE.md.
- *
- * It stays listen-only. The handler is connected to the stage's `captured-event`
- * and always returns `Clutter.EVENT_PROPAGATE`, so every press continues to the
- * window that was going to get it. Nothing is consumed, blocked or rewritten,
- * whether the overlay is running or paused.
- *
- * Two things are deliberately never shown. A password field takes a keyboard
- * grab, and while any grab other than the shell's own is in place the overlay
- * records nothing — that is the Wayland equivalent of Edith refusing to display
- * secure keyboard input. Modifiers pressed on their own resolve to no labels
- * and are dropped by the queue rather than flashing a bare "Ctrl".
- *
- * The row is drawn in `Main.layoutManager.uiGroup` rather than the window group,
- * so it sits above every window — the point of the feature — and is marked
- * non-reactive so it never takes a click.
- */
-
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
@@ -39,13 +12,10 @@ import {
     parsePosition,
 } from './keystrokeLabels.js';
 
-/** How far the row sits from the edge of the work area. */
 const EDGE_MARGIN = 64;
-/** How long a cap fades in and out. Short enough not to lag the typing. */
 const FADE_MS = 140;
 
 export class KeystrokeHighlight {
-    /** @param {import('./settings.js').SettingsWatcher} settings */
     constructor(settings) {
         this._settings = settings;
         this._unsubscribe = null;
@@ -73,20 +43,15 @@ export class KeystrokeHighlight {
         this._settings = null;
     }
 
-    /** Whether the overlay is drawing right now, for the action bridge. */
     get running() {
         return this._running;
     }
 
     _apply(values) {
         this._config = {
-            // The raw stored values, not coerced: the clamp decides what counts
-            // as a number, so a string falls back rather than becoming NaN.
             duration: clampDuration(values.keystrokeHighlightDuration),
             position: parsePosition(values.keystrokeHighlightPosition),
         };
-        // Active alone must not draw: otherwise the Extensions switch would not
-        // actually stop the overlay. This mirrors `is_running` in the core.
         const wanted =
             values.keystrokeHighlightEnabled === true && values.keystrokeHighlightActive === true;
         if (wanted !== this._running) {
@@ -110,8 +75,6 @@ export class KeystrokeHighlight {
             'captured-event', (_actor, event) => this._onEvent(event));
         this._monitorsId = Main.layoutManager.connect('monitors-changed', () => this._position());
 
-        // Caps expire on a clock rather than one timer each, so a fast typist
-        // does not leave dozens of sources behind.
         this._sweepId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
             this._sweep();
             return GLib.SOURCE_CONTINUE;
@@ -131,7 +94,6 @@ export class KeystrokeHighlight {
             GLib.source_remove(this._sweepId);
             this._sweepId = 0;
         }
-        // Pausing hides what is on screen without disabling the extension.
         this._queue.clear();
         for (const actor of this._actors.values())
             actor.destroy();
@@ -152,10 +114,6 @@ export class KeystrokeHighlight {
         this._position();
     }
 
-    /**
-     * Centre the row horizontally on the primary monitor, at the configured
-     * edge of its *work area* so it never lands under the top bar or a dock.
-     */
     _position() {
         if (!this._container)
             return;
@@ -174,8 +132,6 @@ export class KeystrokeHighlight {
     }
 
     _onEvent(event) {
-        // Listen-only, always: the press continues to whatever was going to
-        // receive it, and this returns before anything else can change that.
         try {
             if (event.type() === Clutter.EventType.KEY_PRESS)
                 this._record(event);
@@ -186,11 +142,6 @@ export class KeystrokeHighlight {
     }
 
     _record(event) {
-        // Nothing is recorded while the shell holds a modal grab. That covers
-        // the lock screen, the polkit and network authentication prompts, and
-        // Veronica's own keyboard-cleaning mode — every place on this desktop
-        // where a password is typed into the shell itself. It is the Wayland
-        // equivalent of Edith refusing to display secure keyboard input.
         if (Main.modalCount > 0)
             return;
 
@@ -204,7 +155,6 @@ export class KeystrokeHighlight {
             return;
 
         this._addCap(entry);
-        // Appending may have pushed the oldest cap out of the queue.
         this._reconcile();
         this._position();
     }
@@ -227,7 +177,6 @@ export class KeystrokeHighlight {
         cap.ease({ opacity: 255, duration: FADE_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD });
     }
 
-    /** Remove actors whose entry is no longer in the queue. */
     _reconcile() {
         const live = new Set(this._queue.entries.map(entry => entry.id));
         for (const [id, actor] of this._actors) {
@@ -250,7 +199,6 @@ export class KeystrokeHighlight {
     }
 
     _fadeOut(id, actor) {
-        // Dropped from the map first, so a second sweep does not fade it twice.
         this._actors.delete(id);
         actor.remove_all_transitions();
         actor.ease({

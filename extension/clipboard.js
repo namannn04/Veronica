@@ -1,14 +1,3 @@
-/* Clipboard capture, from inside the compositor.
- *
- * On Wayland only the focused window may read the selection, so no background
- * process can keep a clipboard history. The shell is the compositor, so it can;
- * this watches the selection and pipes each new entry to `vr clipboard record`,
- * which owns the deduplication, cap and storage.
- *
- * Writing back is the same story in reverse: `St.Clipboard.set_text` is the only
- * way to put something on the Wayland clipboard without a focused window.
- */
-
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
@@ -19,13 +8,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { isSecretCopy } from './clipboardPolicy.js';
 import { findCli, runJson } from './lib.js';
 
-/**
- * Ignore a selection change this soon after Veronica set it itself.
- *
- * Setting the clipboard raises owner-changed, which would re-record the entry
- * that was just pasted. Recording it is harmless — the history deduplicates —
- * but it needlessly reorders the list under the user's cursor.
- */
 const SELF_WRITE_GRACE_MS = 400;
 
 export class ClipboardWatcher {
@@ -67,12 +49,8 @@ export class ClipboardWatcher {
     _onClipboardChanged() {
         if (GLib.get_monotonic_time() / 1000 - this._lastWriteAt < SELF_WRITE_GRACE_MS)
             return;
-        // Reading is asynchronous; ignore overlapping changes rather than
-        // queueing them, since only the latest clipboard content matters.
         if (this._pending)
             return;
-        // Checked before reading, so a password never even reaches this
-        // process's memory as text, let alone the history file.
         if (isSecretCopy(this._mimeTypes()))
             return;
         this._pending = true;
@@ -84,8 +62,6 @@ export class ClipboardWatcher {
             this._pending = false;
             if (!text || !text.trim())
                 return;
-            // The compositor can raise owner-changed for the same content, for
-            // instance when focus moves between windows.
             if (text === this._lastText)
                 return;
             this._lastText = text;
@@ -103,7 +79,6 @@ export class ClipboardWatcher {
         }
     }
 
-    /** Pipe the text to `vr clipboard record` on stdin. */
     _record(text) {
         const cli = findCli();
         if (!cli)
@@ -113,8 +88,6 @@ export class ClipboardWatcher {
                 [cli, 'clipboard', 'record', '--exact'],
                 Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDERR_PIPE
             );
-            // Text goes on stdin so no shell quoting is involved and the content
-            // can be anything at all, including newlines and quotes.
             proc.communicate_utf8_async(text, null, (source, result) => {
                 try {
                     source.communicate_utf8_finish(result);
@@ -127,13 +100,6 @@ export class ClipboardWatcher {
         }
     }
 
-    /**
-     * Put text back on the clipboard.
-     *
-     * `notify` is off for writes made on someone else's behalf — the colour
-     * picker and the desktop app both report the copy themselves, and a second
-     * banner from inside the shell would be a duplicate.
-     */
     write(text, notify = true) {
         this._lastWriteAt = GLib.get_monotonic_time() / 1000;
         this._lastText = text;
@@ -143,7 +109,6 @@ export class ClipboardWatcher {
     }
 }
 
-/** Recent history entries, for the dropdown's clipboard list. */
 export async function recentEntries(limit, cancellable) {
     const rows = await runJson(
         ['clipboard', 'list', '--limit', String(limit)],
@@ -152,7 +117,6 @@ export async function recentEntries(limit, cancellable) {
     return Array.isArray(rows) ? rows : [];
 }
 
-/** One entry's full text, which the preview deliberately does not carry. */
 export async function entryText(id, cancellable) {
     const entry = await runJson(['clipboard', 'get', String(id)], cancellable);
     return entry?.text ?? null;

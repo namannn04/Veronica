@@ -1,10 +1,3 @@
-/* Edith's notch content, adapted to live inside GNOME's native clock popup.
- *
- * The shell keeps owning notifications. This widget owns the 580px-style tab
- * strip and cards Edith places below its hardware notch: Home, Notifications,
- * Files, Clipboard and Camera. Every visible control has a Linux-native action.
- */
-
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -101,9 +94,6 @@ export class NotchPanel {
                 this._applyTheme(values.appearance);
             }
         ) ?? null;
-        // The power tiles follow the settings file, not just the menu opening:
-        // the app, `vr power` and an expiring timed session all change it, and
-        // the inhibitor this panel holds has to be released when they do.
         this._awakeUnsubscribe = this._settings?.subscribe(
             values => this._applyAwake(values)
         ) ?? null;
@@ -130,7 +120,6 @@ export class NotchPanel {
                 accessible_name: title,
             });
             const content = new St.BoxLayout({ style_class: 'veronica-shelf-tab-content' });
-            // Home carries the Veronica logo; the other tabs keep themed symbolic icons.
             const logo = id === 'home' ? brandIcon() : null;
             content.add_child(new St.Icon(logo
                 ? { gicon: logo, style_class: 'veronica-shelf-tab-icon' }
@@ -224,10 +213,6 @@ export class NotchPanel {
             layout_manager: new Clutter.BinLayout(),
             x_expand: true,
         });
-        // The empty state follows the card directly. Setting it after every
-        // refresh had finished meant waiting on the rate-limit request too,
-        // which takes seconds (or a timeout when offline), and until then the
-        // card and "Nothing playing" overlapped or the slot stood blank.
         this._nowPlaying = new NowPlayingCard(visible => {
             if (this._emptyMusic)
                 this._emptyMusic.visible = !visible;
@@ -282,9 +267,6 @@ export class NotchPanel {
         );
         actions.add_child(this._pickColorTile);
         panel.add_child(actions);
-        // Presenter follows the same gate as the app, from the same file, and
-        // applies before the cards fill in, so figures never flash unblurred
-        // during a detected screen share.
         this._presenterUnsubscribe = this._settings?.subscribe(
             values => this._applyPresenter(presenterState(values))
         ) ?? null;
@@ -363,8 +345,6 @@ export class NotchPanel {
             x_align: Clutter.ActorAlign.CENTER,
             clip_to_allocation: true,
         });
-        // St.Widget overrides paint_node for CSS backgrounds; raw image
-        // content needs Clutter.Actor's content painting path.
         this._cameraSurface = new Clutter.Actor({
             width: 292,
             height: 164,
@@ -520,13 +500,6 @@ export class NotchPanel {
         return button;
     }
 
-    /**
-     * Switch Keep Awake or Lid Awake from its tile.
-     *
-     * Written through `vr power`, which also clears a timed session's deadline;
-     * a bare `config set` left the old deadline behind, so switching back on
-     * later resumed a session that had already ended.
-     */
     _toggleAwake(awakeSwitch, button) {
         const next = !button._veronicaActive;
         this._setToggle(button, next);
@@ -543,7 +516,6 @@ export class NotchPanel {
             .catch(() => {});
     }
 
-    /** Hold exactly the locks the stored switches ask for right now. */
     _applyAwake(values) {
         if (!this.actor)
             return;
@@ -558,8 +530,6 @@ export class NotchPanel {
                     this._setToggle(button, false);
                 Main.notify('Veronica', `${awakeSwitch.title} could not acquire its inhibitors.`);
             }
-            // With the app closed nothing else ends a timed session, so the
-            // stored pair is cleared here; the app does the same if it is open.
             if (state.expired)
                 runJson(['power', awakeSwitch.command, 'off'], this._cancellable).catch(() => {});
         }
@@ -573,8 +543,6 @@ export class NotchPanel {
         }
         if (untilMs === null)
             return;
-        // A little past the deadline, so the re-check sees it as passed. The
-        // cap keeps the delay inside a guint; a later check reschedules.
         const delay = Math.min(Math.max(0, untilMs - Date.now()) + 50, 0x7fffffff);
         this._awakeExpiryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
             this._awakeExpiryId = 0;
@@ -750,8 +718,6 @@ export class NotchPanel {
 
     _applyPresenter(state) {
         this._presenterState = state;
-        // The tile is a shortcut for a feature switched on in Settings; while
-        // it is off there is nothing for the tile to start.
         if (this._presenter) {
             this._presenter.visible = state.enabled;
             this._setToggle(this._presenter, state.active);
@@ -764,27 +730,17 @@ export class NotchPanel {
         const state = this._presenterState;
         if (!state?.enabled)
             return;
-        // `vr presenter` keeps the stored flags consistent (it refuses start
-        // and stop while the feature is off); the watcher then re-applies.
         for (const command of presenterClick(state))
             await runJson(['presenter', command], this._cancellable);
     }
 
     async _pickColor() {
         this._closeMenu?.();
-        // Delegated to `vr color pick` rather than calling PickColor here, so
-        // the sample lands in the swatch history and honours the configured
-        // format and colour profile no matter where the pick was started from.
-        // `vr` opens the same shell eyedropper, then copies and records.
         const picked = await runJson(['color', 'pick'], this._cancellable);
         if (!picked?.hex) {
-            // Cancelling is the common case and is not worth a banner.
             console.debug('veronica: no colour was picked');
             return;
         }
-        // `vr` keeps the swatch even when the clipboard refuses the text, and
-        // says so with a null `copiedVia`; claiming "copied" then would send
-        // someone to paste a colour that is not there.
         const value = picked.value ?? picked.hex;
         if (picked.copiedVia)
             Main.notify('Color copied', value);

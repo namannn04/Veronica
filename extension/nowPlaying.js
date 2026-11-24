@@ -1,20 +1,12 @@
-/* Now-playing card: title, artist, and transport, from `vr media`.
- *
- * MPRIS itself is read by the application's Rust code, not by this extension;
- * this just displays the answer and forwards transport clicks to `vr`.
- */
-
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import { runJson, vbox } from './lib.js';
 
-/** How long a player takes to publish the next track after a skip. */
 const SETTLE_MS = 600;
 
 export class NowPlayingCard {
-    /** @param {(visible: boolean) => void} [onVisibilityChanged] */
     constructor(onVisibilityChanged = null) {
         this._onVisibilityChanged = onVisibilityChanged;
         this._cancellable = null;
@@ -68,14 +60,6 @@ export class NowPlayingCard {
         return button;
     }
 
-    /**
-     * Forward a transport click and show what it did.
-     *
-     * `vr media` answers with the player's state after the action, which is
-     * rendered at once. A player publishes the next track's metadata a moment
-     * after a skip, so the card reads it once more when that has settled;
-     * before, the old title stayed until the notch was reopened.
-     */
     async _send(action) {
         const playing = await runJson(['media', action], this._cancellable);
         if (!this.actor)
@@ -94,7 +78,7 @@ export class NowPlayingCard {
         this._cancellable = cancellable;
         const playing = await runJson(['media', 'status'], cancellable, { terminateOnCancel: true });
         if (!this.actor || cancellable?.is_cancelled())
-            return; // destroyed or hidden while the subprocess ran
+            return;
         this._render(playing);
     }
 
@@ -110,8 +94,6 @@ export class NowPlayingCard {
         this._playPauseIcon.icon_name = playing.status === 'playing'
             ? 'media-playback-pause-symbolic'
             : 'media-playback-start-symbolic';
-        // A player that cannot skip (a browser tab often cannot) gets dimmed,
-        // inert buttons rather than ones that silently do nothing.
         this._setEnabled(this._next, playing.canGoNext !== false);
         this._setEnabled(this._previous, playing.canGoPrevious !== false);
         this._setVisible(true);

@@ -1,19 +1,12 @@
-/* A percentage ring, drawn with Cairo.
- *
- * Edith's usage rings are the most recognisable piece of its notch, so this
- * reproduces them directly rather than approximating with a bar: a stroked
- * circle, the covered arc drawn over it in a status colour, the percentage in
- * the centre.
- */
-
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 const TRACK_RGBA = [1, 1, 1, 0.12];
 const STROKE_WIDTH = 4.5;
+const CAIRO_LINE_CAP_BUTT = 0;
+const CAIRO_LINE_CAP_ROUND = 1;
 
-/** Status colours, matching the same bands used elsewhere in the extension. */
 const BAND_RGB = {
     good: [0x6a / 255, 0x8d / 255, 0x73 / 255],
     warning: [0xfa / 255, 0xb2 / 255, 0x19 / 255],
@@ -44,7 +37,6 @@ class RingGauge extends St.Widget {
         this.add_child(this._label);
     }
 
-    /** `percent` is 0-100, `band` one of good/warning/critical. */
     setValue(percent, band) {
         this._percent = Math.max(0, Math.min(100, percent));
         this._band = BAND_RGB[band] ? band : 'good';
@@ -58,19 +50,18 @@ class RingGauge extends St.Widget {
         const radius = Math.min(width, height) / 2 - STROKE_WIDTH / 2 - 1;
         const cx = width / 2;
         const cy = height / 2;
-        // Twelve o'clock, matching the app's own rings.
         const start = -Math.PI / 2;
         const end = start + (this._percent / 100) * 2 * Math.PI;
 
         cr.setLineWidth(STROKE_WIDTH);
-        cr.setLineCap(0); // Cairo.LineCap.BUTT — the track has square ends.
+        cr.setLineCap(CAIRO_LINE_CAP_BUTT);
         cr.setSourceRGBA(...TRACK_RGBA);
         cr.arc(cx, cy, radius, 0, 2 * Math.PI);
         cr.stroke();
 
         if (this._percent > 0) {
             const [r, g, b] = BAND_RGB[this._band];
-            cr.setLineCap(1); // Cairo.LineCap.ROUND — the fill's ends are round.
+            cr.setLineCap(CAIRO_LINE_CAP_ROUND);
             cr.setSourceRGBA(r, g, b, 1);
             cr.arc(cx, cy, radius, start, end);
             cr.stroke();

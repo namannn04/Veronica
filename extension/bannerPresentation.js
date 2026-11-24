@@ -1,4 +1,3 @@
-/* Paint-only bridge. GNOME still owns notification queue, actions and policy. */
 export function installBannerPresentation(tray, { createMaterial, clockSize, enabled, mode, theme = 'dark' }) {
     const bin = tray?._bannerBin;
     if (!bin?.connect || typeof bin.ease !== 'function') return null;
@@ -22,7 +21,7 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
             material = createMaterial(bin, child);
             material?.set_style_class_name(`veronica-banner-material veronica-theme-${appearance}`);
             if (material) child.add_style_class_name('veronica-banner-transparent');
-        } catch { material = null; } // Styled native banner remains the fallback.
+        } catch { material = null; }
     };
     let added = 0, removed = 0;
     try {
@@ -43,7 +42,6 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
         const closing = params.opacity === 0 || (typeof params.y === 'number' && params.y < 0);
         const motion = enabled() && params.duration !== 0;
         const duration = motion ? (closing ? 180 : 280) : 0;
-        // Keep text/action widgets at native scale; only the separate material morphs.
         this.scale_x = this.scale_y = 1;
         delete values.scale_x; delete values.scale_y;
         this.y = 0;
@@ -61,7 +59,6 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
             if (motion) material.ease({ ...target, duration, mode });
             else { material.scale_x = target.scale_x; material.scale_y = target.scale_y; }
         }
-        // Preserve onComplete/onStopped verbatim: dropping them stalls the shell queue.
         return originalEase.call(this, values);
     };
     bin.ease = wrapper;

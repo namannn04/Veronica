@@ -1,22 +1,3 @@
-/* Live CPU and memory beside the clock.
- *
- * Edith puts a CPU/memory readout in the macOS menu bar. Ubuntu's equivalent
- * position is the top bar, which Veronica's notch already occupies, so the
- * readout goes there rather than into a second tray item — a StatusNotifierItem
- * cannot draw live text on GNOME anyway.
- *
- * The numbers are read straight out of procfs rather than by running `vr`:
- * spawning a process every few seconds to learn the CPU load would cost more
- * than the load it reports. The arithmetic is the same as `vr system snapshot`
- * performs — a delta of /proc/stat jiffies, and MemAvailable against MemTotal —
- * so the two never disagree by more than one sample. It lives in procStats.js,
- * free of any shell import, so it can be tested on its own.
- *
- * Governed by `menuBarSystemStats`, which the desktop app and `vr config` both
- * write and the shell reads through the settings watcher. Off means no timer at
- * all, not a hidden label.
- */
-
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
@@ -25,7 +6,6 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
 import { cpuPercent, memoryPercent, parseCpuTicks } from './procStats.js';
 
-/** How often the readout is refreshed. Matches Edith's two-second cadence. */
 const TICK_SECONDS = 2;
 
 const decoder = new TextDecoder();
@@ -40,7 +20,6 @@ function readText(path) {
 }
 
 export class SystemStatsIndicator {
-    /** @param {import('./settings.js').SettingsWatcher} settings */
     constructor(settings) {
         this._settings = settings;
         this._unsubscribe = null;
@@ -64,8 +43,6 @@ export class SystemStatsIndicator {
     }
 
     enable() {
-        // Subscribing fires once immediately, so the readout is correct at login
-        // and then reacts the moment the setting changes anywhere.
         this._unsubscribe = this._settings?.subscribe(
             () => this._apply(this._settings.bool('menuBarSystemStats', false))
         ) ?? null;
@@ -91,8 +68,6 @@ export class SystemStatsIndicator {
     _startTicking() {
         if (this._tickId)
             return;
-        // Seed the CPU baseline, then wait one interval: a first reading has no
-        // delta to compare against, so showing a number now would be a guess.
         this._previous = this._readCpu();
         this._cpu.text = 'CPU —';
         this._memory.text = 'MEM —';
@@ -126,8 +101,6 @@ export class SystemStatsIndicator {
         this._previous = current ?? this._previous;
         const memory = memoryPercent(readText('/proc/meminfo'));
 
-        // An unreadable sample keeps the last figure rather than flashing a dash:
-        // one missed tick is not news.
         if (cpu !== null)
             this._cpu.text = `CPU ${Math.round(cpu)}%`;
         if (memory !== null)
@@ -135,14 +108,6 @@ export class SystemStatsIndicator {
     }
 }
 
-/**
- * The readout on its own, for when the notch is switched off.
- *
- * The notch carries the readout beside its clock, so with the notch shelf off
- * there was nowhere for it to appear and its switch did nothing. This places
- * the same indicator in the top bar by itself; it is removed again while the
- * notch is on, so the two are never shown together.
- */
 export class StandaloneStats {
     constructor(settings) {
         this._settings = settings;
@@ -154,7 +119,6 @@ export class StandaloneStats {
         if (this._button)
             return;
         this._stats = new SystemStatsIndicator(this._settings);
-        // No menu: the readout is the whole item.
         this._button = new PanelMenu.Button(0.0, 'Veronica system stats', true);
         this._button.add_child(this._stats.actor);
         this._stats.enable();
