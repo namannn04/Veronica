@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::process::Child;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use anyhow::Result;
@@ -22,6 +22,7 @@ pub(crate) struct AppState {
     pub notifications: Mutex<Vec<veronica_system::Notification>>,
     pub companion_recording: Mutex<Option<CompanionRecording>>,
     pub emoji: veronica_core::EmojiCatalog,
+    pub extensions: Arc<crate::extensions::host::Host>,
 }
 
 pub(crate) struct CompanionRecording {
@@ -47,6 +48,7 @@ impl AppState {
             ),
             agents: veronica_system::agents::AgentManager::default(),
             emoji: veronica_core::EmojiCatalog::bundled(),
+            extensions: Arc::new(crate::extensions::host::Host::new(&directories)),
             directories,
             session: Mutex::new(session),
             settings: Mutex::new(settings),

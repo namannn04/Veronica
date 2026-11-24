@@ -22,6 +22,8 @@ veronica-audit = { workspace = true }
 veronica-database = { workspace = true }
 veronica-calendar = { workspace = true }
 veronica-machines = { workspace = true }
+veronica-host = { path = "../../../crates/veronica-host" }
+veronica-protocol = { workspace = true }
 zbus = { workspace = true }
 
 tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset"] }

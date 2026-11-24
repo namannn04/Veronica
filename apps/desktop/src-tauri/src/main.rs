@@ -190,7 +190,9 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         tracing::warn!("cannot install the bundled shell extension: {error:#}");
     }
 
-    let bundles = extensions::protocol::Bundles::discover();
+    let state = AppState::new(directories.clone(), veronica_core::DesktopSession::detect())?;
+    let host = std::sync::Arc::clone(&state.extensions);
+    let bundles = extensions::protocol::Bundles::discover(host.layout().clone());
 
     tauri::Builder::default()
         .register_uri_scheme_protocol(extensions::protocol::SCHEME, move |_context, request| {
@@ -342,9 +344,9 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 tracing::warn!("voice memos cannot be played in the app: {error:#}");
             }
 
-            let session = veronica_core::DesktopSession::detect();
-            let state = AppState::new(directories.clone(), session)?;
             app.manage(state);
+            host.attach(std::sync::Arc::new(extensions::shell::AppShell::new(handle.clone())));
+            tauri::async_runtime::spawn(async move { host.start().await });
 
             if let Some(guard) = instance {
                 guard.attach(&handle);
@@ -487,7 +489,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             RunEvent::ExitRequested {
                 code: None, api, ..
             } => api.prevent_exit(),
-            RunEvent::Exit => { app.state::<AppState>().chat.close_window(); app.state::<AppState>().agents.stop_all(); commands::finish_companion_recording_on_exit(app); },
+            RunEvent::Exit => { tauri::async_runtime::block_on(app.state::<AppState>().extensions.stop()); app.state::<AppState>().chat.close_window(); app.state::<AppState>().agents.stop_all(); commands::finish_companion_recording_on_exit(app); },
             _ => {}
         });
 

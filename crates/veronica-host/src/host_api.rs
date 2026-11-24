@@ -12,8 +12,8 @@ use veronica_core::settings::Settings;
 use veronica_protocol::manifest::Permissions;
 use veronica_protocol::rpc::{
     error_code, ErrorObject, EventEmit, HostLog, HostNotify, HostSettingsGet, HostSettingsSet,
-    Notification, NotifyParams, Progress, ProgressParams, Request, RequestMethod, TopicParams,
-    ValueResult,
+    HostSurfaceUpdate, Notification, NotifyParams, Progress, ProgressParams, Request,
+    RequestMethod, SurfaceUpdateParams, TopicParams, ValueResult,
 };
 
 use crate::layout::Layout;
@@ -27,6 +27,10 @@ pub struct Grant {
 
 pub trait Frontend: Send + Sync {
     fn notify(&self, extension: &str, params: NotifyParams) -> Result<(), ErrorObject>;
+
+    fn surface(&self, _extension: &str, _params: SurfaceUpdateParams) -> Result<(), ErrorObject> {
+        Err(unavailable("surfaces need the desktop app"))
+    }
 
     fn event(&self, _extension: &str, _params: TopicParams) {}
 
@@ -138,6 +142,11 @@ impl HostServices {
             HostNotify::NAME => {
                 let params = request.params::<HostNotify>()?;
                 self.frontend.notify(&grant.id, params)?;
+                Ok(Value::Null)
+            }
+            HostSurfaceUpdate::NAME => {
+                let params = request.params::<HostSurfaceUpdate>()?;
+                self.frontend.surface(&grant.id, params)?;
                 Ok(Value::Null)
             }
             method => Err(unavailable(&format!(

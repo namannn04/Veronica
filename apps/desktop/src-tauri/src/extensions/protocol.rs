@@ -1,35 +1,56 @@
 use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 
 use tauri::http::{header, Method, Request, Response, StatusCode};
+use veronica_host::registry::Registry;
+use veronica_host::Layout;
+use veronica_protocol::Manifest;
 
 pub(crate) const SCHEME: &str = "veronica-ext";
 const DEVELOPMENT_ROOT: &str = "VERONICA_EXTENSIONS_DEV";
+const RANGE_CHUNK: u64 = 4 * 1024 * 1024;
 
 type Body = Cow<'static, [u8]>;
 
 #[derive(Debug, Default)]
 pub(crate) struct Bundles {
-    roots: BTreeMap<String, PathBuf>,
+    development: BTreeMap<String, PathBuf>,
+    installed: Option<Layout>,
+    interfaces: Mutex<HashMap<PathBuf, Option<PathBuf>>>,
+}
+
+struct Content {
+    status: StatusCode,
+    bytes: Vec<u8>,
+    range: Option<String>,
 }
 
 impl Bundles {
-    pub(crate) fn discover() -> Self {
-        if !cfg!(debug_assertions) {
-            return Self::default();
+    pub(crate) fn discover(layout: Layout) -> Self {
+        let development = if cfg!(debug_assertions) {
+            std::env::var_os(DEVELOPMENT_ROOT)
+                .map(PathBuf::from)
+                .map(|directory| Self::from_directory(&directory).development)
+                .unwrap_or_default()
+        } else {
+            BTreeMap::new()
+        };
+        Self {
+            development,
+            installed: Some(layout),
+            interfaces: Mutex::default(),
         }
-        std::env::var_os(DEVELOPMENT_ROOT)
-            .map(PathBuf::from)
-            .map(|directory| Self::from_directory(&directory))
-            .unwrap_or_default()
     }
 
     fn from_directory(directory: &Path) -> Self {
         let Ok(entries) = std::fs::read_dir(directory) else {
             return Self::default();
         };
-        let roots = entries
+        let development = entries
             .flatten()
             .filter_map(|entry| {
                 let id = entry.file_name().into_string().ok()?;
@@ -37,7 +58,10 @@ impl Bundles {
                 (is_extension_id(&id) && root.is_dir()).then_some((id, root))
             })
             .collect();
-        Self { roots }
+        Self {
+            development,
+            ..Self::default()
+        }
     }
 
     pub(crate) fn respond<T>(&self, request: &Request<T>) -> Response<Body> {
@@ -50,31 +74,117 @@ impl Bundles {
         let Some(file) = self.resolve(id, request.uri().path()) else {
             return empty(StatusCode::NOT_FOUND);
         };
-        let Ok(bytes) = std::fs::read(&file) else {
+        let range = request
+            .headers()
+            .get(header::RANGE)
+            .and_then(|value| value.to_str().ok());
+        let Ok(content) = read(&file, range) else {
             return empty(StatusCode::NOT_FOUND);
         };
         let body = if request.method() == Method::HEAD {
             Vec::new()
         } else {
-            bytes
+            content.bytes
         };
-        Response::builder()
-            .status(StatusCode::OK)
+        let mut response = Response::builder()
+            .status(content.status)
             .header(header::CONTENT_TYPE, mime_type(&file))
             .header(header::CONTENT_SECURITY_POLICY, content_security_policy(id))
             .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "null")
-            .header(header::CACHE_CONTROL, "no-store")
+            .header(header::ACCEPT_RANGES, "bytes")
+            .header(header::CACHE_CONTROL, "no-store");
+        if let Some(range) = content.range {
+            response = response.header(header::CONTENT_RANGE, range);
+        }
+        response
             .body(Cow::Owned(body))
             .unwrap_or_else(|_| empty(StatusCode::INTERNAL_SERVER_ERROR))
     }
 
     fn resolve(&self, id: &str, path: &str) -> Option<PathBuf> {
-        let root = self.roots.get(id)?;
+        let root = match self.development.get(id) {
+            Some(root) => root.clone(),
+            None => self.installed_interface(id)?,
+        };
         let relative = relative_path(path)?;
         let file = root.join(relative).canonicalize().ok()?;
-        (file.starts_with(root) && file.is_file()).then_some(file)
+        (file.starts_with(&root) && file.is_file()).then_some(file)
     }
+
+    fn installed_interface(&self, id: &str) -> Option<PathBuf> {
+        let layout = self.installed.as_ref()?;
+        if !is_extension_id(id) {
+            return None;
+        }
+        let registry = Registry::load(&layout.installed_file()).ok()?;
+        if !registry.get(id)?.enabled {
+            return None;
+        }
+        let install = layout.current_link(id).canonicalize().ok()?;
+        let mut interfaces = self
+            .interfaces
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if let Some(known) = interfaces.get(&install) {
+            return known.clone();
+        }
+        let interface = declared_interface(&install);
+        interfaces.insert(install, interface.clone());
+        interface
+    }
+}
+
+fn declared_interface(install: &Path) -> Option<PathBuf> {
+    let raw = std::fs::read_to_string(install.join("manifest.json")).ok()?;
+    let declared = Manifest::parse(&raw).ok()?.ui?.root;
+    let relative = relative_path(&format!("/{declared}"))?;
+    let root = install.join(relative).canonicalize().ok()?;
+    (root.starts_with(install) && root.is_dir()).then_some(root)
+}
+
+fn byte_range(requested: &str, length: u64) -> Option<(u64, u64)> {
+    let (first, last) = requested.strip_prefix("bytes=")?.split_once('-')?;
+    let final_byte = length.checked_sub(1)?;
+    let (start, end) = if first.is_empty() {
+        (length.saturating_sub(last.parse().ok()?), final_byte)
+    } else if last.is_empty() {
+        (first.parse().ok()?, final_byte)
+    } else {
+        (
+            first.parse().ok()?,
+            last.parse::<u64>().ok()?.min(final_byte),
+        )
+    };
+    (start <= end).then(|| (start, end.min(start.saturating_add(RANGE_CHUNK - 1))))
+}
+
+fn read(file: &Path, range: Option<&str>) -> std::io::Result<Content> {
+    let mut handle = File::open(file)?;
+    let length = handle.metadata()?.len();
+    let mut bytes = Vec::new();
+    let Some(requested) = range else {
+        handle.read_to_end(&mut bytes)?;
+        return Ok(Content {
+            status: StatusCode::OK,
+            bytes,
+            range: None,
+        });
+    };
+    let Some((start, end)) = byte_range(requested, length) else {
+        return Ok(Content {
+            status: StatusCode::RANGE_NOT_SATISFIABLE,
+            bytes,
+            range: Some(format!("bytes */{length}")),
+        });
+    };
+    handle.seek(SeekFrom::Start(start))?;
+    handle.take(end - start + 1).read_to_end(&mut bytes)?;
+    Ok(Content {
+        status: StatusCode::PARTIAL_CONTENT,
+        bytes,
+        range: Some(format!("bytes {start}-{end}/{length}")),
+    })
 }
 
 fn empty(status: StatusCode) -> Response<Body> {
@@ -268,6 +378,133 @@ mod tests {
         assert_eq!(bundles.resolve("linked", "/folder/secret.txt"), None);
         assert!(bundles.resolve("linked", "/alias.txt").is_some());
         assert!(bundles.resolve("linked", "/inside.txt").is_some());
+    }
+
+    fn installed(root: &Path, enabled: bool, declared: &str) -> Bundles {
+        let directories = veronica_core::AppDirectories {
+            configuration: root.join("config"),
+            data: root.join("data"),
+            cache: root.join("cache"),
+            runtime: root.join("runtime"),
+            state: root.join("state"),
+        };
+        let layout = Layout::new(&directories);
+        let version = "1.0.0".parse().expect("version");
+        let tree = layout.version_dir("probe", version);
+        std::fs::create_dir_all(tree.join("ui/assets")).expect("interface");
+        std::fs::create_dir_all(tree.join("bin")).expect("backend directory");
+        std::fs::write(tree.join("ui/index.html"), "<!doctype html>").expect("page");
+        std::fs::write(tree.join("ui/assets/tone.mp3"), b"0123456789").expect("media");
+        std::fs::write(tree.join("bin/backend"), "secret").expect("backend");
+        let manifest = serde_json::json!({
+            "schema": 1, "id": "probe", "version": "1.0", "title": "Probe",
+            "summary": "A test extension.", "category": "labs",
+            "engines": { "host": ">=0.1.0", "hostApi": 1 },
+            "targets": ["linux-x86_64"],
+            "ui": { "root": declared, "pages": [{ "id": "main", "title": "Probe", "entry": "index.html" }] }
+        });
+        std::fs::write(tree.join("manifest.json"), manifest.to_string()).expect("manifest");
+        std::os::unix::fs::symlink(&tree, layout.current_link("probe")).expect("current link");
+        let mut registry = Registry::default();
+        registry.extensions.insert(
+            "probe".to_string(),
+            veronica_host::registry::InstalledExtension {
+                version,
+                origin: veronica_host::registry::Origin::Catalog,
+                enabled,
+                installed_at: "2026-11-24T12:00:00Z".to_string(),
+                previous: None,
+                quarantined: std::collections::BTreeSet::new(),
+            },
+        );
+        registry.save(&layout.installed_file()).expect("registry");
+        Bundles {
+            installed: Some(layout),
+            ..Bundles::default()
+        }
+    }
+
+    #[test]
+    fn installed_extensions_serve_only_their_declared_interface() {
+        let root = tempfile::tempdir().expect("temporary directory");
+        let bundles = installed(root.path(), true, "ui");
+        let page = get(&bundles, "veronica-ext://probe/index.html");
+        assert_eq!(page.status(), StatusCode::OK);
+        assert!(header_value(&page, header::CONTENT_SECURITY_POLICY)
+            .contains("script-src veronica-ext://probe;"));
+        for uri in [
+            "veronica-ext://probe/manifest.json",
+            "veronica-ext://probe/bin/backend",
+            "veronica-ext://probe/../bin/backend",
+            "veronica-ext://absent/index.html",
+        ] {
+            assert_eq!(get(&bundles, uri).status(), StatusCode::NOT_FOUND, "{uri}");
+        }
+    }
+
+    #[test]
+    fn disabled_extensions_and_escaping_roots_serve_nothing() {
+        let root = tempfile::tempdir().expect("temporary directory");
+        let disabled = installed(root.path(), false, "ui");
+        assert_eq!(
+            get(&disabled, "veronica-ext://probe/index.html").status(),
+            StatusCode::NOT_FOUND
+        );
+        for declared in ["..", "/", "ui/../bin", "absent"] {
+            let root = tempfile::tempdir().expect("temporary directory");
+            let bundles = installed(root.path(), true, declared);
+            for file in ["index.html", "backend", "manifest.json"] {
+                let uri = format!("veronica-ext://probe/{file}");
+                assert_eq!(
+                    get(&bundles, &uri).status(),
+                    StatusCode::NOT_FOUND,
+                    "{declared} {file}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn media_is_served_in_byte_ranges() {
+        let root = tempfile::tempdir().expect("temporary directory");
+        let bundles = installed(root.path(), true, "ui");
+        let ranged = |range: &str| {
+            let request = Request::get("veronica-ext://probe/assets/tone.mp3")
+                .header(header::RANGE, range)
+                .body(())
+                .expect("request");
+            bundles.respond(&request)
+        };
+        for (range, body, described) in [
+            ("bytes=2-5", "2345", "bytes 2-5/10"),
+            ("bytes=7-", "789", "bytes 7-9/10"),
+            ("bytes=-3", "789", "bytes 7-9/10"),
+            ("bytes=8-99", "89", "bytes 8-9/10"),
+        ] {
+            let response = ranged(range);
+            assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT, "{range}");
+            assert_eq!(response.body().as_ref(), body.as_bytes(), "{range}");
+            assert_eq!(header_value(&response, header::CONTENT_RANGE), described);
+        }
+        for range in [
+            "bytes=10-",
+            "bytes=5-2",
+            "bytes=0-1,4-5",
+            "items=0-1",
+            "bytes=-0",
+        ] {
+            let response = ranged(range);
+            assert_eq!(
+                response.status(),
+                StatusCode::RANGE_NOT_SATISFIABLE,
+                "{range}"
+            );
+            assert_eq!(header_value(&response, header::CONTENT_RANGE), "bytes */10");
+        }
+        assert_eq!(
+            byte_range("bytes=0-", RANGE_CHUNK * 3),
+            Some((0, RANGE_CHUNK - 1))
+        );
     }
 
     #[test]
