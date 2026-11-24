@@ -7,7 +7,7 @@ use anyhow::{bail, ensure, Context, Result};
 use chrono::{SecondsFormat, Utc};
 use tempfile::TempDir;
 use veronica_protocol::canonical;
-use veronica_protocol::manifest::Target;
+use veronica_protocol::manifest::{Engines, Target};
 use veronica_protocol::{Manifest, PackageVersion};
 
 use crate::archive::{self, Limits, FILE_INDEX};
@@ -43,26 +43,25 @@ impl HostIdentity {
         }
     }
 
-    pub fn check(&self, manifest: &Manifest) -> Result<()> {
-        let range = semver::VersionReq::parse(&manifest.engines.host).with_context(|| {
-            format!(
-                "engines.host {:?} is not a version range",
-                manifest.engines.host
-            )
-        })?;
+    pub fn check_engines(&self, id: &str, engines: &Engines) -> Result<()> {
+        let range = semver::VersionReq::parse(&engines.host)
+            .with_context(|| format!("engines.host {:?} is not a version range", engines.host))?;
         ensure!(
             range.matches(&self.version),
-            "{} needs host {range}, this host is {}",
-            manifest.id,
+            "{id} needs host {range}, this host is {}",
             self.version
         );
         ensure!(
-            manifest.engines.host_api <= self.api,
-            "{} needs host API {}, this host provides {}",
-            manifest.id,
-            manifest.engines.host_api,
+            engines.host_api <= self.api,
+            "{id} needs host API {}, this host provides {}",
+            engines.host_api,
             self.api
         );
+        Ok(())
+    }
+
+    pub fn check(&self, manifest: &Manifest) -> Result<()> {
+        self.check_engines(&manifest.id, &manifest.engines)?;
         ensure!(
             manifest.targets.contains(&self.target),
             "{} is not built for {}",
@@ -146,6 +145,10 @@ impl Installer {
         &self.layout
     }
 
+    pub fn host(&self) -> &HostIdentity {
+        &self.host
+    }
+
     pub fn registry(&self) -> Result<Registry> {
         Registry::load(&self.layout.installed_file())
     }
@@ -215,8 +218,12 @@ impl Installer {
             "package is {:?}, expected {id:?}",
             manifest.id
         );
+        let expected = match origin {
+            Origin::Sideload => manifest.version.authored() == version.authored(),
+            Origin::Builtin | Origin::Catalog => manifest.version.stamped() == Some(version),
+        };
         ensure!(
-            manifest.version == version.authored(),
+            expected,
             "package {id} is version {}, expected {version}",
             manifest.version
         );
