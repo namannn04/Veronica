@@ -79,8 +79,8 @@ download_file "${work_dir}/SHA256SUMS" "${download_root}/SHA256SUMS"
 
 expected="$(awk -v asset="$asset" '$2 == asset { print $1 }' "${work_dir}/SHA256SUMS")"
 [ -n "$expected" ] || fail "the release checksum does not list ${asset}."
-printf '%s  %s\n' "$expected" "${work_dir}/${asset}" | sha256sum --check --status \
-  || fail "checksum verification failed; nothing was installed."
+printf '%s  %s\n' "$expected" "${work_dir}/${asset}" | sha256sum --check --status ||
+  fail "checksum verification failed; nothing was installed."
 
 echo "Checksum verified. Installing ${asset}..."
 if [ "$(id -u)" -eq 0 ]; then
@@ -120,8 +120,8 @@ else
   echo "To get the top-bar notch: log out and back in, then open Veronica → Settings → Enable."
 fi
 
-if [ "$(id -u)" -ne 0 ] && [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ] \
-  && ! pgrep -x veronica >/dev/null 2>&1; then
+if [ "$(id -u)" -ne 0 ] && [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ] &&
+  ! pgrep -x veronica >/dev/null 2>&1; then
   setsid veronica >/dev/null 2>&1 </dev/null &
   echo "Opening Veronica…"
 else

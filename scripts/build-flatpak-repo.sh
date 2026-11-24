@@ -17,7 +17,7 @@ flatpak build-update-repo --gpg-sign="$key_id" --generate-static-deltas \
   --title="Veronica" --default-branch=stable "$output/repo"
 
 public_key="$(base64 --wrap=0 "$repository/packaging/flatpak/veronica-repo.gpg")"
-cat > "$output/veronica.flatpakref" <<REF
+cat >"$output/veronica.flatpakref" <<REF
 [Flatpak Ref]
 Name=$app_id
 Branch=stable
@@ -29,7 +29,7 @@ IsRuntime=false
 Homepage=https://namannn04.github.io/Veronica/
 GPGKey=$public_key
 REF
-cat > "$output/veronica.flatpakrepo" <<REPO
+cat >"$output/veronica.flatpakrepo" <<REPO
 [Flatpak Repo]
 Title=Veronica
 Url=$base_url/repo/
