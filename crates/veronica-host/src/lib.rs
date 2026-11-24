@@ -2,6 +2,7 @@ pub mod archive;
 pub mod catalog;
 pub mod fetch;
 pub mod install;
+pub mod launcher;
 pub mod layout;
 pub mod lock;
 pub mod registry;
