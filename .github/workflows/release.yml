@@ -117,3 +117,52 @@ jobs:
           fi
           version="$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)"
           snapcraft upload --release=stable "target/snap/Veronica_${version}_amd64.snap"
+
+  launchpad-ppa:
+    needs: package-and-publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      LAUNCHPAD_PPA: ${{ vars.LAUNCHPAD_PPA || 'ppa:namannn04/veronica' }}
+      PPA_MAINTAINER: ${{ vars.PPA_MAINTAINER || 'Naman Dadhich <namannn04@users.noreply.github.com>' }}
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v6
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y debhelper devscripts dput dpkg-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Build the interface
+        working-directory: apps/desktop
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Build the source packages
+        run: |
+          cargo install cargo-vendor-filterer --locked
+          ./scripts/build-ppa-sources.sh "$RUNNER_TEMP/ppa"
+
+      - name: Sign and upload to the PPA
+        env:
+          LAUNCHPAD_SIGNING_KEY: ${{ secrets.LAUNCHPAD_SIGNING_KEY }}
+        run: |
+          if [ -z "$LAUNCHPAD_SIGNING_KEY" ]; then
+            echo "::notice::LAUNCHPAD_SIGNING_KEY is not set, so the PPA sources were built but not uploaded"
+            exit 0
+          fi
+          export GNUPGHOME="$(mktemp -d)"
+          printf '%s' "$LAUNCHPAD_SIGNING_KEY" | gpg --batch --import
+          key_id="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')"
+          for changes in "$RUNNER_TEMP"/ppa/*_source.changes; do
+            debsign --re-sign -k"$key_id" -p"gpg --batch --pinentry-mode loopback" "$changes"
+            dput "$LAUNCHPAD_PPA" "$changes"
+          done

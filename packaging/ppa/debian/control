@@ -1,0 +1,31 @@
+Source: veronica
+Section: utils
+Priority: optional
+Maintainer: @MAINTAINER@
+Build-Depends: debhelper-compat (= 13),
+               rustc-1.91,
+               cargo-1.91,
+               jq,
+               pkgconf,
+               libssl-dev,
+               libgtk-3-dev,
+               libwebkit2gtk-4.1-dev,
+               libjavascriptcoregtk-4.1-dev,
+               libsoup-3.0-dev,
+               libayatana-appindicator3-dev,
+               librsvg2-dev,
+               libxdo-dev
+Standards-Version: 4.7.0
+Homepage: https://github.com/namannn04/Veronica
+Vcs-Browser: https://github.com/namannn04/Veronica
+Vcs-Git: https://github.com/namannn04/Veronica.git
+Rules-Requires-Root: no
+
+Package: veronica
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, @RUNTIME_DEPENDS@
+Recommends: @RUNTIME_RECOMMENDS@
+Description: Native control center for Ubuntu
+ Veronica combines agent usage tracking, machine monitoring, media control
+ and desktop utilities into one application, with a GNOME Shell extension for
+ the top-bar notch and the vr command line tool.

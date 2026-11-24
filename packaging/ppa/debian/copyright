@@ -1,0 +1,22 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Veronica
+Upstream-Contact: https://github.com/namannn04/Veronica/issues
+Source: https://github.com/namannn04/Veronica
+
+Files: *
+Copyright: 2026 Naman Dadhich
+           2026 Pulkit
+License: GPL-3 with attribution terms
+ This program is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License version 3 as published by
+ the Free Software Foundation, with the additional terms under section 7 that
+ are set out in /usr/share/doc/veronica/NOTICE.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in /usr/share/common-licenses/GPL-3.
+
+Files: vendor/*
+Copyright: The authors of each vendored crate
+License: various
+ Each crate under vendor/ carries its own license file, as published on
+ crates.io. All of them are compatible with the GPL version 3.
