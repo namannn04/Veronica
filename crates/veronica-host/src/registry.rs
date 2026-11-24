@@ -3,7 +3,9 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use veronica_core::extensions::ENTRIES;
 use veronica_core::fsutil::write_atomic;
+use veronica_core::settings::Settings;
 use veronica_protocol::PackageVersion;
 
 pub const REGISTRY_SCHEMA: u32 = 1;
@@ -77,13 +79,40 @@ impl Registry {
     pub fn get(&self, id: &str) -> Option<&InstalledExtension> {
         self.extensions.get(id)
     }
+
+    #[must_use]
+    pub fn with_builtins(mut self, settings: &Settings) -> Self {
+        let version: PackageVersion = env!("CARGO_PKG_VERSION")
+            .parse()
+            .expect("the host version is a package version");
+        for entry in ENTRIES {
+            self.extensions
+                .entry(entry.id.to_string())
+                .or_insert_with(|| InstalledExtension {
+                    version,
+                    origin: Origin::Builtin,
+                    enabled: settings.extension_enabled(entry),
+                    installed_at: String::new(),
+                    previous: None,
+                    quarantined: BTreeSet::new(),
+                });
+        }
+        self
+    }
+}
+
+pub fn view(installed: &Path, settings: &Settings) -> Result<Registry> {
+    Ok(Registry::load(installed)?.with_builtins(settings))
 }
 
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
-    use super::{Origin, Registry};
+    use veronica_core::extensions::ENTRIES;
+    use veronica_core::settings::Settings;
+
+    use super::{view, Origin, Registry};
 
     #[test]
     fn registry_round_trips_through_disk() {
@@ -124,5 +153,32 @@ mod tests {
         assert!(Registry::load(&path).is_err());
         std::fs::write(&path, r#"{"schema":1,"extra":true}"#).unwrap();
         assert!(Registry::load(&path).is_err());
+    }
+
+    #[test]
+    fn the_view_lists_every_built_in_feature_without_shadowing_installed_ones() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("installed.json");
+        let shadowed = ENTRIES[0].id;
+        let raw = serde_json::json!({
+            "schema": 1,
+            "extensions": {
+                shadowed: {
+                    "version": "2.0.0", "origin": "catalog", "enabled": false,
+                    "installedAt": "2026-11-24T12:00:00Z"
+                }
+            }
+        });
+        std::fs::write(&path, raw.to_string()).unwrap();
+        let mut settings = Settings::default();
+        settings.set(ENTRIES[1].defaults_key, serde_json::Value::Bool(true));
+        let registry = view(&path, &settings).unwrap();
+        assert_eq!(registry.extensions.len(), ENTRIES.len());
+        assert_eq!(registry.get(shadowed).unwrap().origin, Origin::Catalog);
+        let builtin = registry.get(ENTRIES[1].id).unwrap();
+        assert_eq!(builtin.origin, Origin::Builtin);
+        assert!(builtin.enabled);
+        assert_eq!(builtin.version.to_string(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(Registry::load(&path).unwrap().extensions.len(), 1);
     }
 }
