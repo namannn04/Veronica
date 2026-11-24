@@ -15,7 +15,6 @@ def parse_table(text, protocol, ipv6=False):
             continue
         try:
             raw, port = fields[1].split(":")
-            # procfs writes each 32-bit word in native byte order.
             packed = b"".join(int(raw[i:i + 8], 16).to_bytes(4, sys.byteorder)
                               for i in range(0, len(raw), 8))
             if len(packed) != (16 if ipv6 else 4):
@@ -30,7 +29,6 @@ def parse_table(text, protocol, ipv6=False):
 
 def identity(pid):
     root = Path("/proc") / str(pid)
-    # A process name may itself contain spaces and closing parentheses.
     stat = (root / "stat").read_text().rsplit(")", 1)[1].split()
     uid = next(line.split()[1] for line in (root / "status").read_text().splitlines()
                if line.startswith("Uid:"))
@@ -72,7 +70,6 @@ def snapshot():
         try:
             owner = identity(pid)
             owned = sockets(pid)
-            # Reject a process which exited/reused its PID during collection.
             if identity(pid)["startedAt"] != owner["startedAt"]:
                 continue
             owner["canStop"] = (owner["uid"] == os.getuid() == os.geteuid()
@@ -100,7 +97,6 @@ def stop(request):
         raise ValueError("This process cannot be stopped")
     if not hasattr(os, "pidfd_open") or not hasattr(signal, "pidfd_send_signal"):
         raise ValueError("Safe process stopping requires Linux pidfd support")
-    # Hold a kernel reference before revalidating; never signal a reused PID.
     fd = os.pidfd_open(pid)
     try:
         owner = identity(pid)

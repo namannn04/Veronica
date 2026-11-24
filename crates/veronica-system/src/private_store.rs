@@ -1,4 +1,3 @@
-//! Small private atomic documents; never follow document symlinks or special files.
 use anyhow::{ensure, Result};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{

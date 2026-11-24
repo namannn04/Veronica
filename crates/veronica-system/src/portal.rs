@@ -1,16 +1,9 @@
-//! xdg-desktop-portal.
-//!
-//! The portal is how a Wayland app reaches things the compositor owns. Which
-//! interfaces exist varies by desktop and portal version, so Veronica probes
-//! rather than assumes, and reports the result on the diagnostics page.
-
 use anyhow::{Context, Result};
 use zbus::Connection;
 
 pub const PORTAL_BUS: &str = "org.freedesktop.portal.Desktop";
 pub const PORTAL_PATH: &str = "/org/freedesktop/portal/desktop";
 
-/// Which portal interfaces this session offers.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PortalSupport {
@@ -23,12 +16,10 @@ pub struct PortalSupport {
     pub remote_desktop: bool,
     pub clipboard: bool,
     pub settings: bool,
-    /// Every interface name found, so diagnostics can show the full list.
     pub interfaces: Vec<String>,
 }
 
 impl PortalSupport {
-    /// Build from a list of interface names.
     pub fn from_interfaces(interfaces: Vec<String>) -> Self {
         let has = |name: &str| {
             interfaces
@@ -50,7 +41,6 @@ impl PortalSupport {
     }
 }
 
-/// Ask the portal what it implements, by introspecting its object.
 pub async fn probe(connection: &Connection) -> Result<PortalSupport> {
     let proxy = zbus::fdo::IntrospectableProxy::builder(connection)
         .destination(PORTAL_BUS)?
@@ -67,10 +57,6 @@ pub async fn probe(connection: &Connection) -> Result<PortalSupport> {
     Ok(PortalSupport::from_interfaces(parse_interfaces(&xml)))
 }
 
-/// Pull `<interface name="...">` values out of introspection XML.
-///
-/// A tiny scanner rather than an XML dependency: the document is machine
-/// generated and this only needs one attribute from it.
 pub fn parse_interfaces(xml: &str) -> Vec<String> {
     const NEEDLE: &str = "<interface name=\"";
     let mut names = Vec::new();
@@ -123,7 +109,6 @@ mod tests {
         assert!(support.global_shortcuts);
         assert!(support.screenshot);
         assert!(support.camera);
-        // Not in the sample, so it must not be claimed.
         assert!(!support.screen_cast);
         assert!(!support.remote_desktop);
     }
@@ -138,7 +123,6 @@ mod tests {
 
     #[test]
     fn a_prefix_match_does_not_count_as_the_interface() {
-        // "GlobalShortcutsExtra" must not satisfy "GlobalShortcuts".
         let support = PortalSupport::from_interfaces(vec![
             "org.freedesktop.portal.GlobalShortcutsExtra".to_string(),
         ]);

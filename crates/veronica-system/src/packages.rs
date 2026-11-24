@@ -1,34 +1,12 @@
-//! App Maintenance: what is installed, what can be updated, and removing it
-//! with the consequences shown first.
-//!
-//! Ported from Edith's `appMaintenance`, which unifies Homebrew casks and
-//! formulae, the Mac App Store through `mas`, Sparkle feeds and plain HTTPS
-//! app feeds into one inventory. Ubuntu's equivalent triple is apt, snap and
-//! flatpak, and the same rules carry over: discovery never installs anything,
-//! every write is previewed before it runs, and a removal shows what else goes
-//! with it before anything is removed.
-//!
-//! Privilege is the one thing that genuinely differs. macOS lets an app move a
-//! bundle to the Trash with the user's own permissions; apt and snap need root.
-//! Veronica never escalates on its own and never wraps a command in `sudo`
-//! behind the user's back: reads run unprivileged, and a write is either run
-//! through `pkexec` — which shows the desktop's own authentication dialog, so
-//! it is the user authenticating rather than Veronica escalating — or printed
-//! for the user to run themselves. `--yes` chooses the first; without it the
-//! command is only printed.
-
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use tokio::process::Command;
 
-/// Where a package came from, which decides how it updates and whether the
-/// update needs root.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Source {
     Apt,
     Snap,
-    /// A user-scope flatpak, which is the default and needs no root.
     Flatpak,
 }
 
@@ -49,7 +27,6 @@ impl Source {
             .find(|source| source.title().eq_ignore_ascii_case(raw))
     }
 
-    /// The program that answers for this source.
     fn program(self) -> &'static str {
         match self {
             Source::Apt => "apt",
@@ -58,57 +35,38 @@ impl Source {
         }
     }
 
-    /// Whether changing anything here needs root.
-    ///
-    /// A user-scope flatpak does not, which is why it is the one source whose
-    /// updates can run with no authentication dialog at all.
     pub fn needs_root(self) -> bool {
         !matches!(self, Source::Flatpak)
     }
 }
 
-/// One package that has a newer version available.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Update {
     pub source: Source,
     pub name: String,
-    /// What is installed now. `None` where the source does not report it.
     pub installed_version: Option<String>,
     pub available_version: String,
-    /// Where it comes from: an apt suite, a snap channel, a flatpak remote.
     pub origin: Option<String>,
 }
 
-/// One installed package.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Installed {
     pub source: Source,
     pub name: String,
     pub version: String,
-    /// Disk footprint in bytes, where the source reports one.
     pub size_bytes: Option<u64>,
 }
 
-/// What a removal would do, from the package manager's own simulation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RemovalPlan {
     pub source: Source,
     pub package: String,
-    /// Everything that would go, including the package itself. Edith's
-    /// review-first rule: the consequences are shown before anything happens.
     pub removed: Vec<String>,
-    /// Packages that would be left behind as no-longer-needed. Not removed by
-    /// this operation, but worth knowing about.
     pub now_unused: Vec<String>,
-    /// The exact command, so the user can run it themselves instead.
     pub command: String,
-    /// Whether this would take out more than the package that was asked for.
-    /// The one fact that decides whether a removal is routine or worth a hard
-    /// look, so it is carried in the document rather than left for each caller
-    /// to re-derive and get subtly different.
     pub removes_more_than_asked: bool,
 }
 
@@ -139,7 +97,6 @@ async fn run(program: &str, args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// Whether a source is usable on this machine.
 pub async fn available(source: Source) -> bool {
     which(source.program()).is_some()
 }
@@ -148,11 +105,6 @@ fn which(program: &str) -> Option<std::path::PathBuf> {
     veronica_core::host::which(program)
 }
 
-/// Parse `apt list --upgradable`.
-///
-/// Each line is `name/suite new-version arch [upgradable from: old-version]`.
-/// The header and any progress noise apt writes are skipped rather than parsed
-/// into a package called "Listing...".
 pub fn parse_apt_updates(output: &str) -> Vec<Update> {
     let parsed: Vec<(Update, String)> = output
         .lines()
@@ -182,9 +134,6 @@ pub fn parse_apt_updates(output: &str) -> Vec<Update> {
         })
         .collect();
 
-    // `apt list` emits one row per architecture, but the package field omits
-    // that architecture. Without restoring it, a multiarch install produces
-    // duplicate rows with duplicate UI keys and an ambiguous update command.
     let mut counts = std::collections::HashMap::<String, usize>::new();
     for (update, _) in &parsed {
         *counts.entry(update.name.clone()).or_default() += 1;
@@ -201,10 +150,6 @@ pub fn parse_apt_updates(output: &str) -> Vec<Update> {
         .collect()
 }
 
-/// Parse `snap refresh --list`.
-///
-/// A table with a header row, and the words "All snaps up to date." when there
-/// is nothing — which is not a package and must not become one.
 pub fn parse_snap_updates(output: &str) -> Vec<Update> {
     output
         .lines()
@@ -217,9 +162,6 @@ pub fn parse_snap_updates(output: &str) -> Vec<Update> {
             Some(Update {
                 source: Source::Snap,
                 name: name.to_string(),
-                // snap's refresh list reports what you would get, not what you
-                // have; claiming otherwise would put the wrong version on the
-                // left of the arrow.
                 installed_version: None,
                 available_version: version.to_string(),
                 origin: fields.nth(2).map(str::to_string),
@@ -228,8 +170,6 @@ pub fn parse_snap_updates(output: &str) -> Vec<Update> {
         .collect()
 }
 
-/// Parse `flatpak remote-ls --updates --columns=application,version,origin`,
-/// which is tab separated with no header.
 pub fn parse_flatpak_updates(output: &str) -> Vec<Update> {
     output
         .lines()
@@ -247,17 +187,10 @@ pub fn parse_flatpak_updates(output: &str) -> Vec<Update> {
         .collect()
 }
 
-/// Every update available, from every source this machine has.
-///
-/// A source that is missing or that fails contributes nothing rather than
-/// failing the whole discovery: a machine with no flatpak still has apt
-/// updates worth showing. Discovery never installs anything.
 pub async fn updates() -> Vec<Update> {
     let mut all = Vec::new();
 
     if available(Source::Apt).await {
-        // `apt list` warns that its interface is unstable when not a tty; the
-        // format has been stable for a decade and the warning goes to stderr.
         match run("apt", &["list", "--upgradable"]).await {
             Ok(output) => all.extend(parse_apt_updates(&output)),
             Err(error) => tracing::debug!("apt updates unavailable: {error:#}"),
@@ -293,10 +226,6 @@ pub async fn updates() -> Vec<Update> {
     all
 }
 
-/// Parse `dpkg-query -W -f='${Package}\t${Version}\t${Installed-Size}\n'`.
-///
-/// `Installed-Size` is in kibibytes, which is a footgun worth converting once
-/// here rather than at every call site.
 pub fn parse_apt_installed(output: &str, manual: &[String]) -> Vec<Installed> {
     output
         .lines()
@@ -306,8 +235,6 @@ pub fn parse_apt_installed(output: &str, manual: &[String]) -> Vec<Installed> {
             if name.is_empty() {
                 return None;
             }
-            // Only what the user asked for. The three thousand packages pulled
-            // in as dependencies are not applications anybody installed.
             if !manual.iter().any(|wanted| wanted == name) {
                 return None;
             }
@@ -325,7 +252,6 @@ pub fn parse_apt_installed(output: &str, manual: &[String]) -> Vec<Installed> {
         .collect()
 }
 
-/// Parse `snap list`, whose Size column is absent and whose header is one row.
 pub fn parse_snap_installed(output: &str) -> Vec<Installed> {
     output
         .lines()
@@ -345,7 +271,6 @@ pub fn parse_snap_installed(output: &str) -> Vec<Installed> {
         .collect()
 }
 
-/// Parse `flatpak list --app --columns=application,version`.
 pub fn parse_flatpak_installed(output: &str) -> Vec<Installed> {
     output
         .lines()
@@ -362,11 +287,6 @@ pub fn parse_flatpak_installed(output: &str) -> Vec<Installed> {
         .collect()
 }
 
-/// What is installed, across every source.
-///
-/// For apt this is what the user asked for — `apt-mark showmanual` — not every
-/// package on the system. Listing three thousand dependencies would be a
-/// package database, not an inventory of applications.
 pub async fn inventory() -> Vec<Installed> {
     let mut all = Vec::new();
 
@@ -414,11 +334,6 @@ pub async fn inventory() -> Vec<Installed> {
     all
 }
 
-/// Pull the package lists out of `apt-get -s remove`'s simulation.
-///
-/// The simulation is the package manager's own answer to "what would this do",
-/// which is the only trustworthy source for it: guessing from a dependency
-/// graph would eventually disagree with what actually happens.
 pub fn parse_removal_plan(output: &str, package: &str) -> (Vec<String>, Vec<String>) {
     let mut removed = Vec::new();
     let mut unused = Vec::new();
@@ -438,7 +353,6 @@ pub fn parse_removal_plan(output: &str, package: &str) -> (Vec<String>, Vec<Stri
             section = Some("unused");
             continue;
         }
-        // A continuation line is indented; anything flush left ends the list.
         if !line.starts_with(' ') {
             section = None;
             continue;
@@ -451,15 +365,12 @@ pub fn parse_removal_plan(output: &str, package: &str) -> (Vec<String>, Vec<Stri
         }
     }
 
-    // apt says nothing about a package that is not installed; reporting the
-    // named package as removable anyway would be a plan that does nothing.
     if removed.is_empty() && output.contains(&format!("Remv {package}")) {
         removed.push(package.to_string());
     }
     (removed, unused)
 }
 
-/// Ask apt what removing `package` would do. Changes nothing.
 pub async fn removal_plan(package: &str) -> Result<RemovalPlan> {
     validate_name(package)?;
     let output = run("apt-get", &["-s", "remove", package]).await?;
@@ -477,11 +388,6 @@ pub async fn removal_plan(package: &str) -> Result<RemovalPlan> {
     })
 }
 
-/// The argv used to remove one apt package.
-///
-/// Keeping the preview and execution routes on one builder prevents the UI
-/// from advertising `sudo` while the real operation uses the desktop's
-/// authentication dialog through `pkexec`.
 pub fn removal_command(package: &str, assume_yes: bool) -> Result<Vec<String>> {
     validate_name(package)?;
     let mut argv = vec!["apt-get".to_string(), "remove".to_string()];
@@ -492,11 +398,6 @@ pub fn removal_command(package: &str, assume_yes: bool) -> Result<Vec<String>> {
     Ok(privileged_command(Source::Apt, &argv))
 }
 
-/// A package name Veronica is willing to put on a command line.
-///
-/// Everything here is passed as a separate argv entry, never through a shell,
-/// so this is belt and braces — but a name is the one field that comes from
-/// outside, and Debian's own policy is narrower than this already.
 pub fn validate_name(name: &str) -> Result<()> {
     if name.is_empty() || name.len() > 200 {
         bail!("not a package name: {name:?}");
@@ -510,10 +411,6 @@ pub fn validate_name(name: &str) -> Result<()> {
     Ok(())
 }
 
-/// The argv that applies an update for one source.
-///
-/// Returned rather than run, so the caller can print it, and so this is
-/// testable without changing the machine.
 pub fn update_command(source: Source, names: &[String]) -> Result<Vec<String>> {
     for name in names {
         validate_name(name)?;
@@ -523,8 +420,6 @@ pub fn update_command(source: Source, names: &[String]) -> Result<Vec<String>> {
             vec!["apt-get".into(), "upgrade".into(), "-y".into()]
         }
         Source::Apt => {
-            // `install` rather than `upgrade` is how apt updates a chosen
-            // subset; `upgrade <name>` is not a thing.
             let mut argv = vec![
                 "apt-get".into(),
                 "install".into(),
@@ -551,11 +446,6 @@ pub fn update_command(source: Source, names: &[String]) -> Result<Vec<String>> {
     })
 }
 
-/// Wrap an argv in `pkexec` when the source needs root and we are not root.
-///
-/// `pkexec` shows the desktop's own authentication dialog, so the user
-/// authenticates rather than Veronica escalating. Already being root — someone
-/// running `sudo vr` — needs no wrapper.
 pub fn privileged_command(source: Source, argv: &[String]) -> Vec<String> {
     if !source.needs_root() || is_root() {
         return argv.to_vec();
@@ -566,8 +456,6 @@ pub fn privileged_command(source: Source, argv: &[String]) -> Vec<String> {
 }
 
 fn is_root() -> bool {
-    // Reading the effective uid without libc: /proc/self/status is where the
-    // kernel publishes it, and this crate already reads procfs everywhere else.
     std::fs::read_to_string("/proc/self/status")
         .ok()
         .and_then(|status| {
@@ -583,7 +471,6 @@ fn is_root() -> bool {
         .unwrap_or(false)
 }
 
-/// What running an update produced.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateResult {
@@ -591,11 +478,9 @@ pub struct UpdateResult {
     pub names: Vec<String>,
     pub command: String,
     pub succeeded: bool,
-    /// The tail of the output, which is what says why when it failed.
     pub output: String,
 }
 
-/// Apply an update. The caller is responsible for having confirmed it.
 pub async fn apply_update(source: Source, names: &[String]) -> Result<UpdateResult> {
     if !available(source).await {
         bail!("{} is not installed on this computer", source.title());
@@ -614,7 +499,6 @@ pub async fn apply_update(source: Source, names: &[String]) -> Result<UpdateResu
     if !output.status.success() {
         text.push_str(&String::from_utf8_lossy(&output.stderr));
     }
-    // The tail is what carries the error; the head is a wall of progress.
     let tail: String = text
         .lines()
         .rev()
@@ -679,7 +563,6 @@ thunderbird  155.0-1  1240  232MB  canonical**  -
 
     #[test]
     fn a_line_that_is_not_a_package_is_skipped() {
-        // apt writes progress and warnings on the same stream in some configs.
         let updates = parse_apt_updates("Listing...\nW: Some warning / with a slash\n");
         assert!(updates.is_empty(), "got {updates:#?}");
     }
@@ -695,7 +578,6 @@ thunderbird  155.0-1  1240  232MB  canonical**  -
 
     #[test]
     fn snap_does_not_claim_to_know_the_installed_version() {
-        // `snap refresh --list` reports what you would get, not what you have.
         assert!(parse_snap_updates(SNAP)[0].installed_version.is_none());
     }
 
@@ -720,7 +602,6 @@ thunderbird  155.0-1  1240  232MB  canonical**  -
             parse_apt_installed("firefox\t1:1snap1\t1024\nlibc6\t2.39\t12000\n", &manual);
         assert_eq!(installed.len(), 1);
         assert_eq!(installed[0].name, "firefox");
-        // dpkg reports kibibytes, which is a footgun worth converting once.
         assert_eq!(installed[0].size_bytes, Some(1024 * 1024));
     }
 
@@ -751,8 +632,6 @@ Remv firefox [1:1snap1-0ubuntu8]
             "firefox",
             &["firefox".into()]
         ));
-        // A dependency going with it is exactly the case worth flagging, even
-        // when the named package is not itself in the list.
         assert!(RemovalPlan::takes_more_than("firefox", &["libnss3".into()]));
     }
 
@@ -768,8 +647,6 @@ Remv firefox [1:1snap1-0ubuntu8]
 
     #[test]
     fn updating_everything_and_updating_a_subset_use_different_apt_verbs() {
-        // `apt-get upgrade <name>` is not a thing; a subset needs `install
-        // --only-upgrade`, and getting this wrong upgrades the whole system.
         assert_eq!(
             update_command(Source::Apt, &[]).unwrap(),
             ["apt-get", "upgrade", "-y"]
@@ -815,8 +692,6 @@ Remv firefox [1:1snap1-0ubuntu8]
 
     #[test]
     fn a_root_needing_source_is_wrapped_in_pkexec_and_flatpak_is_not() {
-        // pkexec shows the desktop's own dialog: the user authenticates, rather
-        // than Veronica escalating on their behalf.
         let argv = vec!["apt-get".to_string(), "upgrade".to_string()];
         let wrapped = privileged_command(Source::Apt, &argv);
         if is_root() {

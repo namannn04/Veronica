@@ -1,25 +1,13 @@
-//! Audio, through PipeWire's WirePlumber CLI.
-//!
-//! Edith reads per-app volume from CoreAudio and mutes the mic through
-//! `AudioObjectSetPropertyData`. On Ubuntu the equivalent is PipeWire. Veronica
-//! shells out to `wpctl` rather than linking libpipewire: the CLI is part of the
-//! base install, its output is stable, and it keeps mic-mute working the same
-//! way whether the session runs PipeWire or the PulseAudio shim.
-
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use tokio::process::Command;
 
-/// The default source, i.e. every microphone at once, which is what a
-/// system-wide kill switch has to target.
 pub const DEFAULT_SOURCE: &str = "@DEFAULT_AUDIO_SOURCE@";
 pub const DEFAULT_SINK: &str = "@DEFAULT_AUDIO_SINK@";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VolumeState {
-    /// 0.0-1.0, as PipeWire reports it. Values above 1.0 are possible when the
-    /// user has boosted a stream past unity.
     pub volume: f32,
     pub muted: bool,
 }
@@ -30,10 +18,6 @@ impl VolumeState {
     }
 }
 
-/// Parse `wpctl get-volume` output.
-///
-/// The command prints `Volume: 0.65` and appends `[MUTED]` when muted, so both
-/// facts come from one call.
 pub fn parse_volume(output: &str) -> Result<VolumeState> {
     let line = output
         .lines()
@@ -74,24 +58,19 @@ async fn wpctl(args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// Read the microphone's volume and mute state.
 pub async fn microphone() -> Result<VolumeState> {
     parse_volume(&wpctl(&["get-volume", DEFAULT_SOURCE]).await?)
 }
 
-/// Read the speaker's volume and mute state.
 pub async fn speaker() -> Result<VolumeState> {
     parse_volume(&wpctl(&["get-volume", DEFAULT_SINK]).await?)
 }
 
-/// Mute or unmute every microphone.
 pub async fn set_microphone_muted(muted: bool) -> Result<()> {
     wpctl(&["set-mute", DEFAULT_SOURCE, if muted { "1" } else { "0" }]).await?;
     Ok(())
 }
 
-/// Flip the microphone mute and report the new state, which is what the tray
-/// toggle and the global shortcut both need.
 pub async fn toggle_microphone() -> Result<VolumeState> {
     wpctl(&["set-mute", DEFAULT_SOURCE, "toggle"]).await?;
     microphone().await
@@ -102,30 +81,17 @@ pub async fn set_speaker_muted(muted: bool) -> Result<()> {
     Ok(())
 }
 
-/// Set a volume as a fraction. Clamped to unity so the mixer cannot be driven
-/// into distortion by a stray value.
 pub async fn set_speaker_volume(volume: f32) -> Result<()> {
     let clamped = volume.clamp(0.0, 1.0);
     wpctl(&["set-volume", DEFAULT_SINK, &format!("{clamped:.2}")]).await?;
     Ok(())
 }
 
-/// One application's audio stream, as PipeWire sees it.
-///
-/// Edith reads these from CoreAudio's per-process volume API. PipeWire has no
-/// per-*process* volume either — it has per-*stream* volume, which is the same
-/// thing in practice, since a stream is what an application opens to play or
-/// record. A Chrome tab and a Chrome notification sound are two streams, so the
-/// mixer lists them separately rather than pretending Chrome has one volume.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioStream {
-    /// PipeWire node id, which is what `wpctl` takes as a target.
     pub id: u32,
-    /// The application's own name, e.g. `Spotify`.
     pub application: String,
-    /// What the stream is, e.g. `Playback` or `RecordStream`. Distinguishes two
-    /// streams from the same application.
     pub media_name: Option<String>,
     pub direction: StreamDirection,
     pub volume: f32,
@@ -135,9 +101,7 @@ pub struct AudioStream {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum StreamDirection {
-    /// The application is playing audio out.
     Playback,
-    /// The application is recording, i.e. it is listening to a microphone.
     Capture,
 }
 
@@ -146,8 +110,6 @@ impl AudioStream {
         (self.volume * 100.0).round().clamp(0.0, 255.0) as u8
     }
 
-    /// What to show as the row's title: the application, with the stream name
-    /// appended only when it adds something.
     pub fn label(&self) -> String {
         match self.media_name.as_deref() {
             Some(name)
@@ -155,23 +117,17 @@ impl AudioStream {
                     && !self.application.eq_ignore_ascii_case(name)
                     && !matches!(name, "Playback" | "playback" | "RecordStream" | "record") =>
             {
-                format!("{} — {name}", self.application)
+                format!("{} ({name})", self.application)
             }
             _ => self.application.clone(),
         }
     }
 }
 
-/// PipeWire stores a channel volume as the cube of the value every mixer shows,
-/// so `wpctl get-volume` and `pw-dump` disagree by that factor. Converting here
-/// means one `pw-dump` call describes every stream, instead of one `wpctl` call
-/// per stream, and the numbers still match what the user sees elsewhere.
 fn display_volume(channel_volumes: &[f64]) -> f32 {
     if channel_volumes.is_empty() {
         return 0.0;
     }
-    // The loudest channel is the one a single slider should represent, so
-    // moving it never quietly attenuates a channel that was already louder.
     let peak = channel_volumes
         .iter()
         .copied()
@@ -179,19 +135,12 @@ fn display_volume(channel_volumes: &[f64]) -> f32 {
     peak.cbrt() as f32
 }
 
-/// The inverse, which only the round-trip test needs: `wpctl` takes the display
-/// scale, so nothing in the mixer path converts in this direction.
 #[cfg(test)]
 fn storage_volume(display: f32) -> f64 {
     let clamped = display.clamp(0.0, 1.0) as f64;
     clamped * clamped * clamped
 }
 
-/// Parse `pw-dump` output into the audio streams applications currently hold.
-///
-/// Nodes that are not application streams — devices, sinks, sources, filters —
-/// are skipped, and so is Veronica's own stream, which nobody wants to see in a
-/// mixer they opened from Veronica.
 pub fn parse_streams(dump: &str) -> Result<Vec<AudioStream>> {
     let objects: serde_json::Value =
         serde_json::from_str(dump).context("pw-dump did not emit JSON")?;
@@ -236,8 +185,6 @@ pub fn parse_streams(dump: &str) -> Result<Vec<AudioStream>> {
             None => continue,
         };
 
-        // Props is one entry in the node's parameter list; a node that has not
-        // published it yet still belongs in the mixer, at its default volume.
         let params = info
             .get("params")
             .and_then(|params| params.get("Props"))
@@ -275,7 +222,6 @@ pub fn parse_streams(dump: &str) -> Result<Vec<AudioStream>> {
         });
     }
 
-    // A stable order keeps rows from jumping around as the mixer refreshes.
     streams.sort_by(|left, right| {
         left.application
             .to_lowercase()
@@ -285,7 +231,6 @@ pub fn parse_streams(dump: &str) -> Result<Vec<AudioStream>> {
     Ok(streams)
 }
 
-/// Every application stream currently on the graph.
 pub async fn streams() -> Result<Vec<AudioStream>> {
     let output = Command::from(veronica_core::host::command("pw-dump"))
         .output()
@@ -300,21 +245,17 @@ pub async fn streams() -> Result<Vec<AudioStream>> {
     parse_streams(&String::from_utf8_lossy(&output.stdout))
 }
 
-/// Set one application stream's volume, as the fraction a mixer displays.
 pub async fn set_stream_volume(id: u32, volume: f32) -> Result<()> {
     let clamped = volume.clamp(0.0, 1.0);
     wpctl(&["set-volume", &id.to_string(), &format!("{clamped:.2}")]).await?;
     Ok(())
 }
 
-/// Mute or unmute one application stream.
 pub async fn set_stream_muted(id: u32, muted: bool) -> Result<()> {
     wpctl(&["set-mute", &id.to_string(), if muted { "1" } else { "0" }]).await?;
     Ok(())
 }
 
-/// Flip one application stream's mute and report what it became, so the caller
-/// does not have to re-read the whole graph to update one row.
 pub async fn toggle_stream_muted(id: u32) -> Result<bool> {
     wpctl(&["set-mute", &id.to_string(), "toggle"]).await?;
     Ok(streams()
@@ -322,7 +263,6 @@ pub async fn toggle_stream_muted(id: u32) -> Result<bool> {
         .into_iter()
         .find(|stream| stream.id == id)
         .map(|stream| stream.muted)
-        // A stream that ended while we toggled it is not muted, it is gone.
         .unwrap_or(false))
 }
 
@@ -354,7 +294,6 @@ mod tests {
 
     #[test]
     fn a_boosted_volume_above_unity_is_preserved_not_clamped_on_read() {
-        // Reporting 100% for a stream boosted to 140% would misrepresent it.
         let state = parse_volume("Volume: 1.40\n").unwrap();
         assert_eq!(state.volume, 1.40);
         assert_eq!(state.percent(), 140);
@@ -390,7 +329,6 @@ mod tests {
     fn only_application_streams_appear_in_the_mixer() {
         let streams = parse_streams(DUMP).unwrap();
         let ids: Vec<u32> = streams.iter().map(|stream| stream.id).collect();
-        // 59 is a sink, 12 is a client, 90 is Veronica's own stream.
         assert_eq!(ids, vec![84, 81], "got {streams:#?}");
     }
 
@@ -398,7 +336,6 @@ mod tests {
     fn a_channel_volume_is_reported_on_the_scale_every_mixer_shows() {
         let streams = parse_streams(DUMP).unwrap();
         let chrome = streams.iter().find(|s| s.id == 84).unwrap();
-        // PipeWire stores 0.5^3; showing 0.125 would understate it badly.
         assert!((chrome.volume - 0.5).abs() < 0.001, "got {}", chrome.volume);
         assert_eq!(chrome.percent(), 50);
     }
@@ -432,7 +369,7 @@ mod tests {
         let streams = parse_streams(&dump).unwrap();
         assert_eq!(
             streams.iter().find(|s| s.id == 84).unwrap().label(),
-            "Google Chrome — Tab: Radio"
+            "Google Chrome (Tab: Radio)"
         );
     }
 
@@ -448,7 +385,6 @@ mod tests {
 
     #[test]
     fn the_loudest_channel_drives_the_single_slider() {
-        // Averaging would report a quieter stream than the user can hear.
         assert!((display_volume(&[0.125, 1.0]) - 1.0).abs() < 0.001);
     }
 

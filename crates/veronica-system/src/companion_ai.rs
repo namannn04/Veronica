@@ -1,4 +1,3 @@
-//! Explicit opt-in chat. No timers, agents, tools or requests run while disabled.
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -891,7 +890,6 @@ mod provider_tests {
             };
             runtime.open_window();
             runtime.enable(true);
-            // A fixture-owned child stands in for the private server; no real model is started.
             let owned_pid = if download {
                 let child = std::process::Command::new("/bin/sleep")
                     .arg("60")

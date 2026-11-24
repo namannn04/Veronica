@@ -1,4 +1,3 @@
-//! Local, bounded image conversion. SVG exports wrap raster pixels; no tracing.
 use anyhow::{bail, ensure, Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use image::{DynamicImage, ImageFormat, ImageReader};
@@ -34,7 +33,6 @@ pub fn decode(bytes: &[u8]) -> Result<Source> {
             },
         });
     }
-    // No filesystem or network image resolution for untrusted SVG input.
     let mut options = resvg::usvg::Options::default();
     options.image_href_resolver.resolve_string = Box::new(|_, _| None);
     options.fontdb_mut().load_system_fonts();
@@ -49,7 +47,6 @@ pub fn decode(bytes: &[u8]) -> Result<Source> {
         resvg::tiny_skia::Transform::default(),
         &mut pixmap.as_mut(),
     );
-    // tiny-skia encodes straight-alpha PNG, avoiding premultiplied color fringes.
     let png = pixmap.encode_png()?;
     Ok(Source {
         pixels: image::load_from_memory(&png)?,
@@ -114,7 +111,6 @@ pub fn qr(link: &str) -> Result<Vec<u8>> {
         .build()
         .into_bytes())
 }
-/// QR pixels do not require SVG parsing or scanning all installed system fonts.
 pub fn qr_source(link: &str) -> Result<Source> {
     let code = qr_code(link)?;
     let width = code.width();

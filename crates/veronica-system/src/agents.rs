@@ -1,4 +1,3 @@
-//! User-owned interactive agent terminals. External processes are observations only.
 use anyhow::{ensure, Context, Result};
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
@@ -143,7 +142,6 @@ impl AgentManager {
                     out.bytes.pop_front();
                 }
                 drop(out);
-                // Kernel backpressure bounds a noisy child instead of burning a CPU core.
                 std::thread::sleep(std::time::Duration::from_millis(2));
             }
             if let Ok(mut out) = target.lock() {
@@ -201,8 +199,6 @@ impl AgentManager {
             .output
             .lock()
             .map_err(|_| anyhow::anyhow!("Output lock failed"))?;
-        // An exited child may still have unread bytes in the PTY. The UI stops
-        // polling on completion, so do not publish exit until the reader reaches EOF.
         if !out.finished {
             status = "running".into();
         }
@@ -284,8 +280,6 @@ fn terminate(t: &mut Terminal) {
     terminate_child(&mut *t.child, t.view.pid);
 }
 fn terminate_child(child: &mut dyn portable_pty::Child, pid: u32) {
-    // Both group kill and portable-pty kill use numeric PIDs. Signal only while
-    // the child is live and unreaped; after try_wait returns Some its PID may be reused.
     if matches!(child.try_wait(), Ok(None)) {
         unsafe {
             libc::kill(-(pid as i32), libc::SIGKILL);
@@ -464,7 +458,6 @@ mod tests {
         }
         assert!(bytes.ends_with(b"FINAL_MARKER"));
         assert_eq!(bytes.len(), 120012);
-        // Deterministically exercise the interval between child exit and reader EOF.
         {
             manager
                 .terminals

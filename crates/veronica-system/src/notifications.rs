@@ -1,14 +1,3 @@
-//! Reading desktop notifications.
-//!
-//! GNOME Shell owns `org.freedesktop.Notifications`, so Veronica cannot be the
-//! notification server without replacing the shell's own banners. Instead it
-//! becomes a D-Bus monitor and watches the `Notify` calls going past. That is
-//! how notification-history tools work on GNOME, and it is read-only: the real
-//! banner still belongs to the shell.
-//!
-//! Because it is a history rather than ownership, dismissing an entry here
-//! removes it from Veronica's list; it does not recall the shell's banner.
-
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
@@ -19,11 +8,8 @@ use zbus::{Connection, MessageStream};
 pub const NOTIFY_BUS: &str = "org.freedesktop.Notifications";
 pub const NOTIFY_PATH: &str = "/org/freedesktop/Notifications";
 
-/// How many notifications to remember. Beyond this the oldest are dropped, so a
-/// long session cannot grow without bound.
 pub const HISTORY_LIMIT: usize = 60;
 
-/// Freedesktop urgency, as the `urgency` hint reports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Urgency {
@@ -42,28 +28,19 @@ impl Urgency {
     }
 }
 
-/// One captured notification.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Notification {
-    /// Monotonic id assigned by Veronica, so the interface has a stable key.
     pub id: u64,
     pub app_name: String,
-    /// Icon name or path the sender supplied; often a themed icon name.
     pub app_icon: String,
     pub summary: String,
     pub body: String,
     pub urgency: Urgency,
-    /// Unix milliseconds when it was seen.
     pub received_at: i64,
-    /// The desktop entry the sender claimed, useful for grouping.
     pub desktop_entry: Option<String>,
 }
 
-/// Decode a `Notify` call body.
-///
-/// The signature is `susssasa{sv}i`: app_name, replaces_id, app_icon, summary,
-/// body, actions, hints, expire_timeout.
 type NotifyBody = (
     String,
     u32,
@@ -91,7 +68,6 @@ fn hint_u8(hints: &HashMap<String, OwnedValue>, key: &str) -> Option<u8> {
     }
 }
 
-/// Build a notification from a decoded call, assigning it `id`.
 pub fn from_body(body: NotifyBody, id: u64, received_at: i64) -> Notification {
     let (app_name, _replaces, app_icon, summary, notification_body, _actions, hints, _timeout) =
         body;
@@ -109,23 +85,14 @@ pub fn from_body(body: NotifyBody, id: u64, received_at: i64) -> Notification {
     }
 }
 
-/// Whether a captured notification is worth showing.
-///
-/// Progress notifications from the same app replace themselves many times a
-/// second, and an empty one carries nothing to read.
 pub fn is_interesting(notification: &Notification) -> bool {
     !(notification.summary.trim().is_empty() && notification.body.trim().is_empty())
 }
 
-/// Watch the bus for notifications, calling `on_notification` for each.
-///
-/// This takes its own connection, because a monitor connection can no longer be
-/// used for ordinary method calls.
 pub async fn watch<F>(mut on_notification: F) -> Result<()>
 where
     F: FnMut(Notification) + Send + 'static,
 {
-    // Resolve the server's unique name first, on a normal connection.
     let probe = Connection::session()
         .await
         .context("cannot reach the session bus")?;
@@ -144,8 +111,6 @@ where
         .build()
         .await?;
 
-    // Narrow the monitor to exactly the calls of interest, so Veronica is not
-    // woken for every message on the session bus.
     let rule = zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::MethodCall)
         .interface(NOTIFY_BUS)?
@@ -166,9 +131,6 @@ where
         if header.member().map(|m| m.as_str()) != Some("Notify") {
             continue;
         }
-        // The shell forwards each notification onward, so the same one appears
-        // twice on the bus. Only the call addressed to the server is the real
-        // one; accepting both would double every entry.
         if header.destination().map(|d| d.to_string()).as_deref() != Some(server.as_str()) {
             continue;
         }
@@ -227,7 +189,6 @@ mod tests {
 
     #[test]
     fn decodes_the_call_shape_the_bus_carries() {
-        // Captured from a live session.
         let notification = from_body(
             body(
                 "Veronica test",
@@ -265,7 +226,6 @@ mod tests {
 
     #[test]
     fn urgency_is_accepted_as_a_wider_integer_too() {
-        // Some senders write the hint as u32 rather than the spec's byte.
         let n = from_body(body("s", "b", hints(&[("urgency", Value::U32(2))])), 1, 0);
         assert_eq!(n.urgency, Urgency::Critical);
     }
@@ -284,10 +244,8 @@ mod tests {
     fn an_entirely_empty_notification_is_uninteresting() {
         let empty = from_body(body("   ", "", HashMap::new()), 1, 0);
         assert!(!is_interesting(&empty));
-        // A summary alone is enough to be worth showing.
         let titled = from_body(body("Build finished", "", HashMap::new()), 2, 0);
         assert!(is_interesting(&titled));
-        // So is a body alone.
         let described = from_body(body("", "3 tests failed", HashMap::new()), 3, 0);
         assert!(is_interesting(&described));
     }

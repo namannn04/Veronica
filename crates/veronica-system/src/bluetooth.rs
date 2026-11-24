@@ -1,15 +1,3 @@
-//! Bluetooth adapters and devices, through BlueZ.
-//!
-//! Edith reads this from IOBluetooth: which adapter is powered, which devices
-//! are paired, which are connected, and how much battery each one has left.
-//! BlueZ is the direct Linux equivalent and speaks D-Bus, so Veronica asks the
-//! system bus rather than shelling out to `bluetoothctl`, whose output is meant
-//! for a terminal and changes between releases.
-//!
-//! Everything here is read-only. Veronica reports what is paired and connected;
-//! GNOME's Quick Settings stays the only thing that pairs, unpairs or toggles
-//! the radio, which is the same division of labour the top bar already follows.
-
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
@@ -23,13 +11,10 @@ pub const ADAPTER_INTERFACE: &str = "org.bluez.Adapter1";
 pub const DEVICE_INTERFACE: &str = "org.bluez.Device1";
 pub const BATTERY_INTERFACE: &str = "org.bluez.Battery1";
 
-/// A Bluetooth radio on this computer. Most machines have exactly one.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Adapter {
-    /// The BlueZ object name, e.g. `hci0`.
     pub id: String,
-    /// The name the adapter advertises, which the user may have renamed.
     pub name: String,
     pub address: String,
     pub powered: bool,
@@ -37,7 +22,6 @@ pub struct Adapter {
     pub discoverable: bool,
 }
 
-/// A device BlueZ knows about: paired, connected, or merely seen.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Device {
@@ -46,32 +30,20 @@ pub struct Device {
     pub paired: bool,
     pub trusted: bool,
     pub connected: bool,
-    /// Battery percentage, where the device reports one. Headphones and mice
-    /// usually do; a speaker usually does not, and `None` says so rather than
-    /// showing a zero.
     pub battery_percent: Option<u8>,
-    /// Signal strength in dBm, only present while the device is in range and
-    /// being discovered.
     pub rssi: Option<i16>,
-    /// The BlueZ appearance/class hint, mapped to something worth showing.
     pub icon: Option<String>,
 }
 
-/// What Bluetooth looks like on this computer right now.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BluetoothState {
     pub adapters: Vec<Adapter>,
     pub devices: Vec<Device>,
-    /// Set when BlueZ could not be reached at all — no daemon, no adapter, or a
-    /// container without the system bus. Distinguishes "nothing is paired" from
-    /// "cannot tell", the same way screen-share detection does.
     pub unavailable: Option<String>,
 }
 
 impl BluetoothState {
-    /// Devices that are connected right now, which is what a summary line and
-    /// the top bar care about.
     pub fn connected(&self) -> Vec<&Device> {
         self.devices
             .iter()
@@ -79,13 +51,10 @@ impl BluetoothState {
             .collect()
     }
 
-    /// Whether any adapter is switched on. With the radio off there is nothing
-    /// to report, and saying "no devices" would be misleading.
     pub fn powered(&self) -> bool {
         self.adapters.iter().any(|adapter| adapter.powered)
     }
 
-    /// One line for a status readout.
     pub fn summary(&self) -> String {
         if let Some(reason) = &self.unavailable {
             return reason.clone();
@@ -118,7 +87,6 @@ fn bool_property(properties: &HashMap<String, OwnedValue>, key: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// The last path component, which is BlueZ's own short name for the object.
 fn object_name(path: &OwnedObjectPath) -> String {
     path.as_str()
         .rsplit('/')
@@ -134,11 +102,6 @@ fn interface(name: &str) -> OwnedInterfaceName {
     OwnedInterfaceName::try_from(name).expect("the interface names above are valid")
 }
 
-/// Turn one `GetManagedObjects` reply into the adapters and devices it holds.
-///
-/// Split out from the D-Bus call so the shaping is testable without a bus, and
-/// so a device whose battery lives on a separate interface is still matched to
-/// the right row.
 fn shape(objects: &ManagedObjects) -> (Vec<Adapter>, Vec<Device>) {
     let mut adapters = Vec::new();
     let mut devices = Vec::new();
@@ -164,15 +127,11 @@ fn shape(objects: &ManagedObjects) -> (Vec<Adapter>, Vec<Device>) {
                 name: string_property(properties, "Alias")
                     .or_else(|| string_property(properties, "Name"))
                     .filter(|name| !name.is_empty())
-                    // An unnamed device is still worth listing; its address is
-                    // the only handle the user has on it.
                     .unwrap_or_else(|| address.clone()),
                 address,
                 paired: bool_property(properties, "Paired"),
                 trusted: bool_property(properties, "Trusted"),
                 connected: bool_property(properties, "Connected"),
-                // BlueZ publishes battery on its own interface, on the same
-                // object, so it is read from the sibling map rather than here.
                 battery_percent: interfaces
                     .get(&interface(BATTERY_INTERFACE))
                     .and_then(|battery| battery.get("Percentage"))
@@ -188,8 +147,6 @@ fn shape(objects: &ManagedObjects) -> (Vec<Adapter>, Vec<Device>) {
     }
 
     adapters.sort_by(|left, right| left.id.cmp(&right.id));
-    // Connected first, then paired, then by name: the order the user cares
-    // about, rather than BlueZ's object-path order.
     devices.sort_by(|left, right| {
         right
             .connected
@@ -214,11 +171,6 @@ async fn managed_objects(connection: &Connection) -> Result<ManagedObjects> {
     Ok(objects)
 }
 
-/// Read the current Bluetooth state.
-///
-/// A machine with no Bluetooth hardware, or with `bluetooth.service` stopped,
-/// is a normal outcome rather than an error, so it comes back as `unavailable`
-/// with a reason the interface can show.
 pub async fn state() -> BluetoothState {
     let connection = match Connection::system().await {
         Ok(connection) => connection,
@@ -232,7 +184,6 @@ pub async fn state() -> BluetoothState {
     read(&connection).await
 }
 
-/// The same read against a connection the caller already holds.
 pub async fn read(connection: &Connection) -> BluetoothState {
     let objects = match managed_objects(connection).await {
         Ok(objects) => objects,

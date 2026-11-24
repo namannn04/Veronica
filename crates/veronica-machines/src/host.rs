@@ -1,24 +1,12 @@
-//! The machines Veronica can reach.
-//!
-//! Edith keeps a fleet of the local Mac plus SSH hosts. Veronica does the same:
-//! "this computer" is always present and needs no configuration, and remote
-//! hosts are read from Veronica's settings, seeded from `~/.ssh/config` so a
-//! machine already reachable over SSH does not have to be described twice.
-
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-/// How to reach a machine.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Reach {
-    /// The machine Veronica is running on. Probed directly, no SSH.
     Local,
-    /// Reached by running `ssh <target>`, so the user's own SSH configuration,
-    /// keys and agent apply unchanged.
     Ssh {
-        /// The argument passed to `ssh`: a config alias, or `user@host`.
         target: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         port: Option<u16>,
@@ -28,20 +16,14 @@ pub enum Reach {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Machine {
-    /// Stable identifier used in settings and on the command line.
     pub id: String,
-    /// What to call it in the interface.
     pub name: String,
     pub reach: Reach,
-    /// The MAC address to send a Wake-on-LAN packet to. Optional, and absent
-    /// from a machine added before this existed, because a wake packet is the
-    /// one operation SSH cannot perform: the machine is not answering yet.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mac: Option<String>,
 }
 
 impl Machine {
-    /// The entry that always exists.
     pub fn local() -> Self {
         Self {
             id: "local".to_string(),
@@ -51,8 +33,6 @@ impl Machine {
         }
     }
 
-    /// A machine reached over SSH. A constructor rather than a literal so that
-    /// adding an optional field — as `mac` was — does not touch every caller.
     pub fn ssh(id: impl Into<String>, name: impl Into<String>, target: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -69,7 +49,6 @@ impl Machine {
         matches!(self.reach, Reach::Local)
     }
 
-    /// The `ssh` target, for a remote machine.
     pub fn ssh_target(&self) -> Option<&str> {
         match &self.reach {
             Reach::Ssh { target, .. } => Some(target),
@@ -78,16 +57,6 @@ impl Machine {
     }
 }
 
-/// Turn a name into an identifier: lowercase, with runs of anything unusual
-/// collapsed to single hyphens, so it is safe in settings keys and on a
-/// command line.
-/// Refuse an SSH destination that `ssh` or `sftp` would read as something
-/// else.
-///
-/// A target starting with `-` is parsed as an option: `-oProxyCommand=...`
-/// runs that command on this computer, on every probe. Whitespace and control
-/// characters have no place in a host or alias either, and would only reach
-/// the terminal launcher's command line.
 pub fn validate_ssh_target(target: &str) -> anyhow::Result<()> {
     if target.is_empty() {
         anyhow::bail!("an SSH target is needed, such as user@host or a Host alias");
@@ -122,11 +91,6 @@ pub fn slugify(name: &str) -> String {
     }
 }
 
-/// Host aliases from an SSH config file.
-///
-/// Only plain `Host` aliases are offered: a pattern with a wildcard is a rule
-/// for many hosts rather than one machine, and `Host *` in particular would
-/// otherwise appear as a machine called "*".
 pub fn parse_ssh_config(contents: &str) -> Vec<String> {
     let mut hosts = Vec::new();
     for line in contents.lines() {
@@ -153,7 +117,6 @@ pub fn parse_ssh_config(contents: &str) -> Vec<String> {
     hosts
 }
 
-/// Read host aliases from the user's SSH config, if it has one.
 pub fn ssh_config_hosts(path: &Path) -> Vec<String> {
     match std::fs::read_to_string(path) {
         Ok(contents) => parse_ssh_config(&contents),
@@ -161,10 +124,6 @@ pub fn ssh_config_hosts(path: &Path) -> Vec<String> {
     }
 }
 
-/// The stored fleet, always led by this computer.
-///
-/// Deduplicated by id, and the local entry is never displaced by a stored one,
-/// so a bad settings file cannot remove the machine the user is sitting at.
 pub fn fleet(stored: Vec<Machine>) -> Vec<Machine> {
     let mut machines = vec![Machine::local()];
     for machine in stored {

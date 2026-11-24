@@ -1,4 +1,3 @@
-//! Bounded, certificate-verified release downloads. Partial bodies never become packages.
 use anyhow::{bail, Context, Result};
 use std::{
     path::{Path, PathBuf},
@@ -64,7 +63,6 @@ fn download_with(
         NEXT.fetch_add(1, Ordering::Relaxed)
     ));
     let result = (|| {
-        // Create exclusively before handing the private path to curl.
         std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -87,9 +85,6 @@ fn download_with(
                 return Ok(destination.to_path_buf());
             }
             detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            // Keep received bytes and ask for the remainder on the next call.
-            // If a server cannot resume, restart safely instead of appending
-            // a complete response to the partial body.
             if matches!(output.status.code(), Some(33 | 36)) || output.stdout == b"416" {
                 std::fs::write(&partial, [])?;
             }
@@ -131,7 +126,6 @@ mod tests {
     }
     fn local_command(url: &str, partial: &Path) -> Command {
         let mut command = curl_command(url, partial);
-        // The test fixture is local HTTP; production permits HTTPS only.
         command.args([
             "--proto",
             "=http",

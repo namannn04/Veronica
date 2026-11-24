@@ -1,24 +1,5 @@
-//! Reading a machine's vital signs.
-//!
-//! One shell snippet gathers everything in a single round trip, because over
-//! SSH each extra command is another whole connection's latency. The snippet
-//! reads procfs, sysfs, `df` and `ps`, so it needs no privileges and nothing
-//! installed on the far end beyond a POSIX shell. GPUs are the one exception:
-//! they are read from `nvidia-smi` where it exists, and simply absent where it
-//! does not, because there is no vendor-neutral file to read them from.
-//!
-//! CPU usage cannot be read from a single sample: `/proc/stat` holds cumulative
-//! counters, so a percentage requires two reads and the difference between
-//! them. The snippet takes both itself, with a short sleep in between, rather
-//! than making the caller connect twice.
-
 use serde::Serialize;
 
-/// The snippet run on the machine being probed.
-///
-/// Output is a line protocol Veronica controls, so parsing does not depend on
-/// the formatting of any tool: `key value...` per line, with the two CPU
-/// samples tagged separately.
 pub const PROBE_SCRIPT: &str = r#"
 echo "host $(uname -n)"
 echo "kernel $(uname -r)"
@@ -61,7 +42,6 @@ command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi \
 ps -eo pid=,pcpu=,rss=,comm= --sort=-pcpu 2>/dev/null | head -n 8 | sed 's/^/proc /'
 "#;
 
-/// Cumulative CPU jiffies from one `/proc/stat` sample.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CpuSample {
     pub idle: u64,
@@ -69,10 +49,6 @@ pub struct CpuSample {
 }
 
 impl CpuSample {
-    /// Parse a `cpu  user nice system idle iowait irq softirq steal ...` line.
-    ///
-    /// Idle time is idle plus iowait: a machine waiting on disk is not busy in
-    /// any sense the user cares about.
     pub fn parse(line: &str) -> Option<Self> {
         let mut fields = line.split_whitespace();
         let label = fields.next()?;
@@ -86,17 +62,10 @@ impl CpuSample {
         let idle = values[3] + values.get(4).copied().unwrap_or(0);
         Some(Self {
             idle,
-            // guest and guest_nice (the ninth and tenth values) are already
-            // inside user and nice; summing them again inflated the load
-            // while a virtual machine ran.
             total: values.iter().take(8).sum(),
         })
     }
 
-    /// Busy share between two samples, 0-100.
-    ///
-    /// Returns zero when the counters did not advance, and survives a counter
-    /// reset (a reboot between samples) without reporting nonsense.
     pub fn usage_between(first: Self, second: Self) -> f64 {
         let total = second.total.saturating_sub(first.total);
         let idle = second.idle.saturating_sub(first.idle);
@@ -128,7 +97,6 @@ impl DiskUsage {
     }
 }
 
-/// One temperature sensor on the machine being probed.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Temperature {
@@ -136,7 +104,6 @@ pub struct Temperature {
     pub celsius: f64,
 }
 
-/// One fan, in RPM.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Fan {
@@ -144,7 +111,6 @@ pub struct Fan {
     pub rpm: u32,
 }
 
-/// One GPU, as `nvidia-smi` reports it.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Gpu {
@@ -152,12 +118,9 @@ pub struct Gpu {
     pub utilization_percent: f64,
     pub memory_used_bytes: u64,
     pub memory_total_bytes: u64,
-    /// `None` where the driver does not report one, rather than a zero that
-    /// would read as a GPU running at freezing point.
     pub temperature_celsius: Option<f64>,
 }
 
-/// One of the busiest processes on the machine.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteProcess {
@@ -167,7 +130,6 @@ pub struct RemoteProcess {
     pub memory_bytes: u64,
 }
 
-/// A machine's state at one moment.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MachineStats {
@@ -185,7 +147,6 @@ pub struct MachineStats {
     pub temperatures: Vec<Temperature>,
     pub fans: Vec<Fan>,
     pub gpus: Vec<Gpu>,
-    /// The busiest processes, hottest first.
     pub processes: Vec<RemoteProcess>,
 }
 
@@ -202,7 +163,6 @@ impl MachineStats {
         self.memory_used_bytes() as f64 / self.memory_total_bytes as f64 * 100.0
     }
 
-    /// The hottest sensor, which is the one a fleet view should show.
     pub fn peak_temperature(&self) -> Option<&Temperature> {
         self.temperatures.iter().max_by(|left, right| {
             left.celsius
@@ -211,7 +171,6 @@ impl MachineStats {
         })
     }
 
-    /// The filesystem the user most likely means, for a one-line summary.
     pub fn root_disk(&self) -> Option<&DiskUsage> {
         self.disks
             .iter()
@@ -220,10 +179,6 @@ impl MachineStats {
     }
 }
 
-/// Mounts that are not real storage and would clutter a fleet view.
-///
-/// The probe filters most of these by filesystem type, but EFI variable and
-/// boot-firmware mounts come through as tiny real filesystems.
 fn is_uninteresting_mount(mount_point: &str) -> bool {
     mount_point.starts_with("/sys")
         || mount_point.starts_with("/proc")
@@ -232,10 +187,6 @@ fn is_uninteresting_mount(mount_point: &str) -> bool {
         || mount_point.starts_with("/var/snap/")
 }
 
-/// Parse the probe's output.
-///
-/// Tolerant by design: a machine missing `df`, or a BSD-ish `/proc`, should
-/// still yield whatever did parse rather than nothing at all.
 pub fn parse(output: &str) -> MachineStats {
     let mut stats = MachineStats::default();
     let mut first_cpu: Option<CpuSample> = None;
@@ -266,13 +217,11 @@ pub fn parse(output: &str) -> MachineStats {
             "cpu1" => first_cpu = CpuSample::parse(rest),
             "cpu2" => second_cpu = CpuSample::parse(rest),
             "mem" => {
-                // "MemTotal: 15078116 kB"
                 let mut parts = rest.split_whitespace();
                 let Some(field) = parts.next() else { continue };
                 let Some(value) = parts.next().and_then(|v| v.parse::<u64>().ok()) else {
                     continue;
                 };
-                // procfs reports kibibytes, and the interface wants bytes.
                 let bytes = value.saturating_mul(1024);
                 match field.trim_end_matches(':') {
                     "MemTotal" => stats.memory_total_bytes = bytes,
@@ -283,8 +232,6 @@ pub fn parse(output: &str) -> MachineStats {
                 }
             }
             "disk" => {
-                // The mount point comes first and may contain spaces, so the
-                // two numeric columns are taken from the end.
                 let fields: Vec<&str> = rest.split_whitespace().collect();
                 if fields.len() < 3 {
                     continue;
@@ -303,7 +250,6 @@ pub fn parse(output: &str) -> MachineStats {
                 }
             }
             "temp" => {
-                // "temp <label> <millidegrees>", and a label may contain spaces.
                 let fields: Vec<&str> = rest.split_whitespace().collect();
                 if fields.len() < 2 {
                     continue;
@@ -312,8 +258,6 @@ pub fn parse(output: &str) -> MachineStats {
                     continue;
                 };
                 let celsius = milli / 1000.0;
-                // Sensors that are off or unplugged report zero or a nonsense
-                // value; showing them would fill the panel with noise.
                 if !(1.0..=150.0).contains(&celsius) {
                     continue;
                 }
@@ -330,8 +274,6 @@ pub fn parse(output: &str) -> MachineStats {
                 let Some(rpm) = fields[fields.len() - 1].parse::<u32>().ok() else {
                     continue;
                 };
-                // A stopped fan is a real reading; a board that exposes an
-                // absent header reports zero forever, so those are dropped.
                 if rpm == 0 {
                     continue;
                 }
@@ -341,8 +283,6 @@ pub fn parse(output: &str) -> MachineStats {
                 });
             }
             "gpu" => {
-                // "gpu NVIDIA GeForce RTX 3050, 12, 900, 4096, 46" — comma
-                // separated, because the name itself contains spaces.
                 let fields: Vec<&str> = rest.split(',').map(str::trim).collect();
                 if fields.len() < 4 {
                     continue;
@@ -351,14 +291,12 @@ pub fn parse(output: &str) -> MachineStats {
                 stats.gpus.push(Gpu {
                     name: fields[0].to_string(),
                     utilization_percent: number(1).unwrap_or(0.0),
-                    // nvidia-smi reports mebibytes with `nounits`.
                     memory_used_bytes: number(2).unwrap_or(0.0) as u64 * 1024 * 1024,
                     memory_total_bytes: number(3).unwrap_or(0.0) as u64 * 1024 * 1024,
                     temperature_celsius: number(4),
                 });
             }
             "proc" => {
-                // "proc <pid> <pcpu> <rss> <comm>", and comm may contain spaces.
                 let fields: Vec<&str> = rest.split_whitespace().collect();
                 if fields.len() < 4 {
                     continue;
@@ -374,7 +312,6 @@ pub fn parse(output: &str) -> MachineStats {
                     pid,
                     name: fields[3..].join(" "),
                     cpu_percent: cpu,
-                    // ps reports the resident set in kibibytes.
                     memory_bytes: rss.saturating_mul(1024),
                 });
             }
@@ -382,20 +319,13 @@ pub fn parse(output: &str) -> MachineStats {
         }
     }
 
-    // `dedup_by` only removes *adjacent* repeats, so the list is grouped by
-    // label before the hottest-first sort below reorders it.
     stats
         .temperatures
         .sort_by(|left, right| left.label.cmp(&right.label));
-    // A sensor exposed through both `thermal_zone` and `hwmon` is reported
-    // twice, identically. Showing it twice would imply two components running
-    // that hot, so an exact repeat is dropped — while two genuinely distinct
-    // sensors that share a chip name are kept, since their readings differ.
     stats.temperatures.dedup_by(|left, right| {
         left.label == right.label && (left.celsius - right.celsius).abs() < f64::EPSILON
     });
 
-    // The hottest sensor first, so a summary can take the head of the list.
     stats.temperatures.sort_by(|left, right| {
         right
             .celsius
@@ -415,13 +345,11 @@ mod tests {
 
     #[test]
     fn guest_time_is_not_counted_twice() {
-        // user=100 includes guest=60, so the busy share is 100 of 400, not 160.
         let sample = CpuSample::parse("cpu  100 0 0 300 0 0 0 0 60 0").unwrap();
         assert_eq!(sample.total, 400);
         assert_eq!(sample.idle, 300);
     }
 
-    /// Real output shape, with values captured from a live machine.
     const SAMPLE: &str = "\
 host namannn04-ROG-Strix-G513RC-G513RC
 kernel 7.0.0-28-generic
@@ -448,7 +376,6 @@ disk /boot/efi                    268435456    228634624
         assert_eq!(stats.os, "Ubuntu 26.04 LTS");
         assert_eq!(stats.uptime_secs, 123_088);
         assert_eq!(stats.load_average, [0.76, 0.72, 0.79]);
-        // 15078116 KiB, which procfs reports in kibibytes.
         assert_eq!(stats.memory_total_bytes, 15_078_116 * 1024);
         assert_eq!(stats.swap_total_bytes, 4_194_300 * 1024);
     }
@@ -456,7 +383,6 @@ disk /boot/efi                    268435456    228634624
     #[test]
     fn computes_cpu_from_the_two_samples() {
         let stats = parse(SAMPLE);
-        // 398 jiffies advanced, 300 of them idle, so ~24.6% busy.
         assert!(
             (stats.cpu_percent - 24.62).abs() < 0.1,
             "got {}",
@@ -479,7 +405,6 @@ disk /boot/efi                    268435456    228634624
 
     #[test]
     fn a_counter_reset_between_samples_does_not_report_nonsense() {
-        // A reboot resets the counters, so the second sample is smaller.
         let first = CpuSample {
             idle: 900,
             total: 1000,
@@ -490,7 +415,6 @@ disk /boot/efi                    268435456    228634624
 
     #[test]
     fn cpu_idle_counts_iowait_as_idle() {
-        // user=100 idle=0 iowait=900: waiting on disk is not busy.
         let sample = CpuSample::parse("cpu 100 0 0 0 900 0 0").unwrap();
         assert_eq!(sample.idle, 900);
         assert_eq!(sample.total, 1000);
@@ -505,7 +429,6 @@ disk /boot/efi                    268435456    228634624
 
     #[test]
     fn a_mount_point_containing_spaces_still_parses() {
-        // The numeric columns are taken from the end for exactly this reason.
         let line = "disk /media/My Backup Drive 1000 400\n";
         let stats = parse(line);
         assert_eq!(stats.disks.len(), 1);
@@ -519,7 +442,6 @@ disk /boot/efi                    268435456    228634624
         let stats = parse(SAMPLE);
         let root = stats.root_disk().expect("root should be found");
         assert_eq!(root.mount_point, "/");
-        // 512778035200 total, 322225905664 free -> ~37% used
         assert!(
             (root.used_percent() - 37.16).abs() < 0.1,
             "got {}",
@@ -530,7 +452,6 @@ disk /boot/efi                    268435456    228634624
     #[test]
     fn memory_percentage_uses_available_not_free() {
         let stats = parse(SAMPLE);
-        // Available is what a program can actually get, so it drives the figure.
         assert!(
             (stats.memory_used_percent() - 52.94).abs() < 0.1,
             "got {}",
@@ -562,15 +483,11 @@ disk /boot/efi                    268435456    228634624
 
     #[test]
     fn the_probe_script_takes_two_cpu_samples() {
-        // Without both, CPU would always read zero, which is the subtlest way
-        // for this to look like it works.
         assert!(PROBE_SCRIPT.contains("cpu1"));
         assert!(PROBE_SCRIPT.contains("cpu2"));
         assert!(PROBE_SCRIPT.contains("sleep"));
     }
 
-    /// The extra sections, in the shapes procfs, sysfs, nvidia-smi and ps
-    /// actually produce.
     const EXTRAS: &str = "\
 temp acpitz 59000
 temp k10temp 47125
@@ -604,8 +521,6 @@ proc bad line here
 
     #[test]
     fn a_sensor_reading_zero_or_nonsense_is_dropped_rather_than_shown() {
-        // An unplugged sensor reports 0, and a broken one reports 999 °C;
-        // either would fill the panel with noise.
         let stats = parse(EXTRAS);
         assert!(stats.temperatures.iter().all(|r| r.label != "nvme"));
         assert!(stats.temperatures.iter().all(|r| r.label != "coretemp"));
@@ -626,7 +541,6 @@ proc bad line here
         let gpu = &stats.gpus[0];
         assert_eq!(gpu.name, "NVIDIA GeForce RTX 3050 Laptop GPU");
         assert_eq!(gpu.utilization_percent, 12.0);
-        // nvidia-smi reports mebibytes with --nounits.
         assert_eq!(gpu.memory_used_bytes, 900 * 1024 * 1024);
         assert_eq!(gpu.memory_total_bytes, 4096 * 1024 * 1024);
         assert_eq!(gpu.temperature_celsius, Some(46.0));
@@ -644,7 +558,6 @@ proc bad line here
         assert_eq!(stats.processes[0].pid, 428936);
         assert_eq!(stats.processes[0].name, "chrome");
         assert_eq!(stats.processes[0].cpu_percent, 8.8);
-        // ps reports the resident set in kibibytes.
         assert_eq!(stats.processes[0].memory_bytes, 496_640 * 1024);
         assert_eq!(
             stats.processes[1].name, "gnome shell",
@@ -654,8 +567,6 @@ proc bad line here
 
     #[test]
     fn a_machine_missing_every_extra_still_parses_what_it_did_report() {
-        // A container, a BSD-ish host, a box with no sensors: the point of the
-        // parser being tolerant is that none of these produce nothing at all.
         let stats = parse(SAMPLE);
         assert!(!stats.host_name.is_empty());
         assert!(stats.temperatures.is_empty());
@@ -672,14 +583,12 @@ proc bad line here
 
     #[test]
     fn a_sensor_reported_by_both_thermal_zone_and_hwmon_appears_once() {
-        // Two rows for one component would imply two things running that hot.
         let stats = parse("temp acpitz 59000\ntemp acpitz 59000\n");
         assert_eq!(stats.temperatures.len(), 1);
     }
 
     #[test]
     fn two_distinct_sensors_sharing_a_chip_name_both_survive() {
-        // Two DIMM slots on one spd5118 chip are two real readings.
         let stats = parse("temp spd5118 46500\ntemp spd5118 44250\n");
         assert_eq!(stats.temperatures.len(), 2);
         assert_eq!(stats.temperatures[0].celsius, 46.5, "hottest first");
@@ -687,8 +596,6 @@ proc bad line here
 
     #[test]
     fn the_probe_script_asks_hwmon_for_its_channel_labels() {
-        // Without them every channel of a multi-channel chip reports under the
-        // chip's own name, and the dedup above cannot tell them apart.
         assert!(PROBE_SCRIPT.contains("_label"));
     }
 }

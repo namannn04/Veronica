@@ -1,4 +1,3 @@
-//! Local Docker only. Pin every operation to the inspected Unix endpoint.
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, process::Stdio, time::Duration};
@@ -52,8 +51,6 @@ fn binary() -> Option<PathBuf> {
     veronica_core::host::which("docker")
 }
 async fn endpoint(binary: &std::path::Path) -> Result<String> {
-    // Read the host environment as well as the selected context. DOCKER_CONTEXT
-    // overrides DOCKER_HOST; Flatpak's own environment is not the host's.
     let env = run(
         std::path::Path::new("sh"),
         &[

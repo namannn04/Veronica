@@ -1,10 +1,3 @@
-//! Desktop notifications over D-Bus.
-//!
-//! Edith posts through `UNUserNotificationCenter`; the freedesktop equivalent
-//! is `org.freedesktop.Notifications`. Replacing a notification in place matters
-//! for the usage alerts: a threshold that keeps rising should update one banner
-//! rather than stack five.
-
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
@@ -14,12 +7,9 @@ use zbus::Connection;
 pub const NOTIFY_BUS: &str = "org.freedesktop.Notifications";
 pub const NOTIFY_PATH: &str = "/org/freedesktop/Notifications";
 
-/// How long a banner stays up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Timeout {
-    /// Let the desktop decide.
     Default,
-    /// Stay until dismissed, for alerts the user must acknowledge.
     Never,
     Milliseconds(i32),
 }
@@ -34,8 +24,6 @@ impl Timeout {
     }
 }
 
-/// Freedesktop urgency. `Critical` banners bypass do-not-disturb, so it is
-/// reserved for a limit actually being exhausted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Urgency {
     Low,
@@ -59,7 +47,6 @@ pub struct Notification {
     pub body: String,
     pub urgency: Urgency,
     pub timeout: Timeout,
-    /// Pass the id returned by a previous post to update that banner in place.
     pub replaces_id: u32,
 }
 
@@ -90,11 +77,9 @@ impl Notification {
     }
 }
 
-/// Post a notification and return its id, which can replace it later.
 pub async fn post(connection: &Connection, notification: &Notification) -> Result<u32> {
     let mut hints: HashMap<&str, Value<'_>> = HashMap::new();
     hints.insert("urgency", Value::U8(notification.urgency.as_u8()));
-    // Lets the desktop group Veronica's banners and show the right icon.
     hints.insert("desktop-entry", Value::Str(veronica_core::APP_ID.into()));
 
     let id: u32 = connection
@@ -123,7 +108,6 @@ pub async fn post(connection: &Connection, notification: &Notification) -> Resul
     Ok(id)
 }
 
-/// Withdraw a notification that is still on screen.
 pub async fn close(connection: &Connection, id: u32) -> Result<()> {
     connection
         .call_method(
