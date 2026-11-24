@@ -22,48 +22,35 @@ and shortcuts are on the [website](https://namannn04.github.io/veronica/).
 curl -fsSL https://namannn04.github.io/veronica/install | bash
 ```
 
-This downloads the latest release, verifies its checksum, installs the Debian
-package and turns on the GNOME Shell extension. Log out and back in once to see
-the notch. Run it again to update.
+This verifies and installs the latest Debian package and turns on the GNOME
+Shell extension. Log out and back in once to see the notch.
 
-### apt repository
-
-```bash
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://namannn04.github.io/veronica/apt/veronica.gpg | sudo tee /etc/apt/keyrings/veronica.gpg >/dev/null
-echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/veronica.gpg] https://namannn04.github.io/veronica/apt stable main" | sudo tee /etc/apt/sources.list.d/veronica.list >/dev/null
-sudo apt update && sudo apt install veronica
-```
-
-### Ubuntu PPA
-
-```bash
-sudo add-apt-repository ppa:namannn04/veronica
-sudo apt install veronica
-```
-
-### Snap
+Other ways to install:
 
 ```bash
 sudo snap install veronica --classic
-sudo snap alias veronica.vr vr
 ```
-
-### Flatpak
 
 ```bash
 flatpak install --user https://namannn04.github.io/veronica/flatpak/veronica.flatpakref
 ```
 
-### AppImage
+```bash
+sudo add-apt-repository ppa:namannn04/veronica && sudo apt install veronica
+```
 
-Download `Veronica_0.1.26_amd64.AppImage` from the
+To get updates through `apt upgrade` from the signed apt repository instead:
+
+```bash
+curl -fsSL https://namannn04.github.io/veronica/apt/veronica.gpg | sudo tee /etc/apt/keyrings/veronica.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/veronica.gpg] https://namannn04.github.io/veronica/apt stable main" | sudo tee /etc/apt/sources.list.d/veronica.list
+sudo apt update && sudo apt install veronica
+```
+
+An AppImage, `Veronica_0.1.26_amd64.AppImage`, is on the
 [latest release](https://github.com/namannn04/Veronica/releases/latest). It is
-the desktop app only, without the `vr` command or the shell extension.
-
-The Snap and Flatpak are not sandboxed, because Veronica controls the computer
-it runs on. They copy the shell extension into your home directory on first
-launch; log out and back in once, then enable it from Veronica.
+the desktop app only, without the `vr` command or the shell extension. The Snap
+installs `vr` as `veronica.vr`.
 
 ## Features
 
