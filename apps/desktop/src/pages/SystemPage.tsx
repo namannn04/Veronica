@@ -31,6 +31,7 @@ import {
   Tabs,
   type Tone,
 } from "../ui";
+import { MeterStat, thresholdTone } from "../components/MeterStat";
 import { CleanerPane } from "./CleanerPane";
 import "./SystemPage.css";
 
@@ -419,25 +420,6 @@ function OverviewSkeleton() {
   );
 }
 
-function MeterStat({ label, value, note, warnAt = 60, criticalAt = 85 }: { label: string; value: number; note: string; warnAt?: number; criticalAt?: number }) {
-  const tone = thresholdTone(value, warnAt, criticalAt);
-  return (
-    <Stat
-      className="sys-meter"
-      label={label}
-      value={Math.round(value)}
-      unit="%"
-      tone={tone}
-      note={
-        <>
-          <ProgressBar value={Math.max(0.01, value / 100)} tone={tone === "neutral" ? "accent" : tone} size="thin" label={`${label} usage`} />
-          <span>{tone === "neutral" ? note : `${tone === "critical" ? "Very high" : "High"} · ${note}`}</span>
-        </>
-      }
-    />
-  );
-}
-
 function SortHeader({ label, sortKey, current, onClick, numeric = false }: { label: string; sortKey: SortKey; current: { key: SortKey; ascending: boolean }; onClick: (key: SortKey) => void; numeric?: boolean }) {
   const active = current.key === sortKey;
   return (
@@ -452,12 +434,6 @@ function SortHeader({ label, sortKey, current, onClick, numeric = false }: { lab
 
 function usedPercent(total: number, available: number) {
   return total > 0 ? (total - available) / total * 100 : 0;
-}
-
-function thresholdTone(value: number, warnAt: number, criticalAt: number): Tone {
-  if (value >= criticalAt) return "critical";
-  if (value >= warnAt) return "warning";
-  return "neutral";
 }
 
 function temperatureTone(celsius: number, critical: number | null): Tone {

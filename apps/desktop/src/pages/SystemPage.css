@@ -2,20 +2,6 @@
   padding: var(--space-2) var(--card-padding);
 }
 
-.sys-meter .ui-stat-note {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-  white-space: normal;
-}
-
-.sys-meter .ui-stat-note > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .sys-disks {
   display: flex;
   flex-direction: column;
