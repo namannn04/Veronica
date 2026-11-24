@@ -1,7 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import { ipc, listenEvent } from "../lib/ipc";
-import type { AlertsView, PacingZone, UsageLevel, WatchedWindow } from "../lib/types";
 import {
   Badge,
   Button,
@@ -12,7 +8,10 @@ import {
   SkeletonText,
   Stack,
   type Tone,
-} from "../ui";
+} from "@veronica/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ipc, listenEvent } from "../lib/ipc";
+import type { AlertsView, PacingZone, UsageLevel, WatchedWindow } from "../lib/types";
 import { ChoiceRow, SwitchRow } from "./settingsRows";
 
 const SESSION_OFFSETS = [

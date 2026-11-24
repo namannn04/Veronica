@@ -1,10 +1,10 @@
+import { Badge, IconButton, ProgressBar } from "@veronica/ui";
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { trackTimeline } from "../lib/format";
 import { ipc } from "../lib/ipc";
 import { startVisiblePolling } from "../lib/polling";
 import type { MediaAction, NowPlaying as NowPlayingState } from "../lib/types";
-import { Badge, IconButton, ProgressBar } from "../ui";
 import "./NowPlaying.css";
 
 const POLL_MS = 1000;

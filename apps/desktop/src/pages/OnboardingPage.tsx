@@ -1,10 +1,9 @@
+import { Button, Notice } from "@veronica/ui";
 import { Code2, Sparkles } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
-
 import veronicaLogo from "../assets/veronica-logo.png";
 import { invoke, ipc } from "../lib/ipc";
 import { chooseProfile, type Detection, type Profile } from "../lib/onboarding";
-import { Button, Notice } from "../ui";
 import "./Onboarding.css";
 
 const CHOICES: { profile: Profile; title: string; detail: string; icon: ReactNode }[] = [

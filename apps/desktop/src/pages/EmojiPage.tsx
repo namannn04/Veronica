@@ -1,8 +1,3 @@
-import { SearchX, Smile } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-import { ipc } from "../lib/ipc";
-import type { EmojiGroup, EmojiRow } from "../lib/types";
 import {
   Button,
   Card,
@@ -19,7 +14,11 @@ import {
   Tabs,
   Toolbar,
   Tooltip,
-} from "../ui";
+} from "@veronica/ui";
+import { SearchX, Smile } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ipc } from "../lib/ipc";
+import type { EmojiGroup, EmojiRow } from "../lib/types";
 import "./EmojiPage.css";
 
 const SKIN_TONES: { key: string; title: string; sample: string }[] = [

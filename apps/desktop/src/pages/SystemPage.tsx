@@ -1,16 +1,3 @@
-import { ArrowDown, ArrowUp, Bluetooth, Mic, MicOff, Volume2, VolumeX, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { MeterStat, thresholdTone } from "../components/MeterStat";
-import { bytes, countdown } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type {
-  AudioStream,
-  BluetoothState,
-  RunningProcess,
-  SystemSnapshot,
-  VolumeState,
-} from "../lib/types";
 import {
   Badge,
   Button,
@@ -40,7 +27,20 @@ import {
   TableSkeleton,
   Tabs,
   type Tone,
-} from "../ui";
+} from "@veronica/ui";
+import { ArrowDown, ArrowUp, Bluetooth, Mic, MicOff, Volume2, VolumeX, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MeterStat, thresholdTone } from "../components/MeterStat";
+import { bytes, countdown } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
+import type {
+  AudioStream,
+  BluetoothState,
+  RunningProcess,
+  SystemSnapshot,
+  VolumeState,
+} from "../lib/types";
 import { CleanerPane } from "./CleanerPane";
 import "./SystemPage.css";
 

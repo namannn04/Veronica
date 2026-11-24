@@ -1,4 +1,21 @@
 import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Dialog,
+  IconButton,
+  List,
+  ListRow,
+  Notice,
+  Page,
+  PageHeader,
+  ProgressBar,
+  SearchField,
+  Skeleton,
+  SkeletonText,
+} from "@veronica/ui";
+import {
   Activity,
   ArrowUpRight,
   CalendarDays,
@@ -33,23 +50,6 @@ import type {
   SystemSnapshot,
   UsageView,
 } from "../lib/types";
-import {
-  Badge,
-  Button,
-  Card,
-  CardHeader,
-  Dialog,
-  IconButton,
-  List,
-  ListRow,
-  Notice,
-  Page,
-  PageHeader,
-  ProgressBar,
-  SearchField,
-  Skeleton,
-  SkeletonText,
-} from "../ui";
 import "./HomePage.css";
 
 type HomeRoute = "usage" | "media" | "calendar" | "system" | "library";

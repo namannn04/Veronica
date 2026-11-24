@@ -1,9 +1,3 @@
-import { Copy, ExternalLink, MonitorPlay, RefreshCw, SquareTerminal } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type { HerdrAgent, HerdrBoard, HerdrSession } from "../lib/types";
 import {
   Badge,
   Button,
@@ -27,7 +21,12 @@ import {
   StatusDot,
   type Tone,
   Toolbar,
-} from "../ui";
+} from "@veronica/ui";
+import { Copy, ExternalLink, MonitorPlay, RefreshCw, SquareTerminal } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
+import type { HerdrAgent, HerdrBoard, HerdrSession } from "../lib/types";
 import "./HerdrPage.css";
 
 const AgentControls = lazy(() =>

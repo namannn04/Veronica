@@ -1,8 +1,8 @@
+import { Kbd, useIndicator } from "@veronica/ui";
 import { useRef } from "react";
 import veronicaLogo from "../assets/veronica-logo.png";
 import { SearchIcon } from "../components/icons";
 import type { NavGroup, Route } from "../lib/navigation";
-import { Kbd, useIndicator } from "../ui";
 
 export function Sidebar({
   groups,

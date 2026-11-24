@@ -1,12 +1,20 @@
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  List,
+  ListRow,
+  ProgressBar,
+  type Tone,
+} from "@veronica/ui";
 import { PartyPopper } from "lucide-react";
 import { useEffect, useState } from "react";
-
 import { useInstalledExtensions } from "../extensions/useInstalledExtensions";
 import { invoke, listenEvent } from "../lib/ipc";
 import { watchJobs } from "../lib/library";
 import { type StarterState, starterStatus } from "../lib/onboarding";
 import type { ExtensionJob } from "../lib/types";
-import { Badge, Button, Card, CardHeader, List, ListRow, ProgressBar, type Tone } from "../ui";
 
 const STATE_LABELS: Record<StarterState, { label: string; tone: Tone }> = {
   pending: { label: "Not installed", tone: "neutral" },

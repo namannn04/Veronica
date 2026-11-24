@@ -1,6 +1,5 @@
+import { Badge, Card, EmptyState, Page, PageHeader } from "@veronica/ui";
 import { Construction } from "lucide-react";
-
-import { Badge, Card, EmptyState, Page, PageHeader } from "../ui";
 
 export function UnavailablePage({ title, description }: { title: string; description: string }) {
   return (

@@ -1,8 +1,3 @@
-import { CheckCircle2, Package, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { bytes } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import type { PackageInstalled, PackageSource, PackageUpdate, RemovalPlan } from "../lib/types";
 import {
   Badge,
   Button,
@@ -22,7 +17,12 @@ import {
   Spinner,
   Tabs,
   Toolbar,
-} from "../ui";
+} from "@veronica/ui";
+import { CheckCircle2, Package, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { bytes } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import type { PackageInstalled, PackageSource, PackageUpdate, RemovalPlan } from "../lib/types";
 import "./MaintenancePage.css";
 
 const STROKE = 1.75;

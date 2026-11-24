@@ -1,7 +1,7 @@
+import { Badge } from "@veronica/ui";
 import { type MouseEvent, type ReactNode, useLayoutEffect, useMemo, useState } from "react";
 import { dayLabel, dayLabelLong, hourLabel, money, moneyCompact, tokens } from "../lib/format";
 import type { DayPoint, HeatmapCell, HourPoint, NamedAmount } from "../lib/types";
-import { Badge } from "../ui";
 import { TipRow, TipTitle, useTooltip } from "./Tooltip";
 import "./charts.css";
 

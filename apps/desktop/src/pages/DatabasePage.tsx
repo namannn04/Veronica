@@ -1,13 +1,3 @@
-import { ArrowUp, ChevronLeft, ChevronRight, Database, Play, Table2 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
-
-import { ipc } from "../lib/ipc";
-import type {
-  DatabaseConnection,
-  DatabaseObject,
-  DatabaseOperation,
-  DatabasePage as ResultPage,
-} from "../lib/types";
 import {
   Badge,
   Button,
@@ -27,7 +17,16 @@ import {
   Tabs,
   TextArea,
   Toolbar,
-} from "../ui";
+} from "@veronica/ui";
+import { ArrowUp, ChevronLeft, ChevronRight, Database, Play, Table2 } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { ipc } from "../lib/ipc";
+import type {
+  DatabaseConnection,
+  DatabaseObject,
+  DatabaseOperation,
+  DatabasePage as ResultPage,
+} from "../lib/types";
 import "./DatabasePage.css";
 
 const STROKE = 1.75;

@@ -1,3 +1,4 @@
+import { Button, Card, CardHeader, IconButton, Notice, Skeleton, SkeletonText } from "@veronica/ui";
 import { RotateCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { countdown } from "../lib/format";
@@ -5,7 +6,6 @@ import { ipc, listenEvent } from "../lib/ipc";
 import { startVisiblePolling } from "../lib/polling";
 import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
 import type { Gauge, GaugeReport } from "../lib/types";
-import { Button, Card, CardHeader, IconButton, Notice, Skeleton, SkeletonText } from "../ui";
 import { LimitRing } from "./charts";
 import { ProviderSelector } from "./ProviderSelector";
 import "./LimitRings.css";

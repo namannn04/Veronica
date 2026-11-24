@@ -1,8 +1,3 @@
-import { Bell, BellOff, CheckCheck, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { timeAgo } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { DesktopNotification } from "../lib/types";
 import {
   Badge,
   Button,
@@ -14,7 +9,12 @@ import {
   ListRow,
   ListSkeleton,
   Notice,
-} from "../ui";
+} from "@veronica/ui";
+import { Bell, BellOff, CheckCheck, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { timeAgo } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import type { DesktopNotification } from "../lib/types";
 import "./NotificationList.css";
 
 export function NotificationList({ limit, className }: { limit?: number; className?: string }) {

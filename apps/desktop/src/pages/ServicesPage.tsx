@@ -1,15 +1,3 @@
-import { Container, Network, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import { endpointLabel, matchesContainer, matchesPort } from "../lib/services";
-import type {
-  DockerContainer,
-  DockerSnapshot,
-  ListeningPort,
-  PortOwner,
-  PortsSnapshot,
-} from "../lib/types";
 import {
   Button,
   ConfirmDialog,
@@ -25,7 +13,19 @@ import {
   StatusDot,
   type Tone,
   Toolbar,
-} from "../ui";
+} from "@veronica/ui";
+import { Container, Network, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
+import { endpointLabel, matchesContainer, matchesPort } from "../lib/services";
+import type {
+  DockerContainer,
+  DockerSnapshot,
+  ListeningPort,
+  PortOwner,
+  PortsSnapshot,
+} from "../lib/types";
 import "./ServicesPage.css";
 
 const STROKE = 1.75;

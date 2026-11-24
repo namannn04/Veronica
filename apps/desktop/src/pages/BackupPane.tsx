@@ -1,9 +1,3 @@
-import { Archive, FileSearch, RotateCcw } from "lucide-react";
-import { useState } from "react";
-
-import { bytes } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import type { BackupSummary } from "../lib/types";
 import {
   Button,
   ConfirmDialog,
@@ -13,7 +7,12 @@ import {
   Notice,
   Stack,
   TextField,
-} from "../ui";
+} from "@veronica/ui";
+import { Archive, FileSearch, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { bytes } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import type { BackupSummary } from "../lib/types";
 
 export function BackupPane() {
   const [path, setPath] = useState("");

@@ -397,7 +397,7 @@ Bluetooth, volume and battery:
   read it. Two hand-kept copies of that list is the shape this replaced: adding
   a theme to one and not the other left the old class stuck on the popup. The
   same list exists in `apps/desktop/src/lib/preferences.ts`, in the family
-  selector lists in `apps/desktop/src/ui/themes.css` and in
+  selector lists in `packages/ui/themes.css` and in
   `veronica_core::appearance`, and `crates/veronica-core/tests/themes.rs`
   compares all four.
 

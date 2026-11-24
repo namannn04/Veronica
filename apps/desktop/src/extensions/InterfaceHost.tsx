@@ -1,7 +1,6 @@
+import { Button, Dialog, Notice, type Tone } from "@veronica/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
-
 import { ipc, listenEvent } from "../lib/ipc";
-import { Button, Dialog, Notice, type Tone } from "../ui";
 import { type InterfaceRequest, interfaceRequest } from "./bridge";
 import "./InterfaceHost.css";
 

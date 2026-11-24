@@ -1,7 +1,3 @@
-import { Download, MessageCircle, Send, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { type ChatView, DEFAULT_MODEL, type ModelConfig } from "../lib/companionChat";
-import { ipc } from "../lib/ipc";
 import {
   Badge,
   Button,
@@ -17,7 +13,11 @@ import {
   SkeletonText,
   TextArea,
   TextField,
-} from "../ui";
+} from "@veronica/ui";
+import { Download, MessageCircle, Send, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type ChatView, DEFAULT_MODEL, type ModelConfig } from "../lib/companionChat";
+import { ipc } from "../lib/ipc";
 import "./CompanionChat.css";
 
 const CHAT_PLACEHOLDERS = [

@@ -1,9 +1,3 @@
-import { AlertTriangle, CheckCircle2, Stethoscope } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-
-import { GraftPlayground } from "../components/GraftPlayground";
-import { ipc } from "../lib/ipc";
-import type { DoctorReport } from "../lib/workspace";
 import {
   Badge,
   Button,
@@ -20,7 +14,12 @@ import {
   PageHeader,
   Tabs,
   TextField,
-} from "../ui";
+} from "@veronica/ui";
+import { AlertTriangle, CheckCircle2, Stethoscope } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { GraftPlayground } from "../components/GraftPlayground";
+import { ipc } from "../lib/ipc";
+import type { DoctorReport } from "../lib/workspace";
 import "./WorkspacePage.css";
 
 type Tool = "doctor" | "graft";

@@ -1,13 +1,3 @@
-import { Activity, CircleStop, History, Play, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-
-import { ipc } from "../lib/ipc";
-import type {
-  AttentionFocusSession,
-  AttentionOverview,
-  AttentionSettings,
-  AttentionStatus,
-} from "../lib/types";
 import {
   BarList,
   BarListSkeleton,
@@ -36,7 +26,16 @@ import {
   Switch,
   Tabs,
   TextField,
-} from "../ui";
+} from "@veronica/ui";
+import { Activity, CircleStop, History, Play, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ipc } from "../lib/ipc";
+import type {
+  AttentionFocusSession,
+  AttentionOverview,
+  AttentionSettings,
+  AttentionStatus,
+} from "../lib/types";
 import "./AttentionPage.css";
 
 type View = "overview" | "timeline" | "focus" | "settings";

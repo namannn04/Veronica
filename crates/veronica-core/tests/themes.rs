@@ -88,7 +88,7 @@ fn catalogue(family: &str) -> BTreeSet<String> {
 
 #[test]
 fn the_stylesheet_and_the_catalogue_offer_the_same_themes() {
-    let styles = read("apps/desktop/src/ui/themes.css");
+    let styles = read("packages/ui/themes.css");
     assert_eq!(
         css_family(&styles, "dark"),
         catalogue("dark"),

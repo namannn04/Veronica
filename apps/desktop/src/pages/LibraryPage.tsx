@@ -1,4 +1,29 @@
 import {
+  Badge,
+  Button,
+  ButtonGroup,
+  Checkbox,
+  ConfirmDialog,
+  EmptyState,
+  FilterChips,
+  FormGroup,
+  FormRow,
+  List,
+  ListRow,
+  ListSkeleton,
+  Notice,
+  Page,
+  PageHeader,
+  ProgressBar,
+  SearchField,
+  Section,
+  Select,
+  SkeletonText,
+  Stack,
+  Switch,
+  Toolbar,
+} from "@veronica/ui";
+import {
   ArrowUpCircle,
   Blocks,
   Brain,
@@ -35,7 +60,6 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-
 import { invoke, ipc, listenEvent } from "../lib/ipc";
 import {
   ALL,
@@ -63,31 +87,6 @@ import type {
   ToolReport,
   ToolSurvey,
 } from "../lib/types";
-import {
-  Badge,
-  Button,
-  ButtonGroup,
-  Checkbox,
-  ConfirmDialog,
-  EmptyState,
-  FilterChips,
-  FormGroup,
-  FormRow,
-  List,
-  ListRow,
-  ListSkeleton,
-  Notice,
-  Page,
-  PageHeader,
-  ProgressBar,
-  SearchField,
-  Section,
-  Select,
-  SkeletonText,
-  Stack,
-  Switch,
-  Toolbar,
-} from "../ui";
 import "./Library.css";
 
 const commands = libraryCommands(invoke);

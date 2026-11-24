@@ -1,15 +1,4 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { AudioLines, Music, Radio } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-
-import {
-  TrackProgress,
-  Transport,
-  TransportControls,
-  useNowPlaying,
-} from "../components/NowPlaying";
-import { stopwatch } from "../lib/format";
-import { useLocalPlayer } from "../lib/localPlayer";
 import {
   Badge,
   Button,
@@ -26,7 +15,17 @@ import {
   Skeleton,
   Slider,
   Tabs,
-} from "../ui";
+} from "@veronica/ui";
+import { AudioLines, Music, Radio } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  TrackProgress,
+  Transport,
+  TransportControls,
+  useNowPlaying,
+} from "../components/NowPlaying";
+import { stopwatch } from "../lib/format";
+import { useLocalPlayer } from "../lib/localPlayer";
 import "./MediaPage.css";
 
 type MediaTab = "library" | "players";

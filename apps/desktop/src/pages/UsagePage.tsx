@@ -1,12 +1,3 @@
-import { BarChart3, RefreshCw, Share2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { colorScale, DayBars, HourBars, RankedBars, SpendCalendar } from "../components/charts";
-import { LimitRings } from "../components/LimitRings";
-import { ModelTable } from "../components/ModelTable";
-import { ProjectList } from "../components/ProjectList";
-import { modelLabel, money, timeAgo, tokens } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { CollectorEvent, UsageView } from "../lib/types";
 import {
   Button,
   Card,
@@ -24,7 +15,16 @@ import {
   StatGrid,
   StatSkeleton,
   Toolbar,
-} from "../ui";
+} from "@veronica/ui";
+import { BarChart3, RefreshCw, Share2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { colorScale, DayBars, HourBars, RankedBars, SpendCalendar } from "../components/charts";
+import { LimitRings } from "../components/LimitRings";
+import { ModelTable } from "../components/ModelTable";
+import { ProjectList } from "../components/ProjectList";
+import { modelLabel, money, timeAgo, tokens } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import type { CollectorEvent, UsageView } from "../lib/types";
 import "./UsagePage.css";
 
 type Range = "7" | "30" | "90" | "all";

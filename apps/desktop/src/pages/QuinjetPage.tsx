@@ -1,8 +1,3 @@
-import { ChevronRight, FolderGit2, GitBranch, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-
-import { ipc } from "../lib/ipc";
-import type { QuinjetBoard, QuinjetProject, QuinjetWorktree } from "../lib/types";
 import {
   Badge,
   Button,
@@ -14,7 +9,11 @@ import {
   Page,
   PageHeader,
   Section,
-} from "../ui";
+} from "@veronica/ui";
+import { ChevronRight, FolderGit2, GitBranch, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { ipc } from "../lib/ipc";
+import type { QuinjetBoard, QuinjetProject, QuinjetWorktree } from "../lib/types";
 import "./QuinjetPage.css";
 
 const ICON = { strokeWidth: 1.75 };
