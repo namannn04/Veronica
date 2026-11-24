@@ -20,6 +20,7 @@ function report(sessionToken) {
   const checks = value.checks.slice(0, 64).map(check => ({ name: check.name, status: check.status, detail: check.name === 'Docker checks' ? 'Local Docker checks are unavailable. Open Project Doctor in Veronica for local diagnostics.' : check.detail }));
   return { project: value.project, checks };
 }
+// biome-ignore lint/complexity/noStaticOnlyClass: the Graftcode gateway exposes static methods of the ProjectDoctor type named in start.cjs
 class ProjectDoctor {
   static inspect(sessionToken) { try { return JSON.stringify(report(sessionToken)); } catch { return JSON.stringify({ error: 'Access denied or project check failed. Verify the session token and run Project Doctor locally for details.' }); } }
   static attention(sessionToken) { try { return JSON.stringify(report(sessionToken).checks.filter(check => check.status !== 'pass')); } catch { return JSON.stringify({ error: 'Access denied or project check failed. Verify the session token and run Project Doctor locally for details.' }); } }

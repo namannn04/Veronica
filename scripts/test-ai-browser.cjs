@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 (async () => {
  const child=spawn(path.resolve(__dirname,'../target/debug/examples/desktop_controls'),[],{stdio:['pipe','pipe','pipe']});
  let serial=0,buffer='';const pending=new Map();
- child.stdout.on('data',chunk=>{buffer+=chunk;let end;while((end=buffer.indexOf('\n'))>=0){const data=JSON.parse(buffer.slice(0,end));buffer=buffer.slice(end+1);const task=pending.get(data.id);if(task){pending.delete(data.id);data.error?task.reject(new Error(data.error)):task.resolve(data.result);}}});
+ child.stdout.on('data',chunk=>{buffer+=chunk;for(let end=buffer.indexOf('\n');end>=0;end=buffer.indexOf('\n')){const data=JSON.parse(buffer.slice(0,end));buffer=buffer.slice(end+1);const task=pending.get(data.id);if(task){pending.delete(data.id);data.error?task.reject(new Error(data.error)):task.resolve(data.result);}}});
  const rpc=(command,args={})=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});child.stdin.write(`${JSON.stringify({id,command,args})}\n`);});
  const requests=[];
  const api=createServer((req,res)=>{let body='';req.on('data',chunk=>body+=chunk);req.on('end',()=>{requests.push(JSON.parse(body));setTimeout(()=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({choices:[{message:{content:'Fixture reply: short Hinglish, as requested.'}}]}));},500);});});
@@ -76,6 +76,6 @@ const assert = require('node:assert/strict');
  await page.getByRole('button',{name:'Enable for this window',exact:true}).waitFor();assert.equal(await page.getByLabel('API key (session only)',{exact:true}).inputValue(),'');
  await rpc('close_window');assert.equal((await rpc('agent_list')).length,0);assert.equal((await rpc('chat_view')).enabled,false);
  assert.deepEqual(errors,[]);
- console.log('Passed real native-backed terminal input/close and Companion configure/journal/context/send/cancel/export/off-on-reopen browser flows. Cloud API was a loopback fixture.');
+ process.stdout.write('Passed real native-backed terminal input/close and Companion configure/journal/context/send/cancel/export/off-on-reopen browser flows. Cloud API was a loopback fixture.\n');
  } finally {await browser.close();api.close();child.stdin.end();setTimeout(()=>{if(child.exitCode===null) { child.kill('SIGKILL'); }},2000).unref();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
