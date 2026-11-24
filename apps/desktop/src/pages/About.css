@@ -1,0 +1,50 @@
+.about-page > .ui-page-body {
+  min-height: calc(100vh - var(--page-top) - var(--space-10));
+  justify-content: center;
+}
+
+.about-card {
+  align-items: center;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  text-align: center;
+}
+
+.about-mark {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-panel);
+  object-fit: cover;
+}
+
+.about-titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.about-name {
+  margin: 0;
+  font-size: var(--text-title-1);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+}
+
+.about-tagline {
+  margin: 0;
+  color: var(--text-3);
+}
+
+.about-facts {
+  width: 100%;
+  text-align: left;
+}
+
+.about-links {
+  justify-content: center;
+}
