@@ -10,13 +10,16 @@ SCRIPT = pathlib.Path(__file__).with_name("local-runtime.py")
 
 
 class RuntimeTests(unittest.TestCase):
-    def test_pipe_eof_stops_owned_runtime(self):
+    def test_pipe_eof_stops_owned_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             fake = root / "fake-ollama"
             pidfile = root / "child.pid"
             fake.write_text(
-                '#!/usr/bin/env python3\nimport os,time,pathlib\npathlib.Path(os.environ["TEST_RUNTIME_PIDFILE"]).write_text(str(os.getpid()))\ntime.sleep(60)\n'
+                "#!/usr/bin/env python3\n"
+                "import os,time,pathlib\n"
+                'pathlib.Path(os.environ["TEST_RUNTIME_PIDFILE"]).write_text(str(os.getpid()))\n'
+                "time.sleep(60)\n"
             )
             fake.chmod(0o700)
             env = dict(

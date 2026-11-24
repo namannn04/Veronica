@@ -1,5 +1,6 @@
 """Owned Ollama supervisor: parent pipe EOF also cleans up after an abrupt app exit."""
 
+import contextlib
 import os
 import pathlib
 import signal
@@ -19,10 +20,8 @@ try:
     sys.stdin.buffer.read()
 finally:
     if child and child.poll() is None:
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(child.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
     if owner:
         import itertools
 
