@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 
+import { Table } from "../ui";
 import { money, modelLabel, tokens } from "../lib/format";
 import type { ColorScale } from "./charts";
 import type { NamedAmount } from "../lib/types";
+import "./charts.css";
+import "./ModelTable.css";
 
 type Column = {
   key: keyof NamedAmount | "name";
@@ -17,35 +21,11 @@ const COLUMNS: Column[] = [
   { key: "tokens", label: "Tokens", numeric: true, render: (r) => tokens(r.tokens) },
   { key: "inputTokens", label: "Input", numeric: true, render: (r) => tokens(r.inputTokens) },
   { key: "outputTokens", label: "Output", numeric: true, render: (r) => tokens(r.outputTokens) },
-  {
-    key: "cacheCreationTokens",
-    label: "Cache write",
-    numeric: true,
-    render: (r) => tokens(r.cacheCreationTokens),
-  },
-  {
-    key: "cacheReadTokens",
-    label: "Cache read",
-    numeric: true,
-    render: (r) => tokens(r.cacheReadTokens),
-  },
+  { key: "cacheCreationTokens", label: "Cache write", numeric: true, render: (r) => tokens(r.cacheCreationTokens) },
+  { key: "cacheReadTokens", label: "Cache read", numeric: true, render: (r) => tokens(r.cacheReadTokens) },
 ];
 
-/**
- * The table view of the model breakdown.
- *
- * It doubles as the accessible alternative to the charts: every figure the
- * ranked bars encode as length is available here as a number, which is what
- * makes the light-mode series colours legitimate despite two of them sitting
- * below 3:1 against the light surface.
- */
-export function ModelTable({
-  rows,
-  colorOf,
-}: {
-  rows: NamedAmount[];
-  colorOf: ColorScale;
-}) {
+export function ModelTable({ rows, colorOf }: { rows: NamedAmount[]; colorOf: ColorScale }) {
   const [sortKey, setSortKey] = useState<Column["key"]>("cost");
   const [ascending, setAscending] = useState(false);
 
@@ -53,9 +33,7 @@ export function ModelTable({
     const copy = [...rows];
     copy.sort((a, b) => {
       if (sortKey === "name") return a.name.localeCompare(b.name);
-      const left = a[sortKey] as number;
-      const right = b[sortKey] as number;
-      return left - right;
+      return (a[sortKey] as number) - (b[sortKey] as number);
     });
     return ascending ? copy : copy.reverse();
   }, [rows, sortKey, ascending]);
@@ -69,52 +47,45 @@ export function ModelTable({
     }
   };
 
-  if (rows.length === 0) return <p className="card-note">No models in this window.</p>;
+  if (rows.length === 0) return <p className="models-empty">No models in this window.</p>;
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table>
-        <thead>
-          <tr>
-            {COLUMNS.map((column) => (
-              <th
-                key={column.key}
-                className={`sortable${column.numeric ? " num" : ""}`}
-                onClick={() => toggle(column.key)}
-                aria-sort={
-                  sortKey === column.key ? (ascending ? "ascending" : "descending") : "none"
-                }
-              >
-                {column.label}
-                {sortKey === column.key ? (ascending ? " ↑" : " ↓") : ""}
+    <Table label="Usage by model" className="models-table">
+      <thead>
+        <tr>
+          {COLUMNS.map((column) => {
+            const active = sortKey === column.key;
+            return (
+              <th key={column.key} className={column.numeric ? "num" : undefined} aria-sort={active ? (ascending ? "ascending" : "descending") : "none"}>
+                <button type="button" className="models-sort" data-active={active || undefined} onClick={() => toggle(column.key)}>
+                  {column.label}
+                  <span className="models-sort-icon" aria-hidden="true">
+                    {active ? ascending ? <ArrowUp /> : <ArrowDown /> : null}
+                  </span>
+                </button>
               </th>
+            );
+          })}
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((row) => (
+          <tr key={row.name}>
+            {COLUMNS.map((column) => (
+              <td key={column.key} className={column.numeric ? "num" : undefined}>
+                {column.key === "name" ? (
+                  <span className="models-name" title={row.name}>
+                    <span className="chart-swatch" style={{ background: colorOf(row.name) }} aria-hidden="true" />
+                    <span>{column.render(row)}</span>
+                  </span>
+                ) : (
+                  column.render(row)
+                )}
+              </td>
             ))}
           </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row) => (
-            <tr key={row.name}>
-              {COLUMNS.map((column) => (
-                <td key={column.key} className={column.numeric ? "num" : ""}>
-                  {column.key === "name" ? (
-                    <span className="cell-name">
-                      <span
-                        className="swatch"
-                        style={{ background: colorOf(row.name) }}
-                      />
-                      <span className="truncate" title={row.name}>
-                        {column.render(row)}
-                      </span>
-                    </span>
-                  ) : (
-                    column.render(row)
-                  )}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </Table>
   );
 }

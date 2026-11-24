@@ -1,22 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { Bell, BellOff, CheckCheck, X } from "lucide-react";
 
+import { Badge, Button, Card, CardHeader, EmptyState, IconButton, List, ListRow, Notice, SkeletonRows } from "../ui";
 import { ipc, listenEvent } from "../lib/ipc";
 import { timeAgo } from "../lib/format";
 import type { DesktopNotification } from "../lib/types";
+import "./NotificationList.css";
 
-/**
- * Desktop notifications Veronica has seen.
- *
- * GNOME Shell owns `org.freedesktop.Notifications`, so Veronica watches the bus
- * rather than serving it. That makes this a read-only history: forgetting an
- * entry removes it from Veronica's list and does not recall the shell's banner.
- * The wording says so, because a "dismiss" that leaves the banner up would be a
- * lie.
- *
- * Monitoring can be refused by the bus, in which case the list is simply empty
- * and says why rather than looking broken.
- */
-export function NotificationList({ limit }: { limit?: number }) {
+export function NotificationList({ limit, className }: { limit?: number; className?: string }) {
   const [rows, setRows] = useState<DesktopNotification[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -36,7 +27,6 @@ export function NotificationList({ limit }: { limit?: number }) {
     void load();
   }, [load]);
 
-  // Pushed from the monitor, so the list is live without polling the bus.
   useEffect(() => {
     const received = listenEvent<DesktopNotification>("notifications-received", (event) => {
       setRows((current) => [event.payload, ...current.filter((row) => row.id !== event.payload.id)]);
@@ -47,7 +37,6 @@ export function NotificationList({ limit }: { limit?: number }) {
   }, []);
 
   const forget = async (id: number) => {
-    // Optimistic: the command only mutates Veronica's own list.
     setRows((current) => current.filter((row) => row.id !== id));
     try {
       await ipc.notificationsDismiss(id);
@@ -67,64 +56,67 @@ export function NotificationList({ limit }: { limit?: number }) {
   };
 
   const shown = limit ? rows.slice(0, limit) : rows;
+  const hidden = limit ? Math.max(0, rows.length - limit) : 0;
 
   return (
-    <>
-      <div className="card-head">
-        <h2>Notifications</h2>
-        {rows.length > 0 ? (
-          <button className="jump-link" onClick={() => void clear()}>
-            Clear<span>×</span>
-          </button>
-        ) : (
-          <span className="card-note">seen on this computer</span>
-        )}
-      </div>
+    <Card className={["notes-card", className].filter(Boolean).join(" ")}>
+      <CardHeader
+        icon={<Bell />}
+        title="Notifications"
+        actions={
+          rows.length > 0 ? (
+            <>
+              {hidden > 0 && <span className="notes-more ui-num">{hidden} more</span>}
+              <IconButton size="small" label="Clear notifications" tooltip="Clear the list in Veronica" icon={<CheckCheck />} onClick={() => void clear()} />
+            </>
+          ) : undefined
+        }
+      />
 
-      {error && <div className="banner error">{error}</div>}
+      {error && (
+        <Notice tone="critical" compact title="Notifications could not be read" actions={<Button size="small" onClick={() => void load()}>Retry</Button>}>
+          {error}
+        </Notice>
+      )}
+
+      {!loaded && <SkeletonRows rows={3} label="Loading notifications" />}
 
       {loaded && rows.length === 0 && !error && (
-        <p className="quiet">
-          Nothing yet. Veronica watches the notification bus read-only, so the desktop's own
-          banners are unaffected.
-        </p>
+        <EmptyState size="compact" icon={<BellOff />} title="No notifications yet">
+          Veronica only reads the notification bus, so desktop banners are unaffected.
+        </EmptyState>
       )}
 
       {shown.length > 0 && (
-        <div className="notice-list">
+        <List inset={false} label="Recent notifications">
           {shown.map((row) => (
-            <div className={`notice-row urgency-${row.urgency}`} key={row.id}>
-              <div className="notice-body">
-                <div className="notice-head">
-                  <strong>{row.summary || row.appName}</strong>
-                  <span className="card-note">{timeAgo(new Date(row.receivedAt).toISOString())}</span>
-                </div>
-                {row.body && <p>{stripMarkup(row.body)}</p>}
-                <small>{row.appName}</small>
-              </div>
-              <button
-                onClick={() => void forget(row.id)}
-                aria-label={`Forget notification from ${row.appName}`}
-                title="Forget — the desktop's own banner is untouched"
-              >
-                ✕
-              </button>
-            </div>
+            <ListRow
+              key={row.id}
+              title={
+                <span className="notes-title">
+                  <span className="notes-summary">{row.summary || row.appName}</span>
+                  {row.urgency === "critical" && <Badge tone="critical">Urgent</Badge>}
+                </span>
+              }
+              subtitle={[row.appName, stripMarkup(row.body)].filter(Boolean).join(" · ")}
+              meta={timeAgo(new Date(row.receivedAt).toISOString())}
+              trailing={
+                <IconButton
+                  size="small"
+                  label={`Forget notification from ${row.appName}`}
+                  tooltip="Forget in Veronica only"
+                  icon={<X />}
+                  onClick={() => void forget(row.id)}
+                />
+              }
+            />
           ))}
-          {limit && rows.length > limit && (
-            <span className="card-note">and {rows.length - limit} more</span>
-          )}
-        </div>
+        </List>
       )}
-    </>
+    </Card>
   );
 }
 
-/**
- * Notification bodies may contain the small HTML subset the spec allows
- * (`<b>`, `<i>`, `<a href>`, `<img>`). React would render it as literal text, so
- * the tags are stripped rather than shown, and never interpreted.
- */
 function stripMarkup(body: string): string {
   return body
     .replace(/<[^>]*>/g, "")

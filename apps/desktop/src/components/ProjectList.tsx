@@ -1,116 +1,93 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 
+import { Badge, Button, List, ListRow, Table } from "../ui";
 import { ipc } from "../lib/ipc";
 import { money, timeAgo, tokens } from "../lib/format";
 import type { ProjectRollup } from "../lib/types";
+import "./ProjectList.css";
 
-/**
- * Spend by project, expanding into the chats that produced it.
- *
- * The repository name is preferred over the folder when the collector
- * identified one, so the same repository checked out twice reads as one project.
- */
 export function ProjectList({ projects }: { projects: ProjectRollup[] }) {
   const [open, setOpen] = useState<string | null>(null);
 
-  if (projects.length === 0) return <p className="card-note">No project spend in this window.</p>;
+  if (projects.length === 0) return <p className="projects-empty">No project spend in this window.</p>;
 
   const max = Math.max(...projects.map((p) => p.cost), 0);
 
   return (
-    <div>
+    <List inset={false} label="Projects" className="projects-list">
       {projects.map((project) => {
         const key = project.repositoryId ?? project.path;
         const expanded = open === key;
         const share = max > 0 ? (project.cost / max) * 100 : 0;
         return (
-          <div key={key} className="ext-row" style={{ alignItems: "stretch" }}>
-            <div className="ext-body">
-              <button
-                onClick={() => setOpen(expanded ? null : key)}
-                style={{ width: "100%", textAlign: "left" }}
-                aria-expanded={expanded}
-              >
-                <div className="ext-title">
-                  <span aria-hidden="true" style={{ color: "var(--ink-muted)", fontSize: 10 }}>
-                    {expanded ? "▾" : "▸"}
-                  </span>
-                  {project.projectName}
-                  <span className="pill">
+          <Fragment key={key}>
+            <ListRow
+              className="projects-row"
+              selected={expanded}
+              onClick={() => setOpen(expanded ? null : key)}
+              leading={expanded ? <ChevronDown /> : <ChevronRight />}
+              title={
+                <span className="projects-title">
+                  <span className="projects-name">{project.projectName}</span>
+                  <Badge>
                     {project.chats.length} {project.chats.length === 1 ? "chat" : "chats"}
+                  </Badge>
+                </span>
+              }
+              subtitle={<span className="ui-mono">{project.repositoryId ?? project.path}</span>}
+              meta={
+                <span className="projects-figures">
+                  <span className="projects-share" aria-hidden="true">
+                    <span style={{ width: `${Math.max(share, 1.5)}%` }} />
                   </span>
-                </div>
-                <div className="ext-sub truncate" title={project.repositoryId ?? project.path}>
-                  {project.repositoryId ?? project.path}
-                </div>
-                <div style={{ height: 5, background: "var(--grid)", borderRadius: 3, marginTop: 6 }}>
-                  <div
-                    style={{
-                      width: `${Math.max(share, 1.5)}%`,
-                      height: "100%",
-                      background: "var(--series-1)",
-                      borderRadius: 3,
-                    }}
-                  />
-                </div>
-              </button>
-
-              {expanded && (
-                <div style={{ marginTop: 10, paddingLeft: 14 }}>
-                  {project.repositoryUrl && (
-                    <button
-                      className="button"
-                      style={{ marginBottom: 8 }}
-                      onClick={() => void ipc.openExternal(project.repositoryUrl!)}
-                    >
+                  <span className="projects-amounts">
+                    <span className="projects-cost ui-num">{money(project.cost)}</span>
+                    <span className="projects-tokens ui-num">{tokens(project.tokens)}</span>
+                  </span>
+                </span>
+              }
+            />
+            {expanded && (
+              <div className="projects-detail">
+                {project.repositoryUrl && (
+                  <div>
+                    <Button size="small" icon={<ExternalLink />} onClick={() => void ipc.openExternal(project.repositoryUrl!)}>
                       Open repository
-                    </button>
-                  )}
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Chat</th>
-                        <th>Source</th>
-                        <th className="num">Cost</th>
-                        <th className="num">Tokens</th>
-                        <th className="num">Last active</th>
+                    </Button>
+                  </div>
+                )}
+                <Table label={`Chats in ${project.projectName}`}>
+                  <thead>
+                    <tr>
+                      <th>Chat</th>
+                      <th>Source</th>
+                      <th className="num">Cost</th>
+                      <th className="num">Tokens</th>
+                      <th className="num">Last active</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {project.chats.map((chat) => (
+                      <tr key={chat.id}>
+                        <td>
+                          <span className="projects-chat" title={chat.title || chat.id}>
+                            {chat.title || chat.id}
+                          </span>
+                        </td>
+                        <td className="ui-mono">{chat.source}</td>
+                        <td className="num">{money(chat.cost)}</td>
+                        <td className="num">{tokens(chat.tokens)}</td>
+                        <td className="num muted">{chat.lastTs ? timeAgo(new Date(chat.lastTs).toISOString()) : "Never"}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {project.chats.map((chat) => (
-                        <tr key={chat.id}>
-                          <td>
-                            <span className="truncate" title={chat.title || chat.id}>
-                              {chat.title || chat.id}
-                            </span>
-                          </td>
-                          <td className="mono">{chat.source}</td>
-                          <td className="num">{money(chat.cost)}</td>
-                          <td className="num">{tokens(chat.tokens)}</td>
-                          <td className="num">
-                            {chat.lastTs ? timeAgo(new Date(chat.lastTs).toISOString()) : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div
-              style={{
-                textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                minWidth: 96,
-                flex: "none",
-              }}
-            >
-              <div style={{ fontWeight: 620 }}>{money(project.cost)}</div>
-              <div className="card-note">{tokens(project.tokens)}</div>
-            </div>
-          </div>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            )}
+          </Fragment>
         );
       })}
-    </div>
+    </List>
   );
 }

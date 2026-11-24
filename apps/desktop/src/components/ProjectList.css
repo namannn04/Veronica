@@ -1,0 +1,98 @@
+.projects-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.projects-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projects-row .ui-list-row-leading {
+  color: var(--text-3);
+}
+
+.projects-figures {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.projects-share {
+  display: block;
+  width: 140px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--fill-control);
+  overflow: hidden;
+}
+
+.projects-share > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--series-1);
+}
+
+.projects-amounts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 88px;
+  line-height: 1.35;
+}
+
+.projects-cost {
+  color: var(--text-1);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+.projects-tokens {
+  color: var(--text-3);
+  font-size: var(--text-caption);
+}
+
+.projects-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--card-padding) var(--space-4) calc(var(--card-padding) + 28px);
+  background: var(--bg-inset);
+  border-top: 1px solid var(--separator);
+}
+
+.projects-detail + .ui-list-row {
+  border-top: 1px solid var(--separator);
+}
+
+.projects-detail .ui-table tbody tr:hover td {
+  background: transparent;
+}
+
+.projects-chat {
+  display: block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projects-empty {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+}
+
+@container main (max-width: 720px) {
+  .projects-share {
+    display: none;
+  }
+
+  .projects-detail {
+    padding-left: var(--card-padding);
+  }
+}
