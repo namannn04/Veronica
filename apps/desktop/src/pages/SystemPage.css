@@ -1,7 +1,3 @@
-.sys-card-pad {
-  padding: var(--space-2) var(--card-padding);
-}
-
 .sys-disks {
   display: flex;
   flex-direction: column;
