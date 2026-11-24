@@ -1,6 +1,8 @@
 pub mod archive;
 pub mod catalog;
+pub mod connection;
 pub mod fetch;
+pub mod host_api;
 pub mod install;
 pub mod launcher;
 pub mod layout;

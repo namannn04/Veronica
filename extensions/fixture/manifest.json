@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "id": "fixture",
+  "version": "0.1",
+  "title": "Fixture",
+  "summary": "A test-only backend that exercises supervision, routing and permissions.",
+  "category": "labs",
+  "labs": true,
+  "engines": { "host": ">=0.1.0", "hostApi": 1, "backendProtocol": 1 },
+  "targets": ["linux-x86_64", "linux-aarch64"],
+  "activation": { "mode": "onDemand", "idleStopSeconds": 120 },
+  "backend": { "entry": "bin/backend" },
+  "commands": [
+    {
+      "name": "fixture",
+      "subcommands": [
+        {
+          "name": "echo",
+          "effect": "read",
+          "json": true,
+          "args": [{ "name": "text", "kind": "positional", "type": "string", "required": true }]
+        },
+        {
+          "name": "fail",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "code",
+              "kind": "option",
+              "long": "code",
+              "type": "integer",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": { "host": ["notifications"] }
+}
