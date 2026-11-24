@@ -1,0 +1,58 @@
+.ui-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.ui-bar-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) minmax(0, 2.6fr) minmax(56px, auto);
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ui-bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-1);
+}
+
+.ui-bar-track {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--fill-control);
+  overflow: hidden;
+}
+
+.ui-bar-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--bar-color, var(--accent));
+}
+
+.ui-bar-value {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  text-align: right;
+  white-space: nowrap;
+}
+
+@container main (max-width: 560px) {
+  .ui-bar-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--space-1);
+  }
+
+  .ui-bar-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

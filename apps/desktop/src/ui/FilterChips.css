@@ -1,0 +1,47 @@
+.ui-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.ui-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--control-height-small);
+  padding: 0 var(--space-2-5);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  transition: background-color var(--motion-feedback), border-color var(--motion-feedback), color var(--motion-feedback);
+}
+
+.ui-filter-chip:hover {
+  background: var(--fill-hover);
+  color: var(--text-1);
+}
+
+.ui-filter-chip:active {
+  background: var(--fill-pressed);
+}
+
+.ui-filter-chip[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--separator));
+  background: var(--accent-tint);
+  color: var(--accent-text);
+}
+
+.ui-filter-chip-leading {
+  display: inline-flex;
+}
+
+.ui-filter-chip-leading svg {
+  width: 14px;
+  height: 14px;
+}
