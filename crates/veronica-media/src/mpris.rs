@@ -16,6 +16,10 @@ fn as_text(value: &OwnedValue) -> Option<String> {
     }
 }
 
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "some players report integer properties as doubles; the saturating float-to-int cast is the intended conversion and std has no checked alternative"
+)]
 fn as_integer(value: &OwnedValue) -> Option<i64> {
     match &**value {
         Value::I64(v) => Some(*v),
@@ -36,8 +40,8 @@ fn as_bool(value: &OwnedValue) -> Option<bool> {
 
 pub const MAX_PLAUSIBLE_LENGTH_US: i64 = 100 * 60 * 60 * 1_000_000;
 
-fn is_real_length(length: &i64) -> bool {
-    *length > 0 && *length < MAX_PLAUSIBLE_LENGTH_US
+fn is_real_length(length: i64) -> bool {
+    length > 0 && length < MAX_PLAUSIBLE_LENGTH_US
 }
 
 fn as_text_list(value: &OwnedValue) -> Vec<String> {
@@ -64,14 +68,14 @@ pub enum PlaybackStatus {
 impl PlaybackStatus {
     fn parse(raw: &str) -> Self {
         match raw {
-            "Playing" => PlaybackStatus::Playing,
-            "Paused" => PlaybackStatus::Paused,
-            _ => PlaybackStatus::Stopped,
+            "Playing" => Self::Playing,
+            "Paused" => Self::Paused,
+            _ => Self::Stopped,
         }
     }
 
     pub fn is_playing(self) -> bool {
-        self == PlaybackStatus::Playing
+        self == Self::Playing
     }
 }
 
@@ -102,8 +106,8 @@ impl NowPlaying {
     }
 }
 
-pub fn read_metadata(
-    metadata: &std::collections::HashMap<String, OwnedValue>,
+pub fn read_metadata<S: std::hash::BuildHasher>(
+    metadata: &std::collections::HashMap<String, OwnedValue, S>,
 ) -> (String, String, String, Option<String>, Option<i64>) {
     let text = |key: &str| -> String { metadata.get(key).and_then(as_text).unwrap_or_default() };
 
@@ -121,7 +125,7 @@ pub fn read_metadata(
     let length = metadata
         .get("mpris:length")
         .and_then(as_integer)
-        .filter(is_real_length);
+        .filter(|length| is_real_length(*length));
 
     (
         text("xesam:title"),
@@ -152,7 +156,7 @@ pub async fn active_player(connection: &Connection) -> Result<Option<String>> {
     let mut first = None;
     for name in candidates {
         let status = status_of(connection, &name).await.ok().flatten();
-        if status.map(PlaybackStatus::is_playing).unwrap_or(false) {
+        if status.is_some_and(PlaybackStatus::is_playing) {
             return Ok(Some(name));
         }
         if first.is_none() {
@@ -178,7 +182,7 @@ async fn property(
         )
         .await?;
     let body = reply.body();
-    let value: Value = body.deserialize()?;
+    let value: Value<'_> = body.deserialize()?;
     Ok(OwnedValue::try_from(value)?)
 }
 
@@ -245,12 +249,12 @@ pub enum Transport {
 impl Transport {
     fn method(self) -> &'static str {
         match self {
-            Transport::Play => "Play",
-            Transport::Pause => "Pause",
-            Transport::PlayPause => "PlayPause",
-            Transport::Next => "Next",
-            Transport::Previous => "Previous",
-            Transport::Stop => "Stop",
+            Self::Play => "Play",
+            Self::Pause => "Pause",
+            Self::PlayPause => "PlayPause",
+            Self::Next => "Next",
+            Self::Previous => "Previous",
+            Self::Stop => "Stop",
         }
     }
 }
@@ -380,7 +384,7 @@ mod tests {
         );
         metadata.insert(
             "xesam:artist".to_string(),
-            OwnedValue::try_from(Value::from(vec!["".to_string(), "Real".to_string()])).unwrap(),
+            OwnedValue::try_from(Value::from(vec![String::new(), "Real".to_string()])).unwrap(),
         );
         let (title, artist, _, _, _) = read_metadata(&metadata);
         assert_eq!(title, "Track");

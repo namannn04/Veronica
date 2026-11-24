@@ -37,10 +37,10 @@ pub async fn has_calendars(connection: &Connection) -> Result<bool> {
         .await
         .context("the calendar server did not answer")?;
     let body = reply.body();
-    let value: Value = body.deserialize()?;
+    let value: Value<'_> = body.deserialize()?;
     Ok(match value {
         Value::Bool(flag) => flag,
-        other => matches!(other, Value::Value(_)) && false,
+        _ => false,
     })
 }
 
@@ -79,10 +79,10 @@ pub async fn events(connection: &Connection, days: i64) -> Result<Vec<Event>> {
         };
 
         let header = message.header();
-        if header.interface().map(|i| i.as_str()) != Some(INTERFACE) {
+        if header.interface().map(zbus::names::InterfaceName::as_str) != Some(INTERFACE) {
             continue;
         }
-        match header.member().map(|m| m.as_str()) {
+        match header.member().map(zbus::names::MemberName::as_str) {
             Some("EventsAddedOrUpdated") => {
                 let body = message.body();
                 if let Ok((raw,)) = body.deserialize::<(Vec<RawEvent>,)>() {
@@ -185,23 +185,22 @@ pub async fn enrich_join_links(connection: &Connection, events: &mut [Event]) {
         }
         let key = (event.source_uid.clone(), event.event_uid.clone());
         if let Some(cached) = links.get(&key) {
-            event.join_url = cached.clone();
+            event.join_url.clone_from(cached);
             continue;
         }
         if looked_up >= MAX_ENRICHED {
             break;
         }
 
-        let path = match paths.get(&event.source_uid) {
-            Some(cached) => cached.clone(),
-            None => {
-                let resolved = open_calendar(connection, &event.source_uid).await.ok();
-                if resolved.is_none() {
-                    tracing::debug!("cannot open calendar {} for join links", event.source_uid);
-                }
-                paths.insert(event.source_uid.clone(), resolved.clone());
-                resolved
+        let path = if let Some(cached) = paths.get(&event.source_uid) {
+            cached.clone()
+        } else {
+            let resolved = open_calendar(connection, &event.source_uid).await.ok();
+            if resolved.is_none() {
+                tracing::debug!("cannot open calendar {} for join links", event.source_uid);
             }
+            paths.insert(event.source_uid.clone(), resolved.clone());
+            resolved
         };
 
         let Some(path) = path else {

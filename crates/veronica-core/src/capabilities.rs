@@ -42,42 +42,50 @@ pub enum Capability {
 }
 
 impl Capability {
-    pub const ALL: [Capability; 31] = [
-        Capability::ApplicationAudio,
-        Capability::BluetoothMonitoring,
-        Capability::CalendarEvents,
-        Capability::CameraPreview,
-        Capability::ClipboardHistory,
-        Capability::CompanionService,
-        Capability::DatabaseBroker,
-        Capability::EmojiInsertion,
-        Capability::ExternalMediaControl,
-        Capability::FileShelf,
-        Capability::GlobalPaste,
-        Capability::HerdrSessions,
-        Capability::GlobalShortcuts,
-        Capability::InputSuppression,
-        Capability::KeystrokeObservation,
-        Capability::LocalMusicPlayback,
-        Capability::LocalTerminal,
-        Capability::MachineManagement,
-        Capability::MediaControls,
-        Capability::MicrophoneControl,
-        Capability::Notifications,
-        Capability::PackageManagement,
-        Capability::PreventSleep,
-        Capability::RunningApplications,
-        Capability::ScreenColorSampling,
-        Capability::ScreenShareDetection,
-        Capability::ShellIntegration,
-        Capability::SiteAuditing,
-        Capability::SystemMetrics,
-        Capability::UsageCollection,
-        Capability::WindowDimming,
+    pub const ALL: [Self; 31] = [
+        Self::ApplicationAudio,
+        Self::BluetoothMonitoring,
+        Self::CalendarEvents,
+        Self::CameraPreview,
+        Self::ClipboardHistory,
+        Self::CompanionService,
+        Self::DatabaseBroker,
+        Self::EmojiInsertion,
+        Self::ExternalMediaControl,
+        Self::FileShelf,
+        Self::GlobalPaste,
+        Self::HerdrSessions,
+        Self::GlobalShortcuts,
+        Self::InputSuppression,
+        Self::KeystrokeObservation,
+        Self::LocalMusicPlayback,
+        Self::LocalTerminal,
+        Self::MachineManagement,
+        Self::MediaControls,
+        Self::MicrophoneControl,
+        Self::Notifications,
+        Self::PackageManagement,
+        Self::PreventSleep,
+        Self::RunningApplications,
+        Self::ScreenColorSampling,
+        Self::ScreenShareDetection,
+        Self::ShellIntegration,
+        Self::SiteAuditing,
+        Self::SystemMetrics,
+        Self::UsageCollection,
+        Self::WindowDimming,
     ];
 
     pub fn title(self) -> &'static str {
-        use Capability::*;
+        use Capability::{
+            ApplicationAudio, BluetoothMonitoring, CalendarEvents, CameraPreview, ClipboardHistory,
+            CompanionService, DatabaseBroker, EmojiInsertion, ExternalMediaControl, FileShelf,
+            GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation,
+            LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls, MicrophoneControl,
+            Notifications, PackageManagement, PreventSleep, RunningApplications,
+            ScreenColorSampling, ScreenShareDetection, ShellIntegration, SiteAuditing,
+            SystemMetrics, UsageCollection, WindowDimming,
+        };
         match self {
             ApplicationAudio => "Per-app audio",
             BluetoothMonitoring => "Bluetooth monitoring",
@@ -114,7 +122,15 @@ impl Capability {
     }
 
     pub fn backend(self) -> &'static str {
-        use Capability::*;
+        use Capability::{
+            ApplicationAudio, BluetoothMonitoring, CalendarEvents, CameraPreview, ClipboardHistory,
+            CompanionService, DatabaseBroker, EmojiInsertion, ExternalMediaControl, FileShelf,
+            GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation,
+            LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls, MicrophoneControl,
+            Notifications, PackageManagement, PreventSleep, RunningApplications,
+            ScreenColorSampling, ScreenShareDetection, ShellIntegration, SiteAuditing,
+            SystemMetrics, UsageCollection, WindowDimming,
+        };
         match self {
             ApplicationAudio | MicrophoneControl => "PipeWire",
             BluetoothMonitoring => "BlueZ (D-Bus)",
@@ -126,11 +142,10 @@ impl Capability {
             EmojiInsertion => "Clipboard + GNOME Shell extension",
             ExternalMediaControl | MediaControls => "MPRIS2 (D-Bus)",
             FileShelf => "In-process",
-            GlobalPaste => "GNOME Shell extension",
+            GlobalPaste | KeystrokeObservation | ShellIntegration => "GNOME Shell extension",
             HerdrSessions | UsageCollection => "Filesystem",
             GlobalShortcuts => "xdg-desktop-portal GlobalShortcuts",
             InputSuppression => "libinput / evdev",
-            KeystrokeObservation => "GNOME Shell extension",
             LocalMusicPlayback => "GStreamer",
             LocalTerminal => "GNOME Console / x-terminal-emulator",
             MachineManagement => "OpenSSH",
@@ -140,7 +155,6 @@ impl Capability {
             RunningApplications => "procfs + desktop entries",
             ScreenColorSampling => "xdg-desktop-portal Screenshot.PickColor",
             ScreenShareDetection => "xdg-desktop-portal ScreenCast",
-            ShellIntegration => "GNOME Shell extension",
             SiteAuditing => "HTTPS",
             SystemMetrics => "procfs / sysfs",
             WindowDimming => "Compositor",
@@ -159,26 +173,23 @@ pub enum CapabilityState {
 
 impl CapabilityState {
     pub fn is_supported(&self) -> bool {
-        matches!(
-            self,
-            CapabilityState::Available | CapabilityState::PermissionRequired { .. }
-        )
+        matches!(self, Self::Available | Self::PermissionRequired { .. })
     }
 
     fn permission(reason: &str) -> Self {
-        CapabilityState::PermissionRequired {
+        Self::PermissionRequired {
             reason: reason.to_string(),
         }
     }
 
     fn integration(reason: &str) -> Self {
-        CapabilityState::IntegrationRequired {
+        Self::IntegrationRequired {
             reason: reason.to_string(),
         }
     }
 
     fn unsupported(reason: &str) -> Self {
-        CapabilityState::Unsupported {
+        Self::Unsupported {
             reason: reason.to_string(),
         }
     }
@@ -201,12 +212,19 @@ impl Capabilities {
     pub fn is_supported(&self, capability: Capability) -> bool {
         self.states
             .get(&capability)
-            .map(CapabilityState::is_supported)
-            .unwrap_or(false)
+            .is_some_and(CapabilityState::is_supported)
     }
 
     pub fn resolve(session: &DesktopSession) -> Self {
-        use Capability::*;
+        use Capability::{
+            ApplicationAudio, BluetoothMonitoring, CalendarEvents, CameraPreview, ClipboardHistory,
+            CompanionService, DatabaseBroker, EmojiInsertion, ExternalMediaControl, FileShelf,
+            GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation,
+            LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls, MicrophoneControl,
+            Notifications, PackageManagement, PreventSleep, RunningApplications,
+            ScreenColorSampling, ScreenShareDetection, ShellIntegration, SiteAuditing,
+            SystemMetrics, UsageCollection, WindowDimming,
+        };
         let wayland = session.kind == SessionKind::Wayland;
         let mut states = BTreeMap::new();
 

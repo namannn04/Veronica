@@ -56,7 +56,7 @@ fn css_family(source: &str, anchor: &str) -> BTreeSet<String> {
     for rule in source.split('{') {
         let head = rule.rsplit('}').next().unwrap_or(rule);
         let ids: BTreeSet<String> = head
-            .split(",")
+            .split(',')
             .filter_map(|selector| {
                 let selector = selector.trim();
                 let rest = selector.strip_prefix(":root[data-theme=\"")?;

@@ -11,3 +11,6 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 zbus = { workspace = true }
 walkdir = "2"
+
+[lints]
+workspace = true

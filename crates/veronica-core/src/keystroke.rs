@@ -17,24 +17,24 @@ pub enum Position {
 }
 
 impl Position {
-    pub const ALL: [Position; 2] = [Position::Top, Position::Bottom];
+    pub const ALL: [Self; 2] = [Self::Top, Self::Bottom];
 
     pub fn title(self) -> &'static str {
         match self {
-            Position::Top => "Top",
-            Position::Bottom => "Bottom",
+            Self::Top => "Top",
+            Self::Bottom => "Bottom",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            Position::Top => "top",
-            Position::Bottom => "bottom",
+            Self::Top => "top",
+            Self::Bottom => "bottom",
         }
     }
 
     pub fn parse(raw: &str) -> Self {
-        Position::ALL
+        Self::ALL
             .into_iter()
             .find(|position| position.key().eq_ignore_ascii_case(raw))
             .unwrap_or_default()
@@ -128,10 +128,15 @@ impl Queue {
         if keys.is_empty() {
             return None;
         }
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "the duration is clamped to a few seconds, so the rounded millisecond count always fits; std has no checked float-to-int conversion"
+        )]
+        let duration_ms = (clamp_duration(duration_secs) * 1000.0).round() as i64;
         let entry = Entry {
             id: self.next_id,
             keys,
-            expires_at_ms: now_ms + (clamp_duration(duration_secs) * 1000.0).round() as i64,
+            expires_at_ms: now_ms + duration_ms,
         };
         self.next_id += 1;
         self.entries.push(entry);
@@ -169,7 +174,7 @@ mod tests {
     }
 
     fn keys(values: &[&str]) -> Vec<String> {
-        values.iter().map(|value| value.to_string()).collect()
+        values.iter().map(ToString::to_string).collect()
     }
 
     #[test]

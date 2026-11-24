@@ -8,9 +8,9 @@ pub enum Scheme {
 impl Scheme {
     pub fn name(self) -> Option<&'static str> {
         match self {
-            Scheme::Light => Some("light"),
-            Scheme::Dark => Some("dark"),
-            Scheme::System => None,
+            Self::Light => Some("light"),
+            Self::Dark => Some("dark"),
+            Self::System => None,
         }
     }
 }

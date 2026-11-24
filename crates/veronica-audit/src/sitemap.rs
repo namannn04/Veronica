@@ -137,6 +137,7 @@ impl Fetch for HttpFetcher {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use std::fmt::Write as _;
 
     struct Canned(HashMap<String, String>);
 
@@ -172,12 +173,21 @@ mod tests {
     }
 
     #[tokio::test]
+    #[expect(
+        clippy::case_sensitive_file_extension_comparisons,
+        reason = "the fetched entries are lowercase test URLs, not file paths"
+    )]
     async fn an_index_is_walked_only_as_far_as_the_pages_wanted() {
         let mut pairs = vec![(
             "https://a.test/sitemap.xml".to_string(),
-            (0..50)
-                .map(|i| format!("<sitemap><loc>https://a.test/s{i}.xml</loc></sitemap>"))
-                .collect::<String>(),
+            (0..50).fold(String::new(), |mut entries, i| {
+                write!(
+                    entries,
+                    "<sitemap><loc>https://a.test/s{i}.xml</loc></sitemap>"
+                )
+                .unwrap();
+                entries
+            }),
         )];
         pairs[0].1 = format!("<sitemapindex>{}</sitemapindex>", pairs[0].1);
         for i in 0..50 {
@@ -208,8 +218,8 @@ mod tests {
     #[test]
     fn a_sitemap_is_its_loc_elements() {
         let document = parse(
-            r#"<urlset><url><loc>https://a.test/one</loc></url>
-               <url><loc> https://a.test/two </loc></url></urlset>"#,
+            r"<urlset><url><loc>https://a.test/one</loc></url>
+               <url><loc> https://a.test/two </loc></url></urlset>",
         );
         assert!(!document.is_index);
         assert_eq!(
@@ -225,7 +235,7 @@ mod tests {
     #[test]
     fn an_index_is_recognised_as_holding_sitemaps_rather_than_pages() {
         let document = parse(
-            r#"<sitemapindex><sitemap><loc>https://a.test/s1.xml</loc></sitemap></sitemapindex>"#,
+            r"<sitemapindex><sitemap><loc>https://a.test/s1.xml</loc></sitemap></sitemapindex>",
         );
         assert!(document.is_index);
     }
@@ -233,16 +243,15 @@ mod tests {
     #[test]
     fn an_entry_that_is_not_a_url_is_dropped_not_fatal() {
         let document = parse(
-            r#"<urlset><url><loc>not a url</loc></url>
-               <url><loc>https://a.test/ok</loc></url></urlset>"#,
+            r"<urlset><url><loc>not a url</loc></url>
+               <url><loc>https://a.test/ok</loc></url></urlset>",
         );
         assert_eq!(document.locations.len(), 1);
     }
 
     #[test]
     fn an_escaped_url_is_decoded_before_parsing() {
-        let document =
-            parse(r#"<urlset><url><loc>https://a.test/?a=1&amp;b=2</loc></url></urlset>"#);
+        let document = parse(r"<urlset><url><loc>https://a.test/?a=1&amp;b=2</loc></url></urlset>");
         assert_eq!(document.locations[0].as_str(), "https://a.test/?a=1&b=2");
     }
 
