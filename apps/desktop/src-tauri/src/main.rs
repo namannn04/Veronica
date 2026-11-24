@@ -425,7 +425,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             tauri::async_runtime::spawn(async move {
                 let emitter = watcher.clone();
                 let result = veronica_system::notifications::watch(move |notification| {
-                    use tauri::Emitter;
                     let state = emitter.state::<AppState>();
                     state.push_notification(notification.clone());
                     if let Err(error) = emitter.emit("notifications-received", notification) {
@@ -458,7 +457,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 let resolved = veronica_system::detect_session().await;
                 let state = refine.state::<AppState>();
                 *state.session.lock().expect("session lock") = resolved;
-                use tauri::Emitter;
                 let _ = refine.emit("session-resolved", ());
             });
 

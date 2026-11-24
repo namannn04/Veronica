@@ -2,6 +2,7 @@ use crate::image_tools::{self, Source};
 use gtk::{gdk_pixbuf::PixbufLoader, gio, glib, prelude::*};
 use std::{
     cell::{Cell, RefCell},
+    io::Read,
     rc::Rc,
 };
 
@@ -39,11 +40,11 @@ pub(crate) fn show() -> anyhow::Result<()> {
     let notebook = gtk::Notebook::new();
     notebook.set_show_border(false);
     notebook.append_page(
-        &panel(&window, "image")?,
+        &panel(&window, "image"),
         Some(&gtk::Label::new(Some("Image converter"))),
     );
     notebook.append_page(
-        &panel(&window, "qr")?,
+        &panel(&window, "qr"),
         Some(&gtk::Label::new(Some("QR code"))),
     );
     window.add(&notebook);
@@ -68,7 +69,7 @@ pub(crate) fn show() -> anyhow::Result<()> {
     window.present();
     Ok(())
 }
-fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
+fn panel(window: &gtk::Window, kind: &str) -> gtk::Box {
     let body = gtk::Box::new(gtk::Orientation::Vertical, 12);
     body.set_border_width(20);
     let hint = gtk::Label::new(Some("Drop an image, paste with Ctrl+V, or choose a file."));
@@ -134,7 +135,6 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                             std::fs::metadata(&path)?.len() <= image_tools::MAX_BYTES as u64,
                             "Image must be at most 20 MiB"
                         );
-                        use std::io::Read;
                         let file = std::fs::File::open(path)?;
                         anyhow::ensure!(file.metadata()?.is_file(), "Choose a regular image file");
                         let mut bytes = Vec::new();
@@ -397,21 +397,10 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
                     formats.set_sensitive(true);
                     status.set_text(&text);
                     if let Ok(pixels) = pixbuf(&bytes) {
-                        if let Some(small) = pixels.scale_simple(
-                            (f64::from(pixels.width())
-                                * (320.0 / f64::from(pixels.width()))
-                                    .min(220.0 / f64::from(pixels.height()))
-                                    .min(1.0))
-                            .round()
-                            .max(1.0) as i32,
-                            (f64::from(pixels.height())
-                                * (320.0 / f64::from(pixels.width()))
-                                    .min(220.0 / f64::from(pixels.height()))
-                                    .min(1.0))
-                            .round()
-                            .max(1.0) as i32,
-                            gtk::gdk_pixbuf::InterpType::Nearest,
-                        ) {
+                        let (width, height) = preview_size(pixels.width(), pixels.height());
+                        if let Some(small) =
+                            pixels.scale_simple(width, height, gtk::gdk_pixbuf::InterpType::Nearest)
+                        {
                             preview.set_from_pixbuf(Some(&small));
                         }
                     }
@@ -429,8 +418,22 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
     window.connect_destroy(move |_| {
         task.abort();
     });
-    Ok(body)
+    body
 }
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the scaled size is rounded and capped at 320x220, so it always fits in i32"
+)]
+fn preview_size(width: i32, height: i32) -> (i32, i32) {
+    let scale = (320.0 / f64::from(width))
+        .min(220.0 / f64::from(height))
+        .min(1.0);
+    (
+        (f64::from(width) * scale).round().max(1.0) as i32,
+        (f64::from(height) * scale).round().max(1.0) as i32,
+    )
+}
+
 fn pixbuf(bytes: &[u8]) -> anyhow::Result<gtk::gdk_pixbuf::Pixbuf> {
     let loader = PixbufLoader::new();
     loader.write(bytes)?;
@@ -461,7 +464,7 @@ mod tests {
         let status = children[5].clone().downcast::<gtk::Label>().unwrap();
         let input =
             gtk::gdk_pixbuf::Pixbuf::new(gtk::gdk_pixbuf::Colorspace::Rgb, true, 8, 2, 3).unwrap();
-        input.fill(0xff000000);
+        input.fill(0xff00_0000);
         gtk::Clipboard::get(&gtk::gdk::SELECTION_CLIPBOARD).set_image(&input);
         let import = children[1].clone().downcast::<gtk::Box>().unwrap();
         import.children()[1]

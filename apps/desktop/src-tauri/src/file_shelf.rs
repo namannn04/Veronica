@@ -63,6 +63,10 @@ pub(crate) fn show(app: &tauri::AppHandle) -> anyhow::Result<()> {
         if event.button() == 1 {
             if let Some(window) = weak.upgrade() {
                 let (x, y) = event.root();
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "GTK reports root pointer coordinates as f64 while begin_move_drag takes whole screen pixels"
+                )]
                 window.begin_move_drag(1, x as i32, y as i32, event.time());
             }
         }

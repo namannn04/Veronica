@@ -45,7 +45,7 @@ impl AppState {
             chat: veronica_system::companion_ai::ChatRuntime::new(
                 directories.data.join("companion/chat"),
             ),
-            agents: Default::default(),
+            agents: veronica_system::agents::AgentManager::default(),
             emoji: veronica_core::EmojiCatalog::bundled(),
             directories,
             session: Mutex::new(session),
