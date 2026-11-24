@@ -114,12 +114,21 @@ fn ids_must_be_short_kebab_case() {
 }
 
 #[test]
-fn version_must_be_major_minor() {
-    for version in ["1", "1.0.0", "v1.0", "01.0"] {
+fn version_must_be_major_minor_with_an_optional_patch() {
+    for version in ["1", "1.0.0.0", "v1.0", "01.0", "1.0.01"] {
         let mut value = media();
         value["version"] = json!(version);
         rejected_by_parser(&value);
     }
+}
+
+#[test]
+fn packed_manifests_carry_the_stamped_patch() {
+    let mut value = media();
+    value["version"] = json!("1.0.7");
+    let manifest = parse(&value).unwrap();
+    assert_eq!(manifest.version.to_string(), "1.0.7");
+    assert_eq!(manifest.version.authored().to_string(), "1.0");
 }
 
 #[test]

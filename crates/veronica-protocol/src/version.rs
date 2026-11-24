@@ -5,13 +5,15 @@ use std::str::FromStr;
 use schemars::{json_schema, JsonSchema, Schema, SchemaGenerator};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-pub const MANIFEST_VERSION_PATTERN: &str = r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$";
+pub const MANIFEST_VERSION_PATTERN: &str =
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?$";
 pub const PACKAGE_VERSION_PATTERN: &str = r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ManifestVersion {
     pub major: u32,
     pub minor: u32,
+    pub patch: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -62,6 +64,22 @@ impl ManifestVersion {
             patch,
         }
     }
+
+    pub const fn stamped(self) -> Option<PackageVersion> {
+        match self.patch {
+            Some(patch) => Some(self.with_patch(patch)),
+            None => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn authored(self) -> Self {
+        Self {
+            major: self.major,
+            minor: self.minor,
+            patch: None,
+        }
+    }
 }
 
 impl PackageVersion {
@@ -69,6 +87,15 @@ impl PackageVersion {
         ManifestVersion {
             major: self.major,
             minor: self.minor,
+            patch: None,
+        }
+    }
+
+    pub const fn stamp(self) -> ManifestVersion {
+        ManifestVersion {
+            major: self.major,
+            minor: self.minor,
+            patch: Some(self.patch),
         }
     }
 }
@@ -77,8 +104,21 @@ impl FromStr for ManifestVersion {
     type Err = VersionError;
 
     fn from_str(raw: &str) -> Result<Self, Self::Err> {
-        let [major, minor] = parse_parts(raw, "MAJOR.MINOR")?;
-        Ok(Self { major, minor })
+        if raw.matches('.').count() == 2 {
+            return raw
+                .parse::<PackageVersion>()
+                .map(PackageVersion::stamp)
+                .map_err(|_| VersionError {
+                    raw: raw.to_string(),
+                    expected: "MAJOR.MINOR or MAJOR.MINOR.PATCH",
+                });
+        }
+        let [major, minor] = parse_parts(raw, "MAJOR.MINOR or MAJOR.MINOR.PATCH")?;
+        Ok(Self {
+            major,
+            minor,
+            patch: None,
+        })
     }
 }
 
@@ -97,7 +137,10 @@ impl FromStr for PackageVersion {
 
 impl fmt::Display for ManifestVersion {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}.{}", self.major, self.minor)
+        match self.patch {
+            Some(patch) => write!(formatter, "{}.{}.{patch}", self.major, self.minor),
+            None => write!(formatter, "{}.{}", self.major, self.minor),
+        }
     }
 }
 
@@ -152,9 +195,22 @@ mod tests {
     }
 
     #[test]
+    fn manifests_carry_an_optional_stamped_patch() {
+        let packed: ManifestVersion = "1.0.7".parse().unwrap();
+        assert_eq!(packed.to_string(), "1.0.7");
+        assert_eq!(
+            packed.stamped(),
+            Some("1.0.7".parse::<PackageVersion>().unwrap())
+        );
+        assert_eq!(packed.authored().to_string(), "1.0");
+        assert_eq!("1.0".parse::<ManifestVersion>().unwrap().stamped(), None);
+        assert_eq!("1.0.7".parse::<PackageVersion>().unwrap().stamp(), packed);
+    }
+
+    #[test]
     fn rejects_malformed_versions() {
         for raw in [
-            "", "1", "1.0.0", "1.", ".1", "01.0", "1.00", "a.b", "1.-1", "1.0 ",
+            "", "1", "1.0.0.0", "1.", ".1", "01.0", "1.00", "a.b", "1.-1", "1.0 ", "1.0.01", "1.0.",
         ] {
             assert!(raw.parse::<ManifestVersion>().is_err(), "{raw}");
         }
