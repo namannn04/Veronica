@@ -12,13 +12,13 @@ import {
   ConfirmDialog,
   Dialog,
   EmptyState,
-  ListSkeleton,
   Field,
   FormGroup,
   FormRow,
   IconButton,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Section,
   Select,
@@ -501,12 +501,7 @@ export function AgentControls({ requestedId }: { requestedId?: string }) {
         description="Your own processes, read-only. A running process does not prove an active turn. Desktop apps and existing terminal sessions keep their own lifecycle."
       >
         {external === null ? (
-          <ListSkeleton
-            rows={2}
-            leading={8}
-            meta={96}
-            label="Looking for external agents"
-          />
+          <ListSkeleton rows={2} leading={8} meta={96} label="Looking for external agents" />
         ) : external.length ? (
           <List label="External agents">
             {external.map((a) => (

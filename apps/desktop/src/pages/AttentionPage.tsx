@@ -10,6 +10,7 @@ import type {
 } from "../lib/types";
 import {
   BarList,
+  BarListSkeleton,
   Button,
   Card,
   CardHeader,
@@ -19,6 +20,7 @@ import {
   FormRow,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
@@ -28,11 +30,9 @@ import {
   Select,
   Skeleton,
   SkeletonText,
-  StatSkeleton,
-  ListSkeleton,
-  BarListSkeleton,
   Stat,
   StatGrid,
+  StatSkeleton,
   Switch,
   Tabs,
   TextField,
@@ -248,37 +248,37 @@ export function AttentionPage() {
       {!failedEmpty && view === "overview" && (
         <>
           <div className="attn-stats">
-          <StatGrid min={150}>
-            {firstLoad || !overview ? (
-              <>
-                <StatSkeleton />
-                <StatSkeleton />
-                <StatSkeleton />
-                <StatSkeleton />
-              </>
-            ) : (
-              <>
-                <Stat
-                  label="Active"
-                  value={<span className="ui-num">{duration(overview.activeSeconds)}</span>}
-                  note={RANGE_LABEL[days]}
-                />
-                <Stat
-                  label="Focused"
-                  value={<span className="ui-num">{duration(overview.focusedSeconds)}</span>}
-                  note={status ? `${status.completedSessions} sessions completed` : undefined}
-                />
-                <Stat
-                  label="Idle"
-                  value={<span className="ui-num">{duration(overview.idleSeconds)}</span>}
-                />
-                <Stat
-                  label="Context switches"
-                  value={<span className="ui-num">{overview.contextSwitches}</span>}
-                />
-              </>
-            )}
-          </StatGrid>
+            <StatGrid min={150}>
+              {firstLoad || !overview ? (
+                <>
+                  <StatSkeleton />
+                  <StatSkeleton />
+                  <StatSkeleton />
+                  <StatSkeleton />
+                </>
+              ) : (
+                <>
+                  <Stat
+                    label="Active"
+                    value={<span className="ui-num">{duration(overview.activeSeconds)}</span>}
+                    note={RANGE_LABEL[days]}
+                  />
+                  <Stat
+                    label="Focused"
+                    value={<span className="ui-num">{duration(overview.focusedSeconds)}</span>}
+                    note={status ? `${status.completedSessions} sessions completed` : undefined}
+                  />
+                  <Stat
+                    label="Idle"
+                    value={<span className="ui-num">{duration(overview.idleSeconds)}</span>}
+                  />
+                  <Stat
+                    label="Context switches"
+                    value={<span className="ui-num">{overview.contextSwitches}</span>}
+                  />
+                </>
+              )}
+            </StatGrid>
           </div>
 
           <Section title="Applications" description="Local only, never uploaded">

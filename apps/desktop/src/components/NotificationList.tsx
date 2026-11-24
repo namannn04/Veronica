@@ -11,8 +11,8 @@ import {
   EmptyState,
   IconButton,
   List,
-  ListSkeleton,
   ListRow,
+  ListSkeleton,
   Notice,
 } from "../ui";
 import "./NotificationList.css";

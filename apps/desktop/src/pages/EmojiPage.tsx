@@ -46,7 +46,10 @@ const SHORT_GROUP_NAMES: Record<string, string> = {
 const PAGE = 240;
 const WHOLE_GROUP = 2_000;
 const ALL = "all";
-const TAB_PLACEHOLDERS = [20, 52, 48, 44, 36, 40, 52, 48, 54, 34];
+const TAB_PLACEHOLDERS = [20, 52, 48, 44, 36, 40, 52, 48, 54, 34].map((width, position) => ({
+  id: `tab-${position}`,
+  width,
+}));
 
 export function EmojiPage() {
   const [groups, setGroups] = useState<EmojiGroup[] | null>(null);
@@ -166,11 +169,13 @@ export function EmojiPage() {
       ? "All emoji"
       : (groupName.get(activeGroup) ?? "Emoji");
   const resultsNote =
-    emoji === null
-      ? <SkeletonText width={56} />
-      : emoji.length === PAGE && activeGroup === null
-        ? `Showing the first ${PAGE}`
-        : `${emoji.length} emoji`;
+    emoji === null ? (
+      <SkeletonText width={56} />
+    ) : emoji.length === PAGE && activeGroup === null ? (
+      `Showing the first ${PAGE}`
+    ) : (
+      `${emoji.length} emoji`
+    );
 
   return (
     <Page
@@ -185,18 +190,18 @@ export function EmojiPage() {
           accessory={
             groups === null ? (
               <div className="emoji-tabs-skeleton" role="status" aria-label="Reading categories">
-                {TAB_PLACEHOLDERS.map((width, index) => (
-                  <SkeletonText key={`${index}-${width}`} width={width} />
+                {TAB_PLACEHOLDERS.map((tab) => (
+                  <SkeletonText key={tab.id} width={tab.width} />
                 ))}
               </div>
             ) : (
               groups.length > 0 && (
-              <Tabs
-                items={tabs}
-                value={activeGroup === null ? ALL : String(activeGroup)}
-                onChange={selectGroup}
-                label="Emoji categories"
-              />
+                <Tabs
+                  items={tabs}
+                  value={activeGroup === null ? ALL : String(activeGroup)}
+                  onChange={selectGroup}
+                  label="Emoji categories"
+                />
               )
             )
           }

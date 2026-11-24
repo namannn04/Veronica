@@ -11,12 +11,12 @@ import {
   EmptyState,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   SearchField,
   Section,
-  ListSkeleton,
   Skeleton,
   SkeletonText,
   Spinner,
@@ -298,12 +298,7 @@ export function MaintenancePage() {
                   title={<SkeletonText width={48} />}
                   description={<SkeletonText width={200} />}
                 >
-                  <ListSkeleton
-                    rows={rows}
-                    leading={0}
-                    meta={220}
-                    label="Looking for updates"
-                  />
+                  <ListSkeleton rows={rows} leading={0} meta={220} label="Looking for updates" />
                 </Section>
               ))}
             </>
@@ -388,11 +383,11 @@ export function MaintenancePage() {
                 </span>
               ) : (
                 installed && (
-                <span className="mnt-count ui-num">
-                  {visibleInstalled.length === installed.length
-                    ? packages(installed.length)
-                    : `${visibleInstalled.length} of ${installed.length}`}
-                </span>
+                  <span className="mnt-count ui-num">
+                    {visibleInstalled.length === installed.length
+                      ? packages(installed.length)
+                      : `${visibleInstalled.length} of ${installed.length}`}
+                  </span>
                 )
               )
             }

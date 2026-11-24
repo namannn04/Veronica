@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   CardHeader,
+  CardSkeleton,
   Columns,
   ConfirmDialog,
   EmptyState,
@@ -23,21 +24,20 @@ import {
   KeyValueList,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   ProgressBar,
   Section,
-  CardSkeleton,
-  ListSkeleton,
-  SkeletonText,
   Skeleton,
+  SkeletonText,
   Slider,
   Stat,
   StatGrid,
   StatSkeleton,
-  TableSkeleton,
   Table,
+  TableSkeleton,
   Tabs,
   type Tone,
 } from "../ui";
@@ -233,13 +233,13 @@ export function SystemPage() {
         mic === undefined ? (
           <Skeleton width={152} height={32} radius={8} />
         ) : (
-        <Button
-          icon={mic?.muted ? <MicOff strokeWidth={STROKE} /> : <Mic strokeWidth={STROKE} />}
-          disabled={!mic}
-          onClick={() => void toggleMic()}
-        >
-          {mic ? (mic.muted ? "Unmute microphone" : "Mute microphone") : "Microphone unavailable"}
-        </Button>
+          <Button
+            icon={mic?.muted ? <MicOff strokeWidth={STROKE} /> : <Mic strokeWidth={STROKE} />}
+            disabled={!mic}
+            onClick={() => void toggleMic()}
+          >
+            {mic ? (mic.muted ? "Unmute microphone" : "Mute microphone") : "Microphone unavailable"}
+          </Button>
         )
       }
       accessory={<Tabs label="System views" items={VIEWS} value={view} onChange={setView} />}
@@ -302,7 +302,13 @@ export function SystemPage() {
         >
           <Card padding="none" className="sys-process-card">
             {!processesRead ? (
-              <TableSkeleton columns={4} rows={8} twoLine label="Reading running apps" className="sys-process-table" />
+              <TableSkeleton
+                columns={4}
+                rows={8}
+                twoLine
+                label="Reading running apps"
+                className="sys-process-table"
+              />
             ) : rows.length === 0 ? (
               <EmptyState size="compact" title="No running apps">
                 Apps you start appear here within a couple of seconds.
@@ -381,7 +387,13 @@ export function SystemPage() {
               }
             />
             {!devicesRead ? (
-              <ListSkeleton rows={3} inset={false} leading={26} trailing={140} label="Reading the mixer" />
+              <ListSkeleton
+                rows={3}
+                inset={false}
+                leading={26}
+                trailing={140}
+                label="Reading the mixer"
+              />
             ) : mixerError ? (
               <Notice tone="warning" title="The mixer cannot be read" compact>
                 {mixerError}
@@ -449,7 +461,13 @@ export function SystemPage() {
               subtitle={bluetooth ? bluetoothSummary(bluetooth) : "Reading…"}
             />
             {!bluetooth ? (
-              <ListSkeleton rows={3} inset={false} leading={0} trailing={72} label="Reading Bluetooth" />
+              <ListSkeleton
+                rows={3}
+                inset={false}
+                leading={0}
+                trailing={72}
+                label="Reading Bluetooth"
+              />
             ) : bluetooth.unavailable ? (
               <Notice tone="warning" title="Bluetooth cannot be read" compact>
                 {bluetooth.unavailable}

@@ -3,8 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ipc, listenEvent } from "../lib/ipc";
 import { BLUR_CATEGORIES, blurKey } from "../lib/preferences";
 import type { PresenterView } from "../lib/types";
-import { Badge, Button, FormGroup, FormRow, Notice, Skeleton,
-  SkeletonText, Stack } from "../ui";
+import { Badge, Button, FormGroup, FormRow, Notice, Skeleton, SkeletonText, Stack } from "../ui";
 import { SwitchRow } from "./settingsRows";
 
 export function PresenterPane() {

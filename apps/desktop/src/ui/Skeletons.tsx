@@ -36,13 +36,7 @@ export function SkeletonText({
   );
 }
 
-export function StatSkeleton({
-  note = true,
-  meter = false,
-}: {
-  note?: boolean;
-  meter?: boolean;
-}) {
+export function StatSkeleton({ note = true, meter = false }: { note?: boolean; meter?: boolean }) {
   return (
     <Stat
       className="ui-stat-skeleton"
@@ -103,7 +97,13 @@ export function ListSkeleton({
   );
 }
 
-export function BarListSkeleton({ rows = 5, label = "Loading" }: { rows?: number; label?: string }) {
+export function BarListSkeleton({
+  rows = 5,
+  label = "Loading",
+}: {
+  rows?: number;
+  label?: string;
+}) {
   return (
     <ul className="ui-bar-list" role="status" aria-label={label}>
       {indices(rows).map((index) => (

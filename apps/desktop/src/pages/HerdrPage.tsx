@@ -15,12 +15,12 @@ import {
   KeyValueList,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   Section,
   Select,
-  ListSkeleton,
   Skeleton,
   SkeletonText,
   Spinner,
@@ -489,7 +489,11 @@ function BoardSkeleton() {
         />
         <div className="herdr-lanes" role="status" aria-label="Reading Herdr sessions">
           {STATUSES.map((status, index) => (
-            <section className="herdr-lane" key={status} aria-label={`${STATUS_LABEL[status]} agents`}>
+            <section
+              className="herdr-lane"
+              key={status}
+              aria-label={`${STATUS_LABEL[status]} agents`}
+            >
               <header className="herdr-lane-head">
                 <StatusDot tone={STATUS_TONE[status]} />
                 <h3>{STATUS_LABEL[status]}</h3>
@@ -520,7 +524,10 @@ function BoardSkeleton() {
           ))}
         </div>
       </Section>
-      <Section title="Sessions" description="Each session keeps its terminals alive between launches">
+      <Section
+        title="Sessions"
+        description="Each session keeps its terminals alive between launches"
+      >
         <ListSkeleton rows={2} leading={8} trailing={56} label="Reading Herdr sessions" />
       </Section>
     </>

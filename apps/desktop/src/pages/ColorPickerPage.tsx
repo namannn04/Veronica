@@ -13,13 +13,13 @@ import {
   IconButton,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   Section,
   Segmented,
   Select,
-  ListSkeleton,
   Skeleton,
   SkeletonText,
   Tooltip,
@@ -391,7 +391,14 @@ function CurrentSkeleton() {
             </p>
           </div>
         </div>
-        <ListSkeleton rows={6} inset={false} leading={0} subtitle={false} trailing={26} className="cp-formats" />
+        <ListSkeleton
+          rows={6}
+          inset={false}
+          leading={0}
+          subtitle={false}
+          trailing={26}
+          className="cp-formats"
+        />
       </div>
     </Card>
   );

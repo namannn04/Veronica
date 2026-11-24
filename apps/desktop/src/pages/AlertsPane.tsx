@@ -2,8 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ipc, listenEvent } from "../lib/ipc";
 import type { AlertsView, PacingZone, UsageLevel, WatchedWindow } from "../lib/types";
-import { Badge, Button, FormGroup, FormRow, Notice, Skeleton,
-  SkeletonText, Stack, type Tone } from "../ui";
+import {
+  Badge,
+  Button,
+  FormGroup,
+  FormRow,
+  Notice,
+  Skeleton,
+  SkeletonText,
+  Stack,
+  type Tone,
+} from "../ui";
 import { ChoiceRow, SwitchRow } from "./settingsRows";
 
 const SESSION_OFFSETS = [

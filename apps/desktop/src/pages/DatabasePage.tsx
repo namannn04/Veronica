@@ -16,14 +16,14 @@ import {
   IconButton,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   occurrenceKeys,
   Page,
   PageHeader,
-  ListSkeleton,
   SkeletonText,
-  TableSkeleton,
   Table,
+  TableSkeleton,
   Tabs,
   TextArea,
   Toolbar,
@@ -486,7 +486,9 @@ function DatabaseSkeleton() {
               <SkeletonText width={260} />
             </span>
           }
-          accessory={<Tabs label="Database views" items={TABS} value="browse" onChange={() => {}} />}
+          accessory={
+            <Tabs label="Database views" items={TABS} value="browse" onChange={() => {}} />
+          }
         />
       }
     >
@@ -516,7 +518,11 @@ function DatabaseSkeleton() {
               page={null}
               busy={false}
               empty={
-                <EmptyState size="compact" icon={<Table2 strokeWidth={STROKE} />} title="No rows yet">
+                <EmptyState
+                  size="compact"
+                  icon={<Table2 strokeWidth={STROKE} />}
+                  title="No rows yet"
+                >
                   Choose Read next to a table or view to see its rows.
                 </EmptyState>
               }

@@ -9,11 +9,11 @@ import {
   EmptyState,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   Section,
-  ListSkeleton,
 } from "../ui";
 import "./QuinjetPage.css";
 

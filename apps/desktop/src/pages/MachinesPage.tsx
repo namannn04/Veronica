@@ -30,15 +30,15 @@ import {
   KeyValueList,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   Segmented,
-  ListSkeleton,
   Skeleton,
   SkeletonText,
-  StatSkeleton,
   StatGrid,
+  StatSkeleton,
   StatusDot,
   Table,
   TextField,
@@ -208,8 +208,14 @@ export function MachinesPage() {
               />
             </div>
             <Card className="mach-detail" aria-hidden="true">
-              <CardHeader title={<SkeletonText width="32%" />} subtitle={<SkeletonText width="64%" />} />
-              <Toolbar className="mach-actions" leading={<Skeleton width={84} height={26} radius={6} />} />
+              <CardHeader
+                title={<SkeletonText width="32%" />}
+                subtitle={<SkeletonText width="64%" />}
+              />
+              <Toolbar
+                className="mach-actions"
+                leading={<Skeleton width={84} height={26} radius={6} />}
+              />
               <Skeleton width="100%" height={26} radius={6} />
               <StatGrid min={128}>
                 <StatSkeleton meter />
@@ -716,7 +722,13 @@ function MachineDetail({
             <div className="mach-tool">
               <div className="mach-scroll">
                 {containers === null && toolBusy ? (
-                  <ListSkeleton rows={3} inset={false} leading={8} trailing={72} label="Reading containers" />
+                  <ListSkeleton
+                    rows={3}
+                    inset={false}
+                    leading={8}
+                    trailing={72}
+                    label="Reading containers"
+                  />
                 ) : containers && containers.length > 0 ? (
                   <List label="Containers" inset={false}>
                     {containers.map((container) => (

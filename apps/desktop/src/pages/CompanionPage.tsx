@@ -338,13 +338,7 @@ export function CompanionPage() {
             </div>
             <div className="comp-list-scroll">
               {!loaded ? (
-                <ListSkeleton
-                  rows={6}
-                  inset={false}
-                  leading={16}
-                  meta={40}
-                  label="Reading notes"
-                />
+                <ListSkeleton rows={6} inset={false} leading={16} meta={40} label="Reading notes" />
               ) : visible.length ? (
                 <List inset={false} label="Notes and memos">
                   {visible.map((item) => (

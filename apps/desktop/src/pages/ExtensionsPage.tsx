@@ -50,12 +50,12 @@ import {
   EmptyState,
   List,
   ListRow,
+  ListSkeleton,
   Page,
   PageHeader,
   SearchField,
   Section,
   Segmented,
-  ListSkeleton,
   SkeletonText,
   Stack,
   Switch,
@@ -217,19 +217,15 @@ export function ExtensionsPage({
 
   let body: ReactNode;
   if (diagnostics === null) {
-    body = (
-      <>
-        {[4, 5].map((rows) => (
-          <Section
-            key={rows}
-            title={<SkeletonText width={72} />}
-            description={<SkeletonText width={64} />}
-          >
-            <ListSkeleton rows={rows} trailing={40} label="Reading the extension catalogue" />
-          </Section>
-        ))}
-      </>
-    );
+    body = [4, 5].map((rows) => (
+      <Section
+        key={rows}
+        title={<SkeletonText width={72} />}
+        description={<SkeletonText width={64} />}
+      >
+        <ListSkeleton rows={rows} trailing={40} label="Reading the extension catalogue" />
+      </Section>
+    ));
   } else if (entries.length === 0) {
     body = (
       <EmptyState icon={<Blocks />} title="No extensions found">

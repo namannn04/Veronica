@@ -21,11 +21,11 @@ import {
   IconButton,
   List,
   ListRow,
+  ListSkeleton,
   Notice,
   Page,
   PageHeader,
   SearchField,
-  ListSkeleton,
   SkeletonText,
   Toolbar,
 } from "../ui";
@@ -140,9 +140,9 @@ export function ClipboardPage() {
             </span>
           ) : (
             !error && (
-            <span className="clip-count ui-num">
-              {query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}
-            </span>
+              <span className="clip-count ui-num">
+                {query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}
+              </span>
             )
           )
         }
@@ -162,9 +162,7 @@ export function ClipboardPage() {
         </Notice>
       )}
 
-      {!loaded && (
-        <ListSkeleton rows={10} trailing={56} label="Reading clipboard history" />
-      )}
+      {!loaded && <ListSkeleton rows={10} trailing={56} label="Reading clipboard history" />}
 
       {loaded &&
         rows.length === 0 &&
