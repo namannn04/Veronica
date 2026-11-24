@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
@@ -15,7 +15,6 @@ import {
 } from "../lib/preferences";
 import type {
   Diagnostics,
-  ExtensionReport,
   LaunchAtLoginStatus,
   PowerStatus,
   ShellExtensionStatus,
@@ -25,7 +24,6 @@ import {
   Button,
   FormGroup,
   FormRow,
-  Kbd,
   Notice,
   Page,
   PageHeader,
@@ -39,6 +37,7 @@ import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
 import { DiagnosticsPage } from "./DiagnosticsPage";
 import { PresenterPane } from "./PresenterPane";
+import { ShortcutsPane } from "./ShortcutsPane";
 import { ChoiceRow, SwitchRow } from "./settingsRows";
 import { UpdatePane } from "./UpdatePane";
 import "./Settings.css";
@@ -95,7 +94,7 @@ function usageRefreshMinutes(value: unknown): number {
 
 type Feedback = { tone: "neutral" | "critical"; text: string; load?: boolean } | null;
 
-const TABS_USING_VALUES: Tab[] = ["general", "desktop", "shortcuts"];
+const TABS_USING_VALUES: Tab[] = ["general", "desktop"];
 
 export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null }) {
   const [tab, setTab] = useState<Tab>("general");
@@ -233,15 +232,6 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     } catch (reason) {
       fail(reason);
     }
-  };
-
-  const feature = (id: string): ExtensionReport | undefined => {
-    const entry = diagnostics?.extensions.find((candidate) => candidate.id === id);
-    if (!entry) {
-      return undefined;
-    }
-    const stored = values[entry.defaultsKey];
-    return typeof stored === "boolean" ? { ...entry, enabled: stored } : entry;
   };
 
   const current = TABS.find((item) => item.id === tab) ?? TABS[0];
@@ -575,54 +565,19 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       {tab === "permissions" && <DiagnosticsPage diagnostics={diagnostics} />}
 
       {tab === "shortcuts" && (
-        <FormGroup
-          title="Global shortcuts"
-          description="Handled by the desktop shortcut service. Veronica never records arbitrary keys."
-        >
-          <ShortcutRow
-            title="Show Veronica"
-            detail="Open, unminimise and focus the app."
-            keys={["Ctrl", "Alt", "V"]}
-          />
-          <ShortcutRow
-            feature={feature("clipboard")}
-            title="Clipboard"
-            detail="Open the notch clipboard, or the app as a fallback."
-            keys={["Ctrl", "Alt", "B"]}
-          />
-          <ShortcutRow
-            feature={feature("micMute")}
-            title="Microphone mute"
-            detail="Toggle the default PipeWire microphone system-wide."
-            keys={["Ctrl", "Alt", "M"]}
-          />
-          <ShortcutRow
-            feature={feature("colorPicker")}
-            title="Pick color"
-            detail="Open GNOME's eyedropper and save the swatch."
-            keys={["Ctrl", "Alt", "P"]}
-          />
-          <ShortcutRow
-            title="Clean keys"
-            detail="Take a compositor grab until you click Done."
-            keys={["Ctrl", "Alt", "K"]}
-          />
-          <ShortcutRow
-            feature={feature("emoji")}
-            title="Emoji"
-            detail="Open the picker. Clicking an emoji copies it."
-            keys={["Ctrl", "Alt", "E"]}
-          />
-          <FormRow
-            label="Desktop backend"
-            description={
-              diagnostics?.session.hasGlobalShortcutsPortal
-                ? "GNOME portal detected. The X11-compatible backend is also available."
-                : "Veronica uses its XWayland global-hotkey backend in this GNOME session."
-            }
-            control={<Badge tone="good">Active</Badge>}
-          />
-        </FormGroup>
+        <ShortcutsPane
+          footer={
+            <FormRow
+              label="Desktop backend"
+              description={
+                diagnostics?.session.hasGlobalShortcutsPortal
+                  ? "GNOME portal detected. The X11-compatible backend is also available."
+                  : "Veronica uses its XWayland global-hotkey backend in this GNOME session."
+              }
+              control={<Badge tone="good">Active</Badge>}
+            />
+          }
+        />
       )}
 
       {tab === "terminal" && (
@@ -729,36 +684,5 @@ function ModeRow({
         />
       }
     />
-  );
-}
-
-function ShortcutRow({
-  title,
-  detail,
-  keys,
-  feature,
-}: {
-  title: string;
-  detail: string;
-  keys: string[];
-  feature?: ExtensionReport;
-}) {
-  const off = feature !== undefined && !feature.enabled;
-  return (
-    <FormRow
-      label={title}
-      description={off ? `Turn on ${feature.title} in Extensions to use this shortcut.` : detail}
-      control={off ? <Badge>Off</Badge> : <KeyCombo keys={keys} />}
-    />
-  );
-}
-
-function KeyCombo({ keys }: { keys: string[] }): ReactNode {
-  return (
-    <span className="settings-keys" role="img" aria-label={keys.join(" + ")}>
-      {keys.map((key) => (
-        <Kbd key={key}>{key}</Kbd>
-      ))}
-    </span>
   );
 }
