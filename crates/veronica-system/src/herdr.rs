@@ -1,15 +1,3 @@
-//! Herdr session discovery for Veronica's agent board.
-//!
-//! Herdr owns its socket protocol and ships a stable JSON CLI. Veronica uses
-//! that boundary instead of duplicating the protocol, so installed Herdr
-//! versions remain the source of truth for sessions and agent state.
-//!
-//! The reads here mirror Edith's `HerdrCollector` and `HerdrListParser`: the
-//! session list, then one snapshot per running session, then the snapshot's
-//! `panes` and `agents` merged into one row per pane. Herdr reports the same
-//! pane in both arrays and each carries fields the other can be missing, so
-//! reading only one of them loses agents the other still describes.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -19,15 +7,8 @@ use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// How long any one `herdr` call may take.
-///
-/// Edith's collector uses twelve seconds. The board polls every two, so a
-/// wedged Herdr server must be given up on rather than left to pile processes
-/// up behind the UI.
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(12);
 
-/// The session Herdr uses when none is named, and Edith's fallback when
-/// `session list` says nothing useful.
 const DEFAULT_SESSION: &str = "default";
 
 #[derive(Debug, Clone, Serialize)]
@@ -37,9 +18,6 @@ pub struct HerdrBoard {
     pub executable: Option<String>,
     pub sessions: Vec<HerdrSession>,
     pub agents: Vec<HerdrAgent>,
-    /// Why the board is emptier than expected, when Herdr is installed but
-    /// answered with something unusable. Reported rather than raised: a board
-    /// that lists nothing is a normal state the page explains.
     pub error: Option<String>,
 }
 
@@ -47,8 +25,6 @@ pub struct HerdrBoard {
 pub struct HerdrSession {
     #[serde(alias = "session", alias = "id", alias = "session_name")]
     pub name: String,
-    /// Herdr only lists sessions it knows about; older builds omitted the flag
-    /// for sessions that were running, which is why this defaults to true.
     #[serde(default = "running_by_default", alias = "alive", alias = "active")]
     pub running: bool,
     #[serde(default)]
@@ -77,8 +53,6 @@ pub struct HerdrAgent {
     pub cwd: String,
     pub pane_id: String,
     pub focused: bool,
-    /// The line that attaches to this agent, built once here so the app's
-    /// detail pane, the clipboard and `vr herdr attach` cannot disagree.
     pub attach_command: String,
 }
 
@@ -87,12 +61,6 @@ struct SessionDocument {
     sessions: Vec<HerdrSession>,
 }
 
-/// Resolve Herdr from the GUI-safe locations as well as PATH. Desktop entries
-/// often do not inherit the user's login PATH, while Herdr commonly lives in
-/// `~/.local/bin` or, when built from source, `~/.cargo/bin`.
-///
-/// The search itself belongs to the tool catalogue, so the board and whatever
-/// reports Herdr's readiness can never disagree about where it looked.
 pub fn executable() -> Option<PathBuf> {
     veronica_core::tools::spec("herdr")?.locate()
 }
@@ -108,9 +76,6 @@ pub async fn board() -> Result<HerdrBoard> {
         });
     };
 
-    // A session list Herdr cannot produce is not the end of the read: Edith
-    // falls back to the default session, which is the one Herdr itself uses
-    // when none is named.
     let (mut sessions, mut error) = match sessions(&executable).await {
         Ok(sessions) => (sessions, None),
         Err(reason) => (Vec::new(), Some(reason.to_string())),
@@ -135,9 +100,6 @@ pub async fn board() -> Result<HerdrBoard> {
         }
     }
 
-    // The synthetic session only earns a place in the list if probing it
-    // actually found something; otherwise the rail would claim a session
-    // Herdr never reported.
     if !listed && agents.is_empty() {
         error = error.or_else(|| sessions.first().and_then(|session| session.error.clone()));
         sessions.clear();
@@ -168,9 +130,6 @@ async fn snapshot(executable: &Path, session: &str) -> Result<Vec<HerdrAgent>> {
     if has_snapshot(&value) {
         return Ok(agents_from_snapshot(session, &value));
     }
-    // A Herdr too old for `api snapshot` still answers `agent list`, which
-    // carries the same rows without the pane list. Edith keeps this path, so
-    // the board does not go blank against an older install.
     let output = run(executable, &["--session", session, "agent", "list"])
         .await
         .with_context(|| format!("cannot list agents in Herdr session {session}"))?;
@@ -185,7 +144,6 @@ fn has_snapshot(value: &Value) -> bool {
         || payload.get("type").and_then(Value::as_str) == Some("session_snapshot")
 }
 
-/// Run one `herdr` call, giving up rather than waiting forever.
 async fn run(executable: &Path, args: &[&str]) -> Result<Vec<u8>> {
     let child = tokio::process::Command::from(veronica_core::host::command(executable))
         .args(args)
@@ -203,9 +161,6 @@ async fn run(executable: &Path, args: &[&str]) -> Result<Vec<u8>> {
         ),
     };
     if !output.status.success() {
-        // Herdr reports socket errors as JSON on stdout, and argument errors
-        // on stderr, so both are worth looking at before falling back to the
-        // exit status.
         let message = message(&output.stderr)
             .or_else(|| message(&output.stdout))
             .unwrap_or_else(|| format!("herdr exited {}", output.status));
@@ -219,7 +174,6 @@ fn message(bytes: &[u8]) -> Option<String> {
     if text.is_empty() {
         return None;
     }
-    // `{"error": {"message": …}}` reads better than the raw document.
     if let Ok(value) = serde_json::from_str::<Value>(&text) {
         let nested = value
             .get("error")
@@ -234,8 +188,6 @@ fn message(bytes: &[u8]) -> Option<String> {
     Some(text)
 }
 
-/// One pane as Herdr describes it, before it is decided whether the pane is an
-/// agent and what to call it.
 #[derive(Debug, Clone, Default)]
 struct PaneRecord {
     pane: String,
@@ -248,9 +200,6 @@ struct PaneRecord {
 }
 
 impl PaneRecord {
-    /// Herdr lists every pane, including plain shells. A pane counts as an
-    /// agent once it names one, or once it reports a state that is not merely
-    /// `unknown`.
     fn looks_like_agent(&self) -> bool {
         if self.kind.is_some() {
             return true;
@@ -260,11 +209,6 @@ impl PaneRecord {
             .is_some_and(|status| self::status(status) != "unknown")
     }
 
-    /// Fold the `agents` entry for this pane over the `panes` entry.
-    ///
-    /// The incoming record wins, field by field, except where it would lose
-    /// information: an empty kind and an `unknown` state are what Herdr sends
-    /// when it has nothing new to say, not a correction.
     fn merging(&self, incoming: &PaneRecord) -> PaneRecord {
         let status = match (&incoming.status, &self.status) {
             (Some(incoming), Some(existing))
@@ -299,9 +243,6 @@ fn agents_from_snapshot(session: &str, value: &Value) -> Vec<HerdrAgent> {
     let snapshot = payload.get("snapshot").unwrap_or(payload);
     let labels = workspace_labels(snapshot);
 
-    // Panes carry the metadata Herdr keeps for every terminal; agents carry
-    // the lifecycle state a running agent reports. Either can be the only
-    // place a given field appears, so both are read and keyed by pane.
     let mut records: BTreeMap<String, PaneRecord> = BTreeMap::new();
     for record in list(snapshot, "panes")
         .filter_map(pane_record)
@@ -373,7 +314,6 @@ fn pane_record(value: &Value) -> Option<PaneRecord> {
     })
 }
 
-/// The first of `keys` this object holds as a non-empty string.
 fn text(value: &Value, keys: &[&str]) -> Option<String> {
     keys.iter()
         .filter_map(|key| value.get(key))
@@ -394,8 +334,6 @@ fn agent(session: &str, record: &PaneRecord, labels: &BTreeMap<String, String>) 
         .as_ref()
         .map(|id| labels.get(id).cloned().unwrap_or_else(|| id.clone()))
         .unwrap_or_default();
-    // A pane whose title is only its own id says nothing the pane row does not
-    // already say, so the agent's kind reads better in the board's card.
     let title = record
         .title
         .clone()
@@ -419,9 +357,6 @@ fn agent(session: &str, record: &PaneRecord, labels: &BTreeMap<String, String>) 
     }
 }
 
-/// Herdr's own states are `idle`, `working`, `blocked`, `done` and `unknown`.
-/// The wider vocabulary is Edith's, so a Herdr that grows a synonym — or an
-/// agent integration that reports one — still lands in the right lane.
 fn status(raw: &str) -> String {
     let normalised = raw.trim().to_ascii_lowercase().replace([' ', '-'], "_");
     match normalised.as_str() {
@@ -434,9 +369,6 @@ fn status(raw: &str) -> String {
     .to_string()
 }
 
-/// Edith's label table, which is also the set of agents Herdr ships
-/// integrations for. An agent Veronica has no name for keeps Herdr's, so a
-/// newly supported agent appears rather than reading as `Unknown`.
 fn display_kind(raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -473,15 +405,6 @@ fn display_kind(raw: &str) -> String {
     .to_string()
 }
 
-/// The arguments that attach to a session, or to one agent within it.
-///
-/// Shared by the terminal launcher and by `vr herdr attach`, which prints the
-/// command rather than running it, so the two cannot drift into telling the
-/// user different things.
-///
-/// `--takeover` matches Edith: a pane an earlier client is still holding would
-/// otherwise refuse the attach, and the board's whole point is to reach an
-/// agent from wherever you happen to be.
 pub fn attach_args(session: &str, pane_id: Option<&str>) -> Vec<String> {
     match pane_id {
         Some(pane) => vec![
@@ -500,10 +423,6 @@ pub fn attach_args(session: &str, pane_id: Option<&str>) -> Vec<String> {
     }
 }
 
-/// The attach line a person can paste into any shell.
-///
-/// `herdr` unqualified, not the resolved path, because the line is also useful
-/// over SSH and on a machine where Herdr lives somewhere else.
 pub fn attach_command(session: &str, pane_id: Option<&str>) -> String {
     std::iter::once("herdr".to_string())
         .chain(attach_args(session, pane_id))
@@ -512,8 +431,6 @@ pub fn attach_command(session: &str, pane_id: Option<&str>) -> String {
         .join(" ")
 }
 
-/// Quote a word for a POSIX shell, leaving the plain ones alone so the common
-/// line stays readable.
 fn shell_quote(word: &str) -> String {
     let plain = !word.is_empty()
         && word
@@ -582,8 +499,6 @@ mod tests {
         assert_eq!(rows[0].workspace, "Veronica");
     }
 
-    /// The shape `herdr api snapshot` actually prints: the snapshot is under
-    /// `result`, and every agent is repeated in `panes`.
     #[test]
     fn reads_the_snapshot_through_the_cli_envelope() {
         let value = serde_json::json!({
@@ -601,9 +516,6 @@ mod tests {
         assert!(rows[0].focused);
     }
 
-    /// Herdr keeps a pane's display metadata after the agent releases its
-    /// lifecycle state, and drops it from `agents` at that moment. Reading
-    /// only `agents` loses the pane; Edith reads both.
     #[test]
     fn keeps_an_agent_that_only_the_pane_list_still_describes() {
         let value = serde_json::json!({"result": {"snapshot": {
@@ -617,7 +529,6 @@ mod tests {
         assert_eq!(rows[0].title, "Ship the port");
     }
 
-    /// A plain shell is not an agent, however many panes Herdr reports.
     #[test]
     fn leaves_plain_shells_off_the_board() {
         let value = serde_json::json!({"result": {"snapshot": {
@@ -627,8 +538,6 @@ mod tests {
         assert!(agents_from_snapshot("default", &value).is_empty());
     }
 
-    /// The pane row is the older of the two, so a state it still calls
-    /// `unknown` must not overwrite the live one the agent row reports.
     #[test]
     fn merges_without_losing_the_live_state() {
         let value = serde_json::json!({"result": {"snapshot": {
@@ -641,8 +550,6 @@ mod tests {
         assert_eq!(rows[0].cwd, "/repo");
     }
 
-    /// `agent list` carries the same rows in the same envelope, so the
-    /// fallback path needs no parser of its own.
     #[test]
     fn reads_the_agent_list_shape_too() {
         let value = serde_json::json!({"result": {"agents": [{"pane_id": "p2", "agent": "grok", "agent_status": "done", "title": "Rebase"}], "type": "agent_list"}});
@@ -666,8 +573,6 @@ mod tests {
         assert_eq!(status("whatever-herdr-adds-next"), "unknown");
     }
 
-    /// Every agent Herdr ships an integration for gets its own label, so the
-    /// board's kind filter reads like Herdr's own sidebar.
     #[test]
     fn names_every_agent_herdr_integrates() {
         for (raw, expected) in [
@@ -740,8 +645,6 @@ mod tests {
         assert_eq!(message(b"   "), None);
     }
 
-    /// Herdr's session list is the one document Veronica must not be brittle
-    /// about: the board is built from the names it carries.
     #[test]
     fn reads_the_session_list_herdr_prints() {
         let document: SessionDocument = serde_json::from_str(

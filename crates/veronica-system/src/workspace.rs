@@ -1,4 +1,3 @@
-//! On-demand, read-only workspace checks. Never executes project code or reads .env.
 use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -43,7 +42,6 @@ fn check(name: impl Into<String>, ok: bool, detail: impl Into<String>) -> Check 
     }
 }
 fn read_file(path: &Path) -> Result<Vec<u8>> {
-    // Refuse symlinks/devices/FIFOs, including a replacement racing metadata checks.
     let file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)

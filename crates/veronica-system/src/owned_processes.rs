@@ -1,5 +1,3 @@
-//! Kill only processes carrying an unguessable ownership marker we generated.
-//! pidfds avoid signaling an unrelated process after numeric PID reuse.
 use std::{io::Read, os::unix::fs::MetadataExt};
 pub(crate) fn stop(key: &str, owner: &str) {
     let Ok(entries) = std::fs::read_dir("/proc") else {

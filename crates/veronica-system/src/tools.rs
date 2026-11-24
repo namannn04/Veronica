@@ -1,18 +1,3 @@
-//! Probing the tools in `veronica_core::tools`.
-//!
-//! The catalogue knows where a tool would be; this asks whether it is there
-//! and answers for itself. Edith's `ExtensionLifecycleProbe.toolReadiness` does
-//! the same three-way split, for the same reason: "installed" and "missing" are
-//! not the whole story. A file on PATH that will not run — a broken symlink, a
-//! half-finished npm install, a binary for the wrong architecture — is a third
-//! state, and reporting it as missing would send the user to install something
-//! they already have.
-//!
-//! The version string is the first non-empty line the tool prints, on stdout or
-//! stderr, which is Edith's rule. `ssh -V` writes to stderr and several of the
-//! others write to stdout, so reading only one of them would leave half the
-//! catalogue looking broken.
-
 use std::collections::BTreeMap;
 use std::process::Stdio;
 use std::time::Duration;
@@ -21,26 +6,14 @@ use anyhow::Context;
 use serde::Serialize;
 use veronica_core::tools::ToolSpec;
 
-/// How long one tool may take to say its version.
-///
-/// Edith allows five seconds for everything but `yt-dlp`. Nothing in this
-/// catalogue does work on `--version`, so a tool that has not answered by then
-/// is wedged, and waiting longer only holds up the rest of the list.
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "state", rename_all = "camelCase")]
 pub enum Readiness {
-    Installed {
-        path: String,
-        version: String,
-    },
+    Installed { path: String, version: String },
     Uninstalled,
-    /// Found, but it would not run. `detail` names the file, because which of
-    /// several copies is being used is usually the answer.
-    Error {
-        detail: String,
-    },
+    Error { detail: String },
 }
 
 impl Readiness {
@@ -48,7 +21,6 @@ impl Readiness {
         matches!(self, Readiness::Installed { .. })
     }
 
-    /// One line for a table cell.
     pub fn summary(&self) -> String {
         match self {
             Readiness::Installed { version, .. } => version.clone(),
@@ -58,7 +30,6 @@ impl Readiness {
     }
 }
 
-/// Where the tool is and what it says it is.
 pub async fn readiness(tool: &ToolSpec) -> Readiness {
     let Some(path) = tool.locate() else {
         return Readiness::Uninstalled;
@@ -74,8 +45,6 @@ pub async fn readiness(tool: &ToolSpec) -> Readiness {
     }
 }
 
-/// One tool, probed, with everything a screen or a terminal needs to say
-/// about it. The CLI and the app share the shape so their answers cannot drift.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Report {
@@ -83,18 +52,12 @@ pub struct Report {
     pub display_name: &'static str,
     pub why: &'static str,
     pub instruction: &'static str,
-    /// The extensions that named this tool, so a missing one points somewhere.
     pub wanted_by: Vec<&'static str>,
     #[serde(flatten)]
     pub readiness: Readiness,
 }
 
 impl Report {
-    /// What to do about a tool that is not ready.
-    ///
-    /// A tool that is present but will not run needs the diagnosis, not the
-    /// install line: telling someone to install what they already have is how
-    /// a broken symlink turns into an afternoon.
     pub fn note(&self) -> String {
         match &self.readiness {
             Readiness::Error { detail } => detail.clone(),
@@ -103,10 +66,6 @@ impl Report {
     }
 }
 
-/// Every tool in the catalogue, probed together.
-///
-/// Concurrently, because five sequential five-second timeouts is half a minute
-/// of a list that should feel instant, and the probes do not contend.
 pub async fn catalogue() -> Vec<Report> {
     let probes = veronica_core::tools::CATALOG.iter().map(|tool| async move {
         Report {
@@ -121,18 +80,10 @@ pub async fn catalogue() -> Vec<Report> {
     futures_util::future::join_all(probes).await
 }
 
-/// The catalogue, plus what each extension is short of.
-///
-/// The rule about which tools satisfy an extension stays here rather than
-/// being shipped to the interface with the raw lists: one place decides, so
-/// the page, the CLI and any later readiness command cannot answer
-/// differently.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Survey {
     pub tools: Vec<Report>,
-    /// Extension id to the tools it needs and does not have, by id. An
-    /// extension that is satisfied is absent rather than present and empty.
     pub unmet: BTreeMap<&'static str, Vec<&'static str>>,
 }
 
@@ -151,11 +102,6 @@ pub async fn survey() -> Survey {
     Survey { tools, unmet }
 }
 
-/// The tools `entry` needs but does not have, empty when it is satisfied.
-///
-/// Under `Any` one installed tool is enough, so nothing is named while the
-/// other is missing; with none of them installed every candidate is named,
-/// because any one of them would fix it.
 pub fn unmet(
     entry: &veronica_core::extensions::ExtensionEntry,
     reports: &[Report],
@@ -178,7 +124,6 @@ pub fn unmet(
     }
 }
 
-/// What `install` did, or what it left for the user to do.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "outcome", rename_all = "camelCase")]
 pub enum Outcome {
@@ -190,8 +135,6 @@ pub enum Outcome {
         path: String,
         version: String,
     },
-    /// Veronica ran nothing. `command` is what would do it when there is one
-    /// Veronica could have run, and `instruction` stands alone either way.
     NotRun {
         command: Option<String>,
         instruction: &'static str,
@@ -199,21 +142,6 @@ pub enum Outcome {
     },
 }
 
-/// Get a tool, or say why that is not Veronica's to do.
-///
-/// Edith's `ed tools install`: a tool that is already there is reported, not
-/// reinstalled, and nothing here can remove one. The routes differ by what
-/// they need.
-///
-/// npm runs unprivileged and is never escalated. `npm install -g` under
-/// `pkexec` would install into root's prefix, which is a worse outcome than
-/// the failure it was meant to avoid, so a prefix the user cannot write to is
-/// reported with the instruction rather than worked around.
-///
-/// apt needs root, and follows the rule the rest of Veronica follows: without
-/// `--yes` the command is printed, with it the command runs through `pkexec`,
-/// so the desktop's own dialog asks the user to authenticate. Veronica never
-/// writes `sudo` on their behalf.
 pub async fn install(tool: &ToolSpec, assume_yes: bool) -> anyhow::Result<Outcome> {
     if let Readiness::Installed { path, version } = readiness(tool).await {
         return Ok(Outcome::AlreadyInstalled { path, version });
@@ -221,11 +149,6 @@ pub async fn install(tool: &ToolSpec, assume_yes: bool) -> anyhow::Result<Outcom
 
     let argv: Vec<String> = match tool.install {
         veronica_core::tools::Install::Npm { package } => {
-            // Asked before running rather than diagnosed afterwards: on a
-            // stock Ubuntu the global prefix is /usr/local, npm fails with a
-            // forty-line EACCES trace, and its own advice is to re-run as
-            // root — which would install the tool into root's prefix, where
-            // the user cannot run it.
             if let Some(reason) = npm_prefix_problem().await {
                 return Ok(Outcome::NotRun {
                     command: Some(format!("npm install -g {package}")),
@@ -266,9 +189,6 @@ pub async fn install(tool: &ToolSpec, assume_yes: bool) -> anyhow::Result<Outcom
 
     run_streaming(&argv).await?;
 
-    // An install that reports success and leaves nothing on the search path is
-    // the npm-prefix-not-on-PATH case, and it is worth saying plainly: the
-    // package is on disk and the tool still will not run.
     match readiness(tool).await {
         Readiness::Installed { path, version } => Ok(Outcome::Installed { path, version }),
         Readiness::Error { detail } => anyhow::bail!("{detail}"),
@@ -286,13 +206,6 @@ pub async fn install(tool: &ToolSpec, assume_yes: bool) -> anyhow::Result<Outcom
     }
 }
 
-/// Why `npm install -g` would fail here, or `None` when it would work.
-///
-/// Writability is established by writing: a directory Veronica creates and
-/// removes at once. Reading the mode bits would mean reasoning about the
-/// effective uid, the group list, ACLs and the mount's read-only flag, and
-/// getting any of those wrong produces the confident wrong answer that is
-/// worse than no check at all.
 async fn npm_prefix_problem() -> Option<String> {
     let Some(npm) = veronica_core::tools::locate_in(&veronica_core::tools::search_path(), "npm")
     else {
@@ -316,9 +229,6 @@ async fn npm_prefix_problem() -> Option<String> {
     .ok()?;
     let prefix = std::path::PathBuf::from(first_line(&output.stdout)?);
 
-    // npm writes packages under <prefix>/lib/node_modules and links them into
-    // <prefix>/bin, so the nearest directory that already exists is the one
-    // whose permissions decide the outcome.
     let target = prefix.join("lib/node_modules");
     let existing = target
         .ancestors()
@@ -341,11 +251,6 @@ async fn npm_prefix_problem() -> Option<String> {
     }
 }
 
-/// Run an install, with its output on stderr as it happens.
-///
-/// Not captured and not on stdout: an install can be a silent minute, and
-/// stdout carries exactly one document, so the log belongs on the other
-/// stream — which is where `vr` puts every log already.
 async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
     use tokio::io::{AsyncBufReadExt, BufReader};
 
@@ -360,11 +265,6 @@ async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
     let mut out = BufReader::new(child.stdout.take().expect("piped")).lines();
     let mut err = BufReader::new(child.stderr.take().expect("piped")).lines();
 
-    // Both streams are drained together: reading one to the end first lets the
-    // other fill its pipe buffer and block the installer forever. Each is
-    // tracked separately and the loop ends only when both have, because a
-    // finished stream answers instantly and would otherwise win every race and
-    // cut the other one off mid-log.
     let (mut out_done, mut err_done) = (false, false);
     let mut tail: Vec<String> = Vec::new();
     while !out_done || !err_done {
@@ -381,7 +281,6 @@ async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
         if let Some(line) = line {
             eprintln!("{line}");
             tail.push(line);
-            // Only the end of the log is worth quoting back in an error.
             if tail.len() > 10 {
                 tail.remove(0);
             }
@@ -403,7 +302,6 @@ async fn run_streaming(argv: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// The first non-empty line the tool prints for its version arguments.
 async fn version(path: &std::path::Path, args: &[&str]) -> Result<String, String> {
     let child = tokio::process::Command::from(veronica_core::host::command(path))
         .args(args)
@@ -426,8 +324,6 @@ async fn version(path: &std::path::Path, args: &[&str]) -> Result<String, String
         }
     };
 
-    // A tool that exits non-zero but still printed its version has answered the
-    // question; the exit status only decides the wording when nothing is there.
     match first_line(&output.stdout).or_else(|| first_line(&output.stderr)) {
         Some(line) => Ok(line),
         None if output.status.success() => {
@@ -459,8 +355,6 @@ mod tests {
         assert_eq!(first_line(b"   \n\t\n"), None);
     }
 
-    /// `ssh -V` writes to stderr and exits non-zero on some builds. Both are
-    /// normal, and neither means the tool is broken.
     #[tokio::test]
     async fn a_version_on_stderr_still_counts() {
         let (_root, script) = write_script("#!/bin/sh\necho 'OpenSSH_9.6p1' >&2\nexit 1\n");
@@ -534,8 +428,6 @@ mod tests {
         tools.into_iter().map(|tool| tool.id).collect()
     }
 
-    /// Agent Usage is Edith's one exception: Claude and Codex report the same
-    /// kind of numbers, so either alone is a working page.
     #[test]
     fn agent_usage_is_satisfied_by_either_provider() {
         let reports = vec![report("claude", true), report("codex", false)];
@@ -551,8 +443,6 @@ mod tests {
         );
     }
 
-    /// Everything else needs what it declares. This is the case the Extensions
-    /// page got wrong: Herdr reported Ready with no herdr on the machine.
     #[test]
     fn herdr_without_herdr_is_unmet() {
         let reports = vec![report("herdr", false)];
@@ -564,9 +454,6 @@ mod tests {
         assert!(unmet(entry("emoji"), &[]).is_empty());
     }
 
-    /// Whatever this machine has installed, the map has to be readable by id
-    /// on both sides: a key nothing matches, or an empty list, would show the
-    /// page a warning it cannot word.
     #[tokio::test]
     async fn a_survey_only_names_real_extensions_and_real_shortfalls() {
         let survey = survey().await;
@@ -585,9 +472,6 @@ mod tests {
         }
     }
 
-    /// A tool that is not on this machine under any name, so the install
-    /// routes are reached rather than short-circuited by what happens to be
-    /// installed on the machine running the tests.
     fn absent(install: veronica_core::tools::Install) -> ToolSpec {
         ToolSpec {
             id: "absent",
@@ -600,7 +484,6 @@ mod tests {
         }
     }
 
-    /// Nothing Veronica can drive is still an answer, not a failure.
     #[tokio::test]
     async fn a_manual_route_runs_nothing_and_hands_back_the_instruction() {
         let outcome = install(&absent(veronica_core::tools::Install::Manual), true)
@@ -619,9 +502,6 @@ mod tests {
         }
     }
 
-    /// The rule the rest of Veronica follows: a change that needs root is
-    /// printed unless the user asked for the authentication dialog. Whatever
-    /// is printed is what would run, never a `sudo` invented for the message.
     #[tokio::test]
     async fn an_apt_route_without_yes_prints_the_command_it_would_run() {
         let tool = absent(veronica_core::tools::Install::Apt {
@@ -650,10 +530,6 @@ mod tests {
         }
     }
 
-    /// Both streams have to be read to the end, and this script proves it:
-    /// stdout closes a second before stderr says anything. A loop that stops
-    /// at the first exhausted stream is finished by then, and loses the error
-    /// — which is the line that mattered.
     #[tokio::test]
     async fn a_failed_install_quotes_the_end_of_both_its_streams() {
         let (_root, script) = write_script(
@@ -667,8 +543,6 @@ mod tests {
         assert!(error.contains("to stderr"), "{error}");
     }
 
-    /// An installer noisier than a pipe buffer must not wedge. npm is, on a
-    /// cold cache.
     #[tokio::test]
     async fn an_installer_louder_than_a_pipe_buffer_still_finishes() {
         let (_root, script) = write_script(
@@ -686,18 +560,6 @@ mod tests {
         assert!(ran.is_ok());
     }
 
-    /// The directory is returned alongside the path because dropping it
-    /// deletes the script, and the write handle is closed before the script is
-    /// run: an open writer makes the exec fail with "Text file busy".
-    /// An executable script for a test to run.
-    ///
-    /// The executable is written by a short-lived `install` process rather
-    /// than by this one. Tests run on parallel threads, and a thread that
-    /// forks while this one still holds a write descriptor hands that
-    /// descriptor to its child until the child execs; executing the script in
-    /// that window fails with ETXTBSY ("text file busy"), which made these
-    /// tests fail at random. A file this process never opened for writing
-    /// cannot be busy on its account.
     fn write_script(body: &str) -> (tempfile::TempDir, std::path::PathBuf) {
         let root = tempfile::tempdir().unwrap();
         let source = root.path().join("tool.src");

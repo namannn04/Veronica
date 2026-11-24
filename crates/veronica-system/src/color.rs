@@ -1,22 +1,3 @@
-//! Sampling a colour from the screen.
-//!
-//! Edith calls `NSColorSampler`. There is no single Linux equivalent, so
-//! Veronica tries the two that exist, in order:
-//!
-//! 1. `org.gnome.Shell.Screenshot.PickColor`, GNOME's own eyedropper. It is a
-//!    plain round trip that returns the colour, and it is what the shell's
-//!    screenshot UI itself uses.
-//! 2. `org.freedesktop.portal.Screenshot.PickColor`, the portal interface. It
-//!    is asynchronous — the call returns a request handle and the colour
-//!    arrives on a signal — and it works on any desktop with a portal, which is
-//!    why it is the fallback rather than GNOME-only code.
-//!
-//! Both hand back RGB in 0..=1, matching what the swatch history stores.
-//!
-//! Neither can be sampled without the user clicking, so there is no way to read
-//! the screen behind their back: cancelling the eyedropper is reported as a
-//! cancellation, not a colour.
-
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -29,18 +10,13 @@ pub const SHELL_SCREENSHOT_PATH: &str = "/org/gnome/Shell/Screenshot";
 pub const PORTAL_BUS: &str = "org.freedesktop.portal.Desktop";
 pub const PORTAL_PATH: &str = "/org/freedesktop/portal/desktop";
 
-/// Longest a pick may stay open. The eyedropper waits for a click, so this only
-/// bounds the case where the dialog is abandoned and never answered — without
-/// it the caller would wait for the lifetime of the process.
 pub const PICK_TIMEOUT: Duration = Duration::from_secs(300);
 
-/// An sRGB triple in 0..=1, exactly as the compositor reported it.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PickedColor {
     pub red: f64,
     pub green: f64,
     pub blue: f64,
-    /// Which of the two backends answered, so the interface can say so.
     pub source: PickSource,
 }
 
@@ -59,11 +35,6 @@ impl PickSource {
     }
 }
 
-/// Pick a colour, preferring the shell and falling back to the portal.
-///
-/// A cancellation from the first backend is returned as-is rather than retried
-/// through the second: the user closed the eyedropper, and opening a second one
-/// would be a surprise.
 pub async fn pick() -> Result<PickedColor> {
     let connection = Connection::session()
         .await
@@ -85,7 +56,6 @@ pub async fn pick_on(connection: &Connection) -> Result<PickedColor> {
     pick_with_portal(connection).await
 }
 
-/// GNOME Shell's eyedropper. Returns `a{sv}` with `color` as `(ddd)`.
 async fn pick_with_shell(connection: &Connection) -> Result<PickedColor> {
     let reply = connection
         .call_method(
@@ -111,14 +81,9 @@ async fn pick_with_shell(connection: &Connection) -> Result<PickedColor> {
     })
 }
 
-/// The portal's eyedropper: call, then wait for the request's `Response` signal.
 async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
-    // A unique token keeps this request's object path distinct from any other
-    // portal request this process makes.
     let token = format!("veronica_{}_{}", std::process::id(), monotonic_tag());
 
-    // Subscribe before calling. The portal may answer immediately, and a
-    // subscription set up afterwards would miss that signal.
     let rule = zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
         .interface("org.freedesktop.portal.Request")?
@@ -139,9 +104,6 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
             PORTAL_PATH,
             Some("org.freedesktop.portal.Screenshot"),
             "PickColor",
-            // No parent window: Veronica's picker is reachable from the tray and
-            // the shell as well as the app, so there is not always a window to
-            // parent to.
             &("", options),
         )
         .await
@@ -161,7 +123,6 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
 
         let header = message.header();
         if header.path().map(|p| p.as_str()) != Some(handle.as_str()) {
-            // Another portal request's reply; not ours.
             continue;
         }
 
@@ -186,8 +147,6 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
     }
 }
 
-/// Wording used for a user-cancelled pick, so callers can recognise it without
-/// a dedicated error type crossing the IPC boundary as a string.
 pub const CANCELLED: &str = "the colour pick was cancelled";
 
 pub fn is_cancellation(error: &anyhow::Error) -> bool {
@@ -195,12 +154,6 @@ pub fn is_cancellation(error: &anyhow::Error) -> bool {
     text.contains("cancel") || text.contains("dismissed")
 }
 
-/// Pull `color` out of a portal or shell result vardict.
-///
-/// The value is documented as `(ddd)`, but how deeply it is boxed varies: the
-/// vardict itself makes it a variant, and an implementation that builds the
-/// struct from variants leaves each component boxed too. Both levels are
-/// unwrapped so any of those shapes reads the same.
 fn triple(result: &HashMap<String, OwnedValue>) -> Result<(f64, f64, f64)> {
     let value = result
         .get("color")
@@ -224,8 +177,6 @@ fn triple(result: &HashMap<String, OwnedValue>) -> Result<(f64, f64, f64)> {
     for (index, field) in fields.iter().enumerate() {
         channels[index] = match unbox(field) {
             Value::F64(v) => *v,
-            // Tolerated because a reimplemented portal could plausibly send
-            // integers; clamping happens in the caller either way.
             Value::U8(v) => f64::from(*v) / 255.0,
             other => bail!("colour component {index} was {}", other.value_signature()),
         };
@@ -233,7 +184,6 @@ fn triple(result: &HashMap<String, OwnedValue>) -> Result<(f64, f64, f64)> {
     Ok((channels[0], channels[1], channels[2]))
 }
 
-/// Strip any number of `Value::Value` wrappers off a value.
 fn unbox<'v>(value: &'v Value<'v>) -> &'v Value<'v> {
     let mut current = value;
     while let Value::Value(inner) = current {
@@ -242,8 +192,6 @@ fn unbox<'v>(value: &'v Value<'v>) -> &'v Value<'v> {
     current
 }
 
-/// A cheap changing suffix for the request token. Not security-relevant; it only
-/// has to differ between two picks from the same process.
 fn monotonic_tag() -> u64 {
     use std::sync::atomic::{AtomicU64, Ordering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -259,13 +207,10 @@ mod tests {
         HashMap::from([("color".to_string(), OwnedValue::try_from(value).unwrap())])
     }
 
-    /// A genuine `(ddd)` struct, the signature both services document.
     fn ddd(red: f64, green: f64, blue: f64) -> Value<'static> {
         Value::from((red, green, blue))
     }
 
-    /// The same struct built out of variants, which is what an implementation
-    /// assembling it from a vardict produces: signature `(vvv)`.
     fn boxed(fields: [Value<'static>; 3]) -> Value<'static> {
         let [a, b, c] = fields;
         Value::Structure(Structure::from((a, b, c)))
@@ -281,12 +226,9 @@ mod tests {
 
     #[test]
     fn unwraps_a_colour_nested_inside_a_variant() {
-        // The portal builds its results as a{sv}, and some implementations box
-        // the struct one level deeper than others.
         let doubly = Value::Value(Box::new(ddd(1.0, 0.0, 0.0)));
         assert_eq!(triple(&vardict(doubly)).unwrap(), (1.0, 0.0, 0.0));
 
-        // And with each component boxed rather than the struct.
         let per_field = boxed([Value::F64(0.1), Value::F64(0.2), Value::F64(0.3)]);
         assert_eq!(triple(&vardict(per_field)).unwrap(), (0.1, 0.2, 0.3));
     }

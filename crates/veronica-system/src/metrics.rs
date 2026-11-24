@@ -1,17 +1,8 @@
-//! System metrics from procfs and sysfs.
-//!
-//! Edith reads these through IOKit and `host_statistics`; the Linux equivalents
-//! are `/proc` and `/sys`, which `sysinfo` wraps. Sampling is deliberately
-//! explicit: CPU percentages need two reads separated by an interval, so a
-//! single-shot call would always report zero.
-
 use std::time::Duration;
 
 use serde::Serialize;
 use sysinfo::{Disks, MemoryRefreshKind, Networks, ProcessesToUpdate, Signal, System};
 
-/// Minimum gap between CPU samples. Anything shorter and the kernel counters
-/// have not moved enough to produce a meaningful percentage.
 pub const MIN_CPU_INTERVAL: Duration = sysinfo::MINIMUM_CPU_UPDATE_INTERVAL;
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -32,9 +23,7 @@ pub struct SystemSnapshot {
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CpuStats {
-    /// Whole-machine usage, 0-100.
     pub usage_percent: f32,
-    /// Per-core usage, in the kernel's core order.
     pub per_core: Vec<f32>,
     pub physical_cores: Option<usize>,
     pub logical_cores: usize,
@@ -46,7 +35,6 @@ pub struct CpuStats {
 #[serde(rename_all = "camelCase")]
 pub struct MemoryStats {
     pub total_bytes: u64,
-    /// What the kernel counts as in use, excluding reclaimable cache.
     pub used_bytes: u64,
     pub available_bytes: u64,
     pub swap_total_bytes: u64,
@@ -102,9 +90,6 @@ pub struct BatteryStats {
     pub time_to_empty_secs: Option<u64>,
 }
 
-/// A user-owned process shown by the System page. Linux does not expose the
-/// same NSRunningApplication catalogue as macOS, so the process table is the
-/// honest native equivalent and includes the executable path for disambiguation.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunningProcess {
@@ -115,8 +100,6 @@ pub struct RunningProcess {
     pub memory_bytes: u64,
 }
 
-/// Current user's processes, highest CPU first. Kernel threads and other users'
-/// services are excluded, and Veronica itself is kept out of the quit list.
 pub fn running_processes() -> Vec<RunningProcess> {
     let mut system = System::new_all();
     system.refresh_processes(ProcessesToUpdate::All, true);
@@ -154,8 +137,6 @@ pub fn running_processes() -> Vec<RunningProcess> {
     rows
 }
 
-/// Ask one current-user process to exit. PID 1 and Veronica itself are always
-/// refused even if a caller bypasses the interface.
 pub fn terminate_process(pid: u32) -> anyhow::Result<()> {
     anyhow::ensure!(pid > 1, "refusing to terminate a system process");
     let target = sysinfo::Pid::from_u32(pid);
@@ -183,8 +164,6 @@ pub fn terminate_process(pid: u32) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Samples metrics, holding the `System` handle between reads so CPU
-/// percentages are real rather than zero.
 pub struct MetricsSampler {
     system: System,
     disks: Disks,
@@ -208,9 +187,6 @@ impl MetricsSampler {
         }
     }
 
-    /// Take a reading. The first call primes the CPU counters and sleeps for the
-    /// minimum interval, so callers get usable numbers immediately instead of a
-    /// zeroed first frame.
     pub fn sample(&mut self) -> SystemSnapshot {
         if !self.primed {
             self.system.refresh_cpu_all();
@@ -220,14 +196,9 @@ impl MetricsSampler {
         self.system.refresh_cpu_all();
         self.system
             .refresh_memory_specifics(MemoryRefreshKind::everything());
-        // The lists, not only the figures: `refresh` updates what was known
-        // at launch, so a USB drive plugged in later never appeared, and one
-        // removed stayed listed with the numbers of whatever was underneath
-        // its mount point. Same for an interface such as a VPN or a phone.
         self.disks.refresh_list();
         self.networks.refresh_list();
 
-        // Read this before borrowing the cpu list, which borrows `system` too.
         let physical_cores = self.system.physical_core_count();
         let global_usage = self.system.global_cpu_usage();
         let cpus = self.system.cpus();
@@ -255,8 +226,6 @@ impl MetricsSampler {
             .disks
             .list()
             .iter()
-            // Snap mounts and loop devices are read-only squashfs images that
-            // report 100% full; listing them would bury the real filesystems.
             .filter(|disk| !is_pseudo_mount(&disk.mount_point().display().to_string()))
             .map(|disk| DiskStats {
                 name: disk.name().to_string_lossy().to_string(),
@@ -285,7 +254,6 @@ impl MetricsSampler {
     }
 }
 
-/// Mounts that are not real storage and would distort a disk list.
 pub fn is_pseudo_mount(mount_point: &str) -> bool {
     const PREFIXES: [&str; 6] = [
         "/snap/",
@@ -300,8 +268,6 @@ pub fn is_pseudo_mount(mount_point: &str) -> bool {
         .any(|prefix| mount_point.starts_with(prefix))
 }
 
-/// Thermal zones from sysfs. Labels come from `type`, which names the sensor
-/// (`x86_pkg_temp`, `acpitz`) rather than a number.
 fn read_temperatures() -> Vec<TemperatureReading> {
     let Ok(entries) = std::fs::read_dir("/sys/class/thermal") else {
         return Vec::new();
@@ -332,26 +298,17 @@ fn read_temperatures() -> Vec<TemperatureReading> {
     readings
 }
 
-/// sysfs reports temperatures in thousandths of a degree.
 fn read_millidegrees(path: &std::path::Path) -> Option<f32> {
     let raw = std::fs::read_to_string(path).ok()?;
     let millidegrees: f32 = raw.trim().parse().ok()?;
     let celsius = millidegrees / 1000.0;
-    // Guard against sensors that report an obviously bogus value when idle.
     (-50.0..=200.0).contains(&celsius).then_some(celsius)
 }
 
-/// Battery from sysfs. Desktops have no battery, so this is optional.
 fn read_battery() -> Option<BatteryStats> {
     read_battery_from(std::path::Path::new("/sys/class/power_supply"))
 }
 
-/// The computer's own battery under a `power_supply` directory.
-///
-/// A wireless mouse, keyboard or headset reports a battery too, with
-/// `scope` set to `Device`; whichever came first in directory order used to
-/// win, so the System page could show a mouse's charge as the laptop's. An
-/// entry that cannot be read is skipped rather than ending the search.
 fn read_battery_from(root: &std::path::Path) -> Option<BatteryStats> {
     let read = |path: &std::path::Path, name: &str| {
         std::fs::read_to_string(path.join(name))
@@ -379,7 +336,6 @@ fn read_battery_from(root: &std::path::Path) -> Option<BatteryStats> {
     None
 }
 
-/// Bytes as a human-readable size, matching how the UI labels disks.
 pub fn human_bytes(bytes: u64) -> String {
     const UNITS: [&str; 6] = ["B", "KB", "MB", "GB", "TB", "PB"];
     if bytes == 0 {
@@ -415,7 +371,6 @@ mod tests {
     #[test]
     fn a_peripherals_battery_is_not_the_computers() {
         let root = tempfile::tempdir().unwrap();
-        // Named to sort first, as a Bluetooth device can.
         supply(
             root.path(),
             "AAA_hid_mouse",
@@ -481,7 +436,6 @@ mod tests {
 
     #[test]
     fn disk_used_bytes_never_underflows_when_available_exceeds_total() {
-        // Reserved blocks can make available look larger than total.
         let disk = DiskStats {
             total_bytes: 100,
             available_bytes: 120,
@@ -506,8 +460,6 @@ mod tests {
         let snapshot = sampler.sample();
         assert!(snapshot.memory.total_bytes > 0, "memory should be readable");
         assert!(snapshot.cpu.logical_cores > 0, "cores should be readable");
-        // The first sample must not be a zeroed frame; priming guarantees a
-        // real interval has elapsed.
         assert!(
             snapshot.cpu.usage_percent >= 0.0 && snapshot.cpu.usage_percent <= 100.0 * 1.01,
             "cpu usage out of range: {}",

@@ -1,28 +1,8 @@
-//! Detecting that the screen is being shared.
-//!
-//! Edith watches macOS for a display being captured or mirrored. The Ubuntu
-//! equivalent is an active compositor screencast session: every well-behaved
-//! screen-sharing path on Wayland — a browser tab, Zoom, OBS, GNOME's own
-//! recorder — goes through `xdg-desktop-portal`, which asks Mutter for a
-//! session. Mutter exports one object per live session under a `Session`
-//! collection — `/org/gnome/Mutter/ScreenCast/Session/u8` — and removes it when
-//! the session ends, so counting the children of that collection answers "is the
-//! screen being shared" without any privileged access and without watching what
-//! is on screen. (Introspecting the *root* path is not enough: it only gains a
-//! single `Session` child, whatever the number of sessions beneath it.)
-//!
-//! RemoteDesktop is included because a remote-control session is also someone
-//! else looking at the screen, which is the thing presenter mode is for.
-//!
-//! Detection is read-only: it can tell that a session exists and cannot see the
-//! frames, the peer, or what is being shared.
-
 use anyhow::{Context, Result};
 use serde::Serialize;
 use zbus::Connection;
 
 pub const SCREEN_CAST_BUS: &str = "org.gnome.Mutter.ScreenCast";
-/// The collection Mutter exports live screencast sessions beneath.
 pub const SCREEN_CAST_SESSIONS_PATH: &str = "/org/gnome/Mutter/ScreenCast/Session";
 pub const REMOTE_DESKTOP_BUS: &str = "org.gnome.Mutter.RemoteDesktop";
 pub const REMOTE_DESKTOP_SESSIONS_PATH: &str = "/org/gnome/Mutter/RemoteDesktop/Session";
@@ -30,23 +10,14 @@ pub const REMOTE_DESKTOP_SESSIONS_PATH: &str = "/org/gnome/Mutter/RemoteDesktop/
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScreenShareState {
-    /// Whether anything is capturing the screen right now.
     pub sharing: bool,
-    /// Active screencast sessions: a browser tab sharing, a recorder, and so on.
     pub screencast_sessions: usize,
-    /// Active remote-control sessions.
     pub remote_sessions: usize,
-    /// One line naming what was found, for the interface to show. `None` when
-    /// nothing is sharing.
     pub reason: Option<String>,
-    /// Set when detection itself could not run, e.g. on a desktop that is not
-    /// GNOME. Distinguishes "nothing is sharing" from "cannot tell".
     pub unavailable: Option<String>,
 }
 
 impl ScreenShareState {
-    /// The wording Edith's `presenterAutoReason` carries, adapted to what Linux
-    /// can actually distinguish.
     fn describe(screencast: usize, remote: usize) -> Option<String> {
         match (screencast, remote) {
             (0, 0) => None,
@@ -80,9 +51,6 @@ impl ScreenShareState {
     }
 }
 
-/// Read the current state. Never fails: a desktop with no Mutter reports
-/// `unavailable` rather than erroring, because presenter mode must keep working
-/// manually wherever detection does not.
 pub async fn detect() -> ScreenShareState {
     let connection = match Connection::session().await {
         Ok(connection) => connection,
@@ -96,25 +64,13 @@ pub async fn detect_on(connection: &Connection) -> ScreenShareState {
     let remote = count_sessions(connection, REMOTE_DESKTOP_BUS, REMOTE_DESKTOP_SESSIONS_PATH).await;
 
     match (screencast, remote) {
-        // Neither service answered: this is not a Mutter desktop, so detection
-        // is unavailable rather than reporting a quiet screen.
         (Err(cast_error), Err(_)) => ScreenShareState::cannot_tell(format!(
             "the compositor does not expose screencast sessions: {cast_error:#}"
         )),
-        // One answering is enough to report on; the other simply contributes
-        // nothing, which is what a desktop without remote desktop looks like.
         (casts, remotes) => ScreenShareState::from_counts(casts.unwrap_or(0), remotes.unwrap_or(0)),
     }
 }
 
-/// How many session objects exist beneath a Mutter service's session collection.
-///
-/// Mutter creates one child object per live session and removes it when the
-/// session ends, so the child count *is* the session count. With no sessions the
-/// collection path itself has no children — D-Bus answers introspection for a
-/// path with no object, so that is an empty answer rather than an error. A
-/// desktop with no Mutter at all fails to reach the bus name instead, which is
-/// what separates "nothing is sharing" from "cannot tell".
 async fn count_sessions(connection: &Connection, bus: &str, path: &str) -> Result<usize> {
     let proxy = zbus::fdo::IntrospectableProxy::builder(connection)
         .destination(bus.to_string())?
@@ -129,11 +85,6 @@ async fn count_sessions(connection: &Connection, bus: &str, path: &str) -> Resul
     Ok(count_child_nodes(&xml))
 }
 
-/// Count `<node name="..."/>` children in introspection XML.
-///
-/// The root element is also a `<node>` but carries no `name`, so keying on the
-/// attribute counts children only. A tiny scanner rather than an XML dependency,
-/// matching how `portal.rs` reads the same kind of document.
 pub fn count_child_nodes(xml: &str) -> usize {
     const NEEDLE: &str = "<node name=\"";
     let mut count = 0;
@@ -157,8 +108,6 @@ pub fn count_child_nodes(xml: &str) -> usize {
 mod tests {
     use super::*;
 
-    /// What introspecting the session collection returns with nothing sharing:
-    /// the standard interfaces and no children. Verified against Mutter 50.
     const IDLE: &str = r#"
         <node>
           <interface name="org.freedesktop.DBus.Introspectable">
@@ -166,8 +115,6 @@ mod tests {
           </interface>
         </node>"#;
 
-    /// Two live sessions. Mutter names them `u<n>`, one child each. Verified by
-    /// creating real sessions against Mutter 50.
     const SHARING: &str = r#"
         <node>
           <interface name="org.freedesktop.DBus.Introspectable"/>
@@ -175,9 +122,6 @@ mod tests {
           <node name="u9"/>
         </node>"#;
 
-    /// The service *root*, while one session is live. It gains exactly one
-    /// `Session` child however many sessions exist beneath it, which is why the
-    /// count is taken from the collection and not from here.
     const ROOT_WHILE_SHARING: &str = r#"
         <node>
           <interface name="org.gnome.Mutter.ScreenCast">
@@ -198,8 +142,6 @@ mod tests {
 
     #[test]
     fn the_service_root_cannot_be_used_to_count_sessions() {
-        // It reports a single `Session` child whether one session is live or
-        // ten, so counting there would under-report every time.
         assert_eq!(
             count_child_nodes(ROOT_WHILE_SHARING),
             1,
@@ -211,8 +153,6 @@ mod tests {
 
     #[test]
     fn interfaces_and_methods_are_not_mistaken_for_sessions() {
-        // `<interface name=` and `<method name=` both carry a name attribute, so
-        // a looser scan would count them and report a permanent share.
         assert_eq!(count_child_nodes(IDLE), 0);
         assert_eq!(
             count_child_nodes(r#"<node><interface name="a"><method name="b"/></interface></node>"#),
@@ -261,8 +201,6 @@ mod tests {
 
     #[test]
     fn a_remote_session_alone_still_counts_as_sharing() {
-        // Someone driving the machine remotely is looking at the screen, which
-        // is exactly what presenter mode is for.
         let state = ScreenShareState::from_counts(0, 1);
         assert!(state.sharing);
         assert_eq!(state.remote_sessions, 1);
@@ -279,12 +217,9 @@ mod tests {
         );
     }
 
-    /// Runs against whatever compositor is actually present.
     #[tokio::test]
     async fn detection_answers_on_this_machine_without_erroring() {
         let state = detect().await;
-        // Either it read the sessions, or it said why it could not. Never both,
-        // and never a panic.
         if state.unavailable.is_some() {
             assert!(!state.sharing);
             assert_eq!(state.screencast_sessions, 0);

@@ -1,4 +1,3 @@
-//! Isolated JSON-lines harness for desktop integration tests, not an installed service.
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};

@@ -1,9 +1,3 @@
-//! Linux system integration for Veronica.
-//!
-//! Each module wraps one platform service that a macOS framework provides on
-//! Edith: metrics from procfs, sleep control from logind, audio from PipeWire,
-//! notifications and portal access from D-Bus.
-
 pub mod audio;
 pub mod bluetooth;
 pub mod color;
@@ -31,11 +25,6 @@ pub use portal::PortalSupport;
 use anyhow::Result;
 use veronica_core::DesktopSession;
 
-/// Detect the session and refine it with facts that need a D-Bus round trip.
-///
-/// `DesktopSession::detect` is synchronous and cannot probe the portal, so the
-/// capability map would otherwise report global shortcuts as unavailable even
-/// where the portal implements them.
 pub async fn detect_session() -> DesktopSession {
     let mut session = DesktopSession::detect();
     if !session.is_graphical() {

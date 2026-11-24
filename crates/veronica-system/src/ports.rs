@@ -1,4 +1,3 @@
-//! The host's TCP listeners and unconnected UDP sockets, never sandbox PIDs.
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{process::Stdio, time::Duration};

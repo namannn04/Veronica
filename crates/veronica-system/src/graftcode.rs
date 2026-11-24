@@ -1,4 +1,3 @@
-//! Explicit, bounded calls to a user-owned local Graftcode Gateway. No listeners.
 use anyhow::{bail, ensure, Context, Result};
 use reqwest::{
     header::{HeaderMap, HeaderValue},
@@ -208,7 +207,6 @@ impl Session {
         }
     }
     async fn installation(&self) -> Value {
-        // Display only. Never execute commands or fetch advertised registry URLs.
         let mut url = self.url.clone();
         url.set_path("/discover");
         let Ok(mut response) = self

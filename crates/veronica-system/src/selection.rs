@@ -1,27 +1,3 @@
-//! Putting text on the clipboard.
-//!
-//! Reading the clipboard needs the compositor, which is why the history is
-//! captured by the shell extension. Writing has the same constraint on Wayland:
-//! `St.Clipboard.set_text` inside the shell is the only route that does not
-//! need a focused window.
-//!
-//! So this tries, in order:
-//!
-//! 1. Veronica's own GNOME Shell extension, over the same D-Bus bridge that
-//!    already carries Clean Keys. Works on Wayland, needs nothing installed.
-//! 2. `wl-copy`, from wl-clipboard, for a Wayland session without the
-//!    extension.
-//! 3. `xclip`, then `xsel`, for X11.
-//!
-//! Every route is reported by name on failure, so "cannot copy" always says
-//! which of them were tried and what to install.
-//!
-//! Pasting *in place* — putting the text into the window you were typing in,
-//! rather than only on the clipboard — has the same shape: synthesising input
-//! into a window Veronica does not own is the compositor's job. Edith posts a
-//! ⌘V through a `CGEvent`; here the shell extension sends one Ctrl+V through a
-//! virtual keyboard on the seat, which needs no per-session portal approval.
-
 use std::io::Write;
 use std::process::Stdio;
 
@@ -32,7 +8,6 @@ pub const SHELL_ACTION_BUS: &str = "io.github.namannn04.Veronica.Shell";
 pub const SHELL_ACTION_PATH: &str = "/io/github/namannn04/Veronica/Shell";
 pub const SHELL_ACTION_INTERFACE: &str = "io.github.namannn04.Veronica.ShellActions";
 
-/// Which route put the text on the clipboard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Writer {
     ShellExtension,
@@ -52,7 +27,6 @@ impl Writer {
     }
 }
 
-/// Copy `text`, returning which route succeeded.
 pub async fn write(text: &str) -> Result<Writer> {
     let mut attempts: Vec<String> = Vec::new();
 
@@ -75,17 +49,10 @@ pub async fn write(text: &str) -> Result<Writer> {
     )
 }
 
-/// Paste what is on the clipboard into the focused window.
-///
-/// The caller puts the text on the clipboard first; this is only the keystroke.
-/// Splitting it that way means a refused paste still leaves the text somewhere
-/// the user can reach, which is the difference between a degraded feature and a
-/// lost one.
 pub async fn paste_in_place() -> Result<()> {
     paste_with_method("PasteInPlace").await
 }
 
-/// Focus the typing app through Shell without unmapping the floating picker.
 pub async fn paste_from_picker() -> Result<()> {
     paste_with_method("PasteEmoji").await
 }
@@ -108,7 +75,6 @@ async fn paste_with_method(method: &str) -> Result<()> {
     Ok(())
 }
 
-/// The external tools, in the order they are tried.
 const COMMAND_WRITERS: &[(Writer, &str, &[&str])] = &[
     (Writer::WlCopy, "wl-copy", &["--type", "text/plain"]),
     (Writer::Xclip, "xclip", &["-selection", "clipboard"]),
@@ -130,8 +96,6 @@ async fn write_with_shell(text: &str) -> Result<()> {
     Ok(())
 }
 
-/// Run one of the command-line tools, handing the text over on stdin so no
-/// shell quoting is involved and the content can be anything at all.
 fn write_with_command(program: &str, args: &[&str], text: &str) -> Result<()> {
     let mut child = veronica_core::host::command(program)
         .args(args)
@@ -147,8 +111,6 @@ fn write_with_command(program: &str, args: &[&str], text: &str) -> Result<()> {
         .write_all(text.as_bytes())
         .with_context(|| format!("{program} refused the text"))?;
 
-    // wl-copy forks a daemon to own the selection and exits; the others exit
-    // once they have read stdin. Either way the exit status is meaningful.
     let status = child
         .wait()
         .with_context(|| format!("{program} did not finish"))?;
@@ -158,8 +120,6 @@ fn write_with_command(program: &str, args: &[&str], text: &str) -> Result<()> {
     Ok(())
 }
 
-/// Whether any route looks available, for the diagnostics page. Cheap: it only
-/// looks for the executables and does not touch the bus.
 pub fn available_command_writers() -> Vec<Writer> {
     COMMAND_WRITERS
         .iter()
@@ -207,7 +167,6 @@ mod tests {
 
     #[test]
     fn a_tool_that_rejects_the_text_is_a_failure_not_a_success() {
-        // `false` reads stdin happily and exits non-zero.
         if which("false").is_some() {
             assert!(write_with_command("false", &[], "hi").is_err());
         }
@@ -215,8 +174,6 @@ mod tests {
 
     #[test]
     fn text_reaches_a_tool_intact_including_newlines_and_quotes() {
-        // `cat` stands in for a clipboard tool: if the bytes survive the pipe to
-        // it, quoting is not involved anywhere.
         let Some(_) = which("cat") else { return };
         let awkward = "line one\n\"quoted\"\t$HOME 'single' \\ ünïcøde";
         let mut child = Command::new("cat")

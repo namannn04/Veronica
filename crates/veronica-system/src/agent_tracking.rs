@@ -1,4 +1,3 @@
-//! Explicit Claude hook connection; preserve all unrelated hook configuration.
 use anyhow::{ensure, Context, Result};
 use serde_json::{json, Value};
 use std::path::Path;
