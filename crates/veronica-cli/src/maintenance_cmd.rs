@@ -32,18 +32,12 @@ pub(crate) enum MaintenanceCommand {
         source: String,
         #[arg(help = "Specific packages. Omit for every update from that source")]
         names: Vec<String>,
-        #[arg(long)]
-        yes: bool,
     },
     #[command(
         about = "What removing a package would take with it",
         long_about = "What removing a package would take with it.\n\nPrints the plan and stops unless `--yes` is given. apt only: snap and flatpak have no equivalent simulation to review first."
     )]
-    Remove {
-        package: String,
-        #[arg(long)]
-        yes: bool,
-    },
+    Remove { package: String },
     #[command(about = "Which package sources this computer has")]
     Sources,
 }
@@ -55,7 +49,7 @@ fn source(raw: &str) -> Result<Source> {
     })
 }
 
-pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &MaintenanceCommand, output: Output, yes: bool) -> Result<()> {
     match command {
         MaintenanceCommand::Sources => {
             let mut rows = Vec::new();
@@ -156,11 +150,7 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
             })
         }
 
-        MaintenanceCommand::Update {
-            source: raw,
-            names,
-            yes,
-        } => {
+        MaintenanceCommand::Update { source: raw, names } => {
             let source = source(raw)?;
             if !packages::available(source) {
                 anyhow::bail!("{} is not installed on this computer", source.title());
@@ -176,15 +166,16 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
                     .filter(|entry| entry.source == source)
                     .filter(|entry| names.is_empty() || names.contains(&entry.name))
                     .collect();
-                return output.emit(
+                if pending.is_empty() {
+                    return output.emit(
+                        &json!({ "command": command, "wouldUpdate": pending }),
+                        || format!("nothing to update from {}", source.title()),
+                    );
+                }
+                return Err(format::confirmation(
+                    output,
                     &json!({ "command": command, "wouldUpdate": pending }),
                     || {
-                        if pending.is_empty() {
-                            return format!(
-                                "nothing to update from {}. Nothing was run.",
-                                source.title()
-                            );
-                        }
                         let rows: Vec<Vec<String>> = pending
                             .iter()
                             .map(|entry| {
@@ -199,11 +190,11 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
                             })
                             .collect();
                         format!(
-                            "{}\n\nNothing was run. Rerun with --yes, or run it yourself:\n  {command}",
+                            "{}\n\nOr run it yourself:\n  {command}",
                             format::table(&["name", "installed", "available"], &rows)
                         )
                     },
-                );
+                ));
             }
 
             let result = packages::apply_update(source, names).await?;
@@ -215,10 +206,10 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
             })
         }
 
-        MaintenanceCommand::Remove { package, yes } => {
+        MaintenanceCommand::Remove { package } => {
             let plan = packages::removal_plan(package).await?;
             if !yes {
-                return output.emit(&plan, || {
+                return Err(format::confirmation(output, &plan, || {
                     let mut out = format!("Removing {} would remove:\n", plan.package);
                     for name in &plan.removed {
                         let _ = writeln!(out, "  {name}");
@@ -232,13 +223,9 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output) -> Result<
                             let _ = writeln!(out, "  {name}");
                         }
                     }
-                    let _ = write!(
-                        out,
-                        "\nNothing was removed. Rerun with --yes, or run it yourself:\n  {}",
-                        plan.command
-                    );
+                    let _ = write!(out, "\nOr run it yourself:\n  {}", plan.command);
                     out
-                });
+                }));
             }
 
             let argv = packages::removal_command(package, true)?;

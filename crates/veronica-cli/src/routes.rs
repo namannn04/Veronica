@@ -171,6 +171,12 @@ impl Routes {
         program
     }
 
+    pub(crate) fn roots(&self) -> impl Iterator<Item = (&str, &Command)> {
+        self.enabled
+            .iter()
+            .map(|route| (route.id.as_str(), &route.root))
+    }
+
     pub(crate) fn route(&self, name: &str) -> Option<&Route> {
         self.enabled.iter().find(|route| route.root.name == name)
     }

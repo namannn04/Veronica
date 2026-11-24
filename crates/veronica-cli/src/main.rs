@@ -14,6 +14,7 @@ mod emoji_cmd;
 mod extensions_cmd;
 mod focus_dim_cmd;
 mod format;
+mod guide_cmd;
 mod herdr_cmd;
 mod invoke_cmd;
 mod keystroke_cmd;
@@ -88,6 +89,11 @@ enum Command {
     Docker(services_cmd::DockerCommand),
     #[command(about = "Report the resolved environment, capabilities and extension state")]
     Diagnose,
+    #[command(about = "The manual, for people and agents; with --json, every command as data")]
+    Guide {
+        #[arg(value_enum)]
+        topic: Option<guide_cmd::Topic>,
+    },
     #[command(about = "Call one method on an installed extension's backend")]
     Invoke {
         id: String,
@@ -243,7 +249,7 @@ fn main() {
                     let yes = matches.get_flag("yes");
                     routes::dispatch(route, &matches, &arguments, json, yes)
                 }
-                None => host(&matches, json),
+                None => host(&matches, json, &routes),
             }
         }
         Err(error) => routes.reject(&error, &arguments),
@@ -251,9 +257,17 @@ fn main() {
     std::process::exit(i32::from(code));
 }
 
-fn host(matches: &ArgMatches, json: bool) -> ExitCode {
+fn host(matches: &ArgMatches, json: bool, routes: &routes::Routes) -> ExitCode {
     let cli = Cli::from_arg_matches(matches).unwrap_or_else(|error| error.exit());
-    match run(&cli) {
+    let path = guide_cmd::path(matches);
+    if !cli.yes && guide_cmd::needs_confirmation(&path) {
+        let preview = serde_json::json!({ "command": path, "effect": "destructive" });
+        let error = format::confirmation(Output::new(json), &preview, || {
+            format!("`vr {path}` removes or replaces data.")
+        });
+        return format::fail(json, ExitCode::ConfirmationRequired, &format!("{error:#}"));
+    }
+    match run(&cli, routes) {
         Ok(()) => ExitCode::Success,
         Err(error) => {
             let code = error
@@ -280,12 +294,13 @@ fn init_logging(verbosity: u8) {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn run(cli: &Cli) -> Result<()> {
+async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
     let output = Output::new(cli.json);
     let directories = AppDirectories::current()?;
     directories.prepare()?;
 
     match &cli.command {
+        Command::Guide { topic } => guide_cmd::run(routes, *topic, output),
         Command::Diagnose => {
             let session = veronica_system::detect_session().await;
             diagnose(&directories, session, output)
@@ -306,6 +321,7 @@ async fn run(cli: &Cli) -> Result<()> {
             tools_cmd::run(
                 command.as_ref().unwrap_or(&tools_cmd::ToolCommand::Ls),
                 output,
+                cli.yes,
             )
             .await
         }
@@ -334,8 +350,8 @@ async fn run(cli: &Cli) -> Result<()> {
         Command::Calendar(command) => calendar_cmd::run(command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output),
-        Command::Cleaner(command) => cleaner_cmd::run(command, output),
-        Command::Maintenance(command) => maintenance_cmd::run(command, output).await,
+        Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),
+        Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,
         Command::Audit(command) => audit_cmd::run(command, output).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
         Command::Quinjet(command) => quinjet_cmd::run(&directories, command, output).await,

@@ -134,21 +134,7 @@ impl Env {
         if self.yes {
             return Ok(());
         }
-        let rerun = routes::rerun(&routes::arguments());
-        match self.output {
-            Output::Json => format::document(&json!({
-                "confirmationRequired": true,
-                "preview": serde_json::to_value(preview)?,
-                "rerun": rerun,
-            })),
-            Output::Text => {
-                println!(
-                    "{}\n\nNothing was changed. To go ahead, run:\n  {rerun}",
-                    text()
-                );
-            }
-        }
-        Err(Failure::new(ExitCode::ConfirmationRequired, "confirmation required").into())
+        Err(format::confirmation(self.output, preview, text))
     }
 }
 

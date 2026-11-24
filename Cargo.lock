@@ -5983,6 +5983,7 @@ dependencies = [
  "veronica-media",
  "veronica-pack",
  "veronica-protocol",
+ "veronica-sdk",
  "veronica-system",
  "veronica-usage",
  "zbus",

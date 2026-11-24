@@ -124,11 +124,7 @@ pub(crate) enum ConnectionCommand {
         alias = "rm",
         about = "Forget a connection, its saved queries and its password"
     )]
-    Remove {
-        connection: String,
-        #[arg(long)]
-        confirm: bool,
-    },
+    Remove { connection: String },
 }
 
 #[derive(clap::Subcommand)]
@@ -691,17 +687,8 @@ async fn connections(
             })
         }
 
-        ConnectionCommand::Remove {
-            connection,
-            confirm,
-        } => {
+        ConnectionCommand::Remove { connection } => {
             let definition = store.resolve(connection)?;
-            if !confirm {
-                anyhow::bail!(
-                    "this would forget {} and its saved queries; rerun with --confirm",
-                    definition.display_name
-                );
-            }
             let secrets = secret_store(directories);
             for reference in &definition.authentication.secret_references {
                 let _ = secrets

@@ -32,11 +32,6 @@ pub(crate) enum CleanerCommand {
         root: Option<String>,
         #[arg(long = "category")]
         categories: Vec<String>,
-        #[arg(
-            long,
-            help = "Required. Without it the command reports what it would move"
-        )]
-        yes: bool,
     },
     #[command(about = "The mounted volumes and how full they are")]
     Drives,
@@ -86,7 +81,7 @@ fn scan(
     Ok(caches)
 }
 
-pub(crate) fn run(command: &CleanerCommand, output: Output) -> Result<()> {
+pub(crate) fn run(command: &CleanerCommand, output: Output, yes: bool) -> Result<()> {
     match command {
         CleanerCommand::Categories => output.emit(&cleaner::CATEGORIES, || {
             let rows: Vec<Vec<String>> = cleaner::CATEGORIES
@@ -116,18 +111,15 @@ pub(crate) fn run(command: &CleanerCommand, output: Output) -> Result<()> {
             output.emit(&found, || summary(&found, false))
         }
 
-        CleanerCommand::Clean {
-            root,
-            categories,
-            yes,
-        } => {
+        CleanerCommand::Clean { root, categories } => {
             let selected = check_categories(categories, root.as_ref())?;
             let found = scan(root.as_ref(), selected.as_ref())?;
             if !yes {
-                return output.emit(
+                return Err(format::confirmation(
+                    output,
                     &json!({ "wouldTrash": found.items, "totalBytes": found.total_bytes }),
                     || summary(&found, true),
-                );
+                ));
             }
             let report = cleaner::clean(&home()?, &found);
             output.emit(&report, || {
@@ -185,8 +177,8 @@ fn summary(scan: &veronica_core::CleanerScan, dry_run: bool) -> String {
     if dry_run {
         let _ = write!(
             out,
-            "\n\nNothing was moved. Rerun with --yes, which moves every item above \
-             to the Trash, and the Trash then keeps occupying the disk until you empty it."
+            "\n\n--yes moves every item above to the Trash, and the Trash then keeps \
+             occupying the disk until you empty it."
         );
     }
     out

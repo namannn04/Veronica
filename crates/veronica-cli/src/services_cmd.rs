@@ -1,5 +1,5 @@
 use crate::format::Output;
-use anyhow::{ensure, Result};
+use anyhow::Result;
 use veronica_system::{docker, ports};
 
 #[derive(clap::Subcommand)]
@@ -17,8 +17,6 @@ pub(crate) enum PortsCommand {
         started_at: String,
         #[arg(long)]
         inode: String,
-        #[arg(long)]
-        confirm: bool,
     },
 }
 #[derive(clap::Subcommand)]
@@ -32,8 +30,6 @@ pub(crate) enum DockerCommand {
         id: String,
         #[arg(long)]
         endpoint: String,
-        #[arg(long)]
-        confirm: bool,
     },
 }
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -99,9 +95,7 @@ pub(crate) async fn ports(command: &PortsCommand, output: Output) -> Result<()> 
             pid,
             started_at,
             inode,
-            confirm,
         } => {
-            ensure!(*confirm, "Pass --confirm to stop this process");
             let message = ports::stop(&ports::StopRequest {
                 pid: *pid,
                 started_at: started_at.clone(),
@@ -135,9 +129,7 @@ pub(crate) async fn docker(command: &DockerCommand, output: Output) -> Result<()
             action,
             id,
             endpoint,
-            confirm,
         } => {
-            ensure!(*confirm, "Pass --confirm to change this container");
             docker::action(endpoint, id, action.name()).await?;
             output.emit(&serde_json::json!({"ok":true}), || {
                 "Container updated".into()

@@ -157,7 +157,7 @@ The same flow is available without opening the app:
 ```bash
 vr backup export
 vr backup inspect ./Veronica-backup-2026-08-27.veronica-backup
-vr backup import ./Veronica-backup-2026-08-27.veronica-backup --confirm
+vr backup import ./Veronica-backup-2026-08-27.veronica-backup --yes
 ```
 
 ## Alerts
@@ -323,9 +323,9 @@ CLI equivalents:
 vr ports list --port 3000 --json
 vr docker status --json
 # Use identity fields returned by the port reading:
-vr ports stop --pid PID --started-at STARTED_AT --inode INODE --confirm
+vr ports stop --pid PID --started-at STARTED_AT --inode INODE --yes
 # Use the full container ID and local endpoint returned by docker status:
-vr docker action stop CONTAINER_ID --endpoint unix:///var/run/docker.sock --confirm
+vr docker action stop CONTAINER_ID --endpoint unix:///var/run/docker.sock --yes
 ```
 
 ## Notch appearance and resource use
