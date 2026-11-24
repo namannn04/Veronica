@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ChartColumn,
+  Cpu,
+  Diamond,
+  NotebookPen,
+  PanelTop,
+  SquareTerminal,
+  Target,
+  Wrench,
   Blocks,
   Brain,
   Calendar,
@@ -91,6 +98,17 @@ const ICONS: Record<string, LucideIcon> = {
   theater: Theater,
   smile: Smile,
   pipette: Pipette,
+  chart: ChartColumn,
+  terminal: SquareTerminal,
+  diamond: Diamond,
+  target: Target,
+  cpu: Cpu,
+  wrench: Wrench,
+  eyedropper: Pipette,
+  search: FileSearch,
+  note: NotebookPen,
+  mic: MicOff,
+  notch: PanelTop,
 };
 
 type ToolNotice = InstallNotice | { tone: "critical"; text: string };
@@ -238,7 +256,7 @@ export function ExtensionsPage({ diagnostics, onChanged }: { diagnostics: Diagno
       <Toolbar
         className="exts-toolbar"
         leading={<SearchField value={query} onChange={setQuery} placeholder="Search extensions" />}
-        trailing={<Segmented label="Category" size="small" options={FILTERS} value={group} onChange={setGroup} />}
+        trailing={<Segmented label="Category" options={FILTERS} value={group} onChange={setGroup} />}
       />
       <Stack>{body}</Stack>
     </Page>
