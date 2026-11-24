@@ -8,6 +8,7 @@ use super::bridge::{dispatch, Failure};
 use super::host::Host;
 use super::jobs::{submit, Action, Job, Kind};
 use super::library::{self, Offer, Row, Shelf};
+use super::onboarding::{detect, Detection, Environment};
 use super::updates::Preferences;
 use crate::state::AppState;
 
@@ -185,5 +186,12 @@ pub(crate) async fn ext_auto_update_set(
             preferences.write(settings);
             Ok(Preferences::read(settings))
         })
+        .map_err(fail)
+}
+
+#[tauri::command]
+pub(crate) async fn ext_onboarding_detect() -> CommandResult<Detection> {
+    tauri::async_runtime::spawn_blocking(|| detect(&Environment::current()))
+        .await
         .map_err(fail)
 }

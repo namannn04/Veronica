@@ -4,6 +4,7 @@ pub(crate) mod files;
 pub(crate) mod host;
 pub(crate) mod jobs;
 pub(crate) mod library;
+pub(crate) mod onboarding;
 pub(crate) mod probe;
 pub(crate) mod protocol;
 pub(crate) mod shell;

@@ -348,6 +348,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             extensions::commands::ext_bridge,
             extensions::commands::ext_auto_update,
             extensions::commands::ext_auto_update_set,
+            extensions::commands::ext_onboarding_detect,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
