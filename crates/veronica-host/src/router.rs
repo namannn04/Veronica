@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use serde_json::{json, Value};
 use veronica_protocol::rpc::{
-    Caller, CliRun, CliRunParams, CliRunResult, ContractRequest, ContractRequestParams,
-    RequestMethod, RpcCall, RpcCallParams, RunMode,
+    error_code, Caller, CliRun, CliRunParams, CliRunResult, ContractRequest, ContractRequestParams,
+    RequestMethod, RpcCall, RpcCallParams, RunMode, ShortcutFired, ShortcutFiredParams,
 };
 use veronica_protocol::ContractId;
 
@@ -119,6 +119,31 @@ impl Router {
             caller,
         };
         self.call::<ContractRequest>(id, &params).await
+    }
+
+    pub async fn shortcut(
+        &self,
+        id: &str,
+        shortcut: &str,
+        run: Vec<String>,
+    ) -> Result<(), BackendError> {
+        let params = ShortcutFiredParams {
+            id: shortcut.to_string(),
+        };
+        match self.call::<ShortcutFired>(id, &params).await {
+            Err(BackendError::Rpc(error)) if error.code == error_code::METHOD_NOT_FOUND => {
+                let result = self.run_cli(id, run, true, Confirmation::Preview).await;
+                if result.exit_code.code() == 0 {
+                    Ok(())
+                } else {
+                    Err(BackendError::Exited(format!(
+                        "{shortcut} finished with exit code {}",
+                        result.exit_code.code()
+                    )))
+                }
+            }
+            outcome => outcome,
+        }
     }
 
     async fn call<M: RequestMethod>(
