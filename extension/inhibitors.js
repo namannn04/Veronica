@@ -64,23 +64,27 @@ export class PowerInhibitors {
     }
 
     set(key, enabled) {
-        if (!DEFINITIONS[key])
+        if (!DEFINITIONS[key]) {
             return false;
+        }
         if (!enabled) {
             this._stop(key);
             return true;
         }
-        if (this._running.has(key))
+        if (this._running.has(key)) {
             return true;
+        }
 
         const commands = commandsFor(DEFINITIONS[key]);
-        if (commands.length === 0)
+        if (commands.length === 0) {
             return false;
+        }
 
         const record = { processes: [], intentional: false };
         try {
-            for (const argv of commands)
+            for (const argv of commands) {
                 record.processes.push(Gio.Subprocess.new(argv, Gio.SubprocessFlags.STDERR_PIPE));
+            }
         } catch (error) {
             console.debug(`veronica: cannot acquire ${key} inhibitor: ${error}`);
             this._kill(record);
@@ -93,12 +97,14 @@ export class PowerInhibitors {
                     source.wait_check_finish(result);
                 } catch (_error) {
                 }
-                if (this._running.get(key) !== record)
+                if (this._running.get(key) !== record) {
                     return;
+                }
                 this._running.delete(key);
                 this._kill(record);
-                if (!record.intentional)
+                if (!record.intentional) {
                     this._onFailed?.(key);
+                }
             });
         }
         return true;
@@ -106,8 +112,9 @@ export class PowerInhibitors {
 
     _stop(key) {
         const record = this._running.get(key);
-        if (!record)
+        if (!record) {
             return;
+        }
         record.intentional = true;
         this._running.delete(key);
         this._kill(record);
@@ -123,8 +130,9 @@ export class PowerInhibitors {
     }
 
     destroy() {
-        for (const key of [...this._running.keys()])
+        for (const key of [...this._running.keys()]) {
             this._stop(key);
+        }
         this._onFailed = null;
     }
 }

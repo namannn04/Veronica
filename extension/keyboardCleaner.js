@@ -17,12 +17,14 @@ export class KeyboardCleaner {
     }
 
     start() {
-        if (this._overlay || this._idleId)
+        if (this._overlay || this._idleId) {
             return;
+        }
         this._idleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this._idleId = 0;
-            if (this._overlay)
+            if (this._overlay) {
                 return GLib.SOURCE_REMOVE;
+            }
 
             const overlay = new St.Widget({
                 style_class: 'veronica-clean-overlay',

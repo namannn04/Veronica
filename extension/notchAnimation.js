@@ -1,8 +1,9 @@
 export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, onOpened }) {
     const surface = box?._border;
     const content = box?.bin;
-    if (!surface || !content)
+    if (!surface || !content) {
         return null;
+    }
     const originalOpen = box.open;
     const originalClose = box.close;
     let generation = 0;
@@ -24,8 +25,8 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         surface.opacity = 255;
     };
     const compact = (motion, fade) => {
-        if (!motion) return { x: 1, y: 1 };
-        if (!fade) return { x: 0.96, y: 0.96 };
+        if (!motion) { return { x: 1, y: 1 }; }
+        if (!fade) { return { x: 0.96, y: 0.96 }; }
         const button = buttonSize();
         const width = box.width || box.get_preferred_width?.(-1)?.[1] || 580;
         const height = box.height || box.get_preferred_height?.(-1)?.[1] || 290;
@@ -57,7 +58,7 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         box._muteInput = animateNow;
         box.show();
         const finish = () => {
-            if (token !== generation) return;
+            if (token !== generation) { return; }
             box._muteInput = false;
             onComplete?.();
             onOpened?.();
@@ -87,7 +88,7 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         const size = compact(motion, fade);
         box._muteInput = box._muteKeys = true;
         const finish = () => {
-            if (token !== generation) return;
+            if (token !== generation) { return; }
             box.hide();
             reset();
             onComplete?.();

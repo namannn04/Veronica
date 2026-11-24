@@ -56,18 +56,22 @@ export class SystemStatsIndicator {
     }
 
     _apply(enabled) {
-        if (enabled === this._enabled)
+        if (enabled === this._enabled) {
             return;
+        }
         this._enabled = enabled;
-        if (enabled)
+        if (enabled) {
             this._startTicking();
-        else
+        }
+        else {
             this._stopTicking();
+        }
     }
 
     _startTicking() {
-        if (this._tickId)
+        if (this._tickId) {
             return;
+        }
         this._previous = this._readCpu();
         this._cpu.text = 'CPU –';
         this._memory.text = 'MEM –';
@@ -101,10 +105,12 @@ export class SystemStatsIndicator {
         this._previous = current ?? this._previous;
         const memory = memoryPercent(readText('/proc/meminfo'));
 
-        if (cpu !== null)
+        if (cpu !== null) {
             this._cpu.text = `CPU ${Math.round(cpu)}%`;
-        if (memory !== null)
+        }
+        if (memory !== null) {
             this._memory.text = `MEM ${Math.round(memory)}%`;
+        }
     }
 }
 
@@ -116,8 +122,9 @@ export class StandaloneStats {
     }
 
     show() {
-        if (this._button)
+        if (this._button) {
             return;
+        }
         this._stats = new SystemStatsIndicator(this._settings);
         this._button = new PanelMenu.Button(0.0, 'Veronica system stats', true);
         this._button.add_child(this._stats.actor);

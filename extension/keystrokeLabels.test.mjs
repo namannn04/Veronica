@@ -4,18 +4,18 @@ import { test } from 'node:test';
 import {
     ALT_MASK,
     CONTROL_MASK,
+    clampDuration,
     DEFAULT_DURATION_SECONDS,
     DEFAULT_POSITION,
     KeystrokeQueue,
-    MAXIMUM_VISIBLE,
-    MAX_DURATION_SECONDS,
-    MIN_DURATION_SECONDS,
-    SHIFT_MASK,
-    SUPER_MASK,
-    clampDuration,
     keyLabel,
     labelsFor,
+    MAX_DURATION_SECONDS,
+    MAXIMUM_VISIBLE,
+    MIN_DURATION_SECONDS,
     parsePosition,
+    SHIFT_MASK,
+    SUPER_MASK,
 } from './keystrokeLabels.js';
 
 test('the defaults match the core', () => {
@@ -101,8 +101,9 @@ test('a press with no labels is not queued', () => {
 
 test('the queue keeps the newest six and drops the oldest', () => {
     const queue = new KeystrokeQueue();
-    for (let index = 0; index < 9; index += 1)
+    for (let index = 0; index < 9; index += 1) {
         queue.append([String(index)], 0, 1.5);
+    }
     assert.equal(queue.entries.length, MAXIMUM_VISIBLE);
     assert.deepEqual(queue.entries.map(entry => entry.keys[0]), ['3', '4', '5', '6', '7', '8']);
 });

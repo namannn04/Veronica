@@ -20,8 +20,9 @@ export function nextDeadline(values, nowMs) {
     let next = null;
     for (const awakeSwitch of AWAKE_SWITCHES) {
         const state = awakeState(values, awakeSwitch, nowMs);
-        if (state.active && state.untilMs !== null)
+        if (state.active && state.untilMs !== null) {
             next = next === null ? state.untilMs : Math.min(next, state.untilMs);
+        }
     }
     return next;
 }

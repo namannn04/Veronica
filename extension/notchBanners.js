@@ -9,7 +9,7 @@ export function attachNotchBanners(tray, button, theme) {
         enabled: () => St.Settings.get().enable_animations,
         mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
         createMaterial(bin, banner) {
-            if (bin instanceof St.Bin) return null;
+            if (bin instanceof St.Bin) { return null; }
             const actor = new St.Widget({ reactive: false, x_align: Clutter.ActorAlign.START, y_align: Clutter.ActorAlign.START });
             actor.set_pivot_point(0.5, 0);
             actor.add_constraint(new Clutter.BindConstraint({ source: banner, coordinate: Clutter.BindCoordinate.WIDTH }));

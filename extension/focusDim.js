@@ -47,19 +47,23 @@ export class FocusDim {
         };
         const wanted = values.focusDimEnabled === true;
         if (wanted !== this._active) {
-            if (wanted)
+            if (wanted) {
                 this._start();
-            else
+            }
+            else {
                 this._stop();
+            }
             return;
         }
-        if (this._active)
+        if (this._active) {
             this._update();
+        }
     }
 
     _start() {
-        if (this._active)
+        if (this._active) {
             return;
+        }
         this._active = true;
         this._build();
 
@@ -123,8 +127,9 @@ export class FocusDim {
     }
 
     _update() {
-        if (!this._active || this._overlays.length === 0)
+        if (!this._active || this._overlays.length === 0) {
             return;
+        }
 
         const focus = global.display.focus_window;
         const focusMonitor = focus ? focus.get_monitor() : -1;
@@ -146,8 +151,9 @@ export class FocusDim {
                 global.window_group.set_child_above_sibling(overlay, null);
             }
 
-            if (overlay.opacity === wanted)
+            if (overlay.opacity === wanted) {
                 continue;
+            }
             overlay.remove_all_transitions();
             overlay.ease({
                 opacity: wanted,
@@ -158,29 +164,34 @@ export class FocusDim {
     }
 
     _brightWindowFor(monitorIndex, focus, focusMonitor) {
-        if (this._config.mode === 'dimUnfocused')
+        if (this._config.mode === 'dimUnfocused') {
             return monitorIndex === focusMonitor ? focus : null;
+        }
 
-        if (monitorIndex === focusMonitor && focus)
+        if (monitorIndex === focusMonitor && focus) {
             return focus;
+        }
 
         const stack = global.display.sort_windows_by_stacking(
             global.get_window_actors().map(actor => actor.meta_window)
         );
         for (let i = stack.length - 1; i >= 0; i--) {
             const window = stack[i];
-            if (this._isDimmable(window) && window.get_monitor() === monitorIndex)
+            if (this._isDimmable(window) && window.get_monitor() === monitorIndex) {
                 return window;
+            }
         }
         return null;
     }
 
     _isDimmable(window) {
-        if (!window || window.minimized)
+        if (!window || window.minimized) {
             return false;
+        }
         const workspace = global.workspace_manager.get_active_workspace();
-        if (!window.is_on_all_workspaces() && !window.located_on_workspace(workspace))
+        if (!window.is_on_all_workspaces() && !window.located_on_workspace(workspace)) {
             return false;
+        }
         const type = window.get_window_type();
         return type === Meta.WindowType.NORMAL || type === Meta.WindowType.DIALOG;
     }

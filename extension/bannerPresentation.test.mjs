@@ -1,9 +1,10 @@
-import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {test} from 'node:test';
 import {installBannerPresentation} from './bannerPresentation.js';
+
 function setup(motion=true) {
     const signals={}, calls=[];
-    const original=function(params){calls.push(params);};
+    const original=(params)=> {calls.push(params);};
     const bin={ease:original,scale_x:1,scale_y:1,connect(name,fn){signals[name]=fn;return name;},disconnect(id){delete signals[id];},get_children:()=>[]};
     const banner={width:520,height:120,classes:new Set(['notification-banner']),has_style_class_name(c){return this.classes.has(c);},add_style_class_name(c){this.classes.add(c);},remove_style_class_name(c){this.classes.delete(c);}};
     const material={scale_x:1,scale_y:1,remove_all_transitions(){},ease(p){this.last=p;},set_style_class_name(c){this.style=c;},destroy(){this.destroyed=true;}};

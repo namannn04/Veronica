@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+    clampAnimationSeconds,
+    clampIntensity,
     DEFAULT_ANIMATION_SECONDS,
     DEFAULT_DISPLAY_MODE,
     DEFAULT_INTENSITY,
@@ -9,8 +11,6 @@ import {
     MAX_INTENSITY,
     MIN_ANIMATION_SECONDS,
     MIN_INTENSITY,
-    clampAnimationSeconds,
-    clampIntensity,
     overlayPlacement,
     parseDisplayMode,
 } from './focusDimMath.js';

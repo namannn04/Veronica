@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 
 function preview({ brokenBuffer = false, upload = true, width = 320, height = 180, stride = width * 4 } = {}) {
     const idles = [];
@@ -12,7 +12,7 @@ function preview({ brokenBuffer = false, upload = true, width = 320, height = 18
     const flips = [];
     const source = readFileSync(new URL('./cameraPreview.js', import.meta.url), 'utf8')
         .replace(/^import .*;\n/gm, '')
-        .replace(/try \{\n    Gst = [\s\S]*?\n\}\n\nlet gstInitialised/, 'let gstInitialised')
+        .replace(/try \{\n {4}Gst = [\s\S]*?\n\}\n\nlet gstInitialised/, 'let gstInitialised')
         .replace(/export (class|function) /g, '$1 ')
         .replace('let GstVideo = null;', 'let GstVideo = testVideo;');
     const GLib = { Bytes: class { constructor(data) { this.data = data; } },
@@ -32,7 +32,7 @@ function preview({ brokenBuffer = false, upload = true, width = 320, height = 18
     const pipeline = { set_state() {}, get_by_name: () => ({ set_property: (_name, value) => flips.push(value) }) };
     camera._pipeline = pipeline;
     camera._sink = { try_pull_sample() {
-        if (brokenBuffer) throw new Error('read failure');
+        if (brokenBuffer) { throw new Error('read failure'); }
         return { get_caps: () => ({}), get_buffer: () => ({ get_size: () => stride * height,
             extract_dup: () => new Uint8Array(stride * height) }) };
     } };
@@ -109,6 +109,6 @@ for width,height,expected_height in [(640,480,240),(1280,720,180)]:
  assert rows[1]==b''.join(rows[0][i:i+4] for i in range(len(rows[0])-4,-1,-4))
 `;
     const result = spawnSync('python3',['-c',script,pipeline(false),pipeline(true)],{encoding:'utf8',timeout:15000});
-    if (result.status === 77 || result.error?.code === 'ENOENT') return t.skip('GStreamer introspection is unavailable');
+    if (result.status === 77 || result.error?.code === 'ENOENT') { return t.skip('GStreamer introspection is unavailable'); }
     assert.equal(result.status,0,result.stderr || String(result.error));
 });

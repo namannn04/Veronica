@@ -62,11 +62,13 @@ export class NowPlayingCard {
 
     async _send(action) {
         const playing = await runJson(['media', action], this._cancellable);
-        if (!this.actor)
+        if (!this.actor) {
             return;
+        }
         this._render(playing);
-        if (this._settleId)
+        if (this._settleId) {
             GLib.Source.remove(this._settleId);
+        }
         this._settleId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, SETTLE_MS, () => {
             this._settleId = 0;
             this.refresh(this._cancellable).catch(() => {});
@@ -77,8 +79,9 @@ export class NowPlayingCard {
     async refresh(cancellable) {
         this._cancellable = cancellable;
         const playing = await runJson(['media', 'status'], cancellable, { terminateOnCancel: true });
-        if (!this.actor || cancellable?.is_cancelled())
+        if (!this.actor || cancellable?.is_cancelled()) {
             return;
+        }
         this._render(playing);
     }
 
@@ -112,8 +115,9 @@ export class NowPlayingCard {
 
     setPrivate(privateMode) {
         this._private = privateMode;
-        if (!this.actor)
+        if (!this.actor) {
             return;
+        }
         this._title.text = privateMode ? 'Private' : this._lastTitle;
         this._artist.text = privateMode ? 'Presenter mode' : this._lastArtist;
         this.actor.set_style_class_name(

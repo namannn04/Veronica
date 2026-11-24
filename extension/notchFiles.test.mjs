@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 function harness() {
@@ -30,7 +30,7 @@ function harness() {
     panel._tabButtons=new Map(); panel._panels=new Map(); panel._activeTab='home';
     panel._closeMenu=()=>{closed++;};
     panel._fileRows=new Actor();
-    for (const id of ['home','notifications','files','clipboard','camera','tools','image','qr']) panel._panels.set(id,new Actor());
+    for (const id of ['home','notifications','files','clipboard','camera','tools','image','qr']) { panel._panels.set(id,new Actor()); }
     panel._header();
     return {panel,calls,closed:()=>closed,launched:()=>launched,tools:()=>tools,services:()=>services};
 }

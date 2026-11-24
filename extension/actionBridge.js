@@ -40,8 +40,9 @@ export class ActionBridge {
     }
 
     enable() {
-        if (this._ownerId)
+        if (this._ownerId) {
             return;
+        }
         this._focusId = global.display.connect('notify::focus-window', () => this._trackFocus());
         this._trackFocus();
         this._ownerId = Gio.bus_own_name(
@@ -56,8 +57,9 @@ export class ActionBridge {
 
     _trackFocus() {
         const focused = global.display.focus_window;
-        if (!focused)
+        if (!focused) {
             return;
+        }
         if (focused.get_title() === 'Veronica Emoji Picker') {
             this._emojiWindow = focused;
             focused.make_above();
@@ -91,8 +93,9 @@ export class ActionBridge {
             }
             this._pasteTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
                 this._pasteTimer = 0;
-                if (picker.get_compositor_private() && global.display.focus_window === target)
+                if (picker.get_compositor_private() && global.display.focus_window === target) {
                     picker.focus(global.get_current_time());
+                }
                 this._finishPaste();
                 return GLib.SOURCE_REMOVE;
             });
@@ -103,10 +106,12 @@ export class ActionBridge {
     _finishPaste(error = null) {
         const invocation = this._pasteInvocation;
         this._pasteInvocation = null;
-        if (error)
+        if (error) {
             invocation?.return_dbus_error(`${ACTION_INTERFACE}.PasteFailed`, error);
-        else
+        }
+        else {
             invocation?.return_value(null);
+        }
     }
 
     _pasteInPlace() {
@@ -123,18 +128,21 @@ export class ActionBridge {
     }
 
     disable() {
-        if (this._focusId)
+        if (this._focusId) {
             global.display.disconnect(this._focusId);
+        }
         this._focusId = 0;
-        if (this._pasteTimer)
+        if (this._pasteTimer) {
             GLib.Source.remove(this._pasteTimer);
+        }
         this._pasteTimer = 0;
         this._finishPaste('The Veronica extension was disabled');
         this._emojiWindow = null;
         this._typingWindow = null;
         this._object?.unexport();
-        if (this._ownerId)
+        if (this._ownerId) {
             Gio.bus_unown_name(this._ownerId);
+        }
         this._ownerId = 0;
         this._actions = null;
     }

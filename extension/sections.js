@@ -23,8 +23,9 @@ export class Section {
         this._rows = vbox({
             x_expand: true,
         });
-        if (title)
+        if (title) {
             this.actor.add_child(heading(title));
+        }
         this.actor.add_child(this._rows);
     }
 
@@ -59,12 +60,14 @@ export async function fetchUsageData(cancellable) {
 }
 
 export async function refreshUsageSection(section, cancellable) {
-    if (!section?.isLive)
+    if (!section?.isLive) {
         return;
+    }
 
     const data = await fetchUsageData(cancellable);
-    if (!section.isLive)
+    if (!section.isLive) {
         return;
+    }
 
     section.clear();
     if (!data.summary) {
@@ -104,12 +107,14 @@ export async function refreshUsageSection(section, cancellable) {
 }
 
 export async function refreshClipboardSection(section, cancellable, clipboardWatcher, closeMenu) {
-    if (!section?.isLive)
+    if (!section?.isLive) {
         return;
+    }
 
     const rows = await recentEntries(5, cancellable);
-    if (!section.isLive)
+    if (!section.isLive) {
         return;
+    }
 
     section.clear();
     if (rows.length === 0) {
@@ -127,8 +132,9 @@ export async function refreshClipboardSection(section, cancellable, clipboardWat
         button.connect('clicked', () => {
             entryText(row.id, cancellable)
                 .then(text => {
-                    if (text)
+                    if (text) {
                         clipboardWatcher?.write(text);
+                    }
                 })
                 .catch(() => {});
             closeMenu?.();
@@ -138,12 +144,14 @@ export async function refreshClipboardSection(section, cancellable, clipboardWat
 }
 
 export async function refreshMachineSection(section, cancellable) {
-    if (!section?.isLive)
+    if (!section?.isLive) {
         return;
+    }
 
     const diagnose = await runJson(['diagnose'], cancellable);
-    if (!section.isLive)
+    if (!section.isLive) {
         return;
+    }
 
     section.clear();
     if (!diagnose) {
@@ -158,20 +166,23 @@ export async function refreshMachineSection(section, cancellable) {
     const total = Object.keys(states).length;
 
     section.add(textRow('Session', `${sessionInfo.kind ?? 'unknown'} · ${sessionInfo.desktop ?? ''}`.trim(), true));
-    if (total > 0)
+    if (total > 0) {
         section.add(textRow('Capabilities', `${available} of ${total} available`, true));
+    }
 
     const extensions = Array.isArray(diagnose.extensions) ? diagnose.extensions : [];
     const enabled = extensions.filter(e => e.enabled).length;
-    if (extensions.length > 0)
+    if (extensions.length > 0) {
         section.add(textRow('Extensions', `${enabled} of ${extensions.length} on`, true));
+    }
 }
 
 export async function refreshMachineLine(getLabel, cancellable) {
     const diagnose = await runJson(['diagnose'], cancellable);
     const label = getLabel();
-    if (!label)
+    if (!label) {
         return;
+    }
     if (!diagnose) {
         label.text = 'Veronica is not installed';
         return;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { installNotchAnimation } from './notchAnimation.js';
+
 const flags={NONE:0,SLIDE:1,FADE:2,FULL:3};
 const modes={EASE_OUT_CUBIC:1,EASE_IN_OUT_CUBIC:2};
 function harness(animations=true) {
@@ -9,7 +10,7 @@ function harness(animations=true) {
         set_pivot_point(x,y){this.pivot=[x,y];},
         ease(options){this.transitions.push(options);},
         finish(){const options=this.transitions.at(-1);for(const [key,value] of Object.entries(options)){
-            if(!['duration','delay','mode','onComplete'].includes(key))this[key]=value;
+            if(!['duration','delay','mode','onComplete'].includes(key)) { this[key]=value; }
         }options.onComplete?.();},
     });
     const box={...actor(),visible:false,width:0,height:0,bin:actor(),_border:actor(),

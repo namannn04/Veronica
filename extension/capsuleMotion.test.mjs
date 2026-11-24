@@ -1,6 +1,7 @@
-import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {test} from 'node:test';
 import {installCapsule} from './capsuleMotion.js';
+
 function setup(animations=true) {
     const signals={}; let active=false;
     const label={width:-1,opacity:255,get_preferred_width:()=>[70,70],remove_all_transitions(){this.stops=(this.stops??0)+1;},ease(values){this.last=values;}};

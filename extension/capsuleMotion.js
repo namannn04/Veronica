@@ -12,7 +12,7 @@ export function installCapsule(button, { active, enabled, mode }) {
         const expanded = active() || button.hover || button.has_key_focus();
         label.remove_all_transitions();
         const values = { width: expanded ? natural : 0, opacity: expanded ? 255 : 0 };
-        if (enabled() && button.mapped) label.ease({ ...values, duration: 180, mode });
+        if (enabled() && button.mapped) { label.ease({ ...values, duration: 180, mode }); }
         else { label.width = values.width; label.opacity = values.opacity; }
     };
     button.connect('notify::mapped', sync);

@@ -9,8 +9,9 @@ export function settingsPath() {
 }
 
 export function parseSettings(text) {
-    if (!text)
+    if (!text) {
         return {};
+    }
     try {
         const parsed = JSON.parse(text);
         return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
@@ -37,10 +38,12 @@ export class SettingsWatcher {
             GLib.mkdir_with_parents(parent.get_path(), 0o700);
             this._monitor = parent.monitor_directory(Gio.FileMonitorFlags.NONE, null);
             this._changedId = this._monitor.connect('changed', (_monitor, file, other) => {
-                if (file?.get_basename() !== 'settings.json' && other?.get_basename() !== 'settings.json')
+                if (file?.get_basename() !== 'settings.json' && other?.get_basename() !== 'settings.json') {
                     return;
-                if (this._reloadId)
+                }
+                if (this._reloadId) {
                     GLib.Source.remove(this._reloadId);
+                }
                 this._reloadId = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 80, () => {
                     this._reloadId = 0;
                     this._read();
@@ -54,11 +57,13 @@ export class SettingsWatcher {
     }
 
     disable() {
-        if (this._reloadId)
+        if (this._reloadId) {
             GLib.Source.remove(this._reloadId);
+        }
         this._reloadId = 0;
-        if (this._monitor && this._changedId)
+        if (this._monitor && this._changedId) {
             this._monitor.disconnect(this._changedId);
+        }
         this._monitor?.cancel();
         this._monitor = null;
         this._changedId = 0;
@@ -91,19 +96,23 @@ export class SettingsWatcher {
         let text = null;
         try {
             const [ok, bytes] = this._file.load_contents(null);
-            if (ok)
+            if (ok) {
                 text = decoder.decode(bytes);
+            }
         } catch {
         }
-        if (text === null)
+        if (text === null) {
             return;
+        }
         let parsed;
         try { parsed = JSON.parse(text); } catch { return; }
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
             return;
+        }
         const next = parsed;
-        if (JSON.stringify(next) === JSON.stringify(this._values))
+        if (JSON.stringify(next) === JSON.stringify(this._values)) {
             return;
+        }
         this._values = next;
         for (const listener of this._listeners) {
             try {

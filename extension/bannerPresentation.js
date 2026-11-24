@@ -1,6 +1,6 @@
 export function installBannerPresentation(tray, { createMaterial, clockSize, enabled, mode, theme = 'dark' }) {
     const bin = tray?._bannerBin;
-    if (!bin?.connect || typeof bin.ease !== 'function') return null;
+    if (!bin?.connect || typeof bin.ease !== 'function') { return null; }
     const originalEase = bin.ease;
     const descriptor = Object.getOwnPropertyDescriptor(bin, 'ease');
     let current = null, material = null, started = false, alive = true;
@@ -13,22 +13,22 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
         current = material = null; started = false;
     };
     const attach = child => {
-        if (!alive || child === material || !child?.has_style_class_name?.('notification-banner')) return;
+        if (!alive || child === material || !child?.has_style_class_name?.('notification-banner')) { return; }
         clear(); current = child;
         child.add_style_class_name('veronica-notch-native-banner');
-        if (['light','sandstone','mist','paper'].includes(appearance)) child.add_style_class_name('veronica-notification-light');
+        if (['light','sandstone','mist','paper'].includes(appearance)) { child.add_style_class_name('veronica-notification-light'); }
         try {
             material = createMaterial(bin, child);
             material?.set_style_class_name(`veronica-banner-material veronica-theme-${appearance}`);
-            if (material) child.add_style_class_name('veronica-banner-transparent');
+            if (material) { child.add_style_class_name('veronica-banner-transparent'); }
         } catch { material = null; }
     };
     let added = 0, removed = 0;
     try {
         added = bin.connect('child-added', (_actor, child) => attach(child));
-        removed = bin.connect('child-removed', (_actor, child) => { if (child === current) clear(); });
+        removed = bin.connect('child-removed', (_actor, child) => { if (child === current) { clear();  }});
     } catch {
-        if (added) bin.disconnect(added);
+        if (added) { bin.disconnect(added); }
         return null;
     }
     const compact = () => {
@@ -36,7 +36,7 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
         return { x: Math.max(0.12, Math.min(1, clock.width / (current?.width || 520))), y: Math.max(0.12, Math.min(1, clock.height / (current?.height || 120))) };
     };
     const wrapper = function (params) {
-        if (!alive || !current) return originalEase.call(this, params);
+        if (!alive || !current) { return originalEase.call(this, params); }
         const values = { ...params };
         const opening = params.opacity === 255 || params.y === 0;
         const closing = params.opacity === 0 || (typeof params.y === 'number' && params.y < 0);
@@ -56,23 +56,23 @@ export function installBannerPresentation(tray, { createMaterial, clockSize, ena
                 started = true;
             }
             const target = { scale_x: closing ? size.x : 1, scale_y: closing ? size.y : 1 };
-            if (motion) material.ease({ ...target, duration, mode });
+            if (motion) { material.ease({ ...target, duration, mode }); }
             else { material.scale_x = target.scale_x; material.scale_y = target.scale_y; }
         }
         return originalEase.call(this, values);
     };
     bin.ease = wrapper;
-    for (const child of bin.get_children?.() ?? []) attach(child);
+    for (const child of bin.get_children?.() ?? []) { attach(child); }
     return {
         setTheme(next) { appearance = next;
             current?.remove_style_class_name('veronica-notification-light');
-            if (['light','sandstone','mist','paper'].includes(next)) current?.add_style_class_name('veronica-notification-light');
+            if (['light','sandstone','mist','paper'].includes(next)) { current?.add_style_class_name('veronica-notification-light'); }
             material?.set_style_class_name(`veronica-banner-material veronica-theme-${appearance}`); },
         destroy() {
             alive = false;
             if (bin.ease === wrapper) {
-                if (descriptor) Object.defineProperty(bin, 'ease', descriptor);
-                else delete bin.ease;
+                if (descriptor) { Object.defineProperty(bin, 'ease', descriptor); }
+                else { delete bin.ease; }
             }
             bin.disconnect(added); bin.disconnect(removed); clear();
             bin.scale_x = bin.scale_y = 1;

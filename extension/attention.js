@@ -13,8 +13,9 @@ export class AttentionTracker {
     }
 
     enable() {
-        if (this._timer)
+        if (this._timer) {
             return;
+        }
         this._timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, PULSE_SECONDS, () => {
             this._pulse();
             return GLib.SOURCE_CONTINUE;
@@ -23,8 +24,9 @@ export class AttentionTracker {
     }
 
     disable() {
-        if (this._timer)
+        if (this._timer) {
             GLib.source_remove(this._timer);
+        }
         this._timer = 0;
         this._running = false;
         this._settings = null;
@@ -32,11 +34,13 @@ export class AttentionTracker {
 
     _pulse() {
         const tracking = this._settings?.bool('attentionTrackingEnabled', true);
-        if (this._running || !this._settings?.bool('tabAttentionEnabled', false) || !tracking)
+        if (this._running || !this._settings?.bool('tabAttentionEnabled', false) || !tracking) {
             return;
+        }
         const cli = findCli();
-        if (!cli)
+        if (!cli) {
             return;
+        }
         const window = global.display.focus_window;
         const idleMs = global.backend.get_core_idle_monitor().get_idletime();
         const seconds = Number(this._settings.get('attentionIdleSeconds', 300));
@@ -44,10 +48,12 @@ export class AttentionTracker {
         const idle = !window || idleMs >= threshold;
         const application = idle ? 'Away' : (window.get_wm_class() || window.get_wm_class_instance() || 'Unknown');
         const args = [cli, 'attention', 'record', `--application=${application}`, `--seconds=${PULSE_SECONDS}`];
-        if (idle)
+        if (idle) {
             args.push('--idle');
-        else if (this._settings.get('attentionPrivacy', 'applications') === 'detailed')
+        }
+        else if (this._settings.get('attentionPrivacy', 'applications') === 'detailed') {
             args.push(`--title=${window.get_title() || ''}`);
+        }
         this._running = true;
         try {
             const process = Gio.Subprocess.new(args, Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE);

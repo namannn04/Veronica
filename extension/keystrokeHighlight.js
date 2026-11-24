@@ -5,10 +5,10 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {
-    KeystrokeQueue,
-    MAXIMUM_VISIBLE,
     clampDuration,
+    KeystrokeQueue,
     labelsFor,
+    MAXIMUM_VISIBLE,
     parsePosition,
 } from './keystrokeLabels.js';
 
@@ -55,19 +55,23 @@ export class KeystrokeHighlight {
         const wanted =
             values.keystrokeHighlightEnabled === true && values.keystrokeHighlightActive === true;
         if (wanted !== this._running) {
-            if (wanted)
+            if (wanted) {
                 this._start();
-            else
+            }
+            else {
                 this._stop();
+            }
             return;
         }
-        if (this._running)
+        if (this._running) {
             this._position();
+        }
     }
 
     _start() {
-        if (this._running)
+        if (this._running) {
             return;
+        }
         this._running = true;
         this._build();
 
@@ -95,8 +99,9 @@ export class KeystrokeHighlight {
             this._sweepId = 0;
         }
         this._queue.clear();
-        for (const actor of this._actors.values())
+        for (const actor of this._actors.values()) {
             actor.destroy();
+        }
         this._actors.clear();
         this._container?.destroy();
         this._container = null;
@@ -115,11 +120,13 @@ export class KeystrokeHighlight {
     }
 
     _position() {
-        if (!this._container)
+        if (!this._container) {
             return;
+        }
         const monitor = Main.layoutManager.primaryMonitor;
-        if (!monitor)
+        if (!monitor) {
             return;
+        }
         const work = Main.layoutManager.getWorkAreaForMonitor(monitor.index);
         const [, height] = this._container.get_preferred_height(-1);
         const [, width] = this._container.get_preferred_width(-1);
@@ -133,8 +140,9 @@ export class KeystrokeHighlight {
 
     _onEvent(event) {
         try {
-            if (event.type() === Clutter.EventType.KEY_PRESS)
+            if (event.type() === Clutter.EventType.KEY_PRESS) {
                 this._record(event);
+            }
         } catch (error) {
             console.debug(`veronica: keystroke highlight failed to record a press: ${error}`);
         }
@@ -142,8 +150,9 @@ export class KeystrokeHighlight {
     }
 
     _record(event) {
-        if (Main.modalCount > 0)
+        if (Main.modalCount > 0) {
             return;
+        }
 
         const keyval = event.get_key_symbol();
         const unicode = event.get_key_unicode?.() ?? Clutter.keyval_to_unicode(keyval);
@@ -151,8 +160,9 @@ export class KeystrokeHighlight {
 
         const labels = labelsFor(keyval, unicode, state);
         const entry = this._queue.append(labels, GLib.get_monotonic_time() / 1000, this._config.duration);
-        if (!entry)
+        if (!entry) {
             return;
+        }
 
         this._addCap(entry);
         this._reconcile();
@@ -180,22 +190,26 @@ export class KeystrokeHighlight {
     _reconcile() {
         const live = new Set(this._queue.entries.map(entry => entry.id));
         for (const [id, actor] of this._actors) {
-            if (!live.has(id))
+            if (!live.has(id)) {
                 this._fadeOut(id, actor);
+            }
         }
     }
 
     _sweep() {
-        if (!this._running)
+        if (!this._running) {
             return;
+        }
         const expired = this._queue.removeExpired(GLib.get_monotonic_time() / 1000);
         for (const entry of expired) {
             const actor = this._actors.get(entry.id);
-            if (actor)
+            if (actor) {
                 this._fadeOut(entry.id, actor);
+            }
         }
-        if (expired.length > 0)
+        if (expired.length > 0) {
             this._position();
+        }
     }
 
     _fadeOut(id, actor) {

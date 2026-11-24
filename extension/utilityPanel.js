@@ -53,19 +53,19 @@ export class UtilityPanel {
         button.connect('clicked', () => { Promise.resolve(action()).catch(error => this._error(error)); });
         return button;
     }
-    _error(error) { if (this.actor) this._status.text = String(error?.message ?? error); }
+    _error(error) { if (this.actor) { this._status.text = String(error?.message ?? error);  }}
     async _run(args) {
         this._job?.cancel(); this._job = new Gio.Cancellable();
         const token = ++this._generation;
         this._exports.hide(); this._result = null; this._status.text = 'Working locally…';
         const result = await runJson(['utility', ...args], this._job, { terminateOnCancel: true });
-        if (!this.actor || token !== this._generation) return;
+        if (!this.actor || token !== this._generation) { return; }
         this._job = null;
         if (!result?.preview) { this._error('Could not process this image. Use a valid image up to 20 MiB / 16 megapixels.'); return; }
         this._result = result;
         this._preview.gicon = Gio.FileIcon.new(Gio.File.new_for_path(result.preview));
         this._status.text = result.artifact ? 'Ready. Download the file or copy its pixels.' : `${result.format} · ${result.width} × ${result.height}. Choose an output format.`;
-        for (const button of this._formats ?? []) button.reactive = true;
+        for (const button of this._formats ?? []) { button.reactive = true; }
         this._exports.visible = Boolean(result.artifact);
     }
     async _choose() {
@@ -74,14 +74,14 @@ export class UtilityPanel {
         if (this.actor && proc.get_successful() && stdout?.trim()) {
             this._path = stdout.trim(); await this._run(['image', this._path]);
         }
-        if (this.actor) this._reopen?.();
+        if (this.actor) { this._reopen?.(); }
     }
     _paste() {
         const clipboard = St.Clipboard.get_default();
         if (!clipboard.get_content) { this._error('Use Paste in the drag & drop window on this GNOME version.'); return; }
         clipboard.get_content(St.ClipboardType.CLIPBOARD, 'image/png', async (_clipboard, bytes) => {
             try {
-                if (!this.actor) return;
+                if (!this.actor) { return; }
                 if (!bytes || bytes.get_size() === 0) { this._error('Copy an image first, then choose Paste.'); return; }
                 if (bytes.get_size() > MAX_BYTES) { this._error('Clipboard image must be at most 20 MiB.'); return; }
                 const root = GLib.build_filenamev([GLib.get_user_cache_dir(), 'veronica', 'notch-input']);
@@ -92,7 +92,7 @@ export class UtilityPanel {
                     try { source.replace_contents_finish(result); resolve(); } catch (error) { reject(error); }
                 }));
                 if (!this.actor) { GLib.unlink(path); return; }
-                if (this._pastePath) GLib.unlink(this._pastePath);
+                if (this._pastePath) { GLib.unlink(this._pastePath); }
                 this._pastePath = path; this._path = path;
                 await this._run(['image', path]);
             } catch (error) { this._error(error); }
@@ -106,7 +106,7 @@ export class UtilityPanel {
     }
     async _copy() {
         const path = this._result?.copyPath;
-        if (!path) return;
+        if (!path) { return; }
         const file = Gio.File.new_for_path(path);
         const info = await new Promise((resolve, reject) => file.query_info_async('standard::size', Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, this._parent, (source, result) => {
             try { resolve(source.query_info_finish(result)); } catch (error) { reject(error); }
@@ -115,13 +115,13 @@ export class UtilityPanel {
         const bytes = await new Promise((resolve, reject) => file.load_bytes_async(this._parent, (source, result) => {
             try { resolve(source.load_bytes_finish(result)[0]); } catch (error) { reject(error); }
         }));
-        if (!this.actor) return;
+        if (!this.actor) { return; }
         St.Clipboard.get_default().set_content(St.ClipboardType.CLIPBOARD, 'image/png', bytes);
         this._status.text = 'Image copied.';
     }
     async _save() {
         const path = this._result?.artifact;
-        if (!path) return;
+        if (!path) { return; }
         const proc = Gio.Subprocess.new(['zenity', '--file-selection', '--save', '--confirm-overwrite', `--filename=veronica.${path.split('.').pop()}`, '--title=Download image'], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
         const [stdout] = await proc.communicate_utf8_async(null, this._parent);
         if (this.actor && proc.get_successful() && stdout?.trim()) {
@@ -131,12 +131,12 @@ export class UtilityPanel {
             }));
             this._status.text = 'Image saved.';
         }
-        if (this.actor) this._reopen?.();
+        if (this.actor) { this._reopen?.(); }
     }
     close() { this._generation++; this._job?.cancel(); this._job = null; }
     destroy() {
         this.close();
-        if (this._pastePath) GLib.unlink(this._pastePath);
+        if (this._pastePath) { GLib.unlink(this._pastePath); }
         this.actor?.destroy(); this.actor = null; this._reopen = null; this._result = null;
     }
 }
