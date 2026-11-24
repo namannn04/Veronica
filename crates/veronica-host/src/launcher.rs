@@ -12,6 +12,8 @@ const VR: &str = "vr";
 pub struct LaunchEnvironment {
     pub packaging: Packaging,
     pub appimage: Option<PathBuf>,
+    pub appdir: Option<PathBuf>,
+    pub snap: Option<PathBuf>,
     pub current_exe: Option<PathBuf>,
     pub path: Option<OsString>,
 }
@@ -33,6 +35,8 @@ impl LaunchEnvironment {
         Self {
             packaging: Packaging::from_env(sandboxed, &var),
             appimage: var("APPIMAGE").map(PathBuf::from),
+            appdir: var("APPDIR").map(PathBuf::from),
+            snap: var("SNAP").map(PathBuf::from),
             current_exe,
             path: var("PATH"),
         }

@@ -22,7 +22,7 @@ use crate::common::{
     catalog_of, manifest, metadata, now, signed, write_tree, FakeTransport, REVISION,
 };
 
-fn host() -> HostIdentity {
+pub(crate) fn host() -> HostIdentity {
     HostIdentity {
         version: semver::Version::new(0, 5, 0),
         api: 1,
@@ -30,7 +30,7 @@ fn host() -> HostIdentity {
     }
 }
 
-fn installer() -> (TempDir, Installer) {
+pub(crate) fn installer() -> (TempDir, Installer) {
     let home = tempfile::tempdir().unwrap();
     let layout = Layout::new(&AppDirectories::with_env(
         home.path(),
@@ -39,14 +39,15 @@ fn installer() -> (TempDir, Installer) {
     (home, Installer::new(layout, host()))
 }
 
-fn v(raw: &str) -> PackageVersion {
+pub(crate) fn v(raw: &str) -> PackageVersion {
     raw.parse().unwrap()
 }
 
-fn extension_repo() -> TempDir {
+pub(crate) fn extension_repo() -> TempDir {
     let repo = tempfile::tempdir().unwrap();
     let mut authored: Value = serde_json::from_slice(&manifest("probe", "1.0")).unwrap();
     authored["engines"]["backendProtocol"] = 1.into();
+    authored["profiles"] = serde_json::json!(["simple"]);
     authored["backend"] = serde_json::json!({ "entry": "bin/backend" });
     let authored = serde_json::to_vec_pretty(&authored).unwrap();
     write_tree(
@@ -60,7 +61,7 @@ fn extension_repo() -> TempDir {
     repo
 }
 
-fn pack_release(repo: &Path, version: &str) -> (Packed, Vec<u8>) {
+pub(crate) fn pack_release(repo: &Path, version: &str) -> (Packed, Vec<u8>) {
     let backend = repo.join(format!("build/backend-{version}"));
     write_tree(
         repo,
@@ -93,7 +94,11 @@ fn pack_release(repo: &Path, version: &str) -> (Packed, Vec<u8>) {
     (packed, bytes)
 }
 
-fn publish(transport: &FakeTransport, releases: &[(Packed, Vec<u8>)], revision: u64) -> Catalog {
+pub(crate) fn publish(
+    transport: &FakeTransport,
+    releases: &[(Packed, Vec<u8>)],
+    revision: u64,
+) -> Catalog {
     for (packed, bytes) in releases {
         let artifact = artifact_url(packed);
         transport.serve(&artifact, bytes.clone(), None);
