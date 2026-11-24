@@ -45,6 +45,7 @@ const SHORT_GROUP_NAMES: Record<string, string> = {
 const PAGE = 240;
 const WHOLE_GROUP = 2_000;
 const ALL = "all";
+const SKELETON_CELLS = Array.from({ length: 48 }, (_, cell) => cell);
 
 export function EmojiPage() {
   const [groups, setGroups] = useState<EmojiGroup[]>([]);
@@ -67,6 +68,7 @@ export function EmojiPage() {
     }
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: attempt is the retry trigger: bumping it reloads groups and settings
   useEffect(() => {
     void ipc
       .emojiGroups()
@@ -78,12 +80,14 @@ export function EmojiPage() {
       .catch(() => {});
   }, [attempt]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the backend applies the skin tone setting, so recents are reloaded whenever tone changes
   useEffect(() => {
     void loadRecents();
   }, [loadRecents, tone]);
 
   const activeGroup = query.trim() ? null : group;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the backend applies the skin tone setting and attempt is the retry trigger, so both refetch results
   useEffect(() => {
     let live = true;
     void ipc
@@ -245,8 +249,8 @@ export function EmojiPage() {
           {emoji === null ? (
             <Card padding="compact" aria-label="Loading emoji">
               <div className="emoji-grid">
-                {Array.from({ length: 48 }, (_, index) => (
-                  <Skeleton key={index} width={40} height={40} radius={8} />
+                {SKELETON_CELLS.map((cell) => (
+                  <Skeleton key={cell} width={40} height={40} radius={8} />
                 ))}
               </div>
             </Card>
