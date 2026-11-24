@@ -2,26 +2,26 @@ use anyhow::Result;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Output {
+pub(crate) enum Output {
     Text,
     Json,
 }
 
 impl Output {
-    pub fn new(json: bool) -> Self {
+    pub(crate) fn new(json: bool) -> Self {
         if json {
-            Output::Json
+            Self::Json
         } else {
-            Output::Text
+            Self::Text
         }
     }
 
-    pub fn emit<T: Serialize>(self, value: &T, text: impl FnOnce() -> String) -> Result<()> {
+    pub(crate) fn emit<T: Serialize>(self, value: &T, text: impl FnOnce() -> String) -> Result<()> {
         match self {
-            Output::Json => {
+            Self::Json => {
                 println!("{}", serde_json::to_string_pretty(value)?);
             }
-            Output::Text => {
+            Self::Text => {
                 let rendered = text();
                 if !rendered.is_empty() {
                     println!("{rendered}");
@@ -32,15 +32,15 @@ impl Output {
     }
 }
 
-pub fn money(value: f64) -> String {
+pub(crate) fn money(value: f64) -> String {
     format!("${value:.2}")
 }
 
-pub fn tokens(value: u64) -> String {
+pub(crate) fn tokens(value: u64) -> String {
     veronica_usage::cards::tokens(value)
 }
 
-pub fn countdown(seconds: i64) -> String {
+pub(crate) fn countdown(seconds: i64) -> String {
     if seconds <= 0 {
         return "now".to_string();
     }
@@ -58,7 +58,7 @@ pub fn countdown(seconds: i64) -> String {
     }
 }
 
-pub fn table(headers: &[&str], rows: &[Vec<String>]) -> String {
+pub(crate) fn table(headers: &[&str], rows: &[Vec<String>]) -> String {
     if rows.is_empty() {
         return String::new();
     }

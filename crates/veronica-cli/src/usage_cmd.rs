@@ -8,7 +8,7 @@ use veronica_usage::collector;
 use crate::format::{self, countdown, money, tokens, Output};
 
 #[derive(Subcommand)]
-pub enum UsageCommand {
+pub(crate) enum UsageCommand {
     #[command(about = "Totals, day count and model spread for a window")]
     Summary {
         #[arg(
@@ -126,7 +126,7 @@ fn range(days: Option<usize>) -> DayRange {
     }
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &UsageCommand,
     output: Output,
@@ -407,8 +407,7 @@ pub async fn run(
                         let left = window
                             .resets_at
                             .filter(|at| *at > now)
-                            .map(|at| alerts::countdown(now, at))
-                            .unwrap_or_else(|| "unknown".into());
+                            .map_or_else(|| "unknown".into(), |at| alerts::countdown(now, at));
                         let _ =
                             writeln!(out, "{label}   {:>5.1}%  resets in {left}", window.percent);
                     }
@@ -457,10 +456,7 @@ pub async fn run(
                                 gauge.window.clone(),
                                 bar(gauge.percent),
                                 format!("{:.0}%", gauge.percent),
-                                gauge
-                                    .resets_in_secs
-                                    .map(countdown)
-                                    .unwrap_or_else(|| "-".into()),
+                                gauge.resets_in_secs.map_or_else(|| "-".into(), countdown),
                                 format!("{:?}", gauge.zone).to_lowercase(),
                                 format!("{level:?}").to_lowercase(),
                             ]
@@ -548,9 +544,10 @@ pub async fn run(
                 let path = if single_file {
                     target.expect("single_file implies a target").to_path_buf()
                 } else {
-                    let directory = target
-                        .map(std::path::Path::to_path_buf)
-                        .unwrap_or_else(|| std::path::PathBuf::from("."));
+                    let directory = target.map_or_else(
+                        || std::path::PathBuf::from("."),
+                        std::path::Path::to_path_buf,
+                    );
                     directory.join(cards::file_name(*card, &stamp, extension))
                 };
 
@@ -584,10 +581,10 @@ pub async fn run(
                             seconds,
                         } => eprintln!("  {name:<14} {detail}  ({seconds:.2}s)"),
                         veronica_usage::CollectorEvent::Note { message } => {
-                            eprintln!("  … {message}")
+                            eprintln!("  … {message}");
                         }
                         veronica_usage::CollectorEvent::Error { message } => {
-                            eprintln!("  ! {message}")
+                            eprintln!("  ! {message}");
                         }
                         _ => {}
                     }

@@ -7,22 +7,22 @@ use veronica_usage::limits::LimitWindow;
 
 use crate::state::AppState;
 
-pub const DEFAULT_POLL_SECS: u64 = 60;
-pub const MIN_POLL_SECS: u64 = 30;
-pub const MAX_POLL_SECS: u64 = 900;
+pub(crate) const DEFAULT_POLL_SECS: u64 = 60;
+pub(crate) const MIN_POLL_SECS: u64 = 30;
+pub(crate) const MAX_POLL_SECS: u64 = 900;
 
 const IDLE_CHECK_SECS: u64 = 10;
 
-pub fn poll_interval(settings: &veronica_core::Settings) -> Duration {
+pub(crate) fn poll_interval(settings: &veronica_core::Settings) -> Duration {
     let seconds = settings
         .get("notifyPollSeconds")
-        .and_then(|value| value.as_u64())
+        .and_then(serde_json::Value::as_u64)
         .unwrap_or(DEFAULT_POLL_SECS)
         .clamp(MIN_POLL_SECS, MAX_POLL_SECS);
     Duration::from_secs(seconds)
 }
 
-pub async fn run(app: AppHandle) {
+pub(crate) async fn run(app: AppHandle) {
     let connection = match zbus::Connection::session().await {
         Ok(connection) => connection,
         Err(error) => {
@@ -149,7 +149,7 @@ fn window_json(window: LimitWindow) -> serde_json::Value {
     })
 }
 
-pub fn is_credential_failure(message: &str) -> bool {
+pub(crate) fn is_credential_failure(message: &str) -> bool {
     let lowered = message.to_lowercase();
     [
         "expired",
@@ -181,7 +181,7 @@ fn timeout_for(alert_id: &str) -> Timeout {
     }
 }
 
-pub async fn send_test(connection: &zbus::Connection) -> anyhow::Result<u32> {
+pub(crate) async fn send_test(connection: &zbus::Connection) -> anyhow::Result<u32> {
     let notification = notify::Notification::new(
         "Alerts are working",
         "This is what a Veronica rate-limit alert looks like.",

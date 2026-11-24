@@ -11,7 +11,7 @@ use veronica_system::tools::Report as ToolReport;
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum ExtensionCommand {
+pub(crate) enum ExtensionCommand {
     #[command(
         alias = "list",
         about = "Every extension, its group, switch and availability"
@@ -73,7 +73,7 @@ struct Mutation {
     missing_tools: Vec<&'static str>,
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     session: DesktopSession,
     command: &ExtensionCommand,

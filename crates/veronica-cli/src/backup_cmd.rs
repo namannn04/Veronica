@@ -7,7 +7,7 @@ use veronica_core::{AppDirectories, BackupArchive};
 use crate::format::Output;
 
 #[derive(clap::Subcommand)]
-pub enum BackupCommand {
+pub(crate) enum BackupCommand {
     #[command(about = "Export settings, persistent data and state to one checked archive")]
     Export {
         #[arg(help = "Destination. Defaults to ./Veronica-backup-YYYY-MM-DD.veronica-backup")]
@@ -26,7 +26,11 @@ pub enum BackupCommand {
     },
 }
 
-pub fn run(directories: &AppDirectories, command: &BackupCommand, output: Output) -> Result<()> {
+pub(crate) fn run(
+    directories: &AppDirectories,
+    command: &BackupCommand,
+    output: Output,
+) -> Result<()> {
     match command {
         BackupCommand::Export { path } => {
             let now = chrono::Utc::now();

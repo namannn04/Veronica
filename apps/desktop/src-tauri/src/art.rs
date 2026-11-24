@@ -1,8 +1,8 @@
 use base64::Engine as _;
 
-pub const MAX_ART_BYTES: usize = 2 * 1024 * 1024;
+pub(crate) const MAX_ART_BYTES: usize = 2 * 1024 * 1024;
 
-pub fn to_data_url(url: &str) -> Option<String> {
+pub(crate) fn to_data_url(url: &str) -> Option<String> {
     if url.starts_with("data:") {
         return Some(url.to_string());
     }
@@ -16,7 +16,7 @@ pub fn to_data_url(url: &str) -> Option<String> {
     Some(format!("data:{mime};base64,{encoded}"))
 }
 
-pub fn local_path(url: &str) -> Option<String> {
+pub(crate) fn local_path(url: &str) -> Option<String> {
     let rest = url.strip_prefix("file://")?;
     let path = if let Some(stripped) = rest.strip_prefix("localhost/") {
         format!("/{stripped}")
@@ -28,7 +28,7 @@ pub fn local_path(url: &str) -> Option<String> {
     Some(percent_decode(&path))
 }
 
-pub fn percent_decode(input: &str) -> String {
+pub(crate) fn percent_decode(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
     let mut index = 0;
@@ -47,7 +47,7 @@ pub fn percent_decode(input: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
+pub(crate) fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
         return Some("image/png");
     }

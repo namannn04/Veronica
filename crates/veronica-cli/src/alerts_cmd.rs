@@ -7,7 +7,7 @@ use veronica_usage::alerts::NotifierState;
 use crate::format::Output;
 
 #[derive(clap::Subcommand)]
-pub enum AlertsCommand {
+pub(crate) enum AlertsCommand {
     #[command(about = "Print what the notifier is comparing against")]
     State,
     #[command(
@@ -22,7 +22,7 @@ pub enum AlertsCommand {
     Clear,
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &AlertsCommand,
     output: Output,
@@ -47,9 +47,7 @@ pub async fn run(
                     let _ = writeln!(
                         out,
                         "{label}  {}",
-                        value
-                            .map(|at| at.to_rfc3339())
-                            .unwrap_or_else(|| "never".into())
+                        value.map_or_else(|| "never".into(), |at| at.to_rfc3339())
                     );
                 }
                 let _ = write!(out, "open banners   {}", state.banners.len());

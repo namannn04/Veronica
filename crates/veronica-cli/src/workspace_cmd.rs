@@ -3,7 +3,7 @@ use anyhow::Result;
 use clap::Subcommand;
 use veronica_system::workspace::{self, DoctorRequest};
 #[derive(Subcommand)]
-pub enum WorkspaceCommand {
+pub(crate) enum WorkspaceCommand {
     #[command(
         subcommand,
         about = "Discover or explicitly call a local Graftcode Gateway"
@@ -27,7 +27,7 @@ pub enum WorkspaceCommand {
         containers: Vec<String>,
     },
 }
-pub async fn run(command: &WorkspaceCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &WorkspaceCommand, output: Output) -> Result<()> {
     match command {
         WorkspaceCommand::Graft(command) => return graft(command, output).await,
         WorkspaceCommand::Doctor {
@@ -54,7 +54,7 @@ pub async fn run(command: &WorkspaceCommand, output: Output) -> Result<()> {
 }
 
 #[derive(Subcommand)]
-pub enum GraftCommand {
+pub(crate) enum GraftCommand {
     Discover {
         #[arg(long)]
         endpoint: String,

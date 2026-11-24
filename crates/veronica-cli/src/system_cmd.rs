@@ -5,7 +5,7 @@ use veronica_system::audio::StreamDirection;
 use crate::format::{self, Output};
 
 #[derive(Subcommand)]
-pub enum SystemCommand {
+pub(crate) enum SystemCommand {
     #[command(about = "Read CPU, memory, disks, temperatures and battery state")]
     Snapshot,
     #[command(about = "Sample CPU, memory and load for this computer")]
@@ -37,7 +37,7 @@ pub enum SystemCommand {
 }
 
 #[derive(Subcommand)]
-pub enum AudioCommand {
+pub(crate) enum AudioCommand {
     #[command(
         alias = "ls",
         about = "List every application stream, playing or recording"
@@ -66,7 +66,7 @@ pub enum AudioCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub enum ProcessSort {
+pub(crate) enum ProcessSort {
     Cpu,
     Memory,
     Name,
@@ -91,7 +91,7 @@ fn parse_level(raw: &str) -> Result<f32> {
     })
 }
 
-pub async fn run(command: &SystemCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &SystemCommand, output: Output) -> Result<()> {
     match command {
         SystemCommand::Snapshot => {
             let snapshot = veronica_system::MetricsSampler::new().sample();
@@ -189,7 +189,7 @@ pub async fn run(command: &SystemCommand, output: Output) -> Result<()> {
                         .unwrap_or(std::cmp::Ordering::Equal)
                 }),
                 ProcessSort::Memory => {
-                    processes.sort_by_key(|process| std::cmp::Reverse(process.memory_bytes))
+                    processes.sort_by_key(|process| std::cmp::Reverse(process.memory_bytes));
                 }
                 ProcessSort::Name => processes.sort_by_key(|process| process.name.to_lowercase()),
             }
@@ -232,8 +232,7 @@ pub async fn run(command: &SystemCommand, output: Output) -> Result<()> {
                             .to_string(),
                             device
                                 .battery_percent
-                                .map(|percent| format!("{percent}%"))
-                                .unwrap_or_else(|| "-".to_string()),
+                                .map_or_else(|| "-".to_string(), |percent| format!("{percent}%")),
                         ]
                     })
                     .collect();

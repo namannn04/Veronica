@@ -5,7 +5,7 @@ use veronica_audit::{Severity, DEFAULT_CONCURRENCY};
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum AuditCommand {
+pub(crate) enum AuditCommand {
     #[command(about = "Crawl a site and report every page's issues")]
     Site {
         #[arg(help = "A URL, a bare hostname, or a sitemap. `https://` is assumed")]
@@ -43,7 +43,7 @@ fn parse_site(raw: &str) -> Result<url::Url> {
     veronica_audit::site_url(raw)
 }
 
-pub async fn run(command: &AuditCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &AuditCommand, output: Output) -> Result<()> {
     match command {
         AuditCommand::Site {
             site,

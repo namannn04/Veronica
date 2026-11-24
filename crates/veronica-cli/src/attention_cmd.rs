@@ -5,7 +5,7 @@ use veronica_core::{AppDirectories, AttentionPrivacy, AttentionRepository, Setti
 use crate::format::{countdown, table, Output};
 
 #[derive(clap::Subcommand)]
-pub enum AttentionCommand {
+pub(crate) enum AttentionCommand {
     #[command(about = "Show the active timer and completed focus total")]
     Status,
     #[command(subcommand, about = "Start, stop or inspect a focus session")]
@@ -46,7 +46,7 @@ pub enum AttentionCommand {
 }
 
 #[derive(clap::Subcommand)]
-pub enum FocusCommand {
+pub(crate) enum FocusCommand {
     #[command(about = "Show the current focus session")]
     Status,
     #[command(about = "Start a timer such as `--for 45m` or `--for 2h`")]
@@ -60,7 +60,11 @@ pub enum FocusCommand {
     Stop,
 }
 
-pub fn run(directories: &AppDirectories, command: &AttentionCommand, output: Output) -> Result<()> {
+pub(crate) fn run(
+    directories: &AppDirectories,
+    command: &AttentionCommand,
+    output: Output,
+) -> Result<()> {
     let repository = AttentionRepository::new(directories.attention_dir());
     let now = Utc::now();
     match command {
@@ -139,7 +143,7 @@ pub fn run(directories: &AppDirectories, command: &AttentionCommand, output: Out
             })
         }
         AttentionCommand::Summary { days } => {
-            let from = veronica_core::AttentionRepository::window_start(*days, now);
+            let from = AttentionRepository::window_start(*days, now);
             let overview = repository.overview(from, now)?;
             output.emit(&overview, || {
                 format!(

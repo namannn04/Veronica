@@ -4,7 +4,7 @@ use veronica_system::tools::Outcome;
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum ToolCommand {
+pub(crate) enum ToolCommand {
     #[command(
         alias = "list",
         about = "Every tool, with whether it is installed, its version, and why"
@@ -22,7 +22,7 @@ pub enum ToolCommand {
     },
 }
 
-pub async fn run(command: &ToolCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &ToolCommand, output: Output) -> Result<()> {
     match command {
         ToolCommand::Ls => {
             let reports = veronica_system::tools::catalogue().await;

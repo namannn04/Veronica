@@ -9,7 +9,7 @@ const POLL: Duration = Duration::from_secs(2);
 
 const IDLE_CHECK: Duration = Duration::from_secs(5);
 
-pub async fn run(app: AppHandle) {
+pub(crate) async fn run(app: AppHandle) {
     loop {
         let enabled = {
             let state = app.state::<AppState>();
@@ -44,7 +44,7 @@ async fn tick(app: &AppHandle) {
         tracing::warn!(target: "veronica", "cannot record the share state: {error:#}");
         return;
     }
-    if let Err(error) = state.set_setting("presenterAutoReason", reason.clone().into()) {
+    if let Err(error) = state.set_setting("presenterAutoReason", reason.into()) {
         tracing::warn!(target: "veronica", "cannot record the share reason: {error:#}");
     }
 
@@ -91,7 +91,7 @@ fn clear_detection(app: &AppHandle) {
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PresenterView {
+pub(crate) struct PresenterView {
     #[serde(flatten)]
     pub state: PresenterState,
     pub active: bool,
@@ -99,7 +99,7 @@ pub struct PresenterView {
     pub share: veronica_system::screencast::ScreenShareState,
 }
 
-pub fn view(
+pub(crate) fn view(
     state: &AppState,
     share: veronica_system::screencast::ScreenShareState,
 ) -> PresenterView {
@@ -109,7 +109,7 @@ pub fn view(
         blurred_classes: veronica_core::BlurCategory::ALL
             .into_iter()
             .filter(|category| presenter.blurs(*category))
-            .map(|category| category.css_class())
+            .map(veronica_core::BlurCategory::css_class)
             .collect(),
         state: presenter,
         share,
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn the_poll_is_frequent_enough_to_catch_the_start_of_a_call() {
-        assert!(POLL.as_secs() <= 3, "poll was {:?}", POLL);
+        assert!(POLL.as_secs() <= 3, "poll was {POLL:?}");
         assert!(
             IDLE_CHECK >= POLL,
             "idling should be no busier than working"
@@ -148,7 +148,7 @@ mod tests {
         let classes: Vec<&str> = BlurCategory::ALL
             .into_iter()
             .filter(|category| state.blurs(*category))
-            .map(|category| category.css_class())
+            .map(BlurCategory::css_class)
             .collect();
         assert!(classes.contains(&"blur-money"));
         assert!(!classes.contains(&"blur-music"));

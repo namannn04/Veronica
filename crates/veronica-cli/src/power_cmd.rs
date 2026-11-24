@@ -7,7 +7,7 @@ use veronica_core::{AppDirectories, Settings};
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum PowerCommand {
+pub(crate) enum PowerCommand {
     #[command(about = "Report both switches, their countdowns and the battery")]
     Status,
     #[command(
@@ -25,7 +25,7 @@ pub enum PowerCommand {
 }
 
 #[derive(clap::Subcommand)]
-pub enum SwitchCommand {
+pub(crate) enum SwitchCommand {
     #[command(about = "Turn it on, open-ended or for a while")]
     On {
         #[arg(
@@ -38,7 +38,7 @@ pub enum SwitchCommand {
     Off,
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &PowerCommand,
     output: Output,

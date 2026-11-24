@@ -9,7 +9,7 @@ use crate::format::{self, Output};
 const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
-pub enum QuinjetCommand {
+pub(crate) enum QuinjetCommand {
     #[command(about = "Recent projects and their worktrees")]
     Projects {
         #[arg(
@@ -99,7 +99,7 @@ async fn discover(machine: &Machine, args: &[String]) -> Result<Vec<u8>> {
     Ok(output.into_bytes())
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &QuinjetCommand,
     output: Output,
@@ -122,13 +122,12 @@ pub async fn run(
                             project.name.clone(),
                             project
                                 .default_worktree()
-                                .map(|worktree| worktree.label())
-                                .unwrap_or_else(|| "-".to_string()),
+                                .map_or_else(|| "-".to_string(), quinjet::Worktree::label),
                             project.available_worktrees().len().to_string(),
-                            project
-                                .default_worktree()
-                                .map(|worktree| worktree.path.clone())
-                                .unwrap_or_else(|| project.common_dir.clone()),
+                            project.default_worktree().map_or_else(
+                                || project.common_dir.clone(),
+                                |worktree| worktree.path.clone(),
+                            ),
                         ]
                     })
                     .collect();
@@ -180,8 +179,7 @@ pub async fn run(
             let worktree = resolve(&machine, path).await?;
             let executable = if machine.is_local() {
                 quinjet::executable()
-                    .map(|path| path.display().to_string())
-                    .unwrap_or_else(|| "quinjet".to_string())
+                    .map_or_else(|| "quinjet".to_string(), |path| path.display().to_string())
             } else {
                 "quinjet".to_string()
             };

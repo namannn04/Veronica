@@ -19,7 +19,7 @@ enum Job {
     Qr(String),
 }
 
-pub fn show() -> anyhow::Result<()> {
+pub(crate) fn show() -> anyhow::Result<()> {
     if WINDOW.with(|slot| {
         if let Some(w) = slot.borrow().as_ref() {
             w.present();
@@ -49,7 +49,7 @@ pub fn show() -> anyhow::Result<()> {
     window.add(&notebook);
     let css = gtk::CssProvider::new();
     css.load_from_data(b"#veronica-utilities { background: @theme_bg_color; color: @theme_fg_color; border-radius: 22px; } #veronica-utilities notebook header { background: transparent; padding: 10px; border: none; } #veronica-utilities notebook tab { border-radius: 14px; padding: 10px 22px; margin: 0 4px; border: none; } #veronica-utilities notebook tab:checked { background: alpha(@theme_fg_color,0.10); box-shadow: none; } #veronica-utilities button { border-radius: 12px; padding: 8px 16px; } #veronica-utilities entry { border-radius: 12px; padding: 8px; }")?;
-    if let Some(screen) = gtk::prelude::WidgetExt::screen(&window) {
+    if let Some(screen) = WidgetExt::screen(&window) {
         gtk::StyleContext::add_provider_for_screen(
             &screen,
             &css,
@@ -226,7 +226,7 @@ fn panel(window: &gtk::Window, kind: &str) -> anyhow::Result<gtk::Box> {
         match tx.try_send((request, job)) {
             Ok(()) => pending_request.set(request),
             Err(_) => {
-                pending_status.set_text("An operation is already queued. Please wait a moment.")
+                pending_status.set_text("An operation is already queued. Please wait a moment.");
             }
         }
     });

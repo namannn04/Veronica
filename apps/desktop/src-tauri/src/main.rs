@@ -453,7 +453,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 presenter::run(presenting).await;
             });
 
-            let refine = handle.clone();
+            let refine = handle;
             tauri::async_runtime::spawn(async move {
                 let resolved = veronica_system::detect_session().await;
                 let state = refine.state::<AppState>();

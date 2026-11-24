@@ -5,7 +5,7 @@ use veronica_core::{AppDirectories, BlurCategory, PresenterState, Settings};
 use crate::format::Output;
 
 #[derive(clap::Subcommand)]
-pub enum PresenterCommand {
+pub(crate) enum PresenterCommand {
     #[command(about = "Report the resolved state and what detection sees")]
     Status,
     #[command(about = "Blur now")]
@@ -53,7 +53,7 @@ fn category(raw: &str) -> Result<BlurCategory> {
         })
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &PresenterCommand,
     output: Output,
@@ -146,7 +146,7 @@ pub async fn run(
             let blurred: Vec<&str> = BlurCategory::ALL
                 .into_iter()
                 .filter(|category| state.categories.contains(category))
-                .map(|category| category.title())
+                .map(BlurCategory::title)
                 .collect();
             let _ = write!(out, "covers     {}", blurred.join(", "));
         }

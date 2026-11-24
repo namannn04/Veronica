@@ -8,7 +8,7 @@ use veronica_core::AppDirectories;
 use veronica_system::image_tools::{self, Source};
 
 #[derive(clap::Subcommand)]
-pub enum UtilityCommand {
+pub(crate) enum UtilityCommand {
     Image {
         path: PathBuf,
         #[arg(value_parser=["png", "jpg", "svg"])]
@@ -30,7 +30,7 @@ fn read(path: &Path) -> Result<Vec<u8>> {
     );
     Ok(bytes)
 }
-pub fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> Result<()> {
+pub(crate) fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> Result<()> {
     let (source, format) = match command {
         UtilityCommand::Image { path, format } => {
             (image_tools::decode(&read(path)?)?, format.as_deref())

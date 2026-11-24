@@ -5,7 +5,7 @@ use crate::format::{self, Output};
 const LANES: [&str; 5] = ["blocked", "working", "unknown", "done", "idle"];
 
 #[derive(clap::Subcommand)]
-pub enum HerdrCommand {
+pub(crate) enum HerdrCommand {
     #[command(alias = "ls", about = "The board: every agent, in Edith's lanes")]
     Board {
         #[arg(long, help = "Only agents in this session")]
@@ -28,7 +28,7 @@ pub enum HerdrCommand {
     },
 }
 
-pub async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
     let board = veronica_system::herdr::board().await?;
     if !board.installed {
         anyhow::bail!(

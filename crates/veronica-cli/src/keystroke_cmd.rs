@@ -9,7 +9,7 @@ use veronica_core::{AppDirectories, Settings};
 use crate::format::Output;
 
 #[derive(clap::Subcommand)]
-pub enum KeystrokeCommand {
+pub(crate) enum KeystrokeCommand {
     #[command(about = "Report the current settings and whether the shell can apply them")]
     Status,
     #[command(about = "Start the overlay")]
@@ -32,7 +32,7 @@ pub enum KeystrokeCommand {
     },
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &KeystrokeCommand,
     output: Output,

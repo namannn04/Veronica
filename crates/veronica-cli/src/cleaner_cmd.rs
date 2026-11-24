@@ -5,7 +5,7 @@ use veronica_core::cleaner::{self, Family};
 use crate::format::{self, Output};
 
 #[derive(clap::Subcommand)]
-pub enum CleanerCommand {
+pub(crate) enum CleanerCommand {
     #[command(about = "Measure what could be reclaimed. Reads only")]
     Scan {
         #[arg(
@@ -84,7 +84,7 @@ fn scan(
     Ok(caches)
 }
 
-pub fn run(command: &CleanerCommand, output: Output) -> Result<()> {
+pub(crate) fn run(command: &CleanerCommand, output: Output) -> Result<()> {
     match command {
         CleanerCommand::Categories => output.emit(&cleaner::CATEGORIES, || {
             let rows: Vec<Vec<String>> = cleaner::CATEGORIES

@@ -9,7 +9,7 @@ use crate::format::{self, countdown, Output};
 const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
-pub enum MachineCommand {
+pub(crate) enum MachineCommand {
     #[command(
         alias = "ls",
         about = "List the fleet and whether each machine answers"
@@ -130,7 +130,7 @@ fn bytes(value: u64) -> String {
     }
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &MachineCommand,
     output: Output,
@@ -167,10 +167,10 @@ pub async fn run(
                             report.machine.name.clone(),
                             format!("{:.0}%", stats.cpu_percent),
                             format!("{:.0}%", stats.memory_used_percent()),
-                            stats
-                                .root_disk()
-                                .map(|disk| format!("{:.0}%", disk.used_percent()))
-                                .unwrap_or_else(|| "-".into()),
+                            stats.root_disk().map_or_else(
+                                || "-".into(),
+                                |disk| format!("{:.0}%", disk.used_percent()),
+                            ),
                             countdown(stats.uptime_secs as i64),
                         ],
                         None => vec![
@@ -211,7 +211,7 @@ pub async fn run(
                 anyhow::bail!("a machine called {id} already exists");
             }
             let machine = Machine {
-                id: id.clone(),
+                id,
                 name: label,
                 reach: Reach::Ssh {
                     target: target.clone(),
@@ -292,9 +292,10 @@ pub async fn run(
                                     bytes(gpu.memory_used_bytes),
                                     bytes(gpu.memory_total_bytes)
                                 ),
-                                gpu.temperature_celsius
-                                    .map(|celsius| format!("{celsius:.0} °C"))
-                                    .unwrap_or_else(|| "-".to_string()),
+                                gpu.temperature_celsius.map_or_else(
+                                    || "-".to_string(),
+                                    |celsius| format!("{celsius:.0} °C"),
+                                ),
                             ]
                         })
                         .collect();

@@ -8,7 +8,7 @@ use veronica_core::{AppDirectories, Settings};
 use crate::format::Output;
 
 #[derive(clap::Subcommand)]
-pub enum FocusDimCommand {
+pub(crate) enum FocusDimCommand {
     #[command(about = "Report the current settings and whether the shell can apply them")]
     Status,
     #[command(about = "Turn dimming on")]
@@ -29,7 +29,7 @@ pub enum FocusDimCommand {
     },
 }
 
-pub async fn run(
+pub(crate) async fn run(
     directories: &AppDirectories,
     command: &FocusDimCommand,
     output: Output,

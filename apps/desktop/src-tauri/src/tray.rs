@@ -3,7 +3,7 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::AppHandle;
 
-pub fn install(app: &AppHandle) -> Result<()> {
+pub(crate) fn install(app: &AppHandle) -> Result<()> {
     let open = MenuItem::with_id(app, "open", "Open Veronica", true, None::<&str>)?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh usage", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;

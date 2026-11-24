@@ -6,7 +6,7 @@ use veronica_calendar::{agenda, server};
 use crate::format::{self, Output};
 
 #[derive(Subcommand)]
-pub enum CalendarCommand {
+pub(crate) enum CalendarCommand {
     #[command(alias = "agenda", about = "The agenda, grouped by day")]
     List {
         #[arg(long, default_value_t = 7, help = "How many days ahead to include")]
@@ -29,7 +29,7 @@ fn slot(event: &veronica_calendar::Event) -> String {
     )
 }
 
-pub async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
     let connection = zbus::Connection::session()
         .await
         .context("cannot reach the session bus; is this a desktop session?")?;
