@@ -13,7 +13,10 @@ config="$repository/apps/desktop/src-tauri/tauri.conf.json"
 version="$(jq -r .version "$config")"
 
 for command in cargo cargo-vendor-filterer dpkg-buildpackage jq xz; do
-  command -v "$command" >/dev/null 2>&1 || { echo "$command is required" >&2; exit 1; }
+  command -v "$command" >/dev/null 2>&1 || {
+    echo "$command is required" >&2
+    exit 1
+  }
 done
 [ -s "$repository/apps/desktop/dist/index.html" ] || {
   echo "build the interface first: (cd apps/desktop && bun run build)" >&2
@@ -28,11 +31,11 @@ git -C "$repository" archive --format=tar --prefix="veronica-$version/" HEAD | t
 cp -R "$repository/apps/desktop/dist" "$source_dir/apps/desktop/dist"
 (cd "$repository" && cargo vendor-filterer --platform=x86_64-unknown-linux-gnu "$source_dir/vendor" >/dev/null)
 for checksum in "$source_dir"/vendor/*/.cargo-checksum.json; do
-  jq -c '.files = {}' "$checksum" > "$checksum.new"
+  jq -c '.files = {}' "$checksum" >"$checksum.new"
   mv "$checksum.new" "$checksum"
 done
 mkdir -p "$source_dir/.cargo"
-cat >> "$source_dir/.cargo/config.toml" <<'CONFIG'
+cat >>"$source_dir/.cargo/config.toml" <<'CONFIG'
 
 [source.crates-io]
 replace-with = "vendored-sources"
@@ -42,7 +45,7 @@ directory = "vendor"
 CONFIG
 
 tar -C "$work" --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
-  -cf - "veronica-$version" | xz -9 -T0 > "$work/veronica_$version.orig.tar.xz"
+  -cf - "veronica-$version" | xz -9 -T0 >"$work/veronica_$version.orig.tar.xz"
 cp "$work/veronica_$version.orig.tar.xz" "$output/"
 
 depends="$(jq -r '.bundle.linux.deb.depends | join(", ")' "$config")"
@@ -52,7 +55,7 @@ for name in "${series[@]}"; do
   cp -R "$repository/packaging/ppa/debian" "$source_dir/debian"
   sed -i -e "s|@MAINTAINER@|$maintainer|" -e "s|@RUNTIME_DEPENDS@|$depends|" \
     -e "s|@RUNTIME_RECOMMENDS@|$recommends|" "$source_dir/debian/control"
-  cat > "$source_dir/debian/changelog" <<CHANGELOG
+  cat >"$source_dir/debian/changelog" <<CHANGELOG
 veronica ($version-1~${name}1) $name; urgency=medium
 
   * Veronica $version.

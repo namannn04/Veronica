@@ -1,8 +1,7 @@
-<p align="center">
-  <img src="branding/veronica-logo.png" width="96" height="96" alt="Veronica logo">
-</p>
-
-<h1 align="center">Veronica</h1>
+<h1 align="center">
+  <img src="branding/veronica-logo.png" width="96" height="96" alt="Veronica logo"><br>
+  Veronica
+</h1>
 
 <p align="center">
   <a href="https://github.com/namannn04/Veronica/actions/workflows/ci.yml"><img src="https://github.com/namannn04/Veronica/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
