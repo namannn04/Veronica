@@ -4,6 +4,23 @@ Extensions live under `extensions/<id>/`. CI validates every manifest, builds
 the packages that changed, and on `main` publishes each new version as its own
 GitHub release.
 
+## Bundled packages
+
+Every desktop package also carries the extensions built from the same
+commit, so they install offline. `vr-pack bundle` gathers the packages in
+`target/ext` into `packaging/bundled-extensions/` with an `index.json` listing
+each id, version, sha256 and profiles, and the Tauri build runs it before
+packaging, even when there is nothing to bundle. They land in
+`/usr/share/veronica/extensions` (deb and AppImage),
+`/app/share/veronica/extensions` (Flatpak) and the same path under `$SNAP`.
+The test fixture is never bundled.
+
+The host verifies each archive against the index and its `files.json`, then
+installs it with origin `bundled` when the chosen profile or the legacy
+feature toggles call for it, once per extension, so removing one keeps it
+removed. Once the signed catalog has a newer version, the update planner
+replaces the bundled install with it.
+
 ## Publishing, for maintainers
 
 Releases and the signed catalog stay switched off until the repository owner
