@@ -939,7 +939,15 @@ export interface CatalogShelf {
   stale: boolean;
   provenance: "seed" | "cache" | "network";
   categories: CatalogCategory[];
+  profiles: CatalogProfile[];
   extensions: CatalogOffer[];
+}
+
+export interface CatalogProfile {
+  id: string;
+  title: string;
+  description: string;
+  extensions: string[];
 }
 
 export type ExtensionJobKind =

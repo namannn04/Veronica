@@ -204,6 +204,7 @@ export const ipc = {
     invoke<void>("ext_page_opened", { extension, page }),
   extPageClosed: (extension: string, page: string) =>
     invoke<void>("ext_page_closed", { extension, page }),
+  extOnboardingDetect: () => invoke<import("./onboarding").Detection>("ext_onboarding_detect"),
   extConfirmAnswer: (request: number, accepted: boolean) =>
     invoke<boolean>("ext_confirm_answer", { request, accepted }),
   presenterSet: (action: string) => invoke<void>("presenter_set", { action }),

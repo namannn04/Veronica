@@ -156,6 +156,7 @@ fn main() {
         "ext_bridge",
         "ext_auto_update",
         "ext_auto_update_set",
+        "ext_onboarding_detect",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(commands))
         .expect("cannot prepare the desktop build");

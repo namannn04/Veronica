@@ -159,6 +159,7 @@
     "allow-ext-confirm-answer",
     "allow-ext-bridge",
     "allow-ext-auto-update",
-    "allow-ext-auto-update-set"
+    "allow-ext-auto-update-set",
+    "allow-ext-onboarding-detect"
   ]
 }

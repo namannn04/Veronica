@@ -19,8 +19,10 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react
 import { ringStatus, SpendCalendar } from "../components/charts";
 import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
+import { WelcomeCard } from "../components/WelcomeCard";
 import { money, tokens } from "../lib/format";
 import { ipc, listenEvent } from "../lib/ipc";
+import { STARTERS_KEY, storedStarters } from "../lib/onboarding";
 import { startVisiblePolling } from "../lib/polling";
 import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
 import type {
@@ -50,7 +52,7 @@ import {
 } from "../ui";
 import "./HomePage.css";
 
-type HomeRoute = "usage" | "media" | "calendar" | "system";
+type HomeRoute = "usage" | "media" | "calendar" | "system" | "library";
 type HomeData = {
   usage: UsageView | null;
   limits: GaugeReport | null;
@@ -299,6 +301,13 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       )}
 
       <div className="home-grid">
+        {storedStarters(settings).length > 0 && (
+          <WelcomeCard
+            starters={storedStarters(settings)}
+            onDismiss={() => void set(STARTERS_KEY, [])}
+            onOpenLibrary={() => onNavigate("library")}
+          />
+        )}
         <WorldClocks
           now={now}
           zones={zonesFrom(settings.homeClockZones)}

@@ -4,7 +4,8 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from "react"
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
 import { countdown } from "../lib/format";
-import { ipc, isDesktopApp, listenEvent } from "../lib/ipc";
+import { invoke, ipc, isDesktopApp, listenEvent } from "../lib/ipc";
+import { chooseProfile, chosenProfile, type Profile, storedStarters } from "../lib/onboarding";
 import {
   appearanceOf,
   applyAppearance,
@@ -197,6 +198,20 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
     }
   };
 
+  const switchProfile = async (profile: Profile) => {
+    setValues((current) => ({ ...current, profile }));
+    try {
+      const added = await chooseProfile(invoke, profile, storedStarters(values));
+      confirm(
+        added.length === 0
+          ? "Saved"
+          : `Installing ${added.length} starter extension${added.length === 1 ? "" : "s"}`,
+      );
+    } catch (reason) {
+      fail(reason);
+    }
+  };
+
   const setStartup = async (enabled: boolean) => {
     try {
       setLaunchAtLogin(await ipc.launchAtLoginSet(enabled));
@@ -289,6 +304,27 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
                 onChange={(appearance) => void set("appearance", appearance)}
               />
             </div>
+          </FormGroup>
+
+          <FormGroup
+            title="Profile"
+            description="Switching adds the other profile's starter extensions and removes nothing."
+          >
+            <FormRow
+              label="How you use Veronica"
+              description="Progress shows on Home. Manage everything in the Library."
+              control={
+                <Segmented
+                  label="Profile"
+                  options={[
+                    { value: "simple", label: "Simple" },
+                    { value: "developer", label: "Developer" },
+                  ]}
+                  value={chosenProfile(values) ?? "simple"}
+                  onChange={(profile) => void switchProfile(profile)}
+                />
+              }
+            />
           </FormGroup>
 
           <FormGroup
