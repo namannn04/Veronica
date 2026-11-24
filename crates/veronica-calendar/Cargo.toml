@@ -12,3 +12,6 @@ tracing = { workspace = true }
 zbus = { workspace = true }
 chrono = { workspace = true }
 futures-util = { workspace = true }
+
+[lints]
+workspace = true
