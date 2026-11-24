@@ -20,7 +20,9 @@ import {
   occurrenceKeys,
   Page,
   PageHeader,
-  SkeletonRows,
+  ListSkeleton,
+  SkeletonText,
+  TableSkeleton,
   Table,
   Tabs,
   TextArea,
@@ -179,6 +181,10 @@ export function DatabasePage() {
   const readOnly = connection !== undefined && isReadOnly(connection);
   const summary = connection ? describeLocation(connection) : "";
 
+  if (connections === null && !connectionsError) {
+    return <DatabaseSkeleton />;
+  }
+
   if (connections === null || connections.length === 0) {
     return (
       <Page
@@ -198,17 +204,6 @@ export function DatabasePage() {
           >
             {connectionsError}
           </Notice>
-        ) : connections === null ? (
-          <div className="db-layout db-layout-static">
-            <List label="Connections">
-              <div className="db-pad">
-                <SkeletonRows rows={3} label="Reading saved connections" />
-              </div>
-            </List>
-            <Card>
-              <SkeletonRows rows={5} />
-            </Card>
-          </div>
         ) : (
           <Card>
             <EmptyState icon={<Database strokeWidth={STROKE} />} title="No saved connections">
@@ -301,9 +296,13 @@ export function DatabasePage() {
                 </div>
                 <div className="db-scroll">
                   {!objectsRead || (busy && objects.length === 0) ? (
-                    <div className="db-pad">
-                      <SkeletonRows rows={5} label="Reading objects" />
-                    </div>
+                    <ListSkeleton
+                      rows={6}
+                      inset={false}
+                      leading={0}
+                      trailing={40}
+                      label="Reading objects"
+                    />
                   ) : objects.length === 0 ? (
                     <EmptyState size="compact" title="Nothing here">
                       This level holds no objects.
@@ -418,9 +417,14 @@ export function DatabasePage() {
               </div>
               <div className="db-scroll">
                 {history === null ? (
-                  <div className="db-pad">
-                    <SkeletonRows rows={5} label="Reading history" />
-                  </div>
+                  <ListSkeleton
+                    rows={6}
+                    inset={false}
+                    leading={0}
+                    meta={64}
+                    trailing={72}
+                    label="Reading history"
+                  />
                 ) : history.length === 0 ? (
                   <EmptyState size="compact" title="Nothing yet">
                     Reads and queries from Veronica and vr appear here.
@@ -468,6 +472,62 @@ export function DatabasePage() {
   );
 }
 
+function DatabaseSkeleton() {
+  return (
+    <Page
+      width="fluid"
+      fill
+      className="db-page"
+      header={
+        <PageHeader
+          title="Database"
+          subtitle={
+            <span className="ui-mono">
+              <SkeletonText width={260} />
+            </span>
+          }
+          accessory={<Tabs label="Database views" items={TABS} value="browse" onChange={() => {}} />}
+        />
+      }
+    >
+      <div className="db-layout">
+        <div className="db-connections">
+          <ListSkeleton rows={4} leading={16} label="Reading saved connections" />
+        </div>
+        <div className="db-workspace">
+          <div className="db-browse">
+            <Card padding="none" className="db-objects">
+              <div className="db-objects-head">
+                <IconButton
+                  size="small"
+                  label="Go up one level"
+                  icon={<ArrowUp strokeWidth={STROKE} />}
+                  disabled
+                />
+                <span className="db-path">
+                  <SkeletonText width={64} />
+                </span>
+              </div>
+              <div className="db-scroll">
+                <ListSkeleton rows={6} inset={false} leading={0} label="Reading objects" />
+              </div>
+            </Card>
+            <ResultPane
+              page={null}
+              busy={false}
+              empty={
+                <EmptyState size="compact" icon={<Table2 strokeWidth={STROKE} />} title="No rows yet">
+                  Choose Read next to a table or view to see its rows.
+                </EmptyState>
+              }
+            />
+          </div>
+        </div>
+      </div>
+    </Page>
+  );
+}
+
 function ResultPane({
   page,
   paging,
@@ -483,9 +543,7 @@ function ResultPane({
     return (
       <Card padding="none" className="db-results">
         {busy ? (
-          <div className="db-pad">
-            <SkeletonRows rows={6} label="Reading rows" />
-          </div>
+          <TableSkeleton columns={4} rows={8} label="Reading rows" className="db-grid" />
         ) : (
           empty
         )}
