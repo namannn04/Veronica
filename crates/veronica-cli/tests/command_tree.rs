@@ -44,7 +44,7 @@ impl Sandbox {
             EnvOverrides::default(),
         ));
         Installer::new(layout, HostIdentity::current())
-            .install_sideload(&common::fixture_source(sandbox.root.path()))
+            .install_sideload(&common::extension_source(sandbox.root.path(), "fixture"))
             .unwrap();
         sandbox
     }

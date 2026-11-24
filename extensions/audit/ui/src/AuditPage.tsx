@@ -1,3 +1,4 @@
+import type { Client } from "@veronica/extension-api";
 import {
   Badge,
   Button,
@@ -17,10 +18,10 @@ import {
   TextField,
   type Tone,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { ChevronDown, ChevronRight, CircleCheck, Globe, ScanSearch } from "lucide-react";
 import { Fragment, useState, useSyncExternalStore } from "react";
-import { ipc } from "../lib/ipc";
-import type { AuditPage as AuditedPage, AuditReport, AuditSeverity } from "../lib/types";
+import type { AuditPage as AuditedPage, AuditReport, AuditSeverity } from "./types";
 import "./AuditPage.css";
 
 const SEVERITIES: { id: AuditSeverity; label: string; singular: string; tone: Tone }[] = [
@@ -30,6 +31,8 @@ const SEVERITIES: { id: AuditSeverity; label: string; singular: string; tone: To
 ];
 
 const LIMITS = [10, 25, 50, 100, 250];
+const CONCURRENCY = 4;
+const AUDIT_TIMEOUT_MS = 600_000;
 
 type AuditRun = {
   site: string;
@@ -53,18 +56,24 @@ const update = (next: Partial<AuditRun>) => {
   }
 };
 
-async function startAudit(site: string, limit: number) {
+async function startAudit(client: Client, site: string, limit: number) {
   update({ site, limit, running: true, error: "", report: null });
   try {
-    update({ report: await ipc.auditSite(site, limit, 4) });
+    const report = await client.backend.call<AuditReport>(
+      "site",
+      { site, limit, concurrency: CONCURRENCY },
+      { timeoutMs: AUDIT_TIMEOUT_MS },
+    );
+    update({ report });
   } catch (reason) {
-    update({ error: String(reason) });
+    update({ error: reason instanceof Error ? reason.message : String(reason) });
   } finally {
     update({ running: false });
   }
 }
 
 export function AuditPage() {
+  const client = useClient();
   const {
     report,
     running,
@@ -81,7 +90,7 @@ export function AuditPage() {
       return;
     }
     setOpen(null);
-    await startAudit(site.trim(), limit);
+    await startAudit(client, site.trim(), limit);
   };
 
   return (
@@ -147,7 +156,7 @@ export function AuditPage() {
           tone="critical"
           title={`Could not audit ${lastSite}`}
           actions={
-            <Button size="small" onClick={() => void startAudit(lastSite, lastLimit)}>
+            <Button size="small" onClick={() => void startAudit(client, lastSite, lastLimit)}>
               Retry
             </Button>
           }

@@ -1,7 +1,9 @@
 pub mod cli;
 pub mod dirs;
+pub mod format;
 mod gate;
 pub mod host_client;
+pub mod rpc;
 pub mod runtime;
 
 pub use cli::{Capture, Failure, Output};

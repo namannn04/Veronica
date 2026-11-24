@@ -1,44 +1,52 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::OnceLock;
+use std::sync::{Mutex, PoisonError};
 
 use serde_json::Value;
 
-pub(crate) fn fixture_backend() -> &'static PathBuf {
-    static PATH: OnceLock<PathBuf> = OnceLock::new();
-    PATH.get_or_init(|| {
-        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
-        let output = Command::new(cargo)
-            .args([
-                "build",
-                "--quiet",
-                "--package",
-                "veronica-ext-fixture",
-                "--message-format=json",
-            ])
-            .stderr(Stdio::inherit())
-            .output()
-            .expect("cargo runs");
-        assert!(output.status.success(), "building the fixture failed");
-        String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-            .filter(|message| message["target"]["name"] == "veronica-ext-fixture")
-            .find_map(|message| message["executable"].as_str().map(PathBuf::from))
-            .expect("cargo reports the fixture executable")
-    })
+fn backend(id: &str) -> PathBuf {
+    static BUILT: Mutex<BTreeMap<String, PathBuf>> = Mutex::new(BTreeMap::new());
+    let mut built = BUILT.lock().unwrap_or_else(PoisonError::into_inner);
+    built
+        .entry(id.to_string())
+        .or_insert_with(|| {
+            let package = format!("veronica-ext-{id}");
+            let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+            let output = Command::new(cargo)
+                .args([
+                    "build",
+                    "--quiet",
+                    "--package",
+                    &package,
+                    "--message-format=json",
+                ])
+                .stderr(Stdio::inherit())
+                .output()
+                .expect("cargo runs");
+            assert!(output.status.success(), "building {package} failed");
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .filter(|message| message["target"]["name"] == package.as_str())
+                .find_map(|message| message["executable"].as_str().map(PathBuf::from))
+                .expect("cargo reports the backend executable")
+        })
+        .clone()
 }
 
-pub(crate) fn fixture_source(root: &Path) -> PathBuf {
-    let source = root.join("fixture-source");
+pub(crate) fn extension_source(root: &Path, id: &str) -> PathBuf {
+    let source = root.join(format!("{id}-source"));
     fs::create_dir_all(source.join("bin")).unwrap();
-    let manifest =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../extensions/fixture/manifest.json");
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../extensions")
+        .join(id)
+        .join("manifest.json");
     fs::copy(manifest, source.join("manifest.json")).unwrap();
-    let backend = source.join("bin/backend");
-    fs::copy(fixture_backend(), &backend).unwrap();
-    fs::set_permissions(&backend, fs::Permissions::from_mode(0o755)).unwrap();
+    let executable = source.join("bin/backend");
+    fs::copy(backend(id), &executable).unwrap();
+    fs::set_permissions(&executable, fs::Permissions::from_mode(0o755)).unwrap();
     source
 }

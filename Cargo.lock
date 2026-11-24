@@ -6142,6 +6142,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-audit"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "url",
+ "veronica-audit",
+ "veronica-sdk",
+]
+
+[[package]]
 name = "veronica-ext-fixture"
 version = "0.1.26"
 dependencies = [

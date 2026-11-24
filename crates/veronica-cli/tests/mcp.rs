@@ -31,7 +31,7 @@ impl Home {
             root: tempfile::tempdir().unwrap(),
         };
         Installer::new(home.layout(), HostIdentity::current())
-            .install_sideload(&common::fixture_source(home.root.path()))
+            .install_sideload(&common::extension_source(home.root.path(), "fixture"))
             .unwrap();
         home
     }
@@ -296,7 +296,7 @@ fn tools_follow_the_command_tree() {
     assert!(wipe["description"]
         .as_str()
         .unwrap()
-        .contains("Usage: vr fixture wipe <item>"));
+        .contains("Usage: vr fixture wipe <ITEM>"));
 }
 
 #[test]

@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde_json::json;
 use veronica_audit::{Severity, DEFAULT_CONCURRENCY};
 
-use crate::format::{self, Output};
+use veronica_sdk::{format, Output};
 
 #[derive(clap::Subcommand)]
 pub(crate) enum AuditCommand {
@@ -45,7 +45,7 @@ fn parse_site(raw: &str) -> Result<url::Url> {
     veronica_audit::site_url(raw)
 }
 
-pub(crate) async fn run(command: &AuditCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &AuditCommand, output: Output<'_>) -> Result<()> {
     match command {
         AuditCommand::Site {
             site,

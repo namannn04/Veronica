@@ -262,7 +262,10 @@ fn argument(arg: &Arg) -> clap::Arg {
     if arg.kind == ArgKind::Flag {
         return named(built.action(ArgAction::SetTrue), arg);
     }
-    built = built.value_parser(parser(arg)).action(if arg.multiple {
+    built = built
+        .value_name(arg.name.to_uppercase())
+        .value_parser(parser(arg))
+        .action(if arg.multiple {
         ArgAction::Append
     } else {
         ArgAction::Set

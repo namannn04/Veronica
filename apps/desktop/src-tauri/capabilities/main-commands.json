@@ -72,7 +72,6 @@
     "allow-app-restart",
     "allow-system-processes",
     "allow-system-quit-process",
-    "allow-audit-site",
     "allow-database-connections",
     "allow-database-test",
     "allow-database-browse",

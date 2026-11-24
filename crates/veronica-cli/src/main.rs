@@ -2,7 +2,6 @@ use std::fmt::Write as _;
 
 mod alerts_cmd;
 mod attention_cmd;
-mod audit_cmd;
 mod backup_cmd;
 mod calendar_cmd;
 mod cleaner_cmd;
@@ -139,12 +138,6 @@ enum Command {
         about = "App Maintenance: what is installed, what can be updated, and removing it with the consequences shown first"
     )]
     Maintenance(maintenance_cmd::MaintenanceCommand),
-    #[command(
-        subcommand,
-        alias = "seo",
-        about = "Site Audit: crawl a site's sitemap and check each page's metadata"
-    )]
-    Audit(audit_cmd::AuditCommand),
     #[command(
         subcommand,
         alias = "db",
@@ -372,7 +365,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output),
         Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),
         Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,
-        Command::Audit(command) => audit_cmd::run(command, output).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
         Command::Quinjet(command) => quinjet_cmd::run(&directories, command, output).await,
         Command::Color(command) => {

@@ -24,6 +24,7 @@ import {
   Target,
   Wrench,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 const ICON_SIZE = 16;
 const ICON_STROKE = 1.75;
@@ -64,3 +65,12 @@ export const SettingsIcon = icon(Settings);
 export const AboutIcon = icon(Info);
 export const PortsIcon = icon(Network);
 export const SearchIcon = icon(Search);
+
+const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
+  "scan-search": AuditIcon,
+};
+
+export function NamedIcon({ name }: { name?: string }) {
+  const Glyph = (name === undefined ? undefined : NAMED_ICONS[name]) ?? ExtensionsIcon;
+  return <Glyph />;
+}

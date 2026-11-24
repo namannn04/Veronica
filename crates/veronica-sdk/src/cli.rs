@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use veronica_protocol::manifest::{Arg, ArgKind, ArgType, Command, Effect};
 use veronica_protocol::rpc::{CliRunParams, CliRunResult};
-use veronica_protocol::ExitCode;
+use veronica_protocol::{ExitCode, Manifest};
 
 const BIN_NAME: &str = "vr";
 const JSON_FLAG: &str = "json";
@@ -362,4 +362,36 @@ fn typed(raw: &str, value_type: ArgType) -> Value {
         ArgType::String | ArgType::Path => None,
     };
     parsed.unwrap_or_else(|| Value::String(raw.to_string()))
+}
+
+pub const BLESS_VAR: &str = "VERONICA_BLESS";
+
+fn keep_authored(described: &mut [Command], authored: &[Command]) {
+    for command in described {
+        if let Some(existing) = authored.iter().find(|item| item.name == command.name) {
+            command.stdin = existing.stdin;
+            command.timeout_seconds = existing.timeout_seconds;
+            command.mcp.clone_from(&existing.mcp);
+            keep_authored(&mut command.subcommands, &existing.subcommands);
+        }
+    }
+}
+
+pub fn sync_manifest(path: &std::path::Path, mut described: Vec<Command>) -> Result<(), String> {
+    let raw = std::fs::read_to_string(path).map_err(|error| error.to_string())?;
+    let mut manifest: Manifest = serde_json::from_str(&raw).map_err(|error| error.to_string())?;
+    keep_authored(&mut described, &manifest.commands);
+    if described == manifest.commands {
+        return Ok(());
+    }
+    if std::env::var_os(BLESS_VAR).is_none() {
+        return Err(format!(
+            "the commands in {} drifted from the backend; rerun with {BLESS_VAR}=1 and format the file",
+            path.display()
+        ));
+    }
+    manifest.commands = described;
+    let mut body = serde_json::to_string_pretty(&manifest).map_err(|error| error.to_string())?;
+    body.push('\n');
+    std::fs::write(path, body).map_err(|error| error.to_string())
 }

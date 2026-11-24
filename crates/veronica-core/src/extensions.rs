@@ -82,7 +82,7 @@ use Capability::{
     ExternalMediaControl, GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression,
     KeystrokeObservation, LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls,
     MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
-    ScreenColorSampling, ScreenShareDetection, ShellIntegration, SiteAuditing, SystemMetrics,
+    ScreenColorSampling, ScreenShareDetection, ShellIntegration, SystemMetrics,
     UsageCollection, WindowDimming,
 };
 use ExtensionGroup as G;
@@ -135,18 +135,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_capabilities: &[LocalTerminal],
         optional_capabilities: &[MachineManagement],
         required_tools: &["quinjet"],
-    },
-    ExtensionEntry {
-        id: "seoAudit",
-        title: "Site Audit",
-        subtitle: "Crawl sitemaps, inspect page metadata, and keep every run local.",
-        icon: "file-search",
-        group: G::Utilities,
-        featured: false,
-        defaults_key: "tabSEOAuditEnabled",
-        required_capabilities: &[SiteAuditing],
-        optional_capabilities: &[],
-        required_tools: &[],
     },
     ExtensionEntry {
         id: "system",
@@ -358,6 +346,28 @@ pub fn entry(id: &str) -> Option<&'static ExtensionEntry> {
     ENTRIES.iter().find(|e| e.id == id)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LegacyToggle {
+    pub id: &'static str,
+    pub extension: &'static str,
+    pub defaults_key: &'static str,
+    pub featured: bool,
+}
+
+pub const LEGACY_TOGGLES: &[LegacyToggle] = &[LegacyToggle {
+    id: "seoAudit",
+    extension: "audit",
+    defaults_key: "tabSEOAuditEnabled",
+    featured: false,
+}];
+
+pub fn successor(id: &str) -> Option<&'static str> {
+    LEGACY_TOGGLES
+        .iter()
+        .find(|toggle| toggle.id == id || toggle.extension == id)
+        .map(|toggle| toggle.extension)
+}
+
 pub fn filter(query: &str, group: Option<ExtensionGroup>) -> Vec<&'static ExtensionEntry> {
     let needle = query.trim().to_lowercase();
     ENTRIES
@@ -391,13 +401,12 @@ mod tests {
     }
 
     #[test]
-    fn the_catalogue_carries_ediths_ids() {
+    fn the_catalogue_keeps_its_order() {
         let ported = [
             "attention",
             "usage",
             "herdr",
             "quinjet",
-            "seoAudit",
             "system",
             "appMaintenance",
             "machines",
@@ -417,16 +426,24 @@ mod tests {
             "colorPicker",
         ];
         let ids: Vec<&str> = ENTRIES.iter().map(|entry| entry.id).collect();
-        assert_eq!(ids, ported, "the catalogue drifted from Edith's order");
+        assert_eq!(ids, ported, "the catalogue order drifted");
     }
 
     #[test]
-    fn nothing_edith_lists_is_missing_here() {
-        assert_eq!(
-            ENTRIES.len(),
-            22,
-            "Edith's catalogue has 22 entries and so does this one"
-        );
+    fn migrated_features_leave_the_built_in_catalogue() {
+        for toggle in LEGACY_TOGGLES {
+            assert!(entry(toggle.id).is_none(), "{} is still built in", toggle.id);
+            assert!(
+                ENTRIES
+                    .iter()
+                    .all(|entry| entry.defaults_key != toggle.defaults_key),
+                "{} reuses a built-in toggle",
+                toggle.id
+            );
+        }
+        assert_eq!(successor("seoAudit"), Some("audit"));
+        assert_eq!(successor("audit"), Some("audit"));
+        assert_eq!(successor("usage"), None);
     }
 
     #[test]

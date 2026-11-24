@@ -1,5 +1,4 @@
 mod attention;
-mod audit;
 mod calendar;
 mod clipboard;
 mod color;
@@ -12,7 +11,6 @@ mod system;
 mod usage;
 
 pub(crate) use attention::*;
-pub(crate) use audit::*;
 pub(crate) use calendar::*;
 pub(crate) use clipboard::*;
 pub(crate) use color::*;

@@ -152,7 +152,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::app_restart,
             commands::system_processes,
             commands::system_quit_process,
-            commands::audit_site,
             commands::database_connections,
             commands::database_test,
             commands::database_browse,

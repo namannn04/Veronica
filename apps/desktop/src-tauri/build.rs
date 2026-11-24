@@ -68,7 +68,6 @@ fn main() {
         "app_restart",
         "system_processes",
         "system_quit_process",
-        "audit_site",
         "database_connections",
         "database_test",
         "database_browse",

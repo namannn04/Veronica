@@ -44,7 +44,6 @@ import type {
   AttentionSettings,
   AttentionStatus,
   AudioStream,
-  AuditReport,
   BackupSummary,
   BluetoothState,
   CleanerCategory,
@@ -259,8 +258,6 @@ export const ipc = {
   appRestart: () => invoke<void>("app_restart"),
   systemProcesses: () => invoke<RunningProcess[]>("system_processes"),
   systemQuitProcess: (pid: number) => invoke<void>("system_quit_process", { pid }),
-  auditSite: (site: string, limit: number, concurrency: number) =>
-    invoke<AuditReport>("audit_site", { site, limit, concurrency }),
 
   databaseConnections: () => invoke<DatabaseConnection[]>("database_connections"),
   databaseTest: (connection: string) => invoke<unknown>("database_test", { connection }),
