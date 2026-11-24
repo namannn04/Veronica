@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Package, RefreshCw } from "lucide-react";
+import { CheckCircle2, Package, RefreshCw } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
 import { bytes } from "../lib/format";
@@ -27,7 +27,7 @@ import "./MaintenancePage.css";
 const STROKE = 1.75;
 
 type Tab = "updates" | "installed";
-type Pending = { kind: "source"; source: string } | { kind: "all" };
+type Pending = { source: string };
 
 function packages(count: number) {
   return `${count} package${count === 1 ? "" : "s"}`;
@@ -129,7 +129,7 @@ export function MaintenancePage() {
   const total = updates?.length ?? 0;
   const groups = [...bySource.entries()];
 
-  const pendingSources = pending?.kind === "all" ? groups.map(([source]) => source) : pending ? [pending.source] : [];
+  const pendingSources = pending ? [pending.source] : [];
   const pendingCount = pendingSources.reduce((sum, source) => sum + (bySource.get(source)?.length ?? 0), 0);
   const pendingRoot = pendingSources.filter(needsRoot);
   const pendingMessage = pendingRoot.length === 0
@@ -150,11 +150,6 @@ export function MaintenancePage() {
               <Button icon={<RefreshCw strokeWidth={STROKE} />} disabled={Boolean(busy)} onClick={() => void loadUpdates()}>
                 Check for updates
               </Button>
-              {groups.length > 0 && (
-                <Button variant="primary" icon={<Download strokeWidth={STROKE} />} disabled={Boolean(busy)} onClick={() => setPending({ kind: "all" })}>
-                  Update all
-                </Button>
-              )}
             </>
           }
           accessory={
@@ -224,7 +219,7 @@ export function MaintenancePage() {
                 title={source}
                 description={`${packages(rows.length)} · ${needsRoot(source) ? "asks you to authenticate" : "no authentication needed"}`}
                 actions={
-                  <Button size="small" disabled={Boolean(busy)} onClick={() => setPending({ kind: "source", source })}>
+                  <Button size="small" disabled={Boolean(busy)} onClick={() => setPending({ source })}>
                     Update {rows.length}
                   </Button>
                 }
@@ -300,14 +295,10 @@ export function MaintenancePage() {
         open={pending !== null}
         onClose={() => setPending(null)}
         onConfirm={() => void run(pendingSources)}
-        title={pending?.kind === "all" ? `Update ${packages(pendingCount)}?` : `Update ${pendingCount} ${pendingSources[0] ?? ""} package${pendingCount === 1 ? "" : "s"}?`}
+        title={`Update ${pendingCount} ${pendingSources[0] ?? ""} package${pendingCount === 1 ? "" : "s"}?`}
         message={pendingMessage}
-        confirmLabel={pending?.kind === "all" ? "Update all" : "Update"}
-      >
-        {pending?.kind === "all" && pendingSources.length > 1 && (
-          <p className="mnt-dialog-note">Sources update one after another: {pendingSources.map((source) => `${source} (${bySource.get(source)?.length ?? 0})`).join(", ")}.</p>
-        )}
-      </ConfirmDialog>
+        confirmLabel="Update"
+      />
 
       <Dialog
         open={plan !== null}

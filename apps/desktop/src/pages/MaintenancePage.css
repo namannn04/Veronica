@@ -74,12 +74,6 @@
   line-height: 1.5;
 }
 
-.mnt-dialog-note {
-  margin: 0;
-  color: var(--text-2);
-  font-size: var(--text-callout);
-}
-
 .mnt-plan {
   display: flex;
   flex-direction: column;
