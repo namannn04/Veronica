@@ -1,10 +1,11 @@
 """Host-side procfs access, including from Flatpak. Standard-library Python only."""
+
 import ipaddress
 import json
 import os
-from pathlib import Path
 import signal
 import sys
+from pathlib import Path
 
 
 def parse_table(text, protocol, ipv6=False):
@@ -15,13 +16,20 @@ def parse_table(text, protocol, ipv6=False):
             continue
         try:
             raw, port = fields[1].split(":")
-            packed = b"".join(int(raw[i:i + 8], 16).to_bytes(4, sys.byteorder)
-                              for i in range(0, len(raw), 8))
+            packed = b"".join(
+                int(raw[i : i + 8], 16).to_bytes(4, sys.byteorder) for i in range(0, len(raw), 8)
+            )
             if len(packed) != (16 if ipv6 else 4):
                 continue
-            rows.append({"address": str(ipaddress.ip_address(packed)),
-                         "port": int(port, 16), "protocol": protocol,
-                         "inode": fields[9], "owners": []})
+            rows.append(
+                {
+                    "address": str(ipaddress.ip_address(packed)),
+                    "port": int(port, 16),
+                    "protocol": protocol,
+                    "inode": fields[9],
+                    "owners": [],
+                }
+            )
         except (ValueError, OverflowError):
             continue
     return rows
@@ -30,10 +38,17 @@ def parse_table(text, protocol, ipv6=False):
 def identity(pid):
     root = Path("/proc") / str(pid)
     stat = (root / "stat").read_text().rsplit(")", 1)[1].split()
-    uid = next(line.split()[1] for line in (root / "status").read_text().splitlines()
-               if line.startswith("Uid:"))
-    return {"pid": pid, "startedAt": stat[19], "uid": int(uid),
-            "name": (root / "comm").read_text().strip()}
+    uid = next(
+        line.split()[1]
+        for line in (root / "status").read_text().splitlines()
+        if line.startswith("Uid:")
+    )
+    return {
+        "pid": pid,
+        "startedAt": stat[19],
+        "uid": int(uid),
+        "name": (root / "comm").read_text().strip(),
+    }
 
 
 def sockets(pid):
@@ -50,8 +65,12 @@ def sockets(pid):
 
 def snapshot():
     rows, warnings = [], []
-    for name, protocol, ipv6 in [("tcp", "TCP", False), ("tcp6", "TCP", True),
-                                 ("udp", "UDP", False), ("udp6", "UDP", True)]:
+    for name, protocol, ipv6 in [
+        ("tcp", "TCP", False),
+        ("tcp6", "TCP", True),
+        ("udp", "UDP", False),
+        ("udp6", "UDP", True),
+    ]:
         try:
             rows.extend(parse_table((Path("/proc/net") / name).read_text(), protocol, ipv6))
         except FileNotFoundError:
@@ -72,10 +91,13 @@ def snapshot():
             owned = sockets(pid)
             if identity(pid)["startedAt"] != owner["startedAt"]:
                 continue
-            owner["canStop"] = (owner["uid"] == os.getuid() == os.geteuid()
-                                and pid > 1 and pid != os.getpid()
-                                and hasattr(os, "pidfd_open")
-                                and hasattr(signal, "pidfd_send_signal"))
+            owner["canStop"] = (
+                owner["uid"] == os.getuid() == os.geteuid()
+                and pid > 1
+                and pid != os.getpid()
+                and hasattr(os, "pidfd_open")
+                and hasattr(signal, "pidfd_send_signal")
+            )
             for inode in owned.intersection(indexed):
                 for row in indexed[inode]:
                     row["owners"].append(owner)
@@ -84,11 +106,17 @@ def snapshot():
         except (OSError, ValueError, IndexError, StopIteration):
             pass
     if restricted or any(not row["owners"] for row in rows):
-        warnings.append("Linux permissions may hide some process owners. Hidden or other-user processes cannot be stopped here.")
+        warnings.append(
+            "Linux permissions may hide some process owners. Hidden or other-user processes cannot be stopped here."
+        )
     for row in rows:
         row["owners"].sort(key=lambda owner: owner["pid"])
-    return {"ports": sorted(rows, key=lambda row: (row["port"], row["protocol"], row["address"], row["inode"])),
-            "warnings": warnings}
+    return {
+        "ports": sorted(
+            rows, key=lambda row: (row["port"], row["protocol"], row["address"], row["inode"])
+        ),
+        "warnings": warnings,
+    }
 
 
 def stop(request):

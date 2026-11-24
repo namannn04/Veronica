@@ -53,9 +53,7 @@ def removal_range(node):
     if (
         parent is not None
         and parent.type in ("jsx_expression", "jsx_expression_container")
-        and all(
-            c.type in COMMENT_TYPES or c.type in ("{", "}") for c in parent.children
-        )
+        and all(c.type in COMMENT_TYPES or c.type in ("{", "}") for c in parent.children)
     ):
         return parent.start_byte, parent.end_byte
     end = node.end_byte
@@ -82,9 +80,9 @@ def strip(source: bytes, ranges: list) -> bytes:
             next_end = out.find(b"\n", next_start)
             next_line = out[next_start : next_end if next_end != -1 else len(out)]
             drop_end = line_end + 1 if line_end < len(out) else line_end
-            if prev_blank and next_line.strip() == b"" and next_end != -1:
-                drop_end = next_end + 1
-            elif line_start == 0 and next_line.strip() == b"" and next_end != -1:
+            if (prev_blank and next_line.strip() == b"" and next_end != -1) or (
+                line_start == 0 and next_line.strip() == b"" and next_end != -1
+            ):
                 drop_end = next_end + 1
             del out[line_start:drop_end]
         else:
@@ -114,9 +112,7 @@ def candidates(paths: list[str]) -> list[Path]:
     return [
         f
         for f in files
-        if f.suffix in LANGUAGES
-        and not str(f).startswith(EXCLUDED_PREFIXES)
-        and f.is_file()
+        if f.suffix in LANGUAGES and not str(f).startswith(EXCLUDED_PREFIXES) and f.is_file()
     ]
 
 
