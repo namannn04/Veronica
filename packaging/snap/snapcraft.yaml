@@ -1,0 +1,74 @@
+name: veronica
+title: Veronica
+base: core24
+version: "0.0.0"
+summary: Native control center for Ubuntu
+description: |
+  Veronica combines agent usage tracking, machine monitoring, media control
+  and desktop utilities into one application, with a GNOME Shell extension
+  for the top-bar notch.
+
+  Veronica controls the computer it runs on: it reads coding-agent history in
+  your home directory and runs PipeWire, GNOME Shell, apt and your terminals,
+  so this snap uses classic confinement and the GTK and WebKitGTK libraries of
+  the Ubuntu desktop it runs on.
+license: GPL-3.0-only
+website: https://namannn04.github.io/Veronica/
+source-code: https://github.com/namannn04/Veronica
+issues: https://github.com/namannn04/Veronica/issues
+icon: veronica.png
+grade: stable
+confinement: classic
+platforms:
+  amd64:
+
+lint:
+  ignore:
+    - library
+    - classic
+
+apps:
+  veronica:
+    command: usr/bin/veronica
+    desktop: usr/share/applications/veronica.desktop
+    common-id: io.github.namannn04.Veronica
+    environment:
+      PATH: $PATH:$SNAP/usr/bin
+  vr:
+    command: usr/bin/vr
+    environment:
+      PATH: $PATH:$SNAP/usr/bin
+
+parts:
+  veronica:
+    plugin: dump
+    source: veronica.deb
+    source-type: deb
+    build-packages:
+      - patchelf
+    stage-packages:
+      - jq
+      - libayatana-appindicator3-1
+    prime:
+      - usr/bin/veronica
+      - usr/bin/vr
+      - usr/bin/jq
+      - usr/share
+      - usr/lib/x86_64-linux-gnu/libjq.so.*
+      - usr/lib/x86_64-linux-gnu/libonig.so.*
+      - usr/lib/x86_64-linux-gnu/libayatana-appindicator3.so.*
+      - usr/lib/x86_64-linux-gnu/libayatana-indicator3.so.*
+      - usr/lib/x86_64-linux-gnu/libayatana-ido3-0.4.so.*
+      - usr/lib/x86_64-linux-gnu/libdbusmenu-glib.so.*
+      - usr/lib/x86_64-linux-gnu/libdbusmenu-gtk3.so.*
+    override-prime: |
+      craftctl default
+      applications="$CRAFT_PRIME/usr/share/applications"
+      mv "$applications/Veronica.desktop" "$applications/veronica.desktop"
+      sed -i 's|^Icon=.*|Icon=${SNAP}/usr/share/icons/hicolor/512x512/apps/veronica.png|' "$applications/veronica.desktop"
+      for binary in usr/bin/veronica usr/bin/jq; do
+        patchelf --add-rpath '$ORIGIN/../lib/x86_64-linux-gnu' "$CRAFT_PRIME/$binary"
+      done
+      for library in "$CRAFT_PRIME"/usr/lib/x86_64-linux-gnu/*.so.*; do
+        [ -L "$library" ] || patchelf --add-rpath '$ORIGIN' "$library"
+      done
