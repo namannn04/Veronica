@@ -1,3 +1,4 @@
+pub mod canonical;
 pub mod contract_id;
 pub mod exit;
 pub mod manifest;
