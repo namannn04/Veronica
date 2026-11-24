@@ -1,4 +1,5 @@
 mod archive;
+mod backend;
 mod catalog;
 mod common;
 mod install;
