@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, ExternalLink, MonitorPlay, RefreshCw, SquareTerminal } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import { startVisiblePolling } from "../lib/polling";
@@ -23,8 +23,8 @@ import {
   Skeleton,
   Spinner,
   StatusDot,
-  Toolbar,
   type Tone,
+  Toolbar,
 } from "../ui";
 import "./HerdrPage.css";
 

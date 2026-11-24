@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Stethoscope } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { GraftPlayground } from "../components/GraftPlayground";
 import { ipc } from "../lib/ipc";

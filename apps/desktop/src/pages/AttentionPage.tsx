@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import { Activity, CircleStop, History, Play, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import type {

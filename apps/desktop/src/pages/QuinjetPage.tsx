@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import { ChevronRight, FolderGit2, GitBranch, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import type { QuinjetBoard, QuinjetProject, QuinjetWorktree } from "../lib/types";
