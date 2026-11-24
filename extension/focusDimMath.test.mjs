@@ -34,11 +34,7 @@ test('a negative intensity clamps to transparent', () => {
 test('a value that is not a number falls back rather than clamping', () => {
     for (const absent of [undefined, null, 'dark', '', {}, [], true, NaN]) {
         assert.equal(clampIntensity(absent), DEFAULT_INTENSITY, `intensity ${String(absent)}`);
-        assert.equal(
-            clampAnimationSeconds(absent),
-            DEFAULT_ANIMATION_SECONDS,
-            `animation ${String(absent)}`
-        );
+        assert.equal(clampAnimationSeconds(absent), DEFAULT_ANIMATION_SECONDS, `animation ${String(absent)}`);
     }
 });
 

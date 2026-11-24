@@ -37,9 +37,7 @@ export class PanelReplacement {
         this._hideStock(REPLACED_CLOCK);
 
         try {
-            this._notch = new NotchButton(
-                clipboardWatcher, cancellable, settings, keyboardCleaner
-            );
+            this._notch = new NotchButton(clipboardWatcher, cancellable, settings, keyboardCleaner);
             Main.panel.addToStatusArea(NOTCH_ROLE, this._notch, 0, 'center');
         } catch (error) {
             console.debug(`veronica: cannot build the notch clock: ${error}`);
@@ -80,8 +78,7 @@ export class PanelReplacement {
         ]) {
             if (descriptor) {
                 Object.defineProperty(panel, name, descriptor);
-            }
-            else {
+            } else {
                 delete panel[name];
             }
         }

@@ -55,10 +55,13 @@ test('a control character is not what belongs on the keycap', () => {
 });
 
 test('modifiers are named in the order a shortcut is written', () => {
-    assert.deepEqual(
-        labelsFor(0x0073, 0x73, CONTROL_MASK | ALT_MASK | SHIFT_MASK | SUPER_MASK),
-        ['Ctrl', 'Alt', 'Shift', 'Super', 'S']
-    );
+    assert.deepEqual(labelsFor(0x0073, 0x73, CONTROL_MASK | ALT_MASK | SHIFT_MASK | SUPER_MASK), [
+        'Ctrl',
+        'Alt',
+        'Shift',
+        'Super',
+        'S',
+    ]);
 });
 
 test('a modifier held on its own has nothing to show', () => {
@@ -105,7 +108,10 @@ test('the queue keeps the newest six and drops the oldest', () => {
         queue.append([String(index)], 0, 1.5);
     }
     assert.equal(queue.entries.length, MAXIMUM_VISIBLE);
-    assert.deepEqual(queue.entries.map(entry => entry.keys[0]), ['3', '4', '5', '6', '7', '8']);
+    assert.deepEqual(
+        queue.entries.map(entry => entry.keys[0]),
+        ['3', '4', '5', '6', '7', '8']
+    );
 });
 
 test('a queue asked to hold nothing still holds one', () => {
@@ -136,7 +142,10 @@ test('entries carry distinct ids so one can be removed alone', () => {
     const first = queue.entries[0].id;
     assert.notEqual(first, queue.entries[1].id);
     queue.remove(first);
-    assert.deepEqual(queue.entries.map(entry => entry.keys[0]), ['B']);
+    assert.deepEqual(
+        queue.entries.map(entry => entry.keys[0]),
+        ['B']
+    );
 });
 
 test('pausing clears what is on screen and reports what it removed', () => {

@@ -46,20 +46,24 @@ export class AttentionTracker {
         const seconds = Number(this._settings.get('attentionIdleSeconds', 300));
         const threshold = (Number.isFinite(seconds) && seconds > 0 ? seconds : 300) * 1000;
         const idle = !window || idleMs >= threshold;
-        const application = idle ? 'Away' : (window.get_wm_class() || window.get_wm_class_instance() || 'Unknown');
+        const application = idle ? 'Away' : window.get_wm_class() || window.get_wm_class_instance() || 'Unknown';
         const args = [cli, 'attention', 'record', `--application=${application}`, `--seconds=${PULSE_SECONDS}`];
         if (idle) {
             args.push('--idle');
-        }
-        else if (this._settings.get('attentionPrivacy', 'applications') === 'detailed') {
+        } else if (this._settings.get('attentionPrivacy', 'applications') === 'detailed') {
             args.push(`--title=${window.get_title() || ''}`);
         }
         this._running = true;
         try {
-            const process = Gio.Subprocess.new(args, Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE);
+            const process = Gio.Subprocess.new(
+                args,
+                Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE
+            );
             process.wait_async(null, (source, result) => {
                 this._running = false;
-                try { source.wait_finish(result); } catch {}
+                try {
+                    source.wait_finish(result);
+                } catch {}
             });
         } catch {
             this._running = false;

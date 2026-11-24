@@ -71,10 +71,11 @@ export class ActionBridge {
     _pasteEmoji(invocation) {
         const target = this._typingWindow;
         const picker = this._emojiWindow;
-        if (this._pasteInvocation || !target?.get_compositor_private() ||
-            !picker?.get_compositor_private()) {
-            invocation.return_dbus_error(`${ACTION_INTERFACE}.NoTarget`,
-                'Focus the text field before opening the emoji picker');
+        if (this._pasteInvocation || !target?.get_compositor_private() || !picker?.get_compositor_private()) {
+            invocation.return_dbus_error(
+                `${ACTION_INTERFACE}.NoTarget`,
+                'Focus the text field before opening the emoji picker'
+            );
             return;
         }
         this._pasteInvocation = invocation;
@@ -108,8 +109,7 @@ export class ActionBridge {
         this._pasteInvocation = null;
         if (error) {
             invocation?.return_dbus_error(`${ACTION_INTERFACE}.PasteFailed`, error);
-        }
-        else {
+        } else {
             invocation?.return_value(null);
         }
     }

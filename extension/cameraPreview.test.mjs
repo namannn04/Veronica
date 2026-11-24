@@ -15,55 +15,135 @@ function preview({ brokenBuffer = false, upload = true, width = 320, height = 18
         .replace(/try \{\n {4}Gst = [\s\S]*?\n\}\n\nlet gstInitialised/, 'let gstInitialised')
         .replace(/export (class|function) /g, '$1 ')
         .replace('let GstVideo = null;', 'let GstVideo = testVideo;');
-    const GLib = { Bytes: class { constructor(data) { this.data = data; } },
-        PRIORITY_DEFAULT_IDLE: 0, SOURCE_REMOVE: false,
-        idle_add: (_p, fn) => { idles.push(fn); return 1; }, Source: { remove() {} } };
-    const St = { ImageContent: class {
-        set_preferred_width() {} set_preferred_height() {}
-        set_bytes(...args) {
-        assert.equal(args[0].data.length, stride * height);
-        assert.equal(args[2], width); assert.equal(args[3], height); assert.equal(args[4], stride);
-        return upload;
-    } } };
-    const surface = { set_content() {}, queue_redraw() { redraws++; } };
-    const { CameraPreview, cameraPipeline } = new Function('Clutter', 'Cogl', 'GLib', 'St', 'global', 'testVideo', `${source}\nreturn { CameraPreview, cameraPipeline };`)(
-        { ContentGravity: { RESIZE_ASPECT: 0 } }, { PixelFormat: { RGBA_8888: 0 } }, GLib, St, {}, { VideoInfo: { new_from_caps: () => ({ width, height, stride: [stride], offset: [0] }) } });
-    const camera = new CameraPreview(surface, () => { frames++; }, e => errors.push(e), size => sizes.push(size));
+    const GLib = {
+        Bytes: class {
+            constructor(data) {
+                this.data = data;
+            }
+        },
+        PRIORITY_DEFAULT_IDLE: 0,
+        SOURCE_REMOVE: false,
+        idle_add: (_p, fn) => {
+            idles.push(fn);
+            return 1;
+        },
+        Source: { remove() {} },
+    };
+    const St = {
+        ImageContent: class {
+            set_preferred_width() {}
+            set_preferred_height() {}
+            set_bytes(...args) {
+                assert.equal(args[0].data.length, stride * height);
+                assert.equal(args[2], width);
+                assert.equal(args[3], height);
+                assert.equal(args[4], stride);
+                return upload;
+            }
+        },
+    };
+    const surface = {
+        set_content() {},
+        queue_redraw() {
+            redraws++;
+        },
+    };
+    const { CameraPreview, cameraPipeline } = new Function(
+        'Clutter',
+        'Cogl',
+        'GLib',
+        'St',
+        'global',
+        'testVideo',
+        `${source}\nreturn { CameraPreview, cameraPipeline };`
+    )(
+        { ContentGravity: { RESIZE_ASPECT: 0 } },
+        { PixelFormat: { RGBA_8888: 0 } },
+        GLib,
+        St,
+        {},
+        { VideoInfo: { new_from_caps: () => ({ width, height, stride: [stride], offset: [0] }) } }
+    );
+    const camera = new CameraPreview(
+        surface,
+        () => {
+            frames++;
+        },
+        e => errors.push(e),
+        size => sizes.push(size)
+    );
     const pipeline = { set_state() {}, get_by_name: () => ({ set_property: (_name, value) => flips.push(value) }) };
     camera._pipeline = pipeline;
-    camera._sink = { try_pull_sample() {
-        if (brokenBuffer) { throw new Error('read failure'); }
-        return { get_caps: () => ({}), get_buffer: () => ({ get_size: () => stride * height,
-            extract_dup: () => new Uint8Array(stride * height) }) };
-    } };
+    camera._sink = {
+        try_pull_sample() {
+            if (brokenBuffer) {
+                throw new Error('read failure');
+            }
+            return {
+                get_caps: () => ({}),
+                get_buffer: () => ({
+                    get_size: () => stride * height,
+                    extract_dup: () => new Uint8Array(stride * height),
+                }),
+            };
+        },
+    };
     let stops = 0;
-    camera.stop = () => { stops++; camera._pipeline = null; };
-    return { camera, pipeline: cameraPipeline, errors, sizes, flips, flush: () => { for (const fn of idles) { fn(); } },
-        frames: () => frames, redraws: () => redraws, stops: () => stops };
+    camera.stop = () => {
+        stops++;
+        camera._pipeline = null;
+    };
+    return {
+        camera,
+        pipeline: cameraPipeline,
+        errors,
+        sizes,
+        flips,
+        flush: () => {
+            for (const fn of idles) {
+                fn();
+            }
+        },
+        frames: () => frames,
+        redraws: () => redraws,
+        stops: () => stops,
+    };
 }
 
 test('successful texture upload reveals the preview and schedules redraws', () => {
-    const h = preview(); h.camera._pullFrame(); h.camera._pullFrame();
+    const h = preview();
+    h.camera._pullFrame();
+    h.camera._pullFrame();
     assert.equal(h.frames(), 1);
     assert.equal(h.redraws(), 2);
     assert.deepEqual(h.errors, []);
 });
 
 test('a failed texture upload never reports a working preview', () => {
-    const h = preview({ upload: false }); h.camera._pullFrame(); h.flush();
-    assert.equal(h.frames(), 0); assert.equal(h.stops(), 1);
+    const h = preview({ upload: false });
+    h.camera._pullFrame();
+    h.flush();
+    assert.equal(h.frames(), 0);
+    assert.equal(h.stops(), 1);
     assert.match(h.errors[0], /upload/);
 });
 
 test('buffer extraction errors stop capture and reach the visible error callback', () => {
-    const h = preview({ brokenBuffer: true }); h.camera._pullFrame(); h.flush();
-    assert.equal(h.stops(), 1); assert.match(h.errors[0], /read failure/);
+    const h = preview({ brokenBuffer: true });
+    h.camera._pullFrame();
+    h.flush();
+    assert.equal(h.stops(), 1);
+    assert.match(h.errors[0], /read failure/);
 });
 
-
 test('4:3 and widescreen frames keep their source proportions within the preview bounds', () => {
-    for (const [width, height] of [[320,240],[320,180],[320,320]]) {
-        const h = preview({width,height}); h.camera._pullFrame();
+    for (const [width, height] of [
+        [320, 240],
+        [320, 180],
+        [320, 320],
+    ]) {
+        const h = preview({ width, height });
+        h.camera._pullFrame();
         const size = h.sizes[0];
         assert.ok(Math.abs(size.width / size.height - width / height) < 1e-9);
         assert.ok(size.width <= 292 && size.height <= 164);
@@ -71,18 +151,21 @@ test('4:3 and widescreen frames keep their source proportions within the preview
 });
 
 test('horizontal correction is explicit and can be switched off for other cameras', () => {
-    const h = preview(); h.camera.setFlipHorizontal(true); h.camera.setFlipHorizontal(false);
-    assert.deepEqual(h.flips,[4,0]);
+    const h = preview();
+    h.camera.setFlipHorizontal(true);
+    h.camera.setFlipHorizontal(false);
+    assert.deepEqual(h.flips, [4, 0]);
 });
 
 test('padded RGBA scanlines retain the negotiated stride', () => {
-    const h = preview({width:320,height:240,stride:1296}); h.camera._pullFrame();
-    assert.equal(h.frames(),1); assert.deepEqual(h.errors,[]);
+    const h = preview({ width: 320, height: 240, stride: 1296 });
+    h.camera._pullFrame();
+    assert.equal(h.frames(), 1);
+    assert.deepEqual(h.errors, []);
 });
 
-
 test('real GStreamer preserves source geometry and reverses pixels only when requested', t => {
-    const {pipeline} = preview();
+    const { pipeline } = preview();
     const script = `
 import sys
 try:
@@ -108,7 +191,12 @@ for width,height,expected_height in [(640,480,240),(1280,720,180)]:
   finally: pipeline.set_state(Gst.State.NULL)
  assert rows[1]==b''.join(rows[0][i:i+4] for i in range(len(rows[0])-4,-1,-4))
 `;
-    const result = spawnSync('python3',['-c',script,pipeline(false),pipeline(true)],{encoding:'utf8',timeout:15000});
-    if (result.status === 77 || result.error?.code === 'ENOENT') { return t.skip('GStreamer introspection is unavailable'); }
-    assert.equal(result.status,0,result.stderr || String(result.error));
+    const result = spawnSync('python3', ['-c', script, pipeline(false), pipeline(true)], {
+        encoding: 'utf8',
+        timeout: 15000,
+    });
+    if (result.status === 77 || result.error?.code === 'ENOENT') {
+        return t.skip('GStreamer introspection is unavailable');
+    }
+    assert.equal(result.status, 0, result.stderr || String(result.error));
 });

@@ -27,13 +27,12 @@ export class ClipboardWatcher {
             return false;
         }
         this._selection = selection;
-        this._ownerChangedId = selection.connect('owner-changed',
-            (_selection, type) => {
-                if (type !== Meta.SelectionType.SELECTION_CLIPBOARD) {
-                    return;
-                }
-                this._onClipboardChanged();
-            });
+        this._ownerChangedId = selection.connect('owner-changed', (_selection, type) => {
+            if (type !== Meta.SelectionType.SELECTION_CLIPBOARD) {
+                return;
+            }
+            this._onClipboardChanged();
+        });
         return true;
     }
 
@@ -120,10 +119,9 @@ export class ClipboardWatcher {
 }
 
 export async function recentEntries(limit, cancellable) {
-    const rows = await runJson(
-        ['clipboard', 'list', '--limit', String(limit)],
-        cancellable, { terminateOnCancel: true }
-    );
+    const rows = await runJson(['clipboard', 'list', '--limit', String(limit)], cancellable, {
+        terminateOnCancel: true,
+    });
     return Array.isArray(rows) ? rows : [];
 }
 

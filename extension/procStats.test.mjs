@@ -84,10 +84,7 @@ test('percentages are clamped into range', () => {
 
 test('the real files on this machine parse', async () => {
     const { readFile } = await import('node:fs/promises');
-    const [stat, meminfo] = await Promise.all([
-        readFile('/proc/stat', 'utf8'),
-        readFile('/proc/meminfo', 'utf8'),
-    ]);
+    const [stat, meminfo] = await Promise.all([readFile('/proc/stat', 'utf8'), readFile('/proc/meminfo', 'utf8')]);
     const ticks = parseCpuTicks(stat);
     assert.ok(ticks && ticks.total > 0, 'no cpu ticks read');
     assert.ok(ticks.idle > 0 && ticks.idle <= ticks.total);

@@ -4,12 +4,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {
-    clampAnimationSeconds,
-    clampIntensity,
-    overlayPlacement,
-    parseDisplayMode,
-} from './focusDimMath.js';
+import { clampAnimationSeconds, clampIntensity, overlayPlacement, parseDisplayMode } from './focusDimMath.js';
 
 export class FocusDim {
     constructor(settings) {
@@ -49,8 +44,7 @@ export class FocusDim {
         if (wanted !== this._active) {
             if (wanted) {
                 this._start();
-            }
-            else {
+            } else {
                 this._stop();
             }
             return;
@@ -67,13 +61,13 @@ export class FocusDim {
         this._active = true;
         this._build();
 
-        this._focusId = global.display.connect(
-            'notify::focus-window', () => this._update());
+        this._focusId = global.display.connect('notify::focus-window', () => this._update());
         this._restackId = global.display.connect('restacked', () => this._update());
-        this._monitorsId = Main.layoutManager.connect(
-            'monitors-changed', () => { this._build(); this._update(); });
-        this._workspaceId = global.workspace_manager.connect(
-            'active-workspace-changed', () => this._update());
+        this._monitorsId = Main.layoutManager.connect('monitors-changed', () => {
+            this._build();
+            this._update();
+        });
+        this._workspaceId = global.workspace_manager.connect('active-workspace-changed', () => this._update());
 
         this._update();
     }

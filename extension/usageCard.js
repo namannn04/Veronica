@@ -116,9 +116,7 @@ export class UsageCard {
             }
             ring.gauge.setValue(gauge.percent ?? 0, band(gauge.percent ?? 0));
             ring.caption.text = gauge.window;
-            ring.resets.text = Number.isFinite(gauge.resetsInSecs)
-                ? countdown(gauge.resetsInSecs)
-                : '';
+            ring.resets.text = Number.isFinite(gauge.resetsInSecs) ? countdown(gauge.resetsInSecs) : '';
         }
 
         const totals = data.summary?.totals ?? {};
@@ -126,9 +124,10 @@ export class UsageCard {
         const generated = Date.parse(data.summary?.generatedAt ?? '');
         const ageSeconds = Number.isFinite(generated) ? (Date.now() - generated) / 1000 : 0;
         const stale = ageSeconds >= 86400 ? ` · ${countdown(ageSeconds).split(' ')[0]} old` : '';
-        this._lastSpendText = providerGauges.length > 0
-            ? `${money(totals.cost ?? 0)} estimated · ${sessions} ${sessions === 1 ? 'session' : 'sessions'} in 7 days, all agents${stale}`
-            : `${this._provider} limits unavailable`;
+        this._lastSpendText =
+            providerGauges.length > 0
+                ? `${money(totals.cost ?? 0)} estimated · ${sessions} ${sessions === 1 ? 'session' : 'sessions'} in 7 days, all agents${stale}`
+                : `${this._provider} limits unavailable`;
         this._spendLine.text = this._private ? 'Private while presenting' : this._lastSpendText;
         this._ringsBox.visible = !this._private;
     }
@@ -141,9 +140,7 @@ export class UsageCard {
         this._ringsBox.visible = !privateMode;
         this._spendLine.text = privateMode ? 'Private while presenting' : this._lastSpendText;
         this.actor.set_style_class_name(
-            privateMode
-                ? 'veronica-card veronica-usage-card presenter-private'
-                : 'veronica-card veronica-usage-card'
+            privateMode ? 'veronica-card veronica-usage-card presenter-private' : 'veronica-card veronica-usage-card'
         );
     }
 

@@ -48,7 +48,18 @@
       }
     },
     {
-      "includes": ["extension/**/*.js", "extension/**/*.mjs", "extension/**/*.css"],
+      "includes": ["extension/**/*.js", "extension/**/*.mjs"],
+      "formatter": { "indentWidth": 4, "lineWidth": 120 },
+      "javascript": {
+        "formatter": {
+          "quoteStyle": "single",
+          "trailingCommas": "es5",
+          "arrowParentheses": "asNeeded"
+        }
+      }
+    },
+    {
+      "includes": ["extension/stylesheet.css"],
       "formatter": { "enabled": false }
     },
     {

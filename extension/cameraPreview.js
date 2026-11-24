@@ -18,19 +18,26 @@ export function rgbaFrame(info, byteLength) {
     const { width, height } = info;
     const stride = info.stride[0];
     const offset = info.offset[0];
-    if (![width, height, stride, offset].every(Number.isInteger) ||
-        width <= 0 || height <= 0 || offset < 0 || stride < width * 4 ||
-        offset + (height - 1) * stride + width * 4 > byteLength) {
+    if (
+        ![width, height, stride, offset].every(Number.isInteger) ||
+        width <= 0 ||
+        height <= 0 ||
+        offset < 0 ||
+        stride < width * 4 ||
+        offset + (height - 1) * stride + width * 4 > byteLength
+    ) {
         throw new Error('The camera returned an incomplete RGBA frame');
     }
     return { width, height, stride, offset };
 }
 
 export function cameraPipeline(flipHorizontal = false) {
-    return 'v4l2src do-timestamp=true ! videoconvert ! videoscale add-borders=false ! ' +
+    return (
+        'v4l2src do-timestamp=true ! videoconvert ! videoscale add-borders=false ! ' +
         `videoflip name=veronica_camera_flip video-direction=${flipHorizontal ? 'horiz' : 'identity'} ! ` +
         `video/x-raw,format=RGBA,width=${FRAME_WIDTH},pixel-aspect-ratio=1/1 ! ` +
-        'appsink name=veronica_camera_sink emit-signals=false sync=false max-buffers=1 drop=true';
+        'appsink name=veronica_camera_sink emit-signals=false sync=false max-buffers=1 drop=true'
+    );
 }
 
 let Gst = null;
@@ -85,7 +92,8 @@ export class CameraPreview {
 
     setFlipHorizontal(value) {
         this._flipHorizontal = value === true;
-        this._pipeline?.get_by_name('veronica_camera_flip')
+        this._pipeline
+            ?.get_by_name('veronica_camera_flip')
             ?.set_property('video-direction', this._flipHorizontal ? 4 : 0);
     }
 
@@ -127,17 +135,13 @@ export class CameraPreview {
                 this._pullFrame();
                 return this.isRunning ? GLib.SOURCE_CONTINUE : GLib.SOURCE_REMOVE;
             });
-            this._startupTimeoutId = GLib.timeout_add_seconds(
-                GLib.PRIORITY_DEFAULT,
-                8,
-                () => {
-                    this._startupTimeoutId = 0;
-                    if (this.isRunning && !this._hasFrame) {
-                        this._reportError('No camera frame arrived within 8 seconds');
-                    }
-                    return GLib.SOURCE_REMOVE;
+            this._startupTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 8, () => {
+                this._startupTimeoutId = 0;
+                if (this.isRunning && !this._hasFrame) {
+                    this._reportError('No camera frame arrived within 8 seconds');
                 }
-            );
+                return GLib.SOURCE_REMOVE;
+            });
         } catch (error) {
             this.stop();
             throw error;
@@ -165,13 +169,7 @@ export class CameraPreview {
                 this._onSize?.(previewSize(width, height));
             }
             const bytes = new GLib.Bytes(offset === 0 ? data : data.subarray(offset));
-            const args = [
-                bytes,
-                Cogl.PixelFormat.RGBA_8888,
-                width,
-                height,
-                stride,
-            ];
+            const args = [bytes, Cogl.PixelFormat.RGBA_8888, width, height, stride];
             if (this._content.set_bytes.length === 6) {
                 const context = global.stage?.context?.get_backend?.()?.get_cogl_context?.();
                 if (!context) {

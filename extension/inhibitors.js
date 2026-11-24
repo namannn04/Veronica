@@ -16,11 +16,19 @@ const DEFINITIONS = {
 
 function sessionManagerPresent() {
     try {
-        const [owned] = Gio.DBus.session.call_sync(
-            'org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
-            'NameHasOwner', new GLib.Variant('(s)', ['org.gnome.SessionManager']),
-            new GLib.VariantType('(b)'), Gio.DBusCallFlags.NONE, 1000, null
-        ).deepUnpack();
+        const [owned] = Gio.DBus.session
+            .call_sync(
+                'org.freedesktop.DBus',
+                '/org/freedesktop/DBus',
+                'org.freedesktop.DBus',
+                'NameHasOwner',
+                new GLib.Variant('(s)', ['org.gnome.SessionManager']),
+                new GLib.VariantType('(b)'),
+                Gio.DBusCallFlags.NONE,
+                1000,
+                null
+            )
+            .deepUnpack();
         return owned;
     } catch (error) {
         console.debug(`veronica: cannot ask the bus for gnome-session: ${error}`);
@@ -95,8 +103,7 @@ export class PowerInhibitors {
             process.wait_check_async(null, (source, result) => {
                 try {
                     source.wait_check_finish(result);
-                } catch (_error) {
-                }
+                } catch (_error) {}
                 if (this._running.get(key) !== record) {
                     return;
                 }
@@ -124,8 +131,7 @@ export class PowerInhibitors {
         for (const process of record.processes) {
             try {
                 process.force_exit();
-            } catch (_error) {
-            }
+            } catch (_error) {}
         }
     }
 

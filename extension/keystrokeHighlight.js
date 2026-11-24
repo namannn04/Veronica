@@ -4,13 +4,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {
-    clampDuration,
-    KeystrokeQueue,
-    labelsFor,
-    MAXIMUM_VISIBLE,
-    parsePosition,
-} from './keystrokeLabels.js';
+import { clampDuration, KeystrokeQueue, labelsFor, MAXIMUM_VISIBLE, parsePosition } from './keystrokeLabels.js';
 
 const EDGE_MARGIN = 64;
 const FADE_MS = 140;
@@ -52,13 +46,11 @@ export class KeystrokeHighlight {
             duration: clampDuration(values.keystrokeHighlightDuration),
             position: parsePosition(values.keystrokeHighlightPosition),
         };
-        const wanted =
-            values.keystrokeHighlightEnabled === true && values.keystrokeHighlightActive === true;
+        const wanted = values.keystrokeHighlightEnabled === true && values.keystrokeHighlightActive === true;
         if (wanted !== this._running) {
             if (wanted) {
                 this._start();
-            }
-            else {
+            } else {
                 this._stop();
             }
             return;
@@ -75,8 +67,7 @@ export class KeystrokeHighlight {
         this._running = true;
         this._build();
 
-        this._eventId = global.stage.connect(
-            'captured-event', (_actor, event) => this._onEvent(event));
+        this._eventId = global.stage.connect('captured-event', (_actor, event) => this._onEvent(event));
         this._monitorsId = Main.layoutManager.connect('monitors-changed', () => this._position());
 
         this._sweepId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
@@ -132,9 +123,7 @@ export class KeystrokeHighlight {
         const [, width] = this._container.get_preferred_width(-1);
         this._container.set_position(
             Math.round(work.x + (work.width - width) / 2),
-            this._config.position === 'top'
-                ? work.y + EDGE_MARGIN
-                : work.y + work.height - height - EDGE_MARGIN
+            this._config.position === 'top' ? work.y + EDGE_MARGIN : work.y + work.height - height - EDGE_MARGIN
         );
     }
 
@@ -176,11 +165,13 @@ export class KeystrokeHighlight {
             opacity: 0,
         });
         for (const label of entry.keys) {
-            cap.add_child(new St.Label({
-                style_class: 'veronica-keystroke-key',
-                text: label,
-                y_align: Clutter.ActorAlign.CENTER,
-            }));
+            cap.add_child(
+                new St.Label({
+                    style_class: 'veronica-keystroke-key',
+                    text: label,
+                    y_align: Clutter.ActorAlign.CENTER,
+                })
+            );
         }
         this._container.add_child(cap);
         this._actors.set(entry.id, cap);

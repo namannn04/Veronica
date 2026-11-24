@@ -35,17 +35,18 @@ export class SystemStatsIndicator {
         this._cpu = new St.Label({ style_class: 'veronica-stats-value' });
         this._memory = new St.Label({ style_class: 'veronica-stats-value' });
         this.actor.add_child(this._cpu);
-        this.actor.add_child(new St.Label({
-            text: '·',
-            style_class: 'veronica-stats-separator',
-        }));
+        this.actor.add_child(
+            new St.Label({
+                text: '·',
+                style_class: 'veronica-stats-separator',
+            })
+        );
         this.actor.add_child(this._memory);
     }
 
     enable() {
-        this._unsubscribe = this._settings?.subscribe(
-            () => this._apply(this._settings.bool('menuBarSystemStats', false))
-        ) ?? null;
+        this._unsubscribe =
+            this._settings?.subscribe(() => this._apply(this._settings.bool('menuBarSystemStats', false))) ?? null;
     }
 
     disable() {
@@ -62,8 +63,7 @@ export class SystemStatsIndicator {
         this._enabled = enabled;
         if (enabled) {
             this._startTicking();
-        }
-        else {
+        } else {
             this._stopTicking();
         }
     }
@@ -76,14 +76,10 @@ export class SystemStatsIndicator {
         this._cpu.text = 'CPU –';
         this._memory.text = 'MEM –';
         this.actor.visible = true;
-        this._tickId = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT_IDLE,
-            TICK_SECONDS,
-            () => {
-                this._tick();
-                return GLib.SOURCE_CONTINUE;
-            }
-        );
+        this._tickId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT_IDLE, TICK_SECONDS, () => {
+            this._tick();
+            return GLib.SOURCE_CONTINUE;
+        });
     }
 
     _stopTicking() {
