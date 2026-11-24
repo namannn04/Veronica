@@ -1,20 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  ChartColumn,
-  Cpu,
-  Diamond,
-  NotebookPen,
-  PanelTop,
-  SquareTerminal,
-  Target,
-  Wrench,
   Blocks,
   Brain,
   Calendar,
+  ChartColumn,
   ClipboardList,
   Columns3,
   Contrast,
+  Cpu,
   Database,
+  Diamond,
   Download,
   FileSearch,
   Gauge,
@@ -23,20 +17,26 @@ import {
   Inbox,
   Keyboard,
   Laptop,
+  type LucideIcon,
   MicOff,
   Music,
+  NotebookPen,
   Package,
+  PanelTop,
   Pipette,
   Server,
   Smile,
+  SquareTerminal,
+  Target,
   Theater,
   ToggleRight,
-  type LucideIcon,
+  Wrench,
 } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import { NAV_ITEMS } from "../lib/navigation";
-import { installNotice, type InstallNotice } from "../lib/toolInstall";
+import { type InstallNotice, installNotice } from "../lib/toolInstall";
 import type {
   Diagnostics,
   ExtensionGroup,
