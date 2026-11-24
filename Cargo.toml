@@ -9,6 +9,7 @@ members = [
     "crates/veronica-audit",
     "crates/veronica-database",
     "crates/veronica-media",
+    "crates/veronica-protocol",
     "crates/veronica-cli",
     "apps/desktop/src-tauri",
 ]
