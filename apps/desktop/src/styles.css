@@ -1185,9 +1185,3 @@ html:has(.emoji-popover), body:has(.emoji-popover), #root:has(.emoji-popover) {
 @media (max-width: 760px) {
   .backup-path { flex-direction: column; }
 }
-
-textarea,
-select):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-select),
-select,
-textarea) { padding:10px; background:var(--plane); color:var(--ink); border:1px solid var(--hairline); border-radius:9px; font:inherit; }
