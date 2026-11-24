@@ -13,8 +13,8 @@ use veronica_core::paths::{AppDirectories, EnvOverrides};
 use veronica_host::connection::{BackendError, StopStep};
 use veronica_host::host_api::HostServices;
 use veronica_host::supervisor::{CrashRecord, Policy, Status};
-use veronica_host::{HostIdentity, Installer, Layout, Supervisor};
-use veronica_protocol::rpc::{Caller, CallerKind, RpcCall, RpcCallParams};
+use veronica_host::{HostIdentity, Installer, Layout, Router, Supervisor};
+use veronica_protocol::rpc::{error_code, Caller, CallerKind};
 use veronica_protocol::ExitCode;
 
 use crate::common::write_tree;
@@ -62,7 +62,7 @@ impl Env {
     fn new() -> Self {
         let home = tempfile::tempdir().unwrap();
         let directories = AppDirectories::with_env(home.path(), EnvOverrides::default());
-        let services = HostServices::new(Layout::new(&directories));
+        let services = HostServices::new(Layout::new(&directories), directories.settings_file());
         Self {
             home,
             services: Arc::new(services),
@@ -173,18 +173,67 @@ async fn running_pid(supervisor: &Supervisor, other_than: Option<u32>) -> u32 {
     }
 }
 
-async fn call(supervisor: &Supervisor, method: &str, params: Value) -> Result<Value, BackendError> {
-    let params = RpcCallParams {
-        method: method.to_string(),
-        params,
-        caller: host(),
-    };
-    let connection = supervisor.connection(ID).await?;
-    connection.request::<RpcCall>(&params, None).await
-}
-
 fn pid_of(value: &Value) -> u32 {
     u32::try_from(value["pid"].as_u64().unwrap()).unwrap()
+}
+
+fn rpc_code(error: &BackendError) -> Option<i64> {
+    match error {
+        BackendError::Rpc(error) => Some(error.code),
+        _ => None,
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn oneshot_cli_run_end_to_end() {
+    let env = Env::new();
+    env.install(|_| {});
+    let router = Router::oneshot(Arc::clone(&env.services));
+    let argv = |args: &[&str]| args.iter().map(ToString::to_string).collect::<Vec<_>>();
+
+    let echoed = router
+        .run_cli(ID, argv(&["fixture", "echo", "hello"]), true, false)
+        .await;
+    assert_eq!(echoed.exit_code, ExitCode::Success);
+    let document = echoed.document.unwrap();
+    assert_eq!(document["text"], "hello");
+    assert_eq!(document["mode"], "oneshot");
+    let pid = pid_of(&document);
+    eventually("the oneshot backend exits", || async move {
+        !process_exists(pid)
+    })
+    .await;
+
+    let text = router
+        .run_cli(ID, argv(&["fixture", "echo", "plain"]), false, false)
+        .await;
+    assert_eq!(text.text.as_deref(), Some("plain\n"));
+
+    let failed = router
+        .run_cli(ID, argv(&["fixture", "fail", "--code", "6"]), true, false)
+        .await;
+    assert_eq!(failed.exit_code, ExitCode::PermissionDenied);
+    assert_eq!(failed.document.unwrap()["error"]["code"], 6);
+
+    let usage = router
+        .run_cli(ID, argv(&["fixture", "nonsense"]), true, false)
+        .await;
+    assert_eq!(usage.exit_code, ExitCode::Usage);
+
+    let missing = router
+        .run_cli("absent", argv(&["absent"]), true, false)
+        .await;
+    assert_eq!(missing.exit_code, ExitCode::Unavailable);
+    assert!(missing.document.unwrap()["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("not installed"));
+
+    let contract = router
+        .contract_request(ID, "fixture.nothing@1".parse().unwrap(), json!({}), host())
+        .await
+        .unwrap_err();
+    assert_eq!(rpc_code(&contract), Some(error_code::METHOD_NOT_FOUND));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -194,7 +243,8 @@ async fn on_demand_backends_start_on_first_call_and_stop_when_idle() {
     let supervisor = env.supervisor(fast());
     assert_eq!(supervisor.status(ID).await, Status::Stopped);
 
-    let answer = call(&supervisor, "mode", json!({})).await.unwrap();
+    let router = Router::supervised(supervisor.clone());
+    let answer = router.invoke(ID, "mode", json!({}), host()).await.unwrap();
     assert_eq!(answer["mode"], "service");
     let pid = pid_of(&answer);
     assert_eq!(
@@ -213,7 +263,7 @@ async fn on_demand_backends_start_on_first_call_and_stop_when_idle() {
     )
     .await;
 
-    let again = call(&supervisor, "mode", json!({})).await.unwrap();
+    let again = router.invoke(ID, "mode", json!({}), host()).await.unwrap();
     assert_ne!(pid_of(&again), pid);
     assert!(supervisor.stop(ID).await.is_some());
 }
@@ -227,7 +277,10 @@ async fn crashed_background_backends_restart_after_a_backoff() {
     assert!(failures.is_empty(), "{failures:?}");
     let first = running_pid(&supervisor, None).await;
 
-    let crash = call(&supervisor, "crash", json!({})).await.unwrap_err();
+    let crash = Router::supervised(supervisor.clone())
+        .invoke(ID, "crash", json!({}), host())
+        .await
+        .unwrap_err();
     assert!(matches!(crash, BackendError::Exited(_)), "{crash:?}");
     assert_eq!(crash.exit_code(), ExitCode::BackendFailed);
 
@@ -243,13 +296,16 @@ async fn repeated_crashes_mark_the_backend_crash_looping() {
     let env = Env::new();
     env.install(background);
     let supervisor = env.supervisor(fast());
+    let router = Router::supervised(supervisor.clone());
     supervisor.start(ID).await.unwrap();
     for _ in 0..fast().crash_limit {
         if supervisor.status(ID).await == Status::CrashLooping {
             break;
         }
         let pid = running_pid(&supervisor, None).await;
-        let _ = call(&supervisor, "exit", json!({ "code": 3 })).await;
+        let _ = router
+            .invoke(ID, "exit", json!({ "code": 3 }), host())
+            .await;
         eventually("the exit is noticed", || {
             let supervisor = supervisor.clone();
             async move { supervisor.status(ID).await != Status::Running { pid: Some(pid) } }
@@ -264,7 +320,7 @@ async fn repeated_crashes_mark_the_backend_crash_looping() {
     let record = CrashRecord::load(env.layout(), ID).unwrap();
     assert!(record.crash_looping);
     assert_eq!(record.last_exit, "exit code 3");
-    let refused = call(&supervisor, "mode", json!({})).await;
+    let refused = router.invoke(ID, "mode", json!({}), host()).await;
     assert!(matches!(refused, Err(BackendError::CrashLooping(_))));
     let fresh = env.supervisor(fast());
     assert_eq!(fresh.status(ID).await, Status::CrashLooping);
@@ -285,7 +341,10 @@ async fn a_frozen_backend_is_killed_after_shutdown_and_sigterm() {
     let supervisor = env.supervisor(fast());
     let connection = supervisor.connection(ID).await.unwrap();
     let pid = connection.pid().unwrap();
-    call(&supervisor, "freeze", json!({})).await.unwrap();
+    Router::supervised(supervisor.clone())
+        .invoke(ID, "freeze", json!({}), host())
+        .await
+        .unwrap();
     eventually("the backend is stopped by SIGSTOP", || async move {
         fs::read_to_string(format!("/proc/{pid}/stat")).is_ok_and(|stat| {
             stat.rsplit(')')
@@ -313,7 +372,10 @@ async fn a_background_backend_that_stops_answering_pings_is_replaced() {
     });
     supervisor.start(ID).await.unwrap();
     let first = running_pid(&supervisor, None).await;
-    call(&supervisor, "freeze", json!({})).await.unwrap();
+    Router::supervised(supervisor.clone())
+        .invoke(ID, "freeze", json!({}), host())
+        .await
+        .unwrap();
     eventually("the frozen backend is replaced", || {
         let supervisor = supervisor.clone();
         async move {
@@ -323,6 +385,114 @@ async fn a_background_backend_that_stops_answering_pings_is_replaced() {
     .await;
     assert!(!process_exists(first));
     assert!(env.log().contains("signal 9"), "{}", env.log());
+    supervisor.stop_all().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn host_requests_are_checked_against_the_manifest_grant() {
+    let env = Env::new();
+    env.install(|_| {});
+    let router = Router::oneshot(Arc::clone(&env.services));
+    let ask = |params: Value| {
+        let router = router.clone();
+        async move { router.invoke(ID, "host", params, host()).await }
+    };
+
+    let denied = ask(json!({ "method": "settings.get", "key": "appearance" }))
+        .await
+        .unwrap_err();
+    assert_eq!(rpc_code(&denied), Some(error_code::PERMISSION_DENIED));
+    assert_eq!(denied.exit_code(), ExitCode::PermissionDenied);
+    let opened = ask(json!({ "method": "open", "target": "https://example.org" }))
+        .await
+        .unwrap_err();
+    assert_eq!(rpc_code(&opened), Some(error_code::PERMISSION_DENIED));
+    let foreign = ask(json!({ "method": "settings.set", "key": "ext.other.x", "value": 1 }))
+        .await
+        .unwrap_err();
+    assert_eq!(rpc_code(&foreign), Some(error_code::PERMISSION_DENIED));
+
+    let notified = ask(json!({ "method": "notify", "title": "hello" }))
+        .await
+        .unwrap_err();
+    assert_eq!(rpc_code(&notified), Some(error_code::UNAVAILABLE));
+
+    ask(json!({ "method": "settings.set", "key": "ext.fixture.color", "value": "teal" }))
+        .await
+        .unwrap();
+    let read = ask(json!({ "method": "settings.get", "key": "ext.fixture.color" }))
+        .await
+        .unwrap();
+    assert_eq!(read, json!("teal"));
+    let settings_file = env.home.path().join(".config/veronica/settings.json");
+    let settings: Value =
+        serde_json::from_str(&fs::read_to_string(settings_file).unwrap()).unwrap();
+    assert_eq!(settings["ext.fixture.color"], "teal");
+
+    ask(json!({ "method": "log", "message": "written through the host" }))
+        .await
+        .unwrap();
+    assert!(env.log().contains("info: written through the host"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_dropped_call_cancels_the_backend_request() {
+    let env = Env::new();
+    env.install(|_| {});
+    let router = Router::oneshot(Arc::clone(&env.services));
+    let call = router.invoke(ID, "sleep", json!({ "seconds": 600 }), host());
+    assert!(tokio::time::timeout(Duration::from_secs(3), call)
+        .await
+        .is_err());
+    let marker = env.layout().data_dir(ID).join("cancelled");
+    eventually("the backend sees the cancellation", || {
+        let marker = marker.clone();
+        async move { marker.exists() }
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn oneshot_and_service_instances_run_side_by_side() {
+    let env = Env::new();
+    env.install(|_| {});
+    let supervisor = env.supervisor(fast());
+    let service = Router::supervised(supervisor.clone());
+    let oneshot = Router::oneshot(Arc::clone(&env.services));
+    service.invoke(ID, "mode", json!({}), host()).await.unwrap();
+
+    let mut calls = tokio::task::JoinSet::new();
+    for index in 0..4 {
+        let (service, oneshot) = (service.clone(), oneshot.clone());
+        calls.spawn(async move {
+            if index % 2 == 0 {
+                service.invoke(ID, "mode", json!({}), host()).await.unwrap()
+            } else {
+                let argv = vec!["fixture".into(), "echo".into(), index.to_string()];
+                oneshot
+                    .run_cli(ID, argv, true, false)
+                    .await
+                    .document
+                    .unwrap()
+            }
+        });
+    }
+    let answers = calls.join_all().await;
+    let service_pids: Vec<u32> = answers
+        .iter()
+        .filter(|answer| answer["mode"] == "service")
+        .map(pid_of)
+        .collect();
+    let oneshot_pids: Vec<u32> = answers
+        .iter()
+        .filter(|answer| answer["mode"] == "oneshot")
+        .map(pid_of)
+        .collect();
+    assert_eq!(service_pids.len(), 2);
+    assert_eq!(service_pids[0], service_pids[1]);
+    assert_eq!(oneshot_pids.len(), 2);
+    assert_ne!(oneshot_pids[0], oneshot_pids[1]);
+    assert!(!oneshot_pids.contains(&service_pids[0]));
     supervisor.stop_all().await;
 }
 

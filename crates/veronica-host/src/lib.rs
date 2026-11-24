@@ -8,11 +8,14 @@ pub mod launcher;
 pub mod layout;
 pub mod lock;
 pub mod mcp;
+pub mod permissions;
 pub mod registry;
+pub mod router;
 pub mod supervisor;
 pub mod trust;
 pub mod update;
 
 pub use install::{HostIdentity, Installer};
 pub use layout::Layout;
+pub use router::Router;
 pub use supervisor::Supervisor;
