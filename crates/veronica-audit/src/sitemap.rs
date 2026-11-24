@@ -137,6 +137,7 @@ impl Fetch for HttpFetcher {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use std::fmt::Write as _;
 
     struct Canned(HashMap<String, String>);
 
@@ -172,12 +173,21 @@ mod tests {
     }
 
     #[tokio::test]
+    #[expect(
+        clippy::case_sensitive_file_extension_comparisons,
+        reason = "the fetched entries are lowercase test URLs, not file paths"
+    )]
     async fn an_index_is_walked_only_as_far_as_the_pages_wanted() {
         let mut pairs = vec![(
             "https://a.test/sitemap.xml".to_string(),
-            (0..50)
-                .map(|i| format!("<sitemap><loc>https://a.test/s{i}.xml</loc></sitemap>"))
-                .collect::<String>(),
+            (0..50).fold(String::new(), |mut entries, i| {
+                write!(
+                    entries,
+                    "<sitemap><loc>https://a.test/s{i}.xml</loc></sitemap>"
+                )
+                .unwrap();
+                entries
+            }),
         )];
         pairs[0].1 = format!("<sitemapindex>{}</sitemapindex>", pairs[0].1);
         for i in 0..50 {

@@ -120,7 +120,7 @@ pub async fn audit_page(client: &reqwest::Client, url: &Url) -> PageResult {
         Ok(response) => {
             let status = response.status().as_u16();
             let body = response.text().await.unwrap_or_default();
-            let elapsed = started.elapsed().as_millis() as u64;
+            let elapsed = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
             let metadata = metadata::parse(&body, url);
             PageResult {
                 url: url.to_string(),
@@ -171,6 +171,10 @@ pub fn site_url(site: &str) -> Result<Url> {
     Url::parse(&candidate).with_context(|| format!("not a URL: {site:?}"))
 }
 
+#[expect(
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "matches a lowercased hostname suffix, not a file extension"
+)]
 pub fn is_development_host(host: &str) -> bool {
     let host = host
         .trim_start_matches('[')
