@@ -249,7 +249,11 @@ mod tests {
     #[test]
     fn the_default_terminal_and_plain_files_do_not_count() {
         let home = TempDir::new().expect("home");
-        desktop_file(&home.path().join(".local/share/applications/org.gnome.Terminal.desktop"));
+        desktop_file(
+            &home
+                .path()
+                .join(".local/share/applications/org.gnome.Terminal.desktop"),
+        );
         program(&home.path().join("path-bin/gnome-terminal"), 0o755);
         program(&home.path().join(".local/bin/claude"), 0o644);
         fs::create_dir_all(home.path().join(".local/bin/codex")).expect("folder");
