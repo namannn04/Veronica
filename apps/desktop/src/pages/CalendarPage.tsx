@@ -137,7 +137,7 @@ export function CalendarPage() {
 
       {view?.happeningNow && <HappeningNow event={view.happeningNow} />}
 
-      {view && view.days.some((day) => day.events.length > 0) && (
+      {view?.days.some((day) => day.events.length > 0) && (
         <Stack className="cal-agenda blur-calendar">
           {view.days
             .filter((day) => day.events.length > 0)
@@ -188,7 +188,11 @@ function HappeningNow({ event }: { event: CalendarEvent }) {
         <Button
           variant="primary"
           icon={<Video />}
-          onClick={() => void ipc.openExternal(event.joinUrl!)}
+          onClick={() => {
+            if (event.joinUrl) {
+              void ipc.openExternal(event.joinUrl);
+            }
+          }}
         >
           Join meeting
         </Button>
@@ -224,7 +228,11 @@ function EventRow({ event, next }: { event: CalendarEvent; next: boolean }) {
             size="small"
             icon={<Video />}
             title={event.joinUrl}
-            onClick={() => void ipc.openExternal(event.joinUrl!)}
+            onClick={() => {
+              if (event.joinUrl) {
+                void ipc.openExternal(event.joinUrl);
+              }
+            }}
           >
             Join
           </Button>

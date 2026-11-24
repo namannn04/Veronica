@@ -49,7 +49,9 @@ const subscribe = (listener: () => void) => {
 };
 const update = (next: Partial<AuditRun>) => {
   current = { ...current, ...next };
-  listeners.forEach((listener) => listener());
+  for (const listener of listeners) {
+    listener();
+  }
 };
 
 async function startAudit(site: string, limit: number) {

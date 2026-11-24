@@ -281,11 +281,11 @@ export function ColorPickerPage() {
             </Button>
           }
         >
-          <div className="cp-grid" role="list" aria-label="Swatches">
+          <ul className="cp-grid" aria-label="Swatches">
             {swatches.map((swatch) => {
               const done = copied === `${swatch.id}:`;
               return (
-                <div role="listitem" key={swatch.id}>
+                <li key={swatch.id}>
                   <Tooltip content={`Copy ${swatch.hex} as ${labelFor(formats, format)}`}>
                     <button
                       type="button"
@@ -314,10 +314,10 @@ export function ColorPickerPage() {
                       <span className="cp-swatch-hex ui-mono">{done ? "Copied" : swatch.hex}</span>
                     </button>
                   </Tooltip>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </Section>
       )}
 
