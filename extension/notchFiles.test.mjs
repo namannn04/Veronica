@@ -132,7 +132,7 @@ test('removing an owned entry uses its ID and leaves the Files tab open', async 
     await h.panel._refreshFiles();
     h.panel._fileRows.children[0].children[2].click();
     await new Promise(r => setImmediate(r));
-    assert.deepEqual(h.calls.at(-1), ['shelf', 'remove', '123-456']);
+    assert.deepEqual(h.calls.at(-1), ['shelf', 'remove', '123-456', '--yes']);
     assert.equal(h.closed(), 0);
 });
 
