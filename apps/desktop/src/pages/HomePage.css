@@ -519,3 +519,10 @@
 .home-zone-results .ui-list-row {
   min-height: 36px;
 }
+
+.welcome-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 320px;
+}

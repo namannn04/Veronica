@@ -18,6 +18,7 @@ import {
   routeIsVisible,
   visibleNavGroups,
 } from "./lib/navigation";
+import { needsOnboarding } from "./lib/onboarding";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
@@ -35,6 +36,7 @@ import { LibraryPage } from "./pages/LibraryPage";
 import { MachinesPage } from "./pages/MachinesPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
 import { MediaPage } from "./pages/MediaPage";
+import { OnboardingPage } from "./pages/OnboardingPage";
 import { QuinjetPage } from "./pages/QuinjetPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -62,6 +64,7 @@ export function App() {
     Partial<Record<Route, { badge?: string | number; title?: string }>>
   >({});
   const installed = useInstalledExtensions();
+  const [onboarding, setOnboarding] = useState<boolean | null>(null);
 
   const enabledExtensions = useMemo(() => {
     if (diagnostics === null) {
@@ -157,6 +160,16 @@ export function App() {
   }, [applySettings, applyPresenterState, loadDiagnostics]);
 
   useEffect(() => {
+    if (diagnostics === null || onboarding !== null) {
+      return;
+    }
+    void ipc.settingsAll().then(
+      (settings) => setOnboarding(needsOnboarding(settings, diagnostics.extensions)),
+      () => setOnboarding(false),
+    );
+  }, [diagnostics, onboarding]);
+
+  useEffect(() => {
     if (!routeIsVisible(route, enabledExtensions, extensionPages)) {
       setRoute("home");
     }
@@ -199,6 +212,17 @@ export function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  if (onboarding === true) {
+    return (
+      <OnboardingPage
+        onDone={() => {
+          setOnboarding(false);
+          navigateTo("home");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="shell">
