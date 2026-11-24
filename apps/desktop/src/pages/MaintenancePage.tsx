@@ -247,7 +247,7 @@ export function MaintenancePage() {
       {tab === "updates" && (
         <>
           {sources.length > 0 && (
-            <div className="mnt-sources" aria-label="Package sources">
+            <div className="mnt-sources">
               {sources.map((entry) => (
                 <Badge
                   key={entry.source}
@@ -330,7 +330,7 @@ export function MaintenancePage() {
                               <span className="mnt-version-from" title={row.installedVersion}>
                                 {row.installedVersion}
                               </span>
-                              <span className="mnt-version-arrow" aria-label="to">
+                              <span className="mnt-version-arrow" role="img" aria-label="to">
                                 →
                               </span>
                             </>

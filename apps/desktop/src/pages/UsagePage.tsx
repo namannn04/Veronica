@@ -257,7 +257,7 @@ export function UsagePage() {
         <Toolbar
           className="usage-toolbar"
           leading={
-            <div className="usage-sources" role="group" aria-label="Sources">
+            <div className="usage-sources" role="toolbar" aria-label="Sources">
               {view.sources.map((source) => (
                 <button
                   key={source.id}

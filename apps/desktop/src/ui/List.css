@@ -1,4 +1,7 @@
 .ui-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -44,6 +47,7 @@
 }
 
 .ui-list-row-main {
+  text-align: start;
   display: flex;
   align-items: center;
   gap: var(--space-3);

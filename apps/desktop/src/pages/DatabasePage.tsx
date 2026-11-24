@@ -160,6 +160,7 @@ export function DatabasePage() {
     await fetchPage({ kind: "query", statement, size: 200 }, 0);
   };
 
+  const nextOffset = page?.nextOffset ?? null;
   const paging =
     page && source
       ? {
@@ -169,8 +170,8 @@ export function DatabasePage() {
               ? () => void fetchPage(source, Math.max(0, offset - source.size))
               : undefined,
           onNext:
-            page.hasMore && page.nextOffset !== null
-              ? () => void fetchPage(source, page.nextOffset!)
+            page.hasMore && nextOffset !== null
+              ? () => void fetchPage(source, nextOffset)
               : undefined,
           busy,
         }

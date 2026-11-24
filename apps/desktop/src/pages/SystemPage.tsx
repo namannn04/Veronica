@@ -639,20 +639,26 @@ function Overview({ snapshot }: { snapshot: SystemSnapshot }) {
   );
 }
 
+function StatSkeletonLines() {
+  return (
+    <>
+      <Skeleton width={64} height={11} />
+      <Skeleton width={72} height={26} />
+      <Skeleton width="80%" height={9} />
+    </>
+  );
+}
+
 function OverviewSkeleton() {
   return (
     <>
       <StatGrid min={170}>
-        {[0, 1, 2, 3].map((index) => (
-          <div
-            className="ui-stat"
-            key={index}
-            role={index === 0 ? "status" : undefined}
-            aria-label={index === 0 ? "Reading this computer" : undefined}
-          >
-            <Skeleton width={64} height={11} />
-            <Skeleton width={72} height={26} />
-            <Skeleton width="80%" height={9} />
+        <div className="ui-stat" role="status" aria-label="Reading this computer">
+          <StatSkeletonLines />
+        </div>
+        {[1, 2, 3].map((index) => (
+          <div className="ui-stat" key={index}>
+            <StatSkeletonLines />
           </div>
         ))}
       </StatGrid>

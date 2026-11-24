@@ -719,7 +719,7 @@ function ShortcutRow({
 
 function KeyCombo({ keys }: { keys: string[] }): ReactNode {
   return (
-    <span className="settings-keys" aria-label={keys.join(" + ")}>
+    <span className="settings-keys">
       {keys.map((key) => (
         <Kbd key={key}>{key}</Kbd>
       ))}

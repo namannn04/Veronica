@@ -127,11 +127,10 @@ export function CleanerPane() {
               This system reports no developer caches Veronica knows how to sweep.
             </EmptyState>
           ) : (
-            <div className="clean-list" role="list" aria-label="Cache categories">
+            <ul className="clean-list" aria-label="Cache categories">
               {categories.map((entry) => (
-                <div
+                <li
                   className="clean-row"
-                  role="listitem"
                   key={entry.id}
                   data-checked={selected.has(entry.id) || undefined}
                 >
@@ -144,9 +143,9 @@ export function CleanerPane() {
                   {scan?.totals[entry.id] !== undefined && (
                     <span className="clean-size ui-num">{bytes(scan.totals[entry.id])}</span>
                   )}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
           {categories !== null && categories.length > 0 && (
             <div className="clean-footer">
