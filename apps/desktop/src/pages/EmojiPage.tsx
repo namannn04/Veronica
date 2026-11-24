@@ -3,6 +3,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ipc } from "../lib/ipc";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
 
+/**
+ * The emoji picker.
+ *
+ * The catalogue, the ranking and the recents ledger are Edith's, so a search
+ * here returns what Edith's picker would. What differs is the last step: the
+ * clipboard is the part that always works, and typing the emoji into the app
+ * you were in goes through Veronica's shell extension, because only the
+ * compositor may synthesise input into a window it does not own.
+ */
+
+/** Edith's tone list, in its order. */
 const TONES: { key: string; title: string; sample: string }[] = [
   { key: "standard", title: "Default", sample: "✋" },
   { key: "light", title: "Light", sample: "✋🏻" },
@@ -12,7 +23,13 @@ const TONES: { key: string; title: string; sample: string }[] = [
   { key: "dark", title: "Dark", sample: "✋🏿" },
 ];
 
+/** Enough to fill the grid several times over without rendering two thousand cells. */
 const PAGE = 240;
+/**
+ * A group being browsed is shown whole. The page size is for search results;
+ * applied to a group it cut People, Objects and Flags off part-way, with no
+ * way to reach the rest. The largest group has about four hundred.
+ */
 const WHOLE_GROUP = 2_000;
 
 export function EmojiPage() {
@@ -26,10 +43,15 @@ export function EmojiPage() {
   const [error, setError] = useState<string | null>(null);
 
   const tone = typeof settings.emojiSkinTone === "string" ? settings.emojiSkinTone : "standard";
+  // The setting is for the Ctrl+Alt+E picker, which knows the app you were
+  // in. This page has focus itself, so typing "into the app I was in" from
+  // here pasted into Veronica; a click on this page copies. Absent means on,
+  // which is what the picker always did; a paste that cannot happen still
+  // leaves the emoji on the clipboard.
   const insert = settings.emojiInsertInPlace !== false;
 
   const loadRecents = useCallback(async () => {
-    try { setRecents(await ipc.emojiRecents(24)); } catch {}
+    try { setRecents(await ipc.emojiRecents(24)); } catch { /* an empty ledger is not an error */ }
   }, []);
 
   useEffect(() => {
@@ -37,8 +59,14 @@ export function EmojiPage() {
     void ipc.settingsAll().then(setSettings).catch(() => {});
   }, []);
 
+  // Recents are stored as the base character and rendered in the chosen
+  // tone, so they are read again when it changes; the grid already was, and
+  // "Most used" kept showing the old tone beside it.
   useEffect(() => { void loadRecents(); }, [loadRecents, tone]);
 
+  // Searching narrows across every group, so an active tab is cleared the
+  // moment there is a query — otherwise a hit outside the tab looks like a
+  // catalogue with nothing in it.
   const activeGroup = query.trim() ? null : group;
 
   useEffect(() => {
@@ -109,6 +137,8 @@ export function EmojiPage() {
       {emoji.length === 0
         ? query.trim()
           ? <div className="empty"><h3>Nothing matches “{query}”</h3><p>Try a shorter word, or one of the keywords an emoji is known by.</p></div>
+          // An empty grid with an empty search box is the catalogue failing to
+          // load, not a search that found nothing.
           : <div className="empty"><h3>No emoji loaded</h3><p>The catalogue ships with Veronica and is read at launch. Run `vr emoji search smile` to see what the catalogue reports.</p></div>
         : <div className="emoji-grid">{emoji.map((row) => <EmojiCell key={row.character} row={row} copied={copied} groupName={groupName} onPick={pick} />)}</div>}
     </section>

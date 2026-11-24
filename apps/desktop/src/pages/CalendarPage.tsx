@@ -6,7 +6,9 @@ import { eventSlot, untilLabel } from "../lib/format";
 import type { AgendaView, CalendarEvent } from "../lib/types";
 
 const PAGE_DAYS = 14;
+/** Picks up new and changed events, and moves "Happening now" along. */
 const RELOAD_MS = 60_000;
+/** Keeps "in 2h" and similar relative labels true between reloads. */
 const TICK_MS = 30_000;
 
 export function CalendarPage() {
@@ -17,6 +19,8 @@ export function CalendarPage() {
 
   const [, setTick] = useState(0);
 
+  // `quiet` reloads in the background without the "Reading…" state, so the
+  // page does not flicker every minute.
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try { setView(await ipc.calendarAgenda(days, true)); setError(null); }

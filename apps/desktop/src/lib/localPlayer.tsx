@@ -1,3 +1,12 @@
+/* The local music player, kept for the life of the window.
+ *
+ * Only the page on screen is mounted, and the player used to be an <audio>
+ * element inside the Music page: going to any other page destroyed it, so the
+ * music stopped, while the system media controls stayed registered and did
+ * nothing. The player now lives here, above the pages, and the Music page is
+ * one view onto it.
+ */
+
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -6,6 +15,7 @@ import type { LocalTrack } from "./types";
 
 type LocalPlayer = {
   tracks: LocalTrack[];
+  /** Index into `tracks`, or -1 before anything has been chosen. */
   index: number;
   current: LocalTrack | undefined;
   playing: boolean;
@@ -16,12 +26,15 @@ type LocalPlayer = {
   next: () => void;
   previous: () => void;
   seek: (seconds: number) => void;
+  /** Read ~/Music, once; the page calls this when it first opens. */
   loadLibrary: () => void;
 };
 
 const Context = createContext<LocalPlayer | null>(null);
 
 export function LocalPlayerProvider({ children }: { children: ReactNode }) {
+  // One element for the whole session; it never belongs to a page. Created
+  // once, lazily, rather than a new one built and discarded every render.
   const [element] = useState(() => new Audio());
   const audio = useRef<HTMLAudioElement>(element);
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
@@ -65,6 +78,7 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
     if (Number.isFinite(seconds)) audio.current.currentTime = seconds;
   }, []);
 
+  // The element's own events are the truth about playing and position.
   useEffect(() => {
     const element = audio.current;
     const onPlay = () => setPlaying(true);
@@ -83,12 +97,15 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // A track that ends moves on, as the page's player did.
   useEffect(() => {
     const element = audio.current;
     element.addEventListener("ended", next);
     return () => element.removeEventListener("ended", next);
   }, [next]);
 
+  // The system media controls (keyboard keys, GNOME's media panel) follow the
+  // player wherever the window is, rather than the page being open.
   useEffect(() => {
     if (!current || !("mediaSession" in navigator)) return;
     navigator.mediaSession.metadata = new MediaMetadata({

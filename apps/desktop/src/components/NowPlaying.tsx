@@ -5,8 +5,16 @@ import { ipc } from "../lib/ipc";
 import { trackTimeline } from "../lib/format";
 import type { MediaAction, NowPlaying as NowPlayingState } from "../lib/types";
 
+/** Poll interval while a surface showing now-playing is visible. */
 const POLL_MS = 1000;
 
+/**
+ * Live now-playing state.
+ *
+ * MPRIS has no position-changed signal that players implement reliably, so the
+ * position has to be polled. Polling stops as soon as the caller unmounts, which
+ * is why the notch only mounts this while it is open.
+ */
 export function useNowPlaying(active = true) {
   const [playing, setPlaying] = useState<NowPlayingState | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -16,6 +24,7 @@ export function useNowPlaying(active = true) {
       setPlaying(await ipc.mediaNowPlaying());
       setUnavailable(false);
     } catch {
+      // No session bus, or no player: neither is worth an error banner.
       setUnavailable(true);
     }
   }, []);
@@ -29,8 +38,11 @@ export function useNowPlaying(active = true) {
     async (action: MediaAction) => {
       try {
         await ipc.mediaControl(action);
+        // Read straight back so the button reflects the new state at once
+        // rather than after the next poll.
         await refresh();
       } catch {
+        // A player that refuses a command is not an application error.
       }
     },
     [refresh],
@@ -39,6 +51,7 @@ export function useNowPlaying(active = true) {
   return { playing, unavailable, control, refresh };
 }
 
+/** Transport buttons. Skip buttons disable themselves when the player says so. */
 export function TransportControls({
   playing,
   control,
@@ -79,6 +92,7 @@ export function TransportControls({
   );
 }
 
+/** Progress bar, hidden entirely when the player reports no duration. */
 export function TrackProgress({ playing }: { playing: NowPlayingState }) {
   const { positionUs, lengthUs } = playing;
   const fraction =

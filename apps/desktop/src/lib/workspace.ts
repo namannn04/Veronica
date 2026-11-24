@@ -8,6 +8,7 @@ export function methodArguments(text: string): Record<string, unknown> {
   if (!value || Array.isArray(value) || typeof value !== "object") throw new Error("Arguments must be a JSON object.");
   return value as Record<string, unknown>;
 }
+/** Unwrap MCP's structured value for a readable result; keep raw protocol separately. */
 export function methodResult(result: unknown): unknown {
   if (!result || typeof result !== "object") return result;
   const value = result as { structuredContent?: unknown; content?: { type?: string; text?: string }[]; isError?: boolean };

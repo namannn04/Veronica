@@ -1,3 +1,5 @@
+/** Number and date formatting, shared by every surface. */
+
 const MONEY = new Intl.NumberFormat(undefined, {
   style: "currency",
   currency: "USD",
@@ -9,6 +11,7 @@ export function money(value: number): string {
   return MONEY.format(value);
 }
 
+/** Money for an axis tick, where two decimals is noise. */
 export function moneyCompact(value: number): string {
   if (value >= 1000) return `$${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
   if (value >= 10) return `$${value.toFixed(0)}`;
@@ -23,7 +26,10 @@ const UNITS: [number, string][] = [
   [1e3, "K"],
 ];
 
+/** Token counts, three significant figures, matching the CLI's output. */
 export function tokens(value: number): string {
+  // Precision is decided after rounding: deciding first printed 999,999 as
+  // "1000K" and 9,999 as "10.00K".
   const decimals = (scaled: number) => (scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2);
   const round = (scaled: number, places: number) => Math.round(scaled * 10 ** places) / 10 ** places;
   for (let index = 0; index < UNITS.length; index++) {
@@ -55,6 +61,7 @@ export function percent(value: number, digits = 0): string {
   return `${value.toFixed(digits)}%`;
 }
 
+/** A duration as a compact countdown, e.g. "2h 14m". */
 export function countdown(seconds: number): string {
   if (seconds <= 0) return "now";
   const days = Math.floor(seconds / 86400);
@@ -66,6 +73,7 @@ export function countdown(seconds: number): string {
   return `${Math.floor(seconds)}s`;
 }
 
+/** `YYYY-MM-DD` as a local date, avoiding the UTC shift a bare parse causes. */
 export function parseDay(period: string): Date {
   const [y, m, d] = period.split("-").map(Number);
   return new Date(y, (m ?? 1) - 1, d ?? 1);
@@ -103,17 +111,23 @@ export function timeAgo(iso: string): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+/** A model id shortened for a table cell, keeping the distinguishing part. */
 export function modelLabel(name: string): string {
   const withoutVendor = name.includes("/") ? name.slice(name.lastIndexOf("/") + 1) : name;
   return withoutVendor.replace(/^claude-/, "").replace(/-\d{8}$/, "");
 }
 
+/** A track clock from MPRIS microseconds, e.g. "1:42". */
 export function trackClock(microseconds: number): string {
   const seconds = Math.max(0, Math.floor(microseconds / 1_000_000));
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+/**
+ * Position over length, or just the position when the player reports no
+ * duration — which is what a live stream does.
+ */
 export function trackTimeline(
   positionUs: number | null,
   lengthUs: number | null,
@@ -124,17 +138,20 @@ export function trackTimeline(
   return `${position} / ${trackClock(lengthUs)}`;
 }
 
+/** A wall-clock time from an RFC 3339 timestamp. */
 export function clockTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+/** An event's slot: a time range, or "All day". */
 export function eventSlot(start: string, end: string, allDay: boolean): string {
   if (allDay) return "All day";
   return `${clockTime(start)} – ${clockTime(end)}`;
 }
 
+/** How long until a timestamp, e.g. "in 2h 14m" or "now". */
 export function untilLabel(iso: string): string {
   const seconds = Math.floor((new Date(iso).getTime() - Date.now()) / 1000);
   if (Number.isNaN(seconds)) return "";
@@ -142,6 +159,7 @@ export function untilLabel(iso: string): string {
   return `in ${countdown(seconds)}`;
 }
 
+/** Relative time from a unix-millisecond stamp, e.g. "12h ago". */
 export function agoFromMillis(millis: number): string {
   const seconds = Math.floor((Date.now() - millis) / 1000);
   if (seconds < 45) return "now";
@@ -150,6 +168,10 @@ export function agoFromMillis(millis: number): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+/**
+ * Elapsed time as a clock reads it: "0:07", "12:34", "1:02:03". For a
+ * recording, where `countdown`'s "1m" held still for a whole minute.
+ */
 export function stopwatch(totalSeconds: number): string {
   const seconds = Math.max(0, Math.floor(totalSeconds));
   const hours = Math.floor(seconds / 3600);

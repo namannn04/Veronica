@@ -1,3 +1,12 @@
+/* Where Veronica can go, in one list.
+ *
+ * The sidebar and the command palette read the same entries, so a page can
+ * never be reachable from one and missing from the other. `keywords` exist for
+ * the palette alone: they are the words someone reaches for when they do not
+ * know, or do not remember, what the page is called here - "ssh" for Machines,
+ * "apt" for App Maintenance, "theme" for Settings.
+ */
+
 import type { ReactNode } from "react";
 
 import {
@@ -45,13 +54,23 @@ export type NavItem = {
   id: Route;
   label: string;
   icon: ReactNode;
+  /** Extension catalogue id; absent pages are part of Veronica itself. */
   extensionId?: string;
+  /** What the page is for, shown in the palette. */
   hint: string;
   keywords: string;
 };
 
 export type NavGroup = { label: string; items: NavItem[] };
 
+/**
+ * The rail, in sections.
+ *
+ * Nineteen entries in one undifferentiated column is a list to read rather
+ * than a menu to scan, so they are grouped by what a person came to do:
+ * everything about agents first, then the machine, then the small tools, then
+ * the app itself.
+ */
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Agents",
@@ -96,19 +115,23 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+/** Every entry, flattened, in rail order. */
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
 const ROUTES = new Set<string>(NAV_ITEMS.map((item) => item.id));
 
+/** Whether an untrusted string - an event payload, say - names a real page. */
 export function isRoute(value: unknown): value is Route {
   return typeof value === "string" && ROUTES.has(value);
 }
 
+/** Initial destination supplied by the native on-demand window builder. */
 export function routeFromSearch(search: string): Route {
   const candidate = new URLSearchParams(search).get("route");
   return isRoute(candidate) ? candidate : "home";
 }
 
+/** Rail groups after applying the extension catalogue's shared switches. */
 export function visibleNavGroups(enabledExtensions?: ReadonlySet<string>): NavGroup[] {
   if (enabledExtensions === undefined) return NAV_GROUPS;
   return NAV_GROUPS
@@ -121,6 +144,7 @@ export function visibleNavGroups(enabledExtensions?: ReadonlySet<string>): NavGr
     .filter((group) => group.items.length > 0);
 }
 
+/** Whether a route can be opened under the current extension switches. */
 export function routeIsVisible(route: Route, enabledExtensions?: ReadonlySet<string>): boolean {
   const item = NAV_ITEMS.find((candidate) => candidate.id === route);
   return item !== undefined
@@ -129,6 +153,13 @@ export function routeIsVisible(route: Route, enabledExtensions?: ReadonlySet<str
       || enabledExtensions.has(item.extensionId));
 }
 
+/**
+ * Entries matching `query`, best first.
+ *
+ * A label match outranks a keyword match, and a match at the start of the
+ * label outranks one in the middle, so typing "cal" puts Calendar above Color
+ * Picker rather than leaving the order to chance.
+ */
 export function searchNav(query: string, items: NavItem[] = NAV_ITEMS): NavItem[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return items;

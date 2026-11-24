@@ -3,6 +3,17 @@ import { useCallback, useEffect, useState } from "react";
 import { ipc } from "../lib/ipc";
 import type { QuinjetBoard, QuinjetWorktree } from "../lib/types";
 
+/**
+ * Quinjet.
+ *
+ * Discovery and launch, over Quinjet's own JSON contract — the same one Edith
+ * uses, so a machine with Quinjet installed behaves identically on both.
+ *
+ * Edith hosts the TUI in an embedded terminal, which is what gives it tabs and
+ * a session switcher. Veronica has none and opens the installed terminal
+ * instead: the same decision the Herdr page made, for the same reason. Quinjet
+ * stays the owner of the review, and this page is how you get into one.
+ */
 export function QuinjetPage() {
   const [board, setBoard] = useState<QuinjetBoard | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -49,6 +60,9 @@ export function QuinjetPage() {
 
     {error && <div className="banner error">{error}</div>}
 
+    {/* Before the first answer there is nothing to list yet: an empty
+        "Projects" card read as "you have no projects". The shimmer is the
+        same one Calendar uses while it reads. */}
     {!board && !error && <div className="calendar-skeleton" aria-label="Reading Quinjet projects"><i /><i /></div>}
 
     {!board ? null : board.projects.length === 0 && !busy
@@ -88,6 +102,7 @@ export function QuinjetPage() {
   </div>;
 }
 
+/** The same rule `Worktree::label` applies in the core. */
 function branchOf(worktree: QuinjetWorktree) {
   if (worktree.branch) return worktree.branch;
   if (worktree.detached) return `detached at ${worktree.head.slice(0, 8)}`;

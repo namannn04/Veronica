@@ -3,12 +3,30 @@ import { useState, useSyncExternalStore } from "react";
 import { ipc } from "../lib/ipc";
 import type { AuditReport, AuditSeverity } from "../lib/types";
 
+/**
+ * Site Audit.
+ *
+ * Edith's rules exactly — the same eleven checks, the same thresholds — so a
+ * page that passes on macOS passes here.
+ *
+ * Every run stays local: Veronica fetches the pages being audited and nothing
+ * else. No result is uploaded and no third-party service is consulted, which is
+ * the whole reason to run an audit from your own machine.
+ */
 const SEVERITIES: { id: AuditSeverity; label: string; pill: string }[] = [
   { id: "error", label: "Errors", pill: "critical" },
   { id: "warning", label: "Warnings", pill: "warn" },
   { id: "notice", label: "Notices", pill: "" },
 ];
 
+/**
+ * The latest run, kept outside the page.
+ *
+ * Only the page on screen is mounted, so a run held in its state was thrown
+ * away as soon as you went elsewhere, while the crawl carried on in the
+ * background with nowhere to put its answer. Held here, a run finishes into
+ * this store and is waiting when you come back.
+ */
 type AuditRun = { site: string; limit: number; report: AuditReport | null; running: boolean; error: string };
 let current: AuditRun = { site: "", limit: 50, report: null, running: false, error: "" };
 const listeners = new Set<() => void>();
@@ -61,7 +79,7 @@ export function AuditPage() {
         </button>
       </div>
       <p className="card-note">
-        Veronica fetches the pages being audited and nothing else, four at a time, so an audit
+        Veronica fetches the pages being audited and nothing else — four at a time, so an audit
         does not read as a load test against someone else&apos;s server.
       </p>
     </section>
@@ -106,7 +124,7 @@ export function AuditPage() {
                     <button className="list-row audit-page-row" onClick={() => setOpen(open === page.url ? null : page.url)}>
                       <div>
                         <strong>{page.url}</strong>
-                        <small>{page.error ?? `HTTP ${page.statusCode ?? "–"} · ${page.responseMillis ?? 0} ms · ${page.metadata.wordCount} words`}</small>
+                        <small>{page.error ?? `HTTP ${page.statusCode ?? "—"} · ${page.responseMillis ?? 0} ms · ${page.metadata.wordCount} words`}</small>
                       </div>
                       <span className={`pill ${page.issues.some((issue) => issue.severity === "error") ? "critical" : page.issues.length ? "warn" : "good"}`}>
                         {page.issues.length === 0 ? "Clean" : `${page.issues.length} issue${page.issues.length === 1 ? "" : "s"}`}
@@ -120,12 +138,12 @@ export function AuditPage() {
                         </div>
                       ))}
                       <dl className="hardware-list">
-                        <div><dt>Title</dt><dd>{page.metadata.title ?? "–"}</dd></div>
-                        <div><dt>Description</dt><dd>{page.metadata.description ?? "–"}</dd></div>
-                        <div><dt>Canonical</dt><dd>{page.metadata.canonicalUrl ?? "–"}</dd></div>
-                        <div><dt>Language</dt><dd>{page.metadata.language ?? "–"}</dd></div>
-                        <div><dt>H1</dt><dd>{page.metadata.heading ?? "–"}</dd></div>
-                        <div><dt>og:image</dt><dd>{page.metadata.openGraphImageUrl ?? "–"}</dd></div>
+                        <div><dt>Title</dt><dd>{page.metadata.title ?? "—"}</dd></div>
+                        <div><dt>Description</dt><dd>{page.metadata.description ?? "—"}</dd></div>
+                        <div><dt>Canonical</dt><dd>{page.metadata.canonicalUrl ?? "—"}</dd></div>
+                        <div><dt>Language</dt><dd>{page.metadata.language ?? "—"}</dd></div>
+                        <div><dt>H1</dt><dd>{page.metadata.heading ?? "—"}</dd></div>
+                        <div><dt>og:image</dt><dd>{page.metadata.openGraphImageUrl ?? "—"}</dd></div>
                       </dl>
                     </div>}
                   </div>
