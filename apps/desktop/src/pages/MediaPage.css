@@ -34,6 +34,7 @@
 }
 
 .media-art-skeleton {
+  --media-art-size: 112px;
   flex: none;
 }
 
@@ -124,10 +125,13 @@
     gap: var(--space-4);
   }
 
-  .media-art,
+  .media-art {
+    width: 88px;
+    height: 88px;
+  }
+
   .media-art-skeleton {
-    width: 88px !important;
-    height: 88px !important;
+    --media-art-size: 88px;
   }
 
   .media-search {
