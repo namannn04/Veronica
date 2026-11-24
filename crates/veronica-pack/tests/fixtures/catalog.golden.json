@@ -27,9 +27,7 @@
             "kind": "topic"
           }
         ],
-        "uses": [
-          "host.presenter@1"
-        ]
+        "uses": ["host.presenter@1"]
       },
       "icon": "assets/icon.svg",
       "id": "alpha",
@@ -37,9 +35,7 @@
       "latest": "1.2.5",
       "permissions": {
         "dbus": {
-          "session": [
-            "org.example.Alpha"
-          ],
+          "session": ["org.example.Alpha"],
           "system": []
         },
         "filesystem": [],
@@ -48,10 +44,7 @@
         "shell": [],
         "spawn": []
       },
-      "profiles": [
-        "simple",
-        "developer"
-      ],
+      "profiles": ["simple", "developer"],
       "requires": {
         "capabilities": [],
         "optionalCapabilities": [],
@@ -125,10 +118,7 @@
       "category": "desk",
       "contracts": {
         "provides": [],
-        "uses": [
-          "alpha.status@1",
-          "host.session@1"
-        ]
+        "uses": ["alpha.status@1", "host.session@1"]
       },
       "id": "beta",
       "labs": true,
@@ -144,9 +134,7 @@
         "shell": [],
         "spawn": []
       },
-      "profiles": [
-        "developer"
-      ],
+      "profiles": ["developer"],
       "requires": {
         "capabilities": [],
         "optionalCapabilities": [],
@@ -182,18 +170,13 @@
   "profiles": [
     {
       "description": "Everyday tools",
-      "extensions": [
-        "alpha"
-      ],
+      "extensions": ["alpha"],
       "id": "simple",
       "title": "Simple"
     },
     {
       "description": "Agents, machines and services",
-      "extensions": [
-        "alpha",
-        "beta"
-      ],
+      "extensions": ["alpha", "beta"],
       "id": "developer",
       "title": "Developer"
     }

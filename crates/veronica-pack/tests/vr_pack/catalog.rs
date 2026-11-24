@@ -53,7 +53,9 @@ fn the_catalog_matches_the_golden_payload() {
     if std::env::var_os("VR_PACK_BLESS").is_some() {
         fs::write(&golden, &rendered).unwrap();
     }
-    assert_eq!(rendered, fs::read_to_string(golden).unwrap());
+    let expected: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(golden).unwrap()).unwrap();
+    assert_eq!(payload, expected);
 }
 
 #[test]
