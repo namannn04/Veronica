@@ -43,7 +43,7 @@ export class KeyboardCleaner {
                 y_align: Clutter.ActorAlign.CENTER,
             });
             card.add_child(new St.Icon({ icon_name: 'input-keyboard-symbolic' }));
-            card.add_child(new St.Label({ text: 'Keyboard cleaning mode' }));
+            card.add_child(new St.Label({ text: 'Keyboard cleaning mode', style_class: 'veronica-clean-title' }));
             const detail = new St.Label({ style_class: 'veronica-clean-detail' });
             card.add_child(detail);
             let remaining = LIMIT_SECONDS;

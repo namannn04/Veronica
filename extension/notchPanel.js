@@ -311,7 +311,7 @@ export class NotchPanel {
         });
         const toolbar = new St.BoxLayout({ style_class: 'veronica-files-toolbar' });
         toolbar.add_child(new St.Label({
-            text: 'File Shelf',
+            text: 'File shelf',
             style_class: 'veronica-files-title',
             y_align: Clutter.ActorAlign.CENTER,
         }));
@@ -386,7 +386,7 @@ export class NotchPanel {
 
         this._cameraButton = new St.Button({
             style_class: 'veronica-camera-preview-button',
-            label: 'Start Preview',
+            label: 'Start preview',
             can_focus: true,
             x_align: Clutter.ActorAlign.CENTER,
         });
@@ -394,7 +394,7 @@ export class NotchPanel {
         panel.add_child(this._cameraButton);
 
         this._cameraFlipButton = new St.Button({
-            style_class: 'veronica-camera-preview-button',
+            style_class: 'veronica-camera-preview-button veronica-camera-secondary',
             label: 'Flip horizontally: Off',
             can_focus: true,
             x_align: Clutter.ActorAlign.CENTER,
@@ -574,7 +574,7 @@ export class NotchPanel {
             runJson(['power', awakeSwitch.command, 'off'], this._cancellable).catch(() => {});
         }
         Main.notify(
-            key === 'preventSleep' ? 'Keep Awake stopped' : 'Lid Awake stopped',
+            key === 'preventSleep' ? 'Keep awake stopped' : 'Lid awake stopped',
             'systemd-logind did not keep the inhibitor active.'
         );
     }
@@ -680,7 +680,7 @@ export class NotchPanel {
         this._cameraPlaceholder.visible = true;
         this._cameraTitle.text = 'Starting camera…';
         this._cameraDetail.text = 'The preview will appear here.';
-        this._cameraButton.label = 'Stop Preview';
+        this._cameraButton.label = 'Stop preview';
         try {
             this._cameraPreview.start();
         } catch (error) {
@@ -696,7 +696,7 @@ export class NotchPanel {
         this._cameraPlaceholder.visible = true;
         this._cameraTitle.text = 'Camera preview';
         this._cameraDetail.text = 'Your camera stays on only while this preview is open.';
-        this._cameraButton.label = 'Start Preview';
+        this._cameraButton.label = 'Start preview';
     }
 
     _cameraPreviewFailed(error) {
@@ -706,7 +706,7 @@ export class NotchPanel {
         this._cameraPlaceholder.visible = true;
         this._cameraTitle.text = 'Camera unavailable';
         this._cameraDetail.text = `${error}`.replace(/^.*?:\s*/, '').slice(0, 92);
-        this._cameraButton.label = 'Try Again';
+        this._cameraButton.label = 'Try again';
     }
 
     onMenuClosed() {
