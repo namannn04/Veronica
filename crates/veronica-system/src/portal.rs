@@ -43,8 +43,8 @@ impl PortalSupport {
 
 pub async fn probe(connection: &Connection) -> Result<PortalSupport> {
     let proxy = zbus::fdo::IntrospectableProxy::builder(connection)
-        .destination(PORTAL_BUS)?
-        .path(PORTAL_PATH)?
+        .destination(PORTAL_BUS)
+        .path(PORTAL_PATH)
         .build()
         .await
         .context("cannot reach the desktop portal")?;

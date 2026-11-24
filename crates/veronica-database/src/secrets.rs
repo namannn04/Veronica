@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use zbus::zvariant::{ObjectPath, OwnedObjectPath, Value as ZValue};
+use zbus::{ObjectPath, OwnedObjectPath, Variant};
 
 use crate::connection::SecretPurpose;
 
@@ -64,11 +64,11 @@ impl Service {
                 SERVICE_PATH,
                 Some("org.freedesktop.Secret.Service"),
                 "OpenSession",
-                &("plain", ZValue::from("")),
+                &("plain", Variant::from("")),
             )
             .await
             .context("the Secret Service refused a session")?;
-        let (_output, session): (zbus::zvariant::OwnedValue, OwnedObjectPath) =
+        let (_output, session): (zbus::OwnedVariant, OwnedObjectPath) =
             reply.body().deserialize()?;
         Ok(Self {
             connection,
@@ -136,11 +136,11 @@ impl Service {
         label: String,
         secret: &[u8],
     ) -> Result<()> {
-        let properties: HashMap<&str, ZValue<'_>> = HashMap::from([
-            ("org.freedesktop.Secret.Item.Label", ZValue::from(label)),
+        let properties: HashMap<&str, Variant<'_>> = HashMap::from([
+            ("org.freedesktop.Secret.Item.Label", Variant::from(label)),
             (
                 "org.freedesktop.Secret.Item.Attributes",
-                ZValue::from(attributes),
+                Variant::from(attributes),
             ),
         ]);
         let value = (

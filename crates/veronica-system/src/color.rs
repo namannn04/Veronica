@@ -2,8 +2,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
-use zbus::zvariant::{OwnedValue, Value};
-use zbus::{Connection, MessageStream};
+use zbus::{Connection, MessageStream, OwnedVariant, Variant};
 
 pub const SHELL_SCREENSHOT_BUS: &str = "org.gnome.Shell.Screenshot";
 pub const SHELL_SCREENSHOT_PATH: &str = "/org/gnome/Shell/Screenshot";
@@ -68,7 +67,7 @@ async fn pick_with_shell(connection: &Connection) -> Result<PickedColor> {
         .await
         .context("GNOME Shell's colour picker did not answer")?;
 
-    let result: HashMap<String, OwnedValue> = reply
+    let result: HashMap<String, OwnedVariant> = reply
         .body()
         .deserialize()
         .context("GNOME Shell's colour picker returned an unexpected reply")?;
@@ -86,9 +85,9 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
 
     let rule = zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
-        .interface("org.freedesktop.portal.Request")?
-        .member("Response")?
-        .build();
+        .interface("org.freedesktop.portal.Request")
+        .member("Response")
+        .build()?;
     zbus::fdo::DBusProxy::new(connection)
         .await?
         .add_match_rule(rule)
@@ -96,8 +95,8 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
         .context("the bus refused a match rule for the portal's reply")?;
     let mut stream = MessageStream::from(connection.clone());
 
-    let mut options: HashMap<&str, Value<'_>> = HashMap::new();
-    options.insert("handle_token", Value::from(token.as_str()));
+    let mut options: HashMap<&str, Variant<'_>> = HashMap::new();
+    options.insert("handle_token", Variant::from(token.as_str()));
     let reply = connection
         .call_method(
             Some(PORTAL_BUS),
@@ -108,7 +107,7 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
         )
         .await
         .context("no colour picker is available on this desktop")?;
-    let handle: zbus::zvariant::OwnedObjectPath = reply
+    let handle: zbus::OwnedObjectPath = reply
         .body()
         .deserialize()
         .context("the portal returned an unexpected request handle")?;
@@ -122,11 +121,11 @@ async fn pick_with_portal(connection: &Connection) -> Result<PickedColor> {
             .context("the session bus reported an error while waiting for the colour")?;
 
         let header = message.header();
-        if header.path().map(zbus::zvariant::ObjectPath::as_str) != Some(handle.as_str()) {
+        if header.path().map(zbus::ObjectPath::as_str) != Some(handle.as_str()) {
             continue;
         }
 
-        let (response, results): (u32, HashMap<String, OwnedValue>) = message
+        let (response, results): (u32, HashMap<String, OwnedVariant>) = message
             .body()
             .deserialize()
             .context("the portal's reply could not be read")?;
@@ -154,12 +153,12 @@ pub fn is_cancellation(error: &anyhow::Error) -> bool {
     text.contains("cancel") || text.contains("dismissed")
 }
 
-fn triple(result: &HashMap<String, OwnedValue>) -> Result<(f64, f64, f64)> {
+fn triple(result: &HashMap<String, OwnedVariant>) -> Result<(f64, f64, f64)> {
     let value = result
         .get("color")
         .ok_or_else(|| anyhow!("the reply carried no colour"))?;
     let structure = match unbox(value) {
-        Value::Structure(fields) => fields,
+        Variant::Structure(fields) => fields,
         other => bail!(
             "the colour was {} rather than three numbers",
             other.value_signature()
@@ -176,17 +175,17 @@ fn triple(result: &HashMap<String, OwnedValue>) -> Result<(f64, f64, f64)> {
     let mut channels = [0.0f64; 3];
     for (index, field) in fields.iter().enumerate() {
         channels[index] = match unbox(field) {
-            Value::F64(v) => *v,
-            Value::U8(v) => f64::from(*v) / 255.0,
+            Variant::F64(v) => *v,
+            Variant::U8(v) => f64::from(*v) / 255.0,
             other => bail!("colour component {index} was {}", other.value_signature()),
         };
     }
     Ok((channels[0], channels[1], channels[2]))
 }
 
-fn unbox<'v>(value: &'v Value<'v>) -> &'v Value<'v> {
+fn unbox<'v>(value: &'v Variant<'v>) -> &'v Variant<'v> {
     let mut current = value;
-    while let Value::Value(inner) = current {
+    while let Variant::Variant(inner) = current {
         current = inner;
     }
     current
@@ -201,19 +200,19 @@ fn monotonic_tag() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use zbus::zvariant::Structure;
+    use zbus::Structure;
 
-    fn vardict(value: Value<'static>) -> HashMap<String, OwnedValue> {
-        HashMap::from([("color".to_string(), OwnedValue::try_from(value).unwrap())])
+    fn vardict(value: Variant<'static>) -> HashMap<String, OwnedVariant> {
+        HashMap::from([("color".to_string(), OwnedVariant::try_from(value).unwrap())])
     }
 
-    fn ddd(red: f64, green: f64, blue: f64) -> Value<'static> {
-        Value::from((red, green, blue))
+    fn ddd(red: f64, green: f64, blue: f64) -> Variant<'static> {
+        Variant::from((red, green, blue))
     }
 
-    fn boxed(fields: [Value<'static>; 3]) -> Value<'static> {
+    fn boxed(fields: [Variant<'static>; 3]) -> Variant<'static> {
         let [a, b, c] = fields;
-        Value::Structure(Structure::from((a, b, c)))
+        Variant::Structure(Structure::from((a, b, c)))
     }
 
     #[test]
@@ -226,16 +225,16 @@ mod tests {
 
     #[test]
     fn unwraps_a_colour_nested_inside_a_variant() {
-        let doubly = Value::Value(Box::new(ddd(1.0, 0.0, 0.0)));
+        let doubly = Variant::Variant(Box::new(ddd(1.0, 0.0, 0.0)));
         assert_eq!(triple(&vardict(doubly)).unwrap(), (1.0, 0.0, 0.0));
 
-        let per_field = boxed([Value::F64(0.1), Value::F64(0.2), Value::F64(0.3)]);
+        let per_field = boxed([Variant::F64(0.1), Variant::F64(0.2), Variant::F64(0.3)]);
         assert_eq!(triple(&vardict(per_field)).unwrap(), (0.1, 0.2, 0.3));
     }
 
     #[test]
     fn accepts_byte_components_by_scaling_them() {
-        let result = vardict(Value::from((255u8, 0u8, 128u8)));
+        let result = vardict(Variant::from((255u8, 0u8, 128u8)));
         let (r, g, b) = triple(&result).unwrap();
         assert_eq!(r, 1.0);
         assert_eq!(g, 0.0);
@@ -244,19 +243,19 @@ mod tests {
 
     #[test]
     fn a_reply_with_no_colour_is_an_error_not_black() {
-        let empty: HashMap<String, OwnedValue> = HashMap::new();
+        let empty: HashMap<String, OwnedVariant> = HashMap::new();
         let error = triple(&empty).unwrap_err().to_string();
         assert!(error.contains("no colour"), "unhelpful message: {error}");
     }
 
     #[test]
     fn a_colour_of_the_wrong_shape_is_rejected() {
-        let error = triple(&vardict(Value::from((0.1f64, 0.2f64))))
+        let error = triple(&vardict(Variant::from((0.1f64, 0.2f64))))
             .unwrap_err()
             .to_string();
         assert!(error.contains("components"), "unhelpful message: {error}");
 
-        let text = vardict(Value::Str("#ff0000".into()));
+        let text = vardict(Variant::Str("#ff0000".into()));
         assert!(triple(&text).is_err(), "a string is not a colour");
     }
 

@@ -73,8 +73,8 @@ pub async fn detect_on(connection: &Connection) -> ScreenShareState {
 
 async fn count_sessions(connection: &Connection, bus: &str, path: &str) -> Result<usize> {
     let proxy = zbus::fdo::IntrospectableProxy::builder(connection)
-        .destination(bus.to_string())?
-        .path(path.to_string())?
+        .destination(bus.to_string())
+        .path(path.to_string())
         .build()
         .await
         .with_context(|| format!("cannot reach {bus}"))?;
