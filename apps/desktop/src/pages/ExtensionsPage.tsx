@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
+import { NAV_ITEMS } from "../lib/navigation";
 import { installNotice, type InstallNotice } from "../lib/toolInstall";
 import type { Diagnostics, ExtensionGroup, ExtensionReport, ToolReport, ToolSurvey } from "../lib/types";
 import {
@@ -285,6 +286,7 @@ function ExtensionRow({
   onInstall: (tool: ToolReport) => void;
 }) {
   const Icon = ICONS[entry.icon] ?? Blocks;
+  const navIcon = NAV_ITEMS.find((item) => item.extensionId === entry.id)?.icon;
   const unavailable = entry.availability === "unavailable";
   const missing = entry.missing && entry.missing.length > 0 ? entry.missing : null;
   const hasDetail = missing !== null || unmet.length > 0 || toggleError !== undefined || notices.length > 0;
@@ -294,7 +296,7 @@ function ExtensionRow({
       className={hasDetail ? "exts-row exts-row-detailed" : "exts-row"}
       leading={
         <span className="exts-icon" data-enabled={entry.enabled || undefined}>
-          <Icon size={16} strokeWidth={1.75} />
+          {navIcon ?? <Icon size={16} strokeWidth={1.75} />}
         </span>
       }
       title={

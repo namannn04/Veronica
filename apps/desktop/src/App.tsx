@@ -29,6 +29,7 @@ import type { Diagnostics } from "./lib/types";
 import { Sidebar } from "./shell/Sidebar";
 import { Spinner } from "./ui";
 import "./shell/Shell.css";
+import "./shell/Presenter.css";
 
 const WorkspacePage = lazy(() => import("./pages/WorkspacePage").then(module => ({ default: module.WorkspacePage })));
 

@@ -1,0 +1,27 @@
+:root[data-presenter="true"] .presenter-sensitive > :not(.ui-card-header):not(.ui-button):not(.ui-icon-button),
+:root[data-presenter="true"] .usage-sensitive,
+:root[data-blur-money="true"] .blur-money > :not(.ui-card-header):not(.ui-button):not(.ui-icon-button),
+:root[data-blur-usage="true"] .blur-usage > :not(.ui-card-header):not(.ui-button):not(.ui-icon-button),
+:root[data-blur-agents="true"] .blur-agents > :not(.ui-card-header):not(.ui-button):not(.ui-icon-button),
+:root[data-blur-calendar="true"] .blur-calendar > :not(.ui-card-header):not(.ui-button):not(.ui-icon-button),
+:root[data-blur-calendar="true"] .event-summary,
+:root[data-blur-music="true"] .blur-music > :not(.ui-card-header):not(.ui-button):not(.ui-icon-button),
+:root[data-blur-music="true"] .now-title,
+:root[data-blur-music="true"] .now-artist {
+  filter: blur(7px);
+  user-select: none;
+  pointer-events: none;
+}
+
+:root[data-presenter="true"][data-blur-money="false"] .blur-money > *,
+:root[data-presenter="true"][data-blur-usage="false"] .blur-usage > *,
+:root[data-presenter="true"][data-blur-agents="false"] .blur-agents > *,
+:root[data-presenter="true"][data-blur-calendar="false"] .blur-calendar > *,
+:root[data-presenter="true"][data-blur-calendar="false"] .event-summary,
+:root[data-presenter="true"][data-blur-music="false"] .blur-music > *,
+:root[data-presenter="true"][data-blur-music="false"] .now-title,
+:root[data-presenter="true"][data-blur-music="false"] .now-artist {
+  filter: none;
+  user-select: auto;
+  pointer-events: auto;
+}

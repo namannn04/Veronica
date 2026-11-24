@@ -1,10 +1,10 @@
 /**
  * Every appearance Veronica offers, in the order the picker shows them.
  *
- * `family` groups the picker and says which token block in `styles.css` a
+ * `family` groups the picker and says which token block in `ui/themes.css` a
  * theme belongs to; `swatch` is the three colours its preview tile paints -
  * page, card and accent - copied from that theme's block so one tile stands
- * for the whole palette. Adding a theme means a block in `styles.css`, its id
+ * for the whole palette. Adding a theme means a block in `ui/themes.css`, its id
  * in that block's family list, an entry here, and the matching notch rules in
  * `extension/stylesheet.css`.
  */
