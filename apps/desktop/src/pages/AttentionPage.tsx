@@ -173,7 +173,9 @@ export function AttentionPage() {
 
   const choosePreset = (next: Preset) => {
     setPreset(next);
-    if (next !== "custom") setMinutes(Number(next));
+    if (next !== "custom") {
+      setMinutes(Number(next));
+    }
   };
 
   const firstLoad = !loaded;

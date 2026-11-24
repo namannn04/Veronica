@@ -53,8 +53,11 @@ export function QuinjetPage() {
   const openSet = expanded ?? new Set(board?.projects[0] ? [board.projects[0].commonDir] : []);
   const toggle = (id: string) => {
     const next = new Set(openSet);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     setExpanded(next);
   };
 
@@ -218,7 +221,11 @@ function ProjectGroup({
 }
 
 function branchOf(worktree: QuinjetWorktree) {
-  if (worktree.branch) return worktree.branch;
-  if (worktree.detached) return `detached at ${worktree.head.slice(0, 8)}`;
+  if (worktree.branch) {
+    return worktree.branch;
+  }
+  if (worktree.detached) {
+    return `detached at ${worktree.head.slice(0, 8)}`;
+  }
   return worktree.path;
 }

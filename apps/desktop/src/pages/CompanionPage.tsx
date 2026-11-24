@@ -113,7 +113,9 @@ export function CompanionPage() {
   }, [query]);
 
   useEffect(() => {
-    if (!recording) return;
+    if (!recording) {
+      return;
+    }
     const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => window.clearInterval(timer);
   }, [recording]);
@@ -125,11 +127,12 @@ export function CompanionPage() {
     setPinned(selected?.pinned ?? false);
     setAudio("");
     setSaved(false);
-    if (selected?.kind === "voice")
+    if (selected?.kind === "voice") {
       void ipc
         .companionAudio(selected.id)
         .then((path) => setAudio(convertFileSrc(path)))
         .catch((reason) => setError(String(reason)));
+    }
   }, [selectedId, selected?.updatedAt]);
 
   const visible = useMemo(
@@ -159,7 +162,9 @@ export function CompanionPage() {
     }
   };
   const save = async () => {
-    if (!selected) return;
+    if (!selected) {
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -173,7 +178,9 @@ export function CompanionPage() {
     }
   };
   const remove = async () => {
-    if (!selected) return;
+    if (!selected) {
+      return;
+    }
     setConfirmDelete(false);
     setBusy(true);
     try {
@@ -468,7 +475,7 @@ export function CompanionPage() {
 }
 
 function ActivityPanel({ overview }: { overview: AttentionOverview | null }) {
-  if (!overview)
+  if (!overview) {
     return (
       <Card>
         <EmptyState icon={<Activity {...ICON} />} title="No activity yet">
@@ -476,6 +483,7 @@ function ActivityPanel({ overview }: { overview: AttentionOverview | null }) {
         </EmptyState>
       </Card>
     );
+  }
   const applications = overview.applications.slice(0, 8);
   return (
     <>

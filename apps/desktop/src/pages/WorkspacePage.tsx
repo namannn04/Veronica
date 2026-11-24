@@ -53,7 +53,9 @@ export function WorkspacePage() {
   }, []);
 
   const run = async () => {
-    if (running.current) return;
+    if (running.current) {
+      return;
+    }
     running.current = true;
     setBusy(true);
     setError("");
@@ -61,7 +63,9 @@ export function WorkspacePage() {
     try {
       const selected = ports.trim()
         ? ports.split(",").map((p) => {
-            if (!/^\s*\d+\s*$/.test(p)) throw new Error("Use comma-separated port numbers.");
+            if (!/^\s*\d+\s*$/.test(p)) {
+              throw new Error("Use comma-separated port numbers.");
+            }
             return Number(p);
           })
         : [];
@@ -70,12 +74,18 @@ export function WorkspacePage() {
         ports: selected,
         containers: containers.trim() ? containers.split(",").map((s) => s.trim()) : [],
       });
-      if (live.current) setReport(result);
+      if (live.current) {
+        setReport(result);
+      }
     } catch (e) {
-      if (live.current) setError(String(e));
+      if (live.current) {
+        setError(String(e));
+      }
     } finally {
       running.current = false;
-      if (live.current) setBusy(false);
+      if (live.current) {
+        setBusy(false);
+      }
     }
   };
 
@@ -114,7 +124,9 @@ export function WorkspacePage() {
               className="ws-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (root.trim()) void run();
+                if (root.trim()) {
+                  void run();
+                }
               }}
             >
               <Field label="Project directory">
