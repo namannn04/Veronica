@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use zbus::zvariant::OwnedFd;
-use zbus::Connection;
+use zbus::{Connection, OwnedFd};
 
 pub const LOGIND_BUS: &str = "org.freedesktop.login1";
 pub const LOGIND_PATH: &str = "/org/freedesktop/login1";

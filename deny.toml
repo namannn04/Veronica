@@ -1,0 +1,41 @@
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = [
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error is a build-time proc macro pulled in only through glib-macros 0.18 by gtk-rs 0.18, which tauri 2 and wry require on Linux; no gtk-rs 0.18 release drops it" },
+  { id = "RUSTSEC-2026-0543", reason = "chrono has no known vulnerability; its DateTime values are serialized into persisted settings, history and caches across every crate, so moving to jiff is a dedicated migration rather than a dependency bump" },
+]
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "GPL-3.0-only",
+  "ISC",
+  "LGPL-2.1-or-later",
+  "MIT",
+  "MIT-0",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

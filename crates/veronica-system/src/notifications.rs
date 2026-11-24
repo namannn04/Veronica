@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use serde::Serialize;
-use zbus::zvariant::{OwnedValue, Value};
-use zbus::{Connection, MessageStream};
+use zbus::{Connection, MessageStream, OwnedVariant, Variant};
 
 pub const NOTIFY_BUS: &str = "org.freedesktop.Notifications";
 pub const NOTIFY_PATH: &str = "/org/freedesktop/Notifications";
@@ -48,22 +47,22 @@ type NotifyBody = (
     String,
     String,
     Vec<String>,
-    HashMap<String, OwnedValue>,
+    HashMap<String, OwnedVariant>,
     i32,
 );
 
-fn hint_text(hints: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
+fn hint_text(hints: &HashMap<String, OwnedVariant>, key: &str) -> Option<String> {
     match &**hints.get(key)? {
-        Value::Str(s) => Some(s.as_str().to_string()),
+        Variant::Str(s) => Some(s.as_str().to_string()),
         _ => None,
     }
 }
 
-fn hint_u8(hints: &HashMap<String, OwnedValue>, key: &str) -> Option<u8> {
+fn hint_u8(hints: &HashMap<String, OwnedVariant>, key: &str) -> Option<u8> {
     match &**hints.get(key)? {
-        Value::U8(v) => Some(*v),
-        Value::U32(v) => u8::try_from(*v).ok(),
-        Value::I32(v) => u8::try_from(*v).ok(),
+        Variant::U8(v) => Some(*v),
+        Variant::U32(v) => u8::try_from(*v).ok(),
+        Variant::I32(v) => u8::try_from(*v).ok(),
         _ => None,
     }
 }
@@ -104,17 +103,17 @@ where
 
     let connection = Connection::session().await?;
     let monitor = zbus::fdo::MonitoringProxy::builder(&connection)
-        .destination("org.freedesktop.DBus")?
-        .path("/org/freedesktop/DBus")?
+        .destination("org.freedesktop.DBus")
+        .path("/org/freedesktop/DBus")
         .build()
         .await?;
 
     let rule = zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::MethodCall)
-        .interface(NOTIFY_BUS)?
-        .member("Notify")?
-        .destination(zbus::names::UniqueName::try_from(server.as_str())?)?
-        .build();
+        .interface(NOTIFY_BUS)
+        .member("Notify")
+        .destination(zbus::names::UniqueName::try_from(server.as_str())?)
+        .build()?;
     monitor
         .become_monitor(&[rule], 0)
         .await
@@ -164,14 +163,14 @@ fn now_millis() -> i64 {
 mod tests {
     use super::*;
 
-    fn hints(pairs: &[(&str, Value<'static>)]) -> HashMap<String, OwnedValue> {
+    fn hints(pairs: &[(&str, Variant<'static>)]) -> HashMap<String, OwnedVariant> {
         pairs
             .iter()
-            .map(|(key, value)| (key.to_string(), OwnedValue::try_from(value).unwrap()))
+            .map(|(key, value)| (key.to_string(), OwnedVariant::try_from(value).unwrap()))
             .collect()
     }
 
-    fn body(summary: &str, text: &str, hint_map: HashMap<String, OwnedValue>) -> NotifyBody {
+    fn body(summary: &str, text: &str, hint_map: HashMap<String, OwnedVariant>) -> NotifyBody {
         (
             "notify-send".to_string(),
             0,
@@ -190,7 +189,7 @@ mod tests {
             body(
                 "Veronica test",
                 "Checking whether monitoring works",
-                hints(&[("urgency", Value::U8(1))]),
+                hints(&[("urgency", Variant::U8(1))]),
             ),
             7,
             1_787_218_143_000,
@@ -209,7 +208,11 @@ mod tests {
             (1, Urgency::Normal),
             (2, Urgency::Critical),
         ] {
-            let n = from_body(body("s", "b", hints(&[("urgency", Value::U8(raw))])), 1, 0);
+            let n = from_body(
+                body("s", "b", hints(&[("urgency", Variant::U8(raw))])),
+                1,
+                0,
+            );
             assert_eq!(n.urgency, expected);
         }
     }
@@ -223,14 +226,14 @@ mod tests {
 
     #[test]
     fn urgency_is_accepted_as_a_wider_integer_too() {
-        let n = from_body(body("s", "b", hints(&[("urgency", Value::U32(2))])), 1, 0);
+        let n = from_body(body("s", "b", hints(&[("urgency", Variant::U32(2))])), 1, 0);
         assert_eq!(n.urgency, Urgency::Critical);
     }
 
     #[test]
     fn reads_the_desktop_entry_hint_for_grouping() {
         let n = from_body(
-            body("s", "b", hints(&[("desktop-entry", Value::from("code"))])),
+            body("s", "b", hints(&[("desktop-entry", Variant::from("code"))])),
             1,
             0,
         );

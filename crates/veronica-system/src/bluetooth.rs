@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Context, Result};
 use serde::Serialize;
 use zbus::names::OwnedInterfaceName;
-use zbus::zvariant::{OwnedObjectPath, OwnedValue};
-use zbus::Connection;
+use zbus::{Connection, OwnedObjectPath, OwnedVariant};
 
 pub const BLUEZ_BUS: &str = "org.bluez";
 pub const ADAPTER_INTERFACE: &str = "org.bluez.Adapter1";
@@ -74,13 +73,13 @@ impl BluetoothState {
     }
 }
 
-fn string_property(properties: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
+fn string_property(properties: &HashMap<String, OwnedVariant>, key: &str) -> Option<String> {
     properties
         .get(key)
         .and_then(|value| String::try_from(value.try_clone().ok()?).ok())
 }
 
-fn bool_property(properties: &HashMap<String, OwnedValue>, key: &str) -> bool {
+fn bool_property(properties: &HashMap<String, OwnedVariant>, key: &str) -> bool {
     properties
         .get(key)
         .and_then(|value| bool::try_from(value.try_clone().ok()?).ok())
@@ -96,7 +95,7 @@ fn object_name(path: &OwnedObjectPath) -> String {
 }
 
 type ManagedObjects =
-    HashMap<OwnedObjectPath, HashMap<OwnedInterfaceName, HashMap<String, OwnedValue>>>;
+    HashMap<OwnedObjectPath, HashMap<OwnedInterfaceName, HashMap<String, OwnedVariant>>>;
 
 fn interface(name: &str) -> OwnedInterfaceName {
     OwnedInterfaceName::try_from(name).expect("the interface names above are valid")
@@ -159,8 +158,8 @@ fn shape(objects: &ManagedObjects) -> (Vec<Adapter>, Vec<Device>) {
 
 async fn managed_objects(connection: &Connection) -> Result<ManagedObjects> {
     let proxy = zbus::fdo::ObjectManagerProxy::builder(connection)
-        .destination(BLUEZ_BUS)?
-        .path("/")?
+        .destination(BLUEZ_BUS)
+        .path("/")
         .build()
         .await
         .context("BlueZ does not export an object manager")?;
@@ -218,11 +217,11 @@ pub async fn read(connection: &Connection) -> BluetoothState {
 mod tests {
     use super::*;
 
-    fn owned(value: impl Into<zbus::zvariant::Value<'static>>) -> OwnedValue {
-        OwnedValue::try_from(value.into()).unwrap()
+    fn owned(value: impl Into<zbus::Variant<'static>>) -> OwnedVariant {
+        OwnedVariant::try_from(value.into()).unwrap()
     }
 
-    fn properties(pairs: Vec<(&str, OwnedValue)>) -> HashMap<String, OwnedValue> {
+    fn properties(pairs: Vec<(&str, OwnedVariant)>) -> HashMap<String, OwnedVariant> {
         pairs
             .into_iter()
             .map(|(key, value)| (key.to_string(), value))

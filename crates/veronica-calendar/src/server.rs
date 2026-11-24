@@ -4,8 +4,7 @@ use std::time::Duration as StdDuration;
 use anyhow::{Context, Result};
 use chrono::Local;
 use futures_util::StreamExt;
-use zbus::zvariant::{OwnedValue, Value};
-use zbus::{Connection, MessageStream};
+use zbus::{Connection, MessageStream, OwnedVariant, Variant};
 
 use crate::agenda::{self, Event};
 
@@ -16,11 +15,11 @@ pub const INTERFACE: &str = "org.gnome.Shell.CalendarServer";
 const FIRST_BATCH_TIMEOUT: StdDuration = StdDuration::from_millis(2500);
 const QUIET_PERIOD: StdDuration = StdDuration::from_millis(400);
 
-type RawEvent = (String, String, i64, i64, HashMap<String, OwnedValue>);
+type RawEvent = (String, String, i64, i64, HashMap<String, OwnedVariant>);
 
-fn as_text(value: &OwnedValue) -> Option<String> {
+fn as_text(value: &OwnedVariant) -> Option<String> {
     match &**value {
-        Value::Str(s) => Some(s.as_str().to_string()),
+        Variant::Str(s) => Some(s.as_str().to_string()),
         _ => None,
     }
 }
@@ -37,9 +36,9 @@ pub async fn has_calendars(connection: &Connection) -> Result<bool> {
         .await
         .context("the calendar server did not answer")?;
     let body = reply.body();
-    let value: Value<'_> = body.deserialize()?;
+    let value: Variant<'_> = body.deserialize()?;
     Ok(match value {
-        Value::Bool(flag) => flag,
+        Variant::Bool(flag) => flag,
         _ => false,
     })
 }
@@ -50,13 +49,14 @@ pub async fn events(connection: &Connection, days: i64) -> Result<Vec<Event>> {
 
     let rule = zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
-        .sender(BUS)?
-        .path(PATH)?
-        .interface(INTERFACE)?
-        .build();
-    let mut stream = MessageStream::for_match_rule(rule, connection, Some(64))
-        .await
-        .context("cannot subscribe to calendar events")?;
+        .sender(BUS)
+        .path(PATH)
+        .interface(INTERFACE)
+        .build()?;
+    let mut stream =
+        MessageStream::for_match_rule(rule, connection, std::num::NonZeroUsize::new(64))
+            .await
+            .context("cannot subscribe to calendar events")?;
 
     connection
         .call_method(

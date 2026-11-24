@@ -99,7 +99,7 @@ pub(crate) fn claim(background: bool, shelf: bool, tools: bool, services: bool) 
             return None;
         }
         let taken = match connection
-            .request_name_with_flags(BUS_NAME, RequestNameFlags::DoNotQueue.into())
+            .request_name_with_flags(BUS_NAME, RequestNameFlags::DO_NOT_QUEUE)
             .await
         {
             Ok(RequestNameReply::PrimaryOwner | RequestNameReply::AlreadyOwner) => false,

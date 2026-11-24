@@ -1,17 +1,16 @@
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
-use zbus::zvariant::{OwnedValue, Value};
-use zbus::Connection;
+use zbus::{Connection, OwnedVariant, Variant};
 
 const MPRIS_PREFIX: &str = "org.mpris.MediaPlayer2.";
 const MPRIS_PATH: &str = "/org/mpris/MediaPlayer2";
 const PLAYER_INTERFACE: &str = "org.mpris.MediaPlayer2.Player";
 const PROPERTIES_INTERFACE: &str = "org.freedesktop.DBus.Properties";
 
-fn as_text(value: &OwnedValue) -> Option<String> {
+fn as_text(value: &OwnedVariant) -> Option<String> {
     match &**value {
-        Value::Str(s) => Some(s.as_str().to_string()),
-        Value::ObjectPath(p) => Some(p.as_str().to_string()),
+        Variant::Str(s) => Some(s.as_str().to_string()),
+        Variant::ObjectPath(p) => Some(p.as_str().to_string()),
         _ => None,
     }
 }
@@ -20,20 +19,20 @@ fn as_text(value: &OwnedValue) -> Option<String> {
     clippy::cast_possible_truncation,
     reason = "some players report integer properties as doubles; the saturating float-to-int cast is the intended conversion and std has no checked alternative"
 )]
-fn as_integer(value: &OwnedValue) -> Option<i64> {
+fn as_integer(value: &OwnedVariant) -> Option<i64> {
     match &**value {
-        Value::I64(v) => Some(*v),
-        Value::U64(v) => i64::try_from(*v).ok(),
-        Value::I32(v) => Some(i64::from(*v)),
-        Value::U32(v) => Some(i64::from(*v)),
-        Value::F64(v) => Some(*v as i64),
+        Variant::I64(v) => Some(*v),
+        Variant::U64(v) => i64::try_from(*v).ok(),
+        Variant::I32(v) => Some(i64::from(*v)),
+        Variant::U32(v) => Some(i64::from(*v)),
+        Variant::F64(v) => Some(*v as i64),
         _ => None,
     }
 }
 
-fn as_bool(value: &OwnedValue) -> Option<bool> {
+fn as_bool(value: &OwnedVariant) -> Option<bool> {
     match &**value {
-        Value::Bool(v) => Some(*v),
+        Variant::Bool(v) => Some(*v),
         _ => None,
     }
 }
@@ -44,12 +43,12 @@ fn is_real_length(length: i64) -> bool {
     length > 0 && length < MAX_PLAUSIBLE_LENGTH_US
 }
 
-fn as_text_list(value: &OwnedValue) -> Vec<String> {
+fn as_text_list(value: &OwnedVariant) -> Vec<String> {
     match &**value {
-        Value::Array(array) => array
+        Variant::Array(array) => array
             .iter()
             .filter_map(|entry| match entry {
-                Value::Str(s) => Some(s.as_str().to_string()),
+                Variant::Str(s) => Some(s.as_str().to_string()),
                 _ => None,
             })
             .collect(),
@@ -107,7 +106,7 @@ impl NowPlaying {
 }
 
 pub fn read_metadata<S: std::hash::BuildHasher>(
-    metadata: &std::collections::HashMap<String, OwnedValue, S>,
+    metadata: &std::collections::HashMap<String, OwnedVariant, S>,
 ) -> (String, String, String, Option<String>, Option<i64>) {
     let text = |key: &str| -> String { metadata.get(key).and_then(as_text).unwrap_or_default() };
 
@@ -171,7 +170,7 @@ async fn property(
     bus: &str,
     interface: &str,
     name: &str,
-) -> Result<OwnedValue> {
+) -> Result<OwnedVariant> {
     let reply = connection
         .call_method(
             Some(bus),
@@ -182,8 +181,8 @@ async fn property(
         )
         .await?;
     let body = reply.body();
-    let value: Value<'_> = body.deserialize()?;
-    Ok(OwnedValue::try_from(value)?)
+    let value: Variant<'_> = body.deserialize()?;
+    Ok(OwnedVariant::try_from(value)?)
 }
 
 async fn status_of(connection: &Connection, bus: &str) -> Result<Option<PlaybackStatus>> {
@@ -211,7 +210,7 @@ pub async fn now_playing(connection: &Connection) -> Result<Option<NowPlaying>> 
     }
 
     if let Ok(value) = property(connection, &bus, PLAYER_INTERFACE, "Metadata").await {
-        if let Ok(metadata) = std::collections::HashMap::<String, OwnedValue>::try_from(value) {
+        if let Ok(metadata) = std::collections::HashMap::<String, OwnedVariant>::try_from(value) {
             let (title, artist, album, art, length) = read_metadata(&metadata);
             playing.title = title;
             playing.artist = artist;
@@ -330,16 +329,16 @@ mod tests {
         let mut metadata = HashMap::new();
         metadata.insert(
             "xesam:title".to_string(),
-            OwnedValue::try_from(Value::from("Midnight City")).unwrap(),
+            OwnedVariant::try_from(Variant::from("Midnight City")).unwrap(),
         );
         metadata.insert(
             "xesam:artist".to_string(),
-            OwnedValue::try_from(Value::from(vec!["M83".to_string(), "Other".to_string()]))
+            OwnedVariant::try_from(Variant::from(vec!["M83".to_string(), "Other".to_string()]))
                 .unwrap(),
         );
         metadata.insert(
             "mpris:length".to_string(),
-            OwnedValue::try_from(Value::from(243_000_000i64)).unwrap(),
+            OwnedVariant::try_from(Variant::from(243_000_000i64)).unwrap(),
         );
 
         let (title, artist, album, art, length) = read_metadata(&metadata);
@@ -361,14 +360,14 @@ mod tests {
     #[test]
     fn length_is_read_from_whichever_integer_type_the_player_used() {
         for value in [
-            Value::from(243_000_000i64),
-            Value::from(243_000_000u64),
-            Value::from(243_000_000i32),
+            Variant::from(243_000_000i64),
+            Variant::from(243_000_000u64),
+            Variant::from(243_000_000i32),
         ] {
             let mut metadata = HashMap::new();
             metadata.insert(
                 "mpris:length".to_string(),
-                OwnedValue::try_from(value).unwrap(),
+                OwnedVariant::try_from(value).unwrap(),
             );
             let (_, _, _, _, length) = read_metadata(&metadata);
             assert_eq!(length, Some(243_000_000));
@@ -380,11 +379,11 @@ mod tests {
         let mut metadata = HashMap::new();
         metadata.insert(
             "xesam:title".to_string(),
-            OwnedValue::try_from(Value::from("Track")).unwrap(),
+            OwnedVariant::try_from(Variant::from("Track")).unwrap(),
         );
         metadata.insert(
             "xesam:artist".to_string(),
-            OwnedValue::try_from(Value::from(vec![String::new(), "Real".to_string()])).unwrap(),
+            OwnedVariant::try_from(Variant::from(vec![String::new(), "Real".to_string()])).unwrap(),
         );
         let (title, artist, _, _, _) = read_metadata(&metadata);
         assert_eq!(title, "Track");
@@ -397,7 +396,7 @@ mod tests {
             let mut metadata = HashMap::new();
             metadata.insert(
                 "mpris:length".to_string(),
-                OwnedValue::try_from(Value::from(sentinel)).unwrap(),
+                OwnedVariant::try_from(Variant::from(sentinel)).unwrap(),
             );
             let (_, _, _, _, length) = read_metadata(&metadata);
             assert_eq!(length, None, "{sentinel} should read as unknown");
@@ -410,7 +409,7 @@ mod tests {
         let six_hours = 6 * 60 * 60 * 1_000_000i64;
         metadata.insert(
             "mpris:length".to_string(),
-            OwnedValue::try_from(Value::from(six_hours)).unwrap(),
+            OwnedVariant::try_from(Variant::from(six_hours)).unwrap(),
         );
         let (_, _, _, _, length) = read_metadata(&metadata);
         assert_eq!(length, Some(six_hours));
@@ -421,7 +420,7 @@ mod tests {
         let mut metadata = HashMap::new();
         metadata.insert(
             "mpris:length".to_string(),
-            OwnedValue::try_from(Value::from(-5i64)).unwrap(),
+            OwnedVariant::try_from(Variant::from(-5i64)).unwrap(),
         );
         let (_, _, _, _, length) = read_metadata(&metadata);
         assert_eq!(length, None);
@@ -432,7 +431,7 @@ mod tests {
         let mut metadata = HashMap::new();
         metadata.insert(
             "mpris:length".to_string(),
-            OwnedValue::try_from(Value::from(0i64)).unwrap(),
+            OwnedVariant::try_from(Variant::from(0i64)).unwrap(),
         );
         let (_, _, _, _, length) = read_metadata(&metadata);
         assert_eq!(length, None);

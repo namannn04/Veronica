@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
-use zbus::zvariant::Value;
-use zbus::Connection;
+use zbus::{Connection, Variant};
 
 pub const NOTIFY_BUS: &str = "org.freedesktop.Notifications";
 pub const NOTIFY_PATH: &str = "/org/freedesktop/Notifications";
@@ -81,9 +80,9 @@ impl Notification {
 }
 
 pub async fn post(connection: &Connection, notification: &Notification) -> Result<u32> {
-    let mut hints: HashMap<&str, Value<'_>> = HashMap::new();
-    hints.insert("urgency", Value::U8(notification.urgency.as_u8()));
-    hints.insert("desktop-entry", Value::Str(veronica_core::APP_ID.into()));
+    let mut hints: HashMap<&str, Variant<'_>> = HashMap::new();
+    hints.insert("urgency", Variant::U8(notification.urgency.as_u8()));
+    hints.insert("desktop-entry", Variant::Str(veronica_core::APP_ID.into()));
 
     let id: u32 = connection
         .call_method(
