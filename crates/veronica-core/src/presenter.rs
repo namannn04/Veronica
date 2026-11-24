@@ -13,41 +13,41 @@ pub enum BlurCategory {
 }
 
 impl BlurCategory {
-    pub const ALL: [BlurCategory; 5] = [
-        BlurCategory::Money,
-        BlurCategory::Usage,
-        BlurCategory::Agents,
-        BlurCategory::Calendar,
-        BlurCategory::Music,
+    pub const ALL: [Self; 5] = [
+        Self::Money,
+        Self::Usage,
+        Self::Agents,
+        Self::Calendar,
+        Self::Music,
     ];
 
     pub fn title(self) -> &'static str {
         match self {
-            BlurCategory::Money => "Spend",
-            BlurCategory::Usage => "Tokens and charts",
-            BlurCategory::Agents => "Rate limits",
-            BlurCategory::Calendar => "Calendar entries",
-            BlurCategory::Music => "Track names",
+            Self::Money => "Spend",
+            Self::Usage => "Tokens and charts",
+            Self::Agents => "Rate limits",
+            Self::Calendar => "Calendar entries",
+            Self::Music => "Track names",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            BlurCategory::Money => "presenterBlurMoney",
-            BlurCategory::Usage => "presenterBlurUsage",
-            BlurCategory::Agents => "presenterBlurAgents",
-            BlurCategory::Calendar => "presenterBlurCalendar",
-            BlurCategory::Music => "presenterBlurMusic",
+            Self::Money => "presenterBlurMoney",
+            Self::Usage => "presenterBlurUsage",
+            Self::Agents => "presenterBlurAgents",
+            Self::Calendar => "presenterBlurCalendar",
+            Self::Music => "presenterBlurMusic",
         }
     }
 
     pub fn css_class(self) -> &'static str {
         match self {
-            BlurCategory::Money => "blur-money",
-            BlurCategory::Usage => "blur-usage",
-            BlurCategory::Agents => "blur-agents",
-            BlurCategory::Calendar => "blur-calendar",
-            BlurCategory::Music => "blur-music",
+            Self::Money => "blur-money",
+            Self::Usage => "blur-usage",
+            Self::Agents => "blur-agents",
+            Self::Calendar => "blur-calendar",
+            Self::Music => "blur-music",
         }
     }
 }
@@ -187,7 +187,7 @@ mod tests {
         assert!(!state.effective_auto(), "but it has been dismissed");
         assert!(!state.active());
 
-        let mut manual = state.clone();
+        let mut manual = state;
         manual.manual = true;
         assert!(manual.active());
     }

@@ -19,24 +19,24 @@ pub enum DisplayMode {
 }
 
 impl DisplayMode {
-    pub const ALL: [DisplayMode; 2] = [DisplayMode::PerScreenFront, DisplayMode::DimUnfocused];
+    pub const ALL: [Self; 2] = [Self::PerScreenFront, Self::DimUnfocused];
 
     pub fn title(self) -> &'static str {
         match self {
-            DisplayMode::PerScreenFront => "Keep each display's front window bright",
-            DisplayMode::DimUnfocused => "Dim every display but the focused window",
+            Self::PerScreenFront => "Keep each display's front window bright",
+            Self::DimUnfocused => "Dim every display but the focused window",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            DisplayMode::PerScreenFront => "perScreenFront",
-            DisplayMode::DimUnfocused => "dimUnfocused",
+            Self::PerScreenFront => "perScreenFront",
+            Self::DimUnfocused => "dimUnfocused",
         }
     }
 
     pub fn parse(raw: &str) -> Self {
-        DisplayMode::ALL
+        Self::ALL
             .into_iter()
             .find(|mode| mode.key().eq_ignore_ascii_case(raw))
             .unwrap_or_default()

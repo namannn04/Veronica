@@ -20,22 +20,22 @@ pub enum ColorProfile {
 impl ColorProfile {
     pub fn title(self) -> &'static str {
         match self {
-            ColorProfile::Srgb => "sRGB",
-            ColorProfile::DisplayP3 => "Display P3",
+            Self::Srgb => "sRGB",
+            Self::DisplayP3 => "Display P3",
         }
     }
 
     pub fn parse(raw: &str) -> Self {
         match raw {
-            "displayP3" | "display-p3" | "DisplayP3" | "p3" => ColorProfile::DisplayP3,
-            _ => ColorProfile::Srgb,
+            "displayP3" | "display-p3" | "DisplayP3" | "p3" => Self::DisplayP3,
+            _ => Self::Srgb,
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            ColorProfile::Srgb => "srgb",
-            ColorProfile::DisplayP3 => "displayP3",
+            Self::Srgb => "srgb",
+            Self::DisplayP3 => "displayP3",
         }
     }
 }
@@ -52,39 +52,33 @@ pub enum CopyFormat {
 }
 
 impl CopyFormat {
-    pub const ALL: [CopyFormat; 5] = [
-        CopyFormat::Hex,
-        CopyFormat::Rgb,
-        CopyFormat::Rgba,
-        CopyFormat::Hsl,
-        CopyFormat::GdkRgba,
-    ];
+    pub const ALL: [Self; 5] = [Self::Hex, Self::Rgb, Self::Rgba, Self::Hsl, Self::GdkRgba];
 
     pub fn title(self) -> &'static str {
         match self {
-            CopyFormat::Hex => "Hex",
-            CopyFormat::Rgb => "rgb()",
-            CopyFormat::Rgba => "rgba()",
-            CopyFormat::Hsl => "hsl()",
-            CopyFormat::GdkRgba => "GdkRGBA",
+            Self::Hex => "Hex",
+            Self::Rgb => "rgb()",
+            Self::Rgba => "rgba()",
+            Self::Hsl => "hsl()",
+            Self::GdkRgba => "GdkRGBA",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            CopyFormat::Hex => "hex",
-            CopyFormat::Rgb => "rgb",
-            CopyFormat::Rgba => "rgba",
-            CopyFormat::Hsl => "hsl",
-            CopyFormat::GdkRgba => "gdkRgba",
+            Self::Hex => "hex",
+            Self::Rgb => "rgb",
+            Self::Rgba => "rgba",
+            Self::Hsl => "hsl",
+            Self::GdkRgba => "gdkRgba",
         }
     }
 
     pub fn parse(raw: &str) -> Self {
-        CopyFormat::ALL
+        Self::ALL
             .into_iter()
             .find(|format| format.key().eq_ignore_ascii_case(raw))
-            .unwrap_or(CopyFormat::Hex)
+            .unwrap_or(Self::Hex)
     }
 }
 
@@ -160,7 +154,7 @@ pub mod formatting {
     pub fn rgb_to_hsl(red: f64, green: f64, blue: f64) -> (f64, f64, f64) {
         let max_v = red.max(green).max(blue);
         let min_v = red.min(green).min(blue);
-        let l = (max_v + min_v) / 2.0;
+        let l = f64::midpoint(max_v, min_v);
         if (max_v - min_v).abs() < f64::EPSILON {
             return (0.0, 0.0, l);
         }
@@ -530,7 +524,7 @@ mod tests {
             red: 0.05,
             green: 0.05,
             blue: 0.1,
-            ..light.clone()
+            ..light
         };
         assert!(light.prefers_dark_text());
         assert!(!dark.prefers_dark_text());

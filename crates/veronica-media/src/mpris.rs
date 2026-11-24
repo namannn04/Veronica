@@ -64,14 +64,14 @@ pub enum PlaybackStatus {
 impl PlaybackStatus {
     fn parse(raw: &str) -> Self {
         match raw {
-            "Playing" => PlaybackStatus::Playing,
-            "Paused" => PlaybackStatus::Paused,
-            _ => PlaybackStatus::Stopped,
+            "Playing" => Self::Playing,
+            "Paused" => Self::Paused,
+            _ => Self::Stopped,
         }
     }
 
     pub fn is_playing(self) -> bool {
-        self == PlaybackStatus::Playing
+        self == Self::Playing
     }
 }
 
@@ -152,7 +152,7 @@ pub async fn active_player(connection: &Connection) -> Result<Option<String>> {
     let mut first = None;
     for name in candidates {
         let status = status_of(connection, &name).await.ok().flatten();
-        if status.map(PlaybackStatus::is_playing).unwrap_or(false) {
+        if status.is_some_and(PlaybackStatus::is_playing) {
             return Ok(Some(name));
         }
         if first.is_none() {
@@ -245,12 +245,12 @@ pub enum Transport {
 impl Transport {
     fn method(self) -> &'static str {
         match self {
-            Transport::Play => "Play",
-            Transport::Pause => "Pause",
-            Transport::PlayPause => "PlayPause",
-            Transport::Next => "Next",
-            Transport::Previous => "Previous",
-            Transport::Stop => "Stop",
+            Self::Play => "Play",
+            Self::Pause => "Pause",
+            Self::PlayPause => "PlayPause",
+            Self::Next => "Next",
+            Self::Previous => "Previous",
+            Self::Stop => "Stop",
         }
     }
 }
@@ -380,7 +380,7 @@ mod tests {
         );
         metadata.insert(
             "xesam:artist".to_string(),
-            OwnedValue::try_from(Value::from(vec!["".to_string(), "Real".to_string()])).unwrap(),
+            OwnedValue::try_from(Value::from(vec![String::new(), "Real".to_string()])).unwrap(),
         );
         let (title, artist, _, _, _) = read_metadata(&metadata);
         assert_eq!(title, "Track");

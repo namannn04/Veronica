@@ -14,10 +14,10 @@ pub enum ExtensionGroup {
 impl ExtensionGroup {
     pub fn title(self) -> &'static str {
         match self {
-            ExtensionGroup::Agent => "Agent",
-            ExtensionGroup::System => "System",
-            ExtensionGroup::Media => "Media",
-            ExtensionGroup::Utilities => "Utilities",
+            Self::Agent => "Agent",
+            Self::System => "System",
+            Self::Media => "Media",
+            Self::Utilities => "Utilities",
         }
     }
 }
@@ -77,7 +77,14 @@ impl ExtensionEntry {
     }
 }
 
-use Capability::*;
+use Capability::{
+    CalendarEvents, ClipboardHistory, CompanionService, DatabaseBroker, EmojiInsertion,
+    ExternalMediaControl, GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression,
+    KeystrokeObservation, LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls,
+    MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
+    ScreenColorSampling, ScreenShareDetection, ShellIntegration, SiteAuditing, SystemMetrics,
+    UsageCollection, WindowDimming,
+};
 use ExtensionGroup as G;
 
 pub const ENTRIES: &[ExtensionEntry] = &[

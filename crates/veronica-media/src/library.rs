@@ -53,8 +53,9 @@ pub fn scan_library(root: &Path) -> Result<Vec<LocalTrack>> {
             .unwrap_or("Unknown track");
         let (artist, title) = stem
             .split_once(" - ")
-            .map(|(artist, title)| (artist.trim(), title.trim()))
-            .unwrap_or(("Unknown artist", stem));
+            .map_or(("Unknown artist", stem), |(artist, title)| {
+                (artist.trim(), title.trim())
+            });
         let album = path
             .parent()
             .and_then(Path::file_name)
@@ -86,8 +87,7 @@ pub fn scan_library(root: &Path) -> Result<Vec<LocalTrack>> {
 fn is_audio(path: &Path) -> bool {
     path.extension()
         .and_then(|value| value.to_str())
-        .map(|value| AUDIO_EXTENSIONS.contains(&value.to_lowercase().as_str()))
-        .unwrap_or(false)
+        .is_some_and(|value| AUDIO_EXTENSIONS.contains(&value.to_lowercase().as_str()))
 }
 fn find_art(directory: &Path) -> Option<std::path::PathBuf> {
     ["cover.jpg", "cover.png", "folder.jpg", "folder.png"]

@@ -123,7 +123,7 @@ pub struct AttentionEvent {
     pub idle: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AttentionOverview {
     pub from: DateTime<Utc>,
@@ -226,9 +226,7 @@ impl AttentionRepository {
             }
         }
         let path = self.events_file();
-        let torn = fs::read(&path)
-            .map(|body| body.last().is_some_and(|byte| *byte != b'\n'))
-            .unwrap_or(false);
+        let torn = fs::read(&path).is_ok_and(|body| body.last().is_some_and(|byte| *byte != b'\n'));
         let mut file = OpenOptions::new().create(true).append(true).open(&path)?;
         if torn {
             file.write_all(b"\n")?;
@@ -248,9 +246,10 @@ impl AttentionRepository {
         let events = body
             .lines()
             .filter(|line| !line.trim().is_empty())
-            .filter_map(|line| match serde_json::from_str(line) {
-                Ok(event) => Some(event),
-                Err(_) => {
+            .filter_map(|line| {
+                if let Ok(event) = serde_json::from_str(line) {
+                    Some(event)
+                } else {
                     skipped += 1;
                     None
                 }
@@ -285,8 +284,9 @@ impl AttentionRepository {
         Local
             .from_local_datetime(&midnight)
             .earliest()
-            .map(|start| start.with_timezone(&Utc))
-            .unwrap_or(now - Duration::days(days.clamp(1, 365)))
+            .map_or(now - Duration::days(days.clamp(1, 365)), |start| {
+                start.with_timezone(&Utc)
+            })
     }
 
     pub fn overview(&self, from: DateTime<Utc>, to: DateTime<Utc>) -> Result<AttentionOverview> {
@@ -331,8 +331,7 @@ impl AttentionRepository {
                         .iter()
                         .any(|pattern| lower.contains(&pattern.to_lowercase()))
                 })
-                .map(|category| category.id.clone())
-                .unwrap_or_else(|| "unclassified".into());
+                .map_or_else(|| "unclassified".into(), |category| category.id.clone());
             *categories.entry(category.clone()).or_default() += seconds;
             if category == "focus" {
                 focused += seconds;
@@ -517,7 +516,7 @@ mod tests {
     fn session_survives_restart_and_moves_to_history() {
         let repository = repository();
         let started = repository.start_focus("Deep work", 2700, now()).unwrap();
-        let reopened = AttentionRepository::new(repository.root.clone());
+        let reopened = AttentionRepository::new(repository.root);
         assert_eq!(reopened.active_focus().unwrap(), Some(started));
 
         let stopped = reopened.stop_focus(now() + Duration::minutes(30)).unwrap();

@@ -33,8 +33,7 @@ impl AppDirectories {
         let runtime = env
             .runtime_dir
             .filter(|p| p.is_absolute())
-            .map(|p| p.join(APP_DIR))
-            .unwrap_or_else(|| cache.join("runtime"));
+            .map_or_else(|| cache.join("runtime"), |p| p.join(APP_DIR));
 
         Self {
             configuration: base(env.config_home, ".config"),

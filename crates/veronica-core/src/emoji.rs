@@ -23,61 +23,61 @@ pub enum SkinTone {
 }
 
 impl SkinTone {
-    pub const ALL: [SkinTone; 6] = [
-        SkinTone::Standard,
-        SkinTone::Light,
-        SkinTone::MediumLight,
-        SkinTone::Medium,
-        SkinTone::MediumDark,
-        SkinTone::Dark,
+    pub const ALL: [Self; 6] = [
+        Self::Standard,
+        Self::Light,
+        Self::MediumLight,
+        Self::Medium,
+        Self::MediumDark,
+        Self::Dark,
     ];
 
     pub fn title(self) -> &'static str {
         match self {
-            SkinTone::Standard => "Default",
-            SkinTone::Light => "Light",
-            SkinTone::MediumLight => "Medium light",
-            SkinTone::Medium => "Medium",
-            SkinTone::MediumDark => "Medium dark",
-            SkinTone::Dark => "Dark",
+            Self::Standard => "Default",
+            Self::Light => "Light",
+            Self::MediumLight => "Medium light",
+            Self::Medium => "Medium",
+            Self::MediumDark => "Medium dark",
+            Self::Dark => "Dark",
         }
     }
 
     pub fn sample(self) -> &'static str {
         match self {
-            SkinTone::Standard => "✋",
-            SkinTone::Light => "✋🏻",
-            SkinTone::MediumLight => "✋🏼",
-            SkinTone::Medium => "✋🏽",
-            SkinTone::MediumDark => "✋🏾",
-            SkinTone::Dark => "✋🏿",
+            Self::Standard => "✋",
+            Self::Light => "✋🏻",
+            Self::MediumLight => "✋🏼",
+            Self::Medium => "✋🏽",
+            Self::MediumDark => "✋🏾",
+            Self::Dark => "✋🏿",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            SkinTone::Standard => "standard",
-            SkinTone::Light => "light",
-            SkinTone::MediumLight => "mediumLight",
-            SkinTone::Medium => "medium",
-            SkinTone::MediumDark => "mediumDark",
-            SkinTone::Dark => "dark",
+            Self::Standard => "standard",
+            Self::Light => "light",
+            Self::MediumLight => "mediumLight",
+            Self::Medium => "medium",
+            Self::MediumDark => "mediumDark",
+            Self::Dark => "dark",
         }
     }
 
     fn variant_index(self) -> Option<usize> {
         match self {
-            SkinTone::Standard => None,
-            SkinTone::Light => Some(1),
-            SkinTone::MediumLight => Some(2),
-            SkinTone::Medium => Some(3),
-            SkinTone::MediumDark => Some(4),
-            SkinTone::Dark => Some(5),
+            Self::Standard => None,
+            Self::Light => Some(1),
+            Self::MediumLight => Some(2),
+            Self::Medium => Some(3),
+            Self::MediumDark => Some(4),
+            Self::Dark => Some(5),
         }
     }
 
     pub fn parse(raw: &str) -> Self {
-        SkinTone::ALL
+        Self::ALL
             .into_iter()
             .find(|tone| tone.key().eq_ignore_ascii_case(raw))
             .unwrap_or_default()
@@ -129,8 +129,7 @@ impl Emoji {
             Some(index) => self
                 .tone_variants
                 .get(index - 1)
-                .map(String::as_str)
-                .unwrap_or(&self.character),
+                .map_or(&self.character, String::as_str),
             None => &self.character,
         }
     }
@@ -166,7 +165,7 @@ impl Catalog {
         Self::parse(CATALOG_JSON).expect("the bundled emoji catalogue is valid")
     }
 
-    pub fn parse(json: &str) -> anyhow::Result<Self> {
+    pub fn parse(json: &str) -> Result<Self> {
         let raw: RawCatalog = serde_json::from_str(json)?;
         if raw.schema != SCHEMA {
             anyhow::bail!(
@@ -288,7 +287,7 @@ fn score(entry: &IndexEntry, query: &str) -> Option<usize> {
     None
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Usage {
     pub character: String,
@@ -296,7 +295,7 @@ pub struct Usage {
     pub last_used_at_ms: i64,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageLedger {
     pub entries: Vec<Usage>,
@@ -305,7 +304,7 @@ pub struct UsageLedger {
 impl UsageLedger {
     pub fn score(usage: &Usage, now_ms: i64) -> f64 {
         let age_days = (now_ms - usage.last_used_at_ms).max(0) as f64 / 86_400_000.0;
-        usage.count as f64 * 0.5_f64.powf(age_days / HALF_LIFE_DAYS)
+        f64::from(usage.count) * 0.5_f64.powf(age_days / HALF_LIFE_DAYS)
     }
 
     pub fn ranked(&self, now_ms: i64, limit: usize) -> Vec<String> {
@@ -357,7 +356,7 @@ impl UsageLedger {
             survivors.insert(character.as_str(), ());
         }
         survivors.insert(character, ());
-        let keep: Vec<String> = survivors.keys().map(|value| value.to_string()).collect();
+        let keep: Vec<String> = survivors.keys().map(ToString::to_string).collect();
         self.entries
             .retain(|usage| keep.iter().any(|character| character == &usage.character));
     }

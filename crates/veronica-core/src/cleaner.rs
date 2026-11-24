@@ -341,10 +341,10 @@ pub fn trash(home: &Path, path: &Path) -> Result<String> {
         .with_context(|| format!("cannot create {}", files.display()))?;
     std::fs::create_dir_all(&info).with_context(|| format!("cannot create {}", info.display()))?;
 
-    let original = path
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_else(|| "item".to_string());
+    let original = path.file_name().map_or_else(
+        || "item".to_string(),
+        |name| name.to_string_lossy().to_string(),
+    );
 
     let mut name = original.clone();
     let mut suffix = 1;
@@ -386,7 +386,7 @@ fn encode_path(path: &Path) -> String {
     for byte in path.display().to_string().bytes() {
         match byte {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' | b'/' => {
-                out.push(byte as char)
+                out.push(byte as char);
             }
             _ => out.push_str(&format!("%{byte:02X}")),
         }
@@ -632,9 +632,7 @@ mod tests {
         let missing = home.join("never/existed");
         assert!(trash(&home, &missing).is_err());
         let info = trash_dir(&home).join("info");
-        let orphans = std::fs::read_dir(&info)
-            .map(|entries| entries.count())
-            .unwrap_or(0);
+        let orphans = std::fs::read_dir(&info).map_or(0, Iterator::count);
         assert_eq!(orphans, 0);
         std::fs::remove_dir_all(&home).ok();
     }

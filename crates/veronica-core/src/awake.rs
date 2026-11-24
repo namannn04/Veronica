@@ -19,27 +19,27 @@ pub enum Awake {
 impl Awake {
     pub fn title(self) -> &'static str {
         match self {
-            Awake::KeepAwake => "Keep Awake",
-            Awake::LidAwake => "Lid Awake",
+            Self::KeepAwake => "Keep Awake",
+            Self::LidAwake => "Lid Awake",
         }
     }
 
     pub fn enabled_key(self) -> &'static str {
         match self {
-            Awake::KeepAwake => KEEP_AWAKE_KEY,
-            Awake::LidAwake => LID_AWAKE_KEY,
+            Self::KeepAwake => KEEP_AWAKE_KEY,
+            Self::LidAwake => LID_AWAKE_KEY,
         }
     }
 
     pub fn until_key(self) -> &'static str {
         match self {
-            Awake::KeepAwake => KEEP_AWAKE_UNTIL_KEY,
-            Awake::LidAwake => LID_AWAKE_UNTIL_KEY,
+            Self::KeepAwake => KEEP_AWAKE_UNTIL_KEY,
+            Self::LidAwake => LID_AWAKE_UNTIL_KEY,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AwakeState {
     pub enabled: bool,

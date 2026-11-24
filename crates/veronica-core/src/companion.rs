@@ -279,7 +279,7 @@ mod tests {
             )
             .unwrap();
         assert!(updated.pinned);
-        assert_eq!(repository.list("launcher").unwrap(), vec![updated.clone()]);
+        assert_eq!(repository.list("launcher").unwrap(), vec![updated]);
         assert_eq!(repository.list("").unwrap()[0].id, first.id);
         repository.remove(first.id).unwrap();
         assert_eq!(repository.list("").unwrap().len(), 1);

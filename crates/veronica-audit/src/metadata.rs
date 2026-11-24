@@ -130,15 +130,12 @@ pub fn decode(text: &str) -> String {
                 })
                 .and_then(char::from_u32),
         };
-        match replacement {
-            Some(character) => {
-                out.push(character);
-                rest = &rest[end + 1..];
-            }
-            None => {
-                out.push('&');
-                rest = &rest[1..];
-            }
+        if let Some(character) = replacement {
+            out.push(character);
+            rest = &rest[end + 1..];
+        } else {
+            out.push('&');
+            rest = &rest[1..];
         }
     }
     out.push_str(rest);
@@ -308,7 +305,7 @@ mod tests {
 
     #[test]
     fn attribute_names_and_values_match_regardless_of_case_and_quoting() {
-        let html = r#"<META NAME='Description' CONTENT='Single quoted'>"#;
+        let html = r"<META NAME='Description' CONTENT='Single quoted'>";
         assert_eq!(
             parse(html, &base()).description.as_deref(),
             Some("Single quoted")

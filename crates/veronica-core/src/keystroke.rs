@@ -17,24 +17,24 @@ pub enum Position {
 }
 
 impl Position {
-    pub const ALL: [Position; 2] = [Position::Top, Position::Bottom];
+    pub const ALL: [Self; 2] = [Self::Top, Self::Bottom];
 
     pub fn title(self) -> &'static str {
         match self {
-            Position::Top => "Top",
-            Position::Bottom => "Bottom",
+            Self::Top => "Top",
+            Self::Bottom => "Bottom",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            Position::Top => "top",
-            Position::Bottom => "bottom",
+            Self::Top => "top",
+            Self::Bottom => "bottom",
         }
     }
 
     pub fn parse(raw: &str) -> Self {
-        Position::ALL
+        Self::ALL
             .into_iter()
             .find(|position| position.key().eq_ignore_ascii_case(raw))
             .unwrap_or_default()
@@ -169,7 +169,7 @@ mod tests {
     }
 
     fn keys(values: &[&str]) -> Vec<String> {
-        values.iter().map(|value| value.to_string()).collect()
+        values.iter().map(ToString::to_string).collect()
     }
 
     #[test]

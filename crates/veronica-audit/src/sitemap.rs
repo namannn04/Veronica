@@ -208,8 +208,8 @@ mod tests {
     #[test]
     fn a_sitemap_is_its_loc_elements() {
         let document = parse(
-            r#"<urlset><url><loc>https://a.test/one</loc></url>
-               <url><loc> https://a.test/two </loc></url></urlset>"#,
+            r"<urlset><url><loc>https://a.test/one</loc></url>
+               <url><loc> https://a.test/two </loc></url></urlset>",
         );
         assert!(!document.is_index);
         assert_eq!(
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn an_index_is_recognised_as_holding_sitemaps_rather_than_pages() {
         let document = parse(
-            r#"<sitemapindex><sitemap><loc>https://a.test/s1.xml</loc></sitemap></sitemapindex>"#,
+            r"<sitemapindex><sitemap><loc>https://a.test/s1.xml</loc></sitemap></sitemapindex>",
         );
         assert!(document.is_index);
     }
@@ -233,16 +233,15 @@ mod tests {
     #[test]
     fn an_entry_that_is_not_a_url_is_dropped_not_fatal() {
         let document = parse(
-            r#"<urlset><url><loc>not a url</loc></url>
-               <url><loc>https://a.test/ok</loc></url></urlset>"#,
+            r"<urlset><url><loc>not a url</loc></url>
+               <url><loc>https://a.test/ok</loc></url></urlset>",
         );
         assert_eq!(document.locations.len(), 1);
     }
 
     #[test]
     fn an_escaped_url_is_decoded_before_parsing() {
-        let document =
-            parse(r#"<urlset><url><loc>https://a.test/?a=1&amp;b=2</loc></url></urlset>"#);
+        let document = parse(r"<urlset><url><loc>https://a.test/?a=1&amp;b=2</loc></url></urlset>");
         assert_eq!(document.locations[0].as_str(), "https://a.test/?a=1&b=2");
     }
 

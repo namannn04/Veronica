@@ -67,7 +67,7 @@ mod tests {
         });
         let leftovers: Vec<_> = fs::read_dir(root.path())
             .unwrap()
-            .filter_map(|entry| entry.ok())
+            .filter_map(std::result::Result::ok)
             .filter(|entry| entry.file_name() != "settings.json")
             .collect();
         assert!(leftovers.is_empty(), "temporary files left behind");

@@ -90,8 +90,7 @@ pub fn which(binary: &str) -> Option<PathBuf> {
 pub fn is_executable(path: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
     std::fs::metadata(visible(path))
-        .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
-        .unwrap_or(false)
+        .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
 }
 
 #[cfg(test)]
@@ -103,7 +102,7 @@ mod tests {
         let id = spawn_detached(&mut Command::new("true")).unwrap();
         let stat = format!("/proc/{id}/stat");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-        while std::path::Path::new(&stat).exists() {
+        while Path::new(&stat).exists() {
             assert!(
                 std::time::Instant::now() < deadline,
                 "child {id} was not reaped"
