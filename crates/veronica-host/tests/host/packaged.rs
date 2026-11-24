@@ -11,7 +11,7 @@ use veronica_host::fetch::{Response, Transport};
 use veronica_host::host_api::HostServices;
 use veronica_host::trust::{verify_envelope, verify_with, TrustError, TrustedKey};
 use veronica_host::update::install_from_catalog;
-use veronica_host::{HostIdentity, Installer, Layout, Router};
+use veronica_host::{Confirmation, HostIdentity, Installer, Layout, Router};
 use veronica_protocol::catalog::{FileIndex, PACKAGE_URL_PREFIX};
 use veronica_protocol::{ExitCode, PackageVersion};
 
@@ -55,7 +55,7 @@ fn assert_verified(tree: &Path) {
 fn echo(router: &Router, text: &str) -> Value {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let argv = ["fixture", "echo", text].map(ToString::to_string).to_vec();
-    let result = runtime.block_on(router.run_cli(ID, argv, true, false));
+    let result = runtime.block_on(router.run_cli(ID, argv, true, Confirmation::Preview));
     assert_eq!(result.exit_code, ExitCode::Success, "{result:?}");
     result.document.unwrap()
 }

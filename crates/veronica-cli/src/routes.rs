@@ -13,7 +13,7 @@ use veronica_host::catalog::CatalogStore;
 use veronica_host::connection::BackendError;
 use veronica_host::host_api::HostServices;
 use veronica_host::registry::{self, Origin};
-use veronica_host::{Layout, Router};
+use veronica_host::{Confirmation, Layout, Router};
 use veronica_protocol::manifest::{Arg, ArgKind, ArgType, Command, Effect};
 use veronica_protocol::rpc::CliRunResult;
 use veronica_protocol::{ExitCode, Manifest};
@@ -36,7 +36,7 @@ pub(crate) struct Routes {
     disabled: BTreeMap<String, String>,
 }
 
-fn read_manifest(layout: &Layout, id: &str) -> Result<Manifest> {
+pub(crate) fn read_manifest(layout: &Layout, id: &str) -> Result<Manifest> {
     let path = layout.current_link(id).join("manifest.json");
     let raw = std::fs::read_to_string(&path)
         .with_context(|| format!("cannot read {}", path.display()))?;
@@ -88,10 +88,16 @@ fn quote(arg: &str) -> String {
     }
 }
 
-fn rerun(arguments: &[String]) -> String {
+pub(crate) fn rerun(arguments: &[String]) -> String {
+    let split = arguments
+        .iter()
+        .position(|arg| arg == "--")
+        .unwrap_or(arguments.len());
+    let (options, literal) = arguments.split_at(split);
     std::iter::once("vr".to_string())
-        .chain(arguments.iter().map(|arg| quote(arg)))
+        .chain(options.iter().map(|arg| quote(arg)))
         .chain(std::iter::once("--yes".to_string()))
+        .chain(literal.iter().map(|arg| quote(arg)))
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -342,12 +348,12 @@ async fn execute(
     id: &str,
     argv: Vec<String>,
     json: bool,
-    yes: bool,
+    confirmation: Confirmation,
     limit: Option<Duration>,
 ) -> Result<CliRunResult> {
     let router = Router::oneshot(Arc::new(HostServices::current()?));
     let call = async {
-        let run = router.run_cli(id, argv, json, yes);
+        let run = router.run_cli(id, argv, json, confirmation);
         match limit {
             Some(limit) => tokio::time::timeout(limit, run).await.unwrap_or_else(|_| {
                 let message = format!("{id} did not finish within {}s", limit.as_secs());
@@ -427,7 +433,8 @@ pub(crate) fn dispatch(
     let limit = leaf
         .timeout_seconds
         .map(|seconds| Duration::from_secs(u64::from(seconds)));
-    let result = match execute(&route.id, forwarded(arguments), json, yes, limit) {
+    let confirmed = Confirmation::from_yes_flag(yes);
+    let result = match execute(&route.id, forwarded(arguments), json, confirmed, limit) {
         Ok(result) => result,
         Err(error) => return format::fail(json, ExitCode::Failed, &format!("{error:#}")),
     };
@@ -464,6 +471,10 @@ mod tests {
         assert_eq!(
             rerun(&strings(&["fixture", "wipe", "a b"])),
             "vr fixture wipe 'a b' --yes"
+        );
+        assert_eq!(
+            rerun(&strings(&["fixture", "wipe", "--", "--yes"])),
+            "vr fixture wipe --yes -- --yes"
         );
     }
 }

@@ -116,6 +116,36 @@ impl Backend {
     }
 }
 
+fn echo_install() -> &'static PathBuf {
+    static PATH: OnceLock<PathBuf> = OnceLock::new();
+    PATH.get_or_init(|| {
+        let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("echo-install");
+        std::fs::create_dir_all(&root).unwrap();
+        let manifest = json!({
+            "schema": 1,
+            "id": "echo",
+            "version": "1.0",
+            "title": "Echo",
+            "summary": "Says things back.",
+            "category": "labs",
+            "engines": { "host": ">=0.1.0", "hostApi": 1 },
+            "targets": ["linux-x86_64"],
+            "backend": { "entry": "bin/backend" },
+            "commands": [{
+                "name": "echo",
+                "subcommands": [
+                    { "name": "say", "effect": "read", "json": true },
+                    { "name": "fail", "effect": "read", "json": true,
+                      "args": [{ "name": "code", "kind": "option", "long": "code", "type": "integer" }] },
+                    { "name": "erase", "effect": "destructive", "json": true }
+                ]
+            }]
+        });
+        std::fs::write(root.join("manifest.json"), manifest.to_string()).unwrap();
+        root
+    })
+}
+
 fn initialize_params() -> Value {
     json!({
         "protocol": PROTOCOL_VERSION,
@@ -123,7 +153,7 @@ fn initialize_params() -> Value {
         "extension": { "id": "echo", "version": "1.0.0" },
         "mode": "service",
         "dirs": {
-            "install": "/ext/install",
+            "install": echo_install(),
             "data": "/ext/data",
             "cache": "/ext/cache",
             "state": "/ext/state",
@@ -143,6 +173,10 @@ fn error_code_of(response: &Value) -> i64 {
 
 fn cli(argv: &[&str], json: bool) -> Value {
     json!({ "argv": argv, "json": json, "confirm": false, "cwd": "/", "tty": false })
+}
+
+fn confirmed(argv: &[&str], json: bool) -> Value {
+    json!({ "argv": argv, "json": json, "confirm": true, "cwd": "/", "tty": false })
 }
 
 #[tokio::test]
@@ -221,6 +255,41 @@ async fn cli_run_captures_documents_text_and_exit_codes() {
         .await;
     assert_eq!(usage["result"]["exitCode"], json!(2));
     assert!(usage["result"]["text"].as_str().unwrap().contains("<TEXT>"));
+}
+
+#[tokio::test]
+async fn destructive_leaves_run_only_when_confirmed() {
+    let mut backend = Backend::ready().await;
+    let refused = backend
+        .request(1, "cli.run", cli(&["echo", "erase", "notes"], true))
+        .await;
+    assert_eq!(refused["result"]["exitCode"], json!(5));
+    assert_eq!(
+        refused["result"]["document"]["confirmationRequired"],
+        json!(true)
+    );
+
+    let text = backend
+        .request(2, "cli.run", cli(&["echo", "erase", "notes"], false))
+        .await;
+    assert_eq!(text["result"]["exitCode"], json!(5));
+    assert!(text["result"]["text"]
+        .as_str()
+        .unwrap()
+        .contains("confirmation"));
+
+    let erased = backend
+        .request(3, "cli.run", confirmed(&["echo", "erase", "notes"], true))
+        .await;
+    assert_eq!(
+        erased["result"],
+        json!({ "exitCode": 0, "document": { "erased": "notes" } })
+    );
+
+    let read = backend
+        .request(4, "cli.run", cli(&["echo", "--json", "say", "erase"], true))
+        .await;
+    assert_eq!(read["result"]["document"], json!({ "text": "erase" }));
 }
 
 #[tokio::test]

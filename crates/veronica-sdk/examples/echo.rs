@@ -36,6 +36,9 @@ enum Action {
         #[arg(long)]
         code: i32,
     },
+    Erase {
+        item: String,
+    },
 }
 
 fn run_cli(output: Output<'_>, root: Root) -> anyhow::Result<()> {
@@ -48,6 +51,9 @@ fn run_cli(output: Output<'_>, root: Root) -> anyhow::Result<()> {
         Action::Fail { code } => {
             let code = ExitCode::from_code(code).unwrap_or(ExitCode::Failed);
             Err(Failure::new(code, format!("failed with {}", code.code())).into())
+        }
+        Action::Erase { item } => {
+            output.emit(&json!({ "erased": item }), || format!("erased {item}"))
         }
     }
 }

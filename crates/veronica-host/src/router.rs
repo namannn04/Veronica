@@ -12,6 +12,22 @@ use crate::connection::{BackendError, Connection, Launch};
 use crate::host_api::HostServices;
 use crate::supervisor::{Policy, Supervisor};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Confirmation {
+    Preview,
+    Confirmed,
+}
+
+impl Confirmation {
+    pub fn from_yes_flag(yes: bool) -> Self {
+        if yes {
+            Self::Confirmed
+        } else {
+            Self::Preview
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Router {
     services: Arc<HostServices>,
@@ -59,12 +75,12 @@ impl Router {
         id: &str,
         argv: Vec<String>,
         json: bool,
-        yes: bool,
+        confirmation: Confirmation,
     ) -> CliRunResult {
         let params = CliRunParams {
             argv,
             json,
-            confirm: yes,
+            confirm: confirmation == Confirmation::Confirmed,
             stdin: None,
             cwd: std::env::current_dir().unwrap_or_default(),
             tty: !json && std::io::stdout().is_terminal(),

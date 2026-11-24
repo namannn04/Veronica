@@ -22,6 +22,7 @@ use veronica_protocol::rpc::{
 use veronica_protocol::ExitCode;
 
 use crate::dirs::Dirs;
+use crate::gate::{confirmation_required, Gate};
 use crate::host_client::{HostClient, Outgoing};
 
 const READ_BUFFER_BYTES: usize = 64 * 1024;
@@ -33,6 +34,7 @@ pub struct Context {
     host: HostClient,
     dirs: Dirs,
     initialize: Arc<InitializeParams>,
+    gate: Arc<Gate>,
 }
 
 impl Context {
@@ -79,6 +81,14 @@ pub trait Extension: Send + Sync + 'static {
         _params: CliRunParams,
     ) -> impl Future<Output = Result<CliRunResult, ErrorObject>> + Send {
         async { Err(ErrorObject::method_not_found(CliRun::NAME)) }
+    }
+
+    fn cli_preview(
+        &self,
+        _context: Context,
+        params: CliRunParams,
+    ) -> impl Future<Output = Result<CliRunResult, ErrorObject>> + Send {
+        async move { Ok(confirmation_required(&params)) }
     }
 
     fn rpc_call(
@@ -299,6 +309,7 @@ impl<E: Extension> Session<E> {
         let context = Context {
             host: self.host.clone(),
             dirs: Dirs::new(params.dirs.clone()),
+            gate: Arc::new(Gate::load(&params.dirs.install)),
             initialize: Arc::new(params),
         };
         if let Err(error) = self.extension.initialize(&context).await {
@@ -402,11 +413,7 @@ async fn dispatch<E: Extension>(
     request: &Request,
 ) -> Result<Value, ErrorObject> {
     if request.is::<CliRun>() {
-        encode(
-            &extension
-                .cli_run(context, request.params::<CliRun>()?)
-                .await?,
-        )
+        encode(&cli(extension, context, request.params::<CliRun>()?).await?)
     } else if request.is::<RpcCall>() {
         extension
             .rpc_call(context, request.params::<RpcCall>()?)
@@ -430,6 +437,21 @@ async fn dispatch<E: Extension>(
     } else {
         Err(ErrorObject::method_not_found(&request.method))
     }
+}
+
+async fn cli<E: Extension>(
+    extension: &E,
+    context: Context,
+    params: CliRunParams,
+) -> Result<CliRunResult, ErrorObject> {
+    if params.confirm || !context.gate.needs_confirmation(&params.argv) {
+        return extension.cli_run(context, params).await;
+    }
+    let mut result = extension.cli_preview(context, params).await?;
+    if result.exit_code.is_success() {
+        result.exit_code = ExitCode::ConfirmationRequired;
+    }
+    Ok(result)
 }
 
 fn encode<T: Serialize>(value: &T) -> Result<Value, ErrorObject> {

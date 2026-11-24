@@ -17,5 +17,5 @@ pub mod update;
 
 pub use install::{HostIdentity, Installer};
 pub use layout::Layout;
-pub use router::Router;
+pub use router::{Confirmation, Router};
 pub use supervisor::Supervisor;

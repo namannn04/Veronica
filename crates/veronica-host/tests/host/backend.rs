@@ -13,7 +13,7 @@ use veronica_core::paths::{AppDirectories, EnvOverrides};
 use veronica_host::connection::{BackendError, StopStep};
 use veronica_host::host_api::HostServices;
 use veronica_host::supervisor::{CrashRecord, Policy, Status};
-use veronica_host::{HostIdentity, Installer, Layout, Router, Supervisor};
+use veronica_host::{Confirmation, HostIdentity, Installer, Layout, Router, Supervisor};
 use veronica_protocol::rpc::{error_code, Caller, CallerKind};
 use veronica_protocol::ExitCode;
 
@@ -192,7 +192,12 @@ async fn oneshot_cli_run_end_to_end() {
     let argv = |args: &[&str]| args.iter().map(ToString::to_string).collect::<Vec<_>>();
 
     let echoed = router
-        .run_cli(ID, argv(&["fixture", "echo", "hello"]), true, false)
+        .run_cli(
+            ID,
+            argv(&["fixture", "echo", "hello"]),
+            true,
+            Confirmation::Preview,
+        )
         .await;
     assert_eq!(echoed.exit_code, ExitCode::Success);
     let document = echoed.document.unwrap();
@@ -205,23 +210,59 @@ async fn oneshot_cli_run_end_to_end() {
     .await;
 
     let text = router
-        .run_cli(ID, argv(&["fixture", "echo", "plain"]), false, false)
+        .run_cli(
+            ID,
+            argv(&["fixture", "echo", "plain"]),
+            false,
+            Confirmation::Preview,
+        )
         .await;
     assert_eq!(text.text.as_deref(), Some("plain\n"));
 
     let failed = router
-        .run_cli(ID, argv(&["fixture", "fail", "--code", "6"]), true, false)
+        .run_cli(
+            ID,
+            argv(&["fixture", "fail", "--code", "6"]),
+            true,
+            Confirmation::Preview,
+        )
         .await;
     assert_eq!(failed.exit_code, ExitCode::PermissionDenied);
     assert_eq!(failed.document.unwrap()["error"]["code"], 6);
 
     let usage = router
-        .run_cli(ID, argv(&["fixture", "nonsense"]), true, false)
+        .run_cli(
+            ID,
+            argv(&["fixture", "nonsense"]),
+            true,
+            Confirmation::Preview,
+        )
         .await;
     assert_eq!(usage.exit_code, ExitCode::Usage);
 
+    let previewed = router
+        .run_cli(
+            ID,
+            argv(&["fixture", "wipe", "--", "--yes"]),
+            true,
+            Confirmation::from_yes_flag(false),
+        )
+        .await;
+    assert_eq!(previewed.exit_code, ExitCode::ConfirmationRequired);
+    assert_eq!(previewed.document.unwrap()["wouldRemove"], "--yes");
+    let wiped = router
+        .run_cli(
+            ID,
+            argv(&["fixture", "wipe", "cache"]),
+            true,
+            Confirmation::from_yes_flag(true),
+        )
+        .await;
+    assert_eq!(wiped.exit_code, ExitCode::Success);
+    assert_eq!(wiped.document.unwrap()["removed"], "cache");
+
     let missing = router
-        .run_cli("absent", argv(&["absent"]), true, false)
+        .run_cli("absent", argv(&["absent"]), true, Confirmation::Preview)
         .await;
     assert_eq!(missing.exit_code, ExitCode::Unavailable);
     assert!(missing.document.unwrap()["error"]["message"]
@@ -470,7 +511,7 @@ async fn oneshot_and_service_instances_run_side_by_side() {
             } else {
                 let argv = vec!["fixture".into(), "echo".into(), index.to_string()];
                 oneshot
-                    .run_cli(ID, argv, true, false)
+                    .run_cli(ID, argv, true, Confirmation::Preview)
                     .await
                     .document
                     .unwrap()

@@ -183,6 +183,16 @@ fn destructive_commands_preview_until_confirmed() {
     let confirmed = home.vr(&["--json", "fixture", "wipe", "cache", "--yes"]);
     assert_eq!(code(&confirmed), 0);
     assert_eq!(document(&confirmed), json!({ "removed": "cache" }));
+    let literal = home.vr(&["--json", "fixture", "wipe", "--", "--yes"]);
+    assert_eq!(code(&literal), 5);
+    assert_eq!(
+        document(&literal),
+        json!({
+            "confirmationRequired": true,
+            "preview": { "wouldRemove": "--yes" },
+            "rerun": "vr --json fixture wipe --yes -- --yes"
+        })
+    );
     let short = home.vr(&["-y", "fixture", "wipe", "cache"]);
     assert_eq!(code(&short), 0);
     assert_eq!(stdout(&short), "removed cache\n");
