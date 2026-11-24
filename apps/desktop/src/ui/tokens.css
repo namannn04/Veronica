@@ -1,0 +1,106 @@
+:root {
+  --font: "Inter Variable", "Adwaita Sans", "Cantarell", "Ubuntu", system-ui, sans-serif;
+  --mono: "JetBrains Mono Variable", "Adwaita Mono", "Ubuntu Mono", ui-monospace, monospace;
+
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --page-gutter: 24px;
+  --page-gutter-compact: 16px;
+  --page-top: 20px;
+  --header-bottom: 16px;
+  --section-gap: 24px;
+  --card-gap: 12px;
+  --card-padding: 16px;
+  --control-gap: 8px;
+  --control-height: 32px;
+  --control-height-small: 26px;
+  --readable-width: 980px;
+  --form-width: 720px;
+  --sidebar-width: 232px;
+
+  --radius-xs: 4px;
+  --radius-s: 6px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --radius-card: 14px;
+  --radius-panel: 18px;
+  --radius-full: 999px;
+
+  --text-caption: 11px;
+  --text-footnote: 11.5px;
+  --text-callout: 12px;
+  --text-body: 13px;
+  --text-title-3: 15px;
+  --text-title-2: 17px;
+  --text-title-1: 22px;
+  --text-display: 28px;
+
+  --weight-regular: 430;
+  --weight-medium: 520;
+  --weight-semibold: 600;
+  --weight-bold: 680;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --duration-feedback: 120ms;
+  --duration-snap: 220ms;
+  --duration-glide: 320ms;
+  --duration-settle: 500ms;
+  --motion-feedback: var(--duration-feedback) var(--ease-out);
+  --motion-snap: var(--duration-snap) var(--ease-out);
+  --motion-glide: var(--duration-glide) var(--ease-in-out);
+
+  --bg-window: var(--plane);
+  --bg-content: var(--surface);
+  --bg-card: var(--raised);
+  --bg-inset: color-mix(in srgb, var(--plane) 70%, var(--surface));
+  --bg-popover: var(--raised);
+  --bg-scrim: color-mix(in srgb, #000 38%, transparent);
+
+  --text-1: var(--ink);
+  --text-2: var(--ink-secondary);
+  --text-3: var(--ink-muted);
+  --text-on-accent: var(--accent-ink);
+
+  --separator: var(--hairline);
+  --separator-strong: var(--hairline-strong);
+
+  --fill-control: color-mix(in srgb, var(--ink) 5%, transparent);
+  --fill-hover: color-mix(in srgb, var(--ink) 7%, transparent);
+  --fill-pressed: color-mix(in srgb, var(--ink) 11%, transparent);
+  --fill-selected: color-mix(in srgb, var(--ink) 8%, transparent);
+  --accent-hover: color-mix(in srgb, var(--accent) 90%, var(--ink));
+  --accent-pressed: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  --accent-tint: color-mix(in srgb, var(--accent) 13%, transparent);
+  --accent-text: color-mix(in srgb, var(--accent) 82%, var(--ink));
+
+  --tone-good: var(--status-good);
+  --tone-warning: var(--status-warning);
+  --tone-serious: var(--status-serious);
+  --tone-critical: var(--status-critical);
+  --tone-good-tint: color-mix(in srgb, var(--status-good) 13%, transparent);
+  --tone-warning-tint: color-mix(in srgb, var(--status-warning) 16%, transparent);
+  --tone-critical-tint: color-mix(in srgb, var(--status-critical) 13%, transparent);
+  --tone-good-text: color-mix(in srgb, var(--status-good) 72%, var(--ink));
+  --tone-warning-text: color-mix(in srgb, var(--status-warning) 62%, var(--ink));
+  --tone-critical-text: color-mix(in srgb, var(--status-critical) 80%, var(--ink));
+
+  --shadow-card: 0 1px 1px color-mix(in srgb, #000 4%, transparent);
+  --shadow-pop: 0 0 0 1px var(--separator), 0 4px 12px color-mix(in srgb, #000 10%, transparent), 0 18px 48px color-mix(in srgb, #000 16%, transparent);
+  --focus-ring-color: color-mix(in srgb, var(--accent) 75%, transparent);
+
+  --radius: var(--radius-l);
+  --radius-sm: var(--radius-m);
+  --focus-ring: 0 0 0 2px var(--raised), 0 0 0 4px var(--accent);
+}

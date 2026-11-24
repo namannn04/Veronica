@@ -1,0 +1,114 @@
+.ui-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ui-card-pad-regular {
+  padding: var(--card-padding);
+}
+
+.ui-card-pad-compact {
+  padding: var(--space-3);
+  gap: var(--space-2);
+}
+
+.ui-card-pad-none {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.ui-card-inset {
+  background: var(--bg-inset);
+  box-shadow: none;
+}
+
+.ui-card-accent {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--separator));
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-card));
+}
+
+.ui-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  min-width: 0;
+}
+
+.ui-card-pad-none > .ui-card-header {
+  padding: var(--space-3) var(--card-padding);
+  border-bottom: 1px solid var(--separator);
+}
+
+.ui-card-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-m);
+  background: var(--fill-control);
+  color: var(--text-2);
+}
+
+.ui-card-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ui-card-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-card-title {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.006em;
+  line-height: 1.3;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-card-subtitle {
+  margin: 1px 0 0;
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+  margin-right: -4px;
+}
+
+.ui-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+  margin-top: auto;
+  padding-top: var(--space-1);
+}
+
+.ui-card-pad-none > .ui-card-footer {
+  padding: var(--space-3) var(--card-padding);
+  border-top: 1px solid var(--separator);
+}

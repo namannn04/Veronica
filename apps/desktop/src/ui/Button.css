@@ -1,0 +1,171 @@
+.ui-button {
+  --button-bg: var(--fill-control);
+  --button-bg-hover: var(--fill-hover);
+  --button-bg-pressed: var(--fill-pressed);
+  --button-fg: var(--text-1);
+  --button-border: var(--separator);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--control-height);
+  min-width: 0;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--button-border);
+  border-radius: var(--radius-m);
+  background: var(--button-bg);
+  color: var(--button-fg);
+  font-size: var(--text-body);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--motion-feedback), border-color var(--motion-feedback), color var(--motion-feedback), opacity var(--motion-feedback);
+}
+
+.ui-button:hover:not(:disabled) {
+  background: var(--button-bg-hover);
+}
+
+.ui-button:active:not(:disabled) {
+  background: var(--button-bg-pressed);
+}
+
+.ui-button:disabled {
+  opacity: 0.45;
+}
+
+.ui-button[aria-busy="true"] {
+  opacity: 0.8;
+}
+
+.ui-button-small {
+  height: var(--control-height-small);
+  padding: 0 var(--space-2);
+  gap: var(--space-1);
+  border-radius: var(--radius-s);
+  font-size: var(--text-callout);
+}
+
+.ui-button-primary {
+  --button-bg: var(--accent);
+  --button-bg-hover: var(--accent-hover);
+  --button-bg-pressed: var(--accent-pressed);
+  --button-fg: var(--text-on-accent);
+  --button-border: transparent;
+  font-weight: var(--weight-semibold);
+}
+
+.ui-button-plain {
+  --button-bg: transparent;
+  --button-border: transparent;
+  --button-fg: var(--text-2);
+}
+
+.ui-button-plain:hover:not(:disabled) {
+  color: var(--text-1);
+}
+
+.ui-button-destructive {
+  --button-bg: var(--status-critical);
+  --button-bg-hover: color-mix(in srgb, var(--status-critical) 88%, var(--ink));
+  --button-bg-pressed: color-mix(in srgb, var(--status-critical) 78%, var(--ink));
+  --button-fg: #fff;
+  --button-border: transparent;
+  font-weight: var(--weight-semibold);
+}
+
+.ui-button-destructive-plain {
+  --button-bg: transparent;
+  --button-bg-hover: var(--tone-critical-tint);
+  --button-bg-pressed: color-mix(in srgb, var(--status-critical) 20%, transparent);
+  --button-border: transparent;
+  --button-fg: var(--tone-critical-text);
+}
+
+.ui-button-icon {
+  display: inline-flex;
+  flex: none;
+  margin-left: -2px;
+}
+
+.ui-button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-button-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ui-button-small .ui-button-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ui-button-spinner {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border: 1.75px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ui-spin 700ms linear infinite;
+}
+
+.ui-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-2);
+  transition: background-color var(--motion-feedback), color var(--motion-feedback);
+}
+
+.ui-icon-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ui-icon-button-small {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-s);
+}
+
+.ui-icon-button-small svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ui-icon-button-secondary {
+  background: var(--fill-control);
+  border-color: var(--separator);
+}
+
+.ui-icon-button:hover:not(:disabled) {
+  background: var(--fill-hover);
+  color: var(--text-1);
+}
+
+.ui-icon-button:active:not(:disabled),
+.ui-icon-button[aria-pressed="true"] {
+  background: var(--fill-pressed);
+  color: var(--text-1);
+}
+
+.ui-icon-button:disabled {
+  opacity: 0.4;
+}
+
+.ui-button-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+}
