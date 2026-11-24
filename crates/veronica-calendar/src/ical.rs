@@ -3,12 +3,11 @@ pub fn unfold(text: &str) -> String {
     for (index, line) in text.split('\n').enumerate() {
         let line = line.trim_end_matches('\r');
         if index > 0 {
-            match line.strip_prefix([' ', '\t']) {
-                Some(continuation) => out.push_str(continuation),
-                None => {
-                    out.push('\n');
-                    out.push_str(line);
-                }
+            if let Some(continuation) = line.strip_prefix([' ', '\t']) {
+                out.push_str(continuation);
+            } else {
+                out.push('\n');
+                out.push_str(line);
             }
         } else {
             out.push_str(line);
@@ -53,10 +52,7 @@ pub fn unescape(value: &str) -> String {
             continue;
         }
         match chars.next() {
-            Some('n') | Some('N') => out.push('\n'),
-            Some('\\') => out.push('\\'),
-            Some(',') => out.push(','),
-            Some(';') => out.push(';'),
+            Some('n' | 'N') => out.push('\n'),
             Some(other) => out.push(other),
             None => out.push('\\'),
         }

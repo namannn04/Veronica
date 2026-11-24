@@ -47,7 +47,7 @@ pub fn is_all_day(start: DateTime<Local>, end: DateTime<Local>) -> bool {
     at_midnight(start) && at_midnight(end) && (end - start) >= Duration::days(1)
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgendaDay {
     pub date: String,
