@@ -18,31 +18,31 @@ pub enum Capability {
 }
 
 impl Capability {
-    pub const ALL: [Capability; 10] = [
-        Capability::BrowseObjects,
-        Capability::ReadRecords,
-        Capability::RunQuery,
-        Capability::MutateRecords,
-        Capability::Transactions,
-        Capability::CountBeforeMutation,
-        Capability::DescribeSchema,
-        Capability::ExplainQuery,
-        Capability::ListSessions,
-        Capability::SessionReadOnly,
+    pub const ALL: [Self; 10] = [
+        Self::BrowseObjects,
+        Self::ReadRecords,
+        Self::RunQuery,
+        Self::MutateRecords,
+        Self::Transactions,
+        Self::CountBeforeMutation,
+        Self::DescribeSchema,
+        Self::ExplainQuery,
+        Self::ListSessions,
+        Self::SessionReadOnly,
     ];
 
     pub fn title(self) -> &'static str {
         match self {
-            Capability::BrowseObjects => "Browse objects",
-            Capability::ReadRecords => "Read records",
-            Capability::RunQuery => "Run a query",
-            Capability::MutateRecords => "Change records",
-            Capability::Transactions => "Transactions",
-            Capability::CountBeforeMutation => "Count before changing",
-            Capability::DescribeSchema => "Describe schema",
-            Capability::ExplainQuery => "Explain a query",
-            Capability::ListSessions => "List sessions",
-            Capability::SessionReadOnly => "Read-only sessions",
+            Self::BrowseObjects => "Browse objects",
+            Self::ReadRecords => "Read records",
+            Self::RunQuery => "Run a query",
+            Self::MutateRecords => "Change records",
+            Self::Transactions => "Transactions",
+            Self::CountBeforeMutation => "Count before changing",
+            Self::DescribeSchema => "Describe schema",
+            Self::ExplainQuery => "Explain a query",
+            Self::ListSessions => "List sessions",
+            Self::SessionReadOnly => "Read-only sessions",
         }
     }
 }
@@ -57,11 +57,11 @@ pub enum State {
 
 impl State {
     pub fn is_available(&self) -> bool {
-        matches!(self, State::Available)
+        matches!(self, Self::Available)
     }
 
     fn unsupported(reason: &str) -> Self {
-        State::Unsupported {
+        Self::Unsupported {
             reason: reason.to_string(),
         }
     }
@@ -98,7 +98,10 @@ impl Report {
     }
 
     fn resolve(product: Product, identity: Option<&ProductIdentity>) -> Self {
-        use Capability::*;
+        use Capability::{
+            BrowseObjects, CountBeforeMutation, DescribeSchema, ExplainQuery, ListSessions,
+            MutateRecords, ReadRecords, RunQuery, SessionReadOnly, Transactions,
+        };
         let family = product.family();
         let mut states = std::collections::BTreeMap::new();
         let mut set = |capability: Capability, state: State| {
@@ -121,16 +124,16 @@ impl Report {
                 }) {
                     Some(major) if major >= 4 => {
                         match identity.map(|identity| identity.topology.kind) {
-                            Some(crate::product::TopologyKind::ReplicaSet)
-                            | Some(crate::product::TopologyKind::ShardedCluster) => {
-                                State::Available
-                            }
+                            Some(
+                                crate::product::TopologyKind::ReplicaSet
+                                | crate::product::TopologyKind::ShardedCluster,
+                            )
+                            | None => State::Available,
                             Some(_) => State::Unavailable {
                                 reason: "MongoDB needs a replica set for transactions; this \
                                          server is standalone."
                                     .into(),
                             },
-                            None => State::Available,
                         }
                     }
                     Some(major) => State::Unavailable {
@@ -158,25 +161,25 @@ impl Report {
         set(
             CountBeforeMutation,
             match family {
-                Family::Relational | Family::Document | Family::Search => State::Available,
+                Family::Relational | Family::Document | Family::Search | Family::Analytical => {
+                    State::Available
+                }
                 Family::KeyValue => State::unsupported(
                     "Counting the keys a pattern matches means scanning the keyspace, which \
                      would block the server.",
                 ),
-                Family::Analytical => State::Available,
             },
         );
 
         set(
             DescribeSchema,
             match family {
-                Family::Relational | Family::Analytical => State::Available,
+                Family::Relational | Family::Analytical | Family::Search => State::Available,
                 Family::Document => State::Unavailable {
                     reason: "A document collection has no declared schema; Veronica infers \
                              the fields from a sample."
                         .into(),
                 },
-                Family::Search => State::Available,
                 Family::KeyValue => {
                     State::unsupported("A key-value store has no schema to describe.")
                 }
@@ -191,8 +194,9 @@ impl Report {
                 | Product::MariaDb
                 | Product::Sqlite
                 | Product::ClickHouse
-                | Product::MongoDb => State::Available,
-                Product::Elasticsearch | Product::OpenSearch => State::Available,
+                | Product::MongoDb
+                | Product::Elasticsearch
+                | Product::OpenSearch => State::Available,
                 Product::Redis | Product::Valkey => {
                     State::unsupported("A Redis command has no query plan.")
                 }
@@ -202,23 +206,27 @@ impl Report {
         set(
             ListSessions,
             match product {
-                Product::Postgresql | Product::Mysql | Product::MariaDb | Product::ClickHouse => {
-                    State::Available
-                }
-                Product::Redis | Product::Valkey | Product::MongoDb => State::Available,
+                Product::Postgresql
+                | Product::Mysql
+                | Product::MariaDb
+                | Product::ClickHouse
+                | Product::Redis
+                | Product::Valkey
+                | Product::MongoDb
+                | Product::Elasticsearch
+                | Product::OpenSearch => State::Available,
                 Product::Sqlite => {
                     State::unsupported("SQLite is a file; there are no sessions to list.")
                 }
-                Product::Elasticsearch | Product::OpenSearch => State::Available,
             },
         );
 
         set(
             SessionReadOnly,
             match product {
-                Product::Postgresql => State::Available,
-                Product::Mysql | Product::MariaDb => State::Available,
-                Product::Sqlite => State::Available,
+                Product::Postgresql | Product::Mysql | Product::MariaDb | Product::Sqlite => {
+                    State::Available
+                }
                 _ => State::Unavailable {
                     reason: "This product has no session-level read-only mode; Veronica \
                              enforces read-only itself by refusing to send a mutation."
@@ -318,7 +326,7 @@ mod tests {
                 kind: TopologyKind::ReplicaSet,
                 ..Topology::default()
             },
-            ..standalone.clone()
+            ..standalone
         };
         assert!(Report::for_identity(&replica_set).supports(Capability::Transactions));
 

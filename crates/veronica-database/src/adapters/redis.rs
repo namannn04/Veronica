@@ -126,7 +126,7 @@ async fn read_key(
     let value = match kind.as_str() {
         "string" => {
             let value: Option<String> = connection.get(key).await?;
-            value.map(Value::String).unwrap_or(Value::Null)
+            value.map_or(Value::Null, Value::String)
         }
         "list" => {
             let items: Vec<String> = connection.lrange(key, 0, 99).await?;
@@ -214,9 +214,8 @@ impl Adapter for RedisAdapter {
         &mut self,
         parent: Option<&ObjectIdentifier>,
     ) -> Result<Vec<ObjectIdentifier>> {
-        let pattern = parent
-            .map(|object| format!("{}*", object.name()))
-            .unwrap_or_else(|| "*".to_string());
+        let pattern =
+            parent.map_or_else(|| "*".to_string(), |object| format!("{}*", object.name()));
         let (keys, _) = self.scan_keys(&pattern, 0, 200).await?;
         Ok(keys
             .into_iter()
@@ -262,7 +261,7 @@ impl Adapter for RedisAdapter {
                 },
             ]],
             request,
-            started.elapsed().as_millis() as u64,
+            crate::elapsed_millis(started),
         ))
     }
 
@@ -298,7 +297,7 @@ impl Adapter for RedisAdapter {
             ],
             rows,
             request,
-            started.elapsed().as_millis() as u64,
+            crate::elapsed_millis(started),
         ))
     }
 
@@ -330,7 +329,7 @@ impl Adapter for RedisAdapter {
         }
         let reply: redis::Value = request.query_async(&mut self.connection).await?;
         Ok(match reply {
-            redis::Value::Int(count) => count.max(0) as u64,
+            redis::Value::Int(count) => u64::try_from(count).unwrap_or(0),
             redis::Value::Nil => 0,
             _ => 1,
         })

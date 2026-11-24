@@ -120,8 +120,8 @@ pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
                     return text(json!({ "error": error.to_string() }), true);
                 }
             };
-            match arguments.get("id").and_then(Json::as_str) {
-                Some(id) => match connections
+            if let Some(id) = arguments.get("id").and_then(Json::as_str) {
+                match connections
                     .iter()
                     .find(|connection| connection.id.to_string() == id)
                 {
@@ -130,23 +130,22 @@ pub fn call_tool(store: &MetadataStore, name: &str, arguments: &Json) -> Json {
                         json!({ "error": format!("no connection with id {id}") }),
                         true,
                     ),
-                },
-                None => {
-                    let total = connections.len();
-                    let projections: Vec<Projection> = connections
-                        .iter()
-                        .take(MAX_CONNECTIONS)
-                        .map(Projection::of)
-                        .collect();
-                    text(
-                        json!({
-                            "connections": projections,
-                            "total": total,
-                            "complete": total <= MAX_CONNECTIONS
-                        }),
-                        false,
-                    )
                 }
+            } else {
+                let total = connections.len();
+                let projections: Vec<Projection> = connections
+                    .iter()
+                    .take(MAX_CONNECTIONS)
+                    .map(Projection::of)
+                    .collect();
+                text(
+                    json!({
+                        "connections": projections,
+                        "total": total,
+                        "complete": total <= MAX_CONNECTIONS
+                    }),
+                    false,
+                )
             }
         }
 
@@ -259,16 +258,16 @@ mod tests {
     use crate::product::Product;
     use uuid::Uuid;
 
-    fn store_with(connection: ConnectionDefinition) -> MetadataStore {
+    fn store_with(connection: &ConnectionDefinition) -> MetadataStore {
         let store = MetadataStore::in_memory().unwrap();
-        store.save_connection(&connection).unwrap();
+        store.save_connection(connection).unwrap();
         store
     }
 
     fn definition() -> ConnectionDefinition {
         let now = chrono::Utc::now();
         ConnectionDefinition {
-            version: crate::connection::SCHEMA_VERSION,
+            version: SCHEMA_VERSION,
             id: Uuid::from_u128(42),
             display_name: "Production".into(),
             product_hint: Product::Postgresql,
@@ -321,15 +320,15 @@ mod tests {
         }
     }
 
-    fn call(store: &MetadataStore, name: &str, arguments: Json) -> String {
-        let reply = call_tool(store, name, &arguments);
+    fn call(store: &MetadataStore, name: &str, arguments: &Json) -> String {
+        let reply = call_tool(store, name, arguments);
         reply["content"][0]["text"].as_str().unwrap().to_string()
     }
 
     #[test]
     fn a_projection_tells_an_agent_nothing_it_could_connect_with() {
-        let store = store_with(definition());
-        let text = call(&store, "database_connections", json!({}));
+        let store = store_with(&definition());
+        let text = call(&store, "database_connections", &json!({}));
         for secret in [
             "db.internal.example.com",
             "5432",
@@ -351,11 +350,11 @@ mod tests {
 
     #[test]
     fn one_connection_can_be_fetched_by_id_and_is_projected_the_same_way() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         let text = call(
             &store,
             "database_connections",
-            json!({ "id": Uuid::from_u128(42).to_string() }),
+            &json!({ "id": Uuid::from_u128(42).to_string() }),
         );
         assert!(text.contains("Production"));
         assert!(!text.contains("app_writer"));
@@ -363,7 +362,7 @@ mod tests {
 
     #[test]
     fn an_unknown_id_is_an_error_result_rather_than_a_transport_failure() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         let reply = call_tool(
             &store,
             "database_connections",
@@ -385,7 +384,7 @@ mod tests {
             connection.display_name = format!("db-{index}");
             store.save_connection(&connection).unwrap();
         }
-        let text = call(&store, "database_connections", json!({}));
+        let text = call(&store, "database_connections", &json!({}));
         let parsed: Json = serde_json::from_str(&text).unwrap();
         assert_eq!(parsed["total"], json!(3));
         assert_eq!(parsed["complete"], json!(true));
@@ -396,11 +395,11 @@ mod tests {
     fn capabilities_come_back_with_a_reason_for_each_no() {
         let mut connection = definition();
         connection.product_hint = Product::Redis;
-        let store = store_with(connection);
+        let store = store_with(&connection);
         let text = call(
             &store,
             "database_capabilities",
-            json!({ "id": Uuid::from_u128(42).to_string() }),
+            &json!({ "id": Uuid::from_u128(42).to_string() }),
         );
         let parsed: Json = serde_json::from_str(&text).unwrap();
         let rows = parsed["capabilities"].as_array().unwrap();
@@ -420,14 +419,14 @@ mod tests {
 
     #[test]
     fn capabilities_without_an_id_is_an_error_not_a_panic() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         let reply = call_tool(&store, "database_capabilities", &json!({}));
         assert_eq!(reply["isError"], json!(true));
     }
 
     #[test]
     fn an_unknown_tool_is_refused_by_name() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         let reply = call_tool(&store, "database_drop_everything", &json!({}));
         assert_eq!(reply["isError"], json!(true));
         assert!(reply["content"][0]["text"]
@@ -470,7 +469,7 @@ mod tests {
 
     #[test]
     fn initialize_reports_the_protocol_and_the_server() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         let reply = handle(
             &store,
             &json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize" }),
@@ -486,7 +485,7 @@ mod tests {
 
     #[test]
     fn a_notification_is_not_answered() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         assert!(handle(
             &store,
             &json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })
@@ -496,7 +495,7 @@ mod tests {
 
     #[test]
     fn an_unknown_method_gets_a_json_rpc_error_with_the_right_code() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         let reply = handle(
             &store,
             &json!({ "jsonrpc": "2.0", "id": 9, "method": "resources/list" }),
@@ -508,7 +507,7 @@ mod tests {
 
     #[test]
     fn a_string_id_comes_back_unchanged() {
-        let store = store_with(definition());
+        let store = store_with(&definition());
         let reply = handle(
             &store,
             &json!({ "jsonrpc": "2.0", "id": "abc", "method": "ping" }),

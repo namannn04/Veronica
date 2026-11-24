@@ -47,13 +47,13 @@ impl ObjectKind {
     pub fn is_queryable(self) -> bool {
         matches!(
             self,
-            ObjectKind::Table
-                | ObjectKind::View
-                | ObjectKind::MaterializedView
-                | ObjectKind::Collection
-                | ObjectKind::Keyspace
-                | ObjectKind::Alias
-                | ObjectKind::DataStream
+            Self::Table
+                | Self::View
+                | Self::MaterializedView
+                | Self::Collection
+                | Self::Keyspace
+                | Self::Alias
+                | Self::DataStream
         )
     }
 }

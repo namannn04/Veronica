@@ -33,7 +33,7 @@ pub enum OperationOutcome {
     Abandoned,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OperationRecord {
     pub id: Uuid,
@@ -76,7 +76,7 @@ impl MetadataStore {
 
         let mut store = Self { connection, path };
         store.migrate()?;
-        store.restrict_permissions()?;
+        store.restrict_permissions();
         Ok(store)
     }
 
@@ -91,7 +91,7 @@ impl MetadataStore {
         Ok(store)
     }
 
-    fn restrict_permissions(&self) -> Result<()> {
+    fn restrict_permissions(&self) {
         use std::os::unix::fs::PermissionsExt;
         for suffix in ["", "-wal", "-shm"] {
             let path = PathBuf::from(format!("{}{suffix}", self.path.display()));
@@ -99,7 +99,6 @@ impl MetadataStore {
                 let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
             }
         }
-        Ok(())
     }
 
     fn migrate(&mut self) -> Result<()> {
@@ -117,7 +116,7 @@ impl MetadataStore {
         }
 
         self.connection.execute_batch(
-            r#"
+            r"
             CREATE TABLE IF NOT EXISTS connections (
                 id           TEXT PRIMARY KEY NOT NULL,
                 display_name TEXT NOT NULL,
@@ -160,7 +159,7 @@ impl MetadataStore {
                 effect_digest     TEXT NOT NULL,
                 expires_at_millis INTEGER NOT NULL
             );
-            "#,
+            ",
         )?;
         self.connection
             .pragma_update(None, "user_version", SCHEMA_VERSION)?;
@@ -348,8 +347,10 @@ impl MetadataStore {
                 record.kind,
                 record.summary,
                 serde_json::to_string(&record.outcome)?.trim_matches('"'),
-                record.affected_records.map(|count| count as i64),
-                record.elapsed_millis as i64,
+                record
+                    .affected_records
+                    .map(|count| i64::try_from(count).unwrap_or(i64::MAX)),
+                i64::try_from(record.elapsed_millis).unwrap_or(i64::MAX),
                 record.error,
                 record.at.to_rfc3339(),
             ],
@@ -357,7 +358,7 @@ impl MetadataStore {
         self.connection.execute(
             "DELETE FROM operations WHERE id NOT IN
                 (SELECT id FROM operations ORDER BY at DESC LIMIT ?1)",
-            params![MAX_OPERATIONS as i64],
+            params![MAX_OPERATIONS],
         )?;
         Ok(())
     }
@@ -368,7 +369,7 @@ impl MetadataStore {
                     affected_records, elapsed_millis, error, at
              FROM operations ORDER BY at DESC LIMIT ?1",
         )?;
-        let rows = statement.query_map(params![limit as i64], |row| {
+        let rows = statement.query_map(params![limit], |row| {
             Ok(OperationRecord {
                 id: Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or(Uuid::nil()),
                 connection_id: Uuid::parse_str(&row.get::<_, String>(1)?).unwrap_or(Uuid::nil()),
@@ -377,8 +378,10 @@ impl MetadataStore {
                 summary: row.get(4)?,
                 outcome: serde_json::from_str(&format!("\"{}\"", row.get::<_, String>(5)?))
                     .unwrap_or(OperationOutcome::Failed),
-                affected_records: row.get::<_, Option<i64>>(6)?.map(|count| count as u64),
-                elapsed_millis: row.get::<_, i64>(7)? as u64,
+                affected_records: row
+                    .get::<_, Option<i64>>(6)?
+                    .map(|count| u64::try_from(count).unwrap_or(0)),
+                elapsed_millis: u64::try_from(row.get::<_, i64>(7)?).unwrap_or(0),
                 error: row.get(8)?,
                 at: parse_time(&row.get::<_, String>(9)?),
             })
@@ -388,9 +391,10 @@ impl MetadataStore {
 }
 
 fn parse_time(raw: &str) -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::parse_from_rfc3339(raw)
-        .map(|time| time.with_timezone(&chrono::Utc))
-        .unwrap_or_else(|_| chrono::DateTime::UNIX_EPOCH)
+    chrono::DateTime::parse_from_rfc3339(raw).map_or_else(
+        |_| chrono::DateTime::UNIX_EPOCH,
+        |time| time.with_timezone(&chrono::Utc),
+    )
 }
 
 impl ReceiptStore for MetadataStore {
@@ -440,6 +444,7 @@ impl ReceiptStore for MetadataStore {
 
 #[cfg(test)]
 mod tests {
+    use super::SCHEMA_VERSION;
     use super::*;
     use crate::connection::*;
     use crate::product::Product;
@@ -618,7 +623,11 @@ mod tests {
                     affected_records: Some(index),
                     elapsed_millis: 10,
                     error: None,
-                    at: chrono::DateTime::from_timestamp(1_800_000_000 + index as i64, 0).unwrap(),
+                    at: chrono::DateTime::from_timestamp(
+                        1_800_000_000 + i64::try_from(index).unwrap(),
+                        0,
+                    )
+                    .unwrap(),
                 })
                 .unwrap();
         }
@@ -712,7 +721,7 @@ mod tests {
             let store = MetadataStore::open(&path).unwrap();
             store
                 .connection
-                .pragma_update(None, "user_version", super::SCHEMA_VERSION + 1)
+                .pragma_update(None, "user_version", SCHEMA_VERSION + 1)
                 .unwrap();
         }
         let error = MetadataStore::open(&path).unwrap_err().to_string();
@@ -743,7 +752,7 @@ mod tests {
         store
             .save_connection(&definition("App", Product::Postgresql))
             .unwrap();
-        store.restrict_permissions().unwrap();
+        store.restrict_permissions();
         let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
     }

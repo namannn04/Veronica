@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use anyhow::{Context, Result};
 use serde::Serialize;
 
@@ -7,7 +9,8 @@ pub const FOOTER_URL: &str = "github.com/namannn04/veronica";
 
 pub const WIDTH: u32 = 1200;
 pub const HEIGHT: u32 = 630;
-pub const SCALE: f32 = 2.0;
+const PIXEL_SCALE: u32 = 2;
+pub const SCALE: f32 = PIXEL_SCALE as f32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,31 +22,31 @@ pub enum Card {
 }
 
 impl Card {
-    pub const ALL: [Card; 4] = [Card::Highlights, Card::Activity, Card::Daily, Card::Busiest];
+    pub const ALL: [Self; 4] = [Self::Highlights, Self::Activity, Self::Daily, Self::Busiest];
 
     pub fn key(self) -> &'static str {
         match self {
-            Card::Highlights => "highlights",
-            Card::Activity => "activity",
-            Card::Daily => "daily",
-            Card::Busiest => "busiest",
+            Self::Highlights => "highlights",
+            Self::Activity => "activity",
+            Self::Daily => "daily",
+            Self::Busiest => "busiest",
         }
     }
 
     pub fn title(self) -> &'static str {
         match self {
-            Card::Highlights => "Agent usage",
-            Card::Activity => "Activity",
-            Card::Daily => "Daily rhythm",
-            Card::Busiest => "Busiest day",
+            Self::Highlights => "Agent usage",
+            Self::Activity => "Activity",
+            Self::Daily => "Daily rhythm",
+            Self::Busiest => "Busiest day",
         }
     }
 
-    pub fn parse(raw: &str) -> Option<Vec<Card>> {
+    pub fn parse(raw: &str) -> Option<Vec<Self>> {
         if raw.eq_ignore_ascii_case("all") {
-            return Some(Card::ALL.to_vec());
+            return Some(Self::ALL.to_vec());
         }
-        Card::ALL
+        Self::ALL
             .into_iter()
             .find(|card| card.key().eq_ignore_ascii_case(raw))
             .map(|card| vec![card])
@@ -76,7 +79,7 @@ pub fn tokens(value: u64) -> String {
         }
     };
     let round = |scaled: f64, places: usize| {
-        let factor = 10f64.powi(places as i32);
+        let factor = 10f64.powi(i32::try_from(places).unwrap_or(0));
         (scaled * factor).round() / factor
     };
     for (index, (scale, suffix)) in UNITS.into_iter().enumerate() {
@@ -108,7 +111,7 @@ fn text(x: f64, y: f64, size: f64, weight: &str, fill: &str, body: &str) -> Stri
 
 fn chrome(card: Card, subtitle: &str, body: &str) -> String {
     format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}">
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}">
 <rect width="{WIDTH}" height="{HEIGHT}" fill="{PLANE}"/>
 <rect x="40" y="40" width="{inner_width}" height="{inner_height}" rx="24" fill="{RAISED}" stroke="{HAIRLINE}"/>
 <circle cx="88" cy="96" r="18" fill="{ACCENT}"/>
@@ -118,7 +121,7 @@ fn chrome(card: Card, subtitle: &str, body: &str) -> String {
 {body}
 <line x1="72" y1="{footer_line}" x2="{footer_end}" y2="{footer_line}" stroke="{HAIRLINE}"/>
 {footer}
-</svg>"##,
+</svg>"#,
         inner_width = WIDTH - 80,
         inner_height = HEIGHT - 80,
         mark = text(81.0, 103.0, 20.0, "700", PLANE, "V"),
@@ -126,7 +129,7 @@ fn chrome(card: Card, subtitle: &str, body: &str) -> String {
         subtitle = text(120.0, 128.0, 15.0, "400", MUTED, subtitle),
         footer_line = HEIGHT - 100,
         footer_end = WIDTH - 72,
-        footer = text(72.0, (HEIGHT - 68) as f64, 14.0, "400", MUTED, FOOTER_URL),
+        footer = text(72.0, f64::from(HEIGHT - 68), 14.0, "400", MUTED, FOOTER_URL),
     )
 }
 
@@ -173,11 +176,12 @@ fn highlights(dashboard: &Dashboard, range_label: &str) -> String {
         body.push('\n');
     }
 
-    body.push_str(&format!(
+    let _ = write!(
+        body,
         r#"<line x1="{CONTENT_LEFT}" y1="{rule}" x2="{right}" y2="{rule}" stroke="{HAIRLINE}"/>"#,
         rule = CONTENT_TOP + 150.0,
-        right = WIDTH as f64 - CONTENT_LEFT,
-    ));
+        right = f64::from(WIDTH) - CONTENT_LEFT,
+    );
     let detail = [
         ("IN", totals.input_tokens),
         ("OUT", totals.output_tokens),
@@ -204,7 +208,10 @@ fn activity(dashboard: &Dashboard, range_label: &str) -> String {
     let grid_height = 200.0;
     let mut body = String::new();
 
-    let max_columns = ((CONTENT_WIDTH + GAP) / (MIN_CELL + GAP)).floor() as usize;
+    let max_columns = usize::try_from(crate::truncate_to_i64(
+        (CONTENT_WIDTH + GAP) / (MIN_CELL + GAP),
+    ))
+    .unwrap_or(0);
     let capacity = max_columns * ROWS;
     let cells: &[HeatmapCell] = if dashboard.heatmap.len() > capacity {
         &dashboard.heatmap[dashboard.heatmap.len() - capacity..]
@@ -227,9 +234,10 @@ fn activity(dashboard: &Dashboard, range_label: &str) -> String {
             Some(entry) => LEVELS[(entry.level as usize).min(LEVELS.len() - 1)],
             None => LEVELS[0],
         };
-        body.push_str(&format!(
+        let _ = write!(
+            body,
             r#"<rect x="{x:.1}" y="{y:.1}" width="{cell:.1}" height="{cell:.1}" rx="{radius:.1}" fill="{fill}"/>"#
-        ));
+        );
         body.push('\n');
     }
 
@@ -251,7 +259,7 @@ fn activity(dashboard: &Dashboard, range_label: &str) -> String {
     body.push('\n');
 
     let legend_cell = 13.0;
-    let legend_left = WIDTH as f64 - CONTENT_LEFT - 190.0;
+    let legend_left = f64::from(WIDTH) - CONTENT_LEFT - 190.0;
     body.push_str(&text(
         legend_left,
         CONTENT_BOTTOM,
@@ -262,10 +270,11 @@ fn activity(dashboard: &Dashboard, range_label: &str) -> String {
     ));
     for (index, colour) in LEVELS.iter().enumerate() {
         let x = legend_left + 42.0 + index as f64 * (legend_cell + 4.0);
-        body.push_str(&format!(
+        let _ = write!(
+            body,
             r#"<rect x="{x:.1}" y="{y:.1}" width="{legend_cell}" height="{legend_cell}" rx="3" fill="{colour}"/>"#,
             y = CONTENT_BOTTOM - 11.0
-        ));
+        );
     }
     body.push('\n');
     body.push_str(&text(
@@ -294,16 +303,18 @@ fn daily(dashboard: &Dashboard, range_label: &str) -> String {
         let height = (day.tokens as f64 / peak as f64 * plot_height).max(2.0);
         let x = CONTENT_LEFT + index as f64 * width;
         let y = plot_bottom - height;
-        body.push_str(&format!(
+        let _ = write!(
+            body,
             r#"<rect x="{x:.1}" y="{y:.1}" width="{bar:.1}" height="{height:.1}" rx="2" fill="{ACCENT}"/>"#
-        ));
+        );
         body.push('\n');
     }
 
-    body.push_str(&format!(
+    let _ = write!(
+        body,
         r#"<line x1="{CONTENT_LEFT}" y1="{plot_bottom}" x2="{right}" y2="{plot_bottom}" stroke="{HAIRLINE}"/>"#,
-        right = WIDTH as f64 - CONTENT_LEFT
-    ));
+        right = f64::from(WIDTH) - CONTENT_LEFT
+    );
     body.push('\n');
     body.push_str(&text(
         CONTENT_LEFT,
@@ -311,18 +322,19 @@ fn daily(dashboard: &Dashboard, range_label: &str) -> String {
         13.0,
         "400",
         MUTED,
-        days.first().map(|day| day.period.as_str()).unwrap_or(""),
+        days.first().map_or("", |day| day.period.as_str()),
     ));
     body.push('\n');
     body.push_str(&text(
-        WIDTH as f64 - CONTENT_LEFT - 88.0,
+        f64::from(WIDTH) - CONTENT_LEFT - 88.0,
         CONTENT_BOTTOM,
         13.0,
         "400",
         MUTED,
-        days.last().map(|day| day.period.as_str()).unwrap_or(""),
+        days.last().map_or("", |day| day.period.as_str()),
     ));
-    body.push_str(&format!(
+    let _ = write!(
+        body,
         "\n{}",
         text(
             CONTENT_LEFT,
@@ -332,7 +344,7 @@ fn daily(dashboard: &Dashboard, range_label: &str) -> String {
             MUTED,
             &format!("PEAK {} TOKENS IN A DAY", tokens(peak))
         )
-    ));
+    );
 
     chrome(Card::Daily, range_label, &body)
 }
@@ -355,8 +367,7 @@ fn busiest(dashboard: &Dashboard, range_label: &str) -> String {
     let rank = active
         .iter()
         .position(|value| *value == best.tokens)
-        .map(|index| index + 1)
-        .unwrap_or(1);
+        .map_or(1, |index| index + 1);
     let share = if dashboard.totals.tokens > 0 {
         best.tokens as f64 / dashboard.totals.tokens as f64 * 100.0
     } else {
@@ -422,8 +433,8 @@ pub fn render_png(svg: &str) -> Result<Vec<u8>> {
     let tree =
         resvg::usvg::Tree::from_str(svg, &options).context("the card produced invalid SVG")?;
 
-    let width = (WIDTH as f32 * SCALE) as u32;
-    let height = (HEIGHT as f32 * SCALE) as u32;
+    let width = WIDTH * PIXEL_SCALE;
+    let height = HEIGHT * PIXEL_SCALE;
     let mut pixmap = resvg::tiny_skia::Pixmap::new(width, height)
         .context("cannot allocate the card's pixels")?;
     resvg::render(
@@ -477,12 +488,12 @@ mod tests {
             }],
             by_source: vec![],
             by_hour: vec![],
-            heatmap: (0..40)
+            heatmap: (0u8..40)
                 .map(|index| HeatmapCell {
                     period: format!("2026-07-{:02}", index % 28 + 1),
                     cost: 1.0,
-                    tokens: index as u64 * 10,
-                    level: (index % 5) as u8,
+                    tokens: u64::from(index) * 10,
+                    level: index % 5,
                 })
                 .collect(),
             projects: vec![ProjectRollup {
@@ -595,7 +606,9 @@ mod tests {
         let second = file_name(Card::Activity, "2026-09-01-001600", "png");
         assert_ne!(first, second);
         assert!(first.starts_with("veronica-usage-activity-"));
-        assert!(first.ends_with(".png"));
+        assert!(std::path::Path::new(&first)
+            .extension()
+            .is_some_and(|extension| extension == "png"));
     }
 
     #[test]

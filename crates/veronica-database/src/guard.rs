@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use base64::Engine;
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
@@ -26,7 +28,7 @@ pub const MAX_TOKEN_BYTES: usize = 4_096;
 const TOKEN_SCHEMA_VERSION: u32 = 1;
 const TOKEN_AUDIENCE: &str = "veronica.database.confirmation";
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum GuardError {
     #[error("the signing key must be {SIGNING_KEY_BYTES} bytes, not {0}")]
     InvalidSigningKey(usize),
@@ -80,7 +82,7 @@ struct TokenPayload {
     expires_at_millis: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Receipt {
     pub identifier: Uuid,
@@ -191,8 +193,10 @@ impl<S: ReceiptStore> Guard<S> {
     fn digest(&self, data: &[u8], domain: &str) -> String {
         self.mac(data, domain)
             .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect()
+            .fold(String::new(), |mut hex, byte| {
+                let _ = write!(hex, "{byte:02x}");
+                hex
+            })
     }
 
     fn validate(plan: &Plan, connection: &ConnectionDefinition) -> Result<(), GuardError> {
@@ -304,7 +308,7 @@ impl<S: ReceiptStore> Guard<S> {
             transaction_behavior: plan.transaction_behavior,
             rollback_availability: plan.rollback_availability,
             execution_mode: plan.execution_mode,
-            execution_digest: execution_digest.clone(),
+            execution_digest,
             display_digest: String::new(),
         };
 
@@ -527,7 +531,7 @@ mod tests {
     use crate::value::Value;
 
     fn key() -> Vec<u8> {
-        (0..SIGNING_KEY_BYTES as u8).collect()
+        (0..=u8::MAX).take(SIGNING_KEY_BYTES).collect()
     }
 
     fn guard() -> Guard<MemoryReceiptStore> {
@@ -662,8 +666,8 @@ mod tests {
 
     #[test]
     fn editing_any_part_of_the_plan_stops_the_apply() {
-        let connection = connection();
         type Tamper = Box<dyn Fn(&mut Plan)>;
+        let connection = connection();
         let variants: Vec<(&str, Tamper)> = vec![
             (
                 "the parameter",
@@ -721,7 +725,7 @@ mod tests {
             assert!(
                 matches!(
                     result,
-                    Err(GuardError::PlanChanged) | Err(GuardError::ConfirmationMismatch)
+                    Err(GuardError::PlanChanged | GuardError::ConfirmationMismatch)
                 ),
                 "changing {what} was allowed through: {result:?}"
             );
@@ -827,7 +831,7 @@ mod tests {
             assert!(
                 matches!(
                     result,
-                    Err(GuardError::MalformedToken) | Err(GuardError::InvalidSignature)
+                    Err(GuardError::MalformedToken | GuardError::InvalidSignature)
                 ),
                 "{what} was accepted: {result:?}"
             );
@@ -899,7 +903,7 @@ mod tests {
                 path: vec!["status".into()],
                 operator: crate::paging::FilterOperator::Equal,
                 values: vec![Value::String("cancelled".into())],
-                case_sensitivity: Default::default(),
+                case_sensitivity: crate::paging::CaseSensitivity::default(),
             },
         });
         let confirmation = Guard::<MemoryReceiptStore>::required_confirmation(&plan, &connection());

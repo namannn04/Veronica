@@ -82,7 +82,7 @@ fn read_value(row: &Row, index: usize) -> Value {
         None | Some(M::NULL) => Value::Null,
         Some(M::Int(value)) => Value::SignedInteger(*value),
         Some(M::UInt(value)) => Value::UnsignedInteger(*value),
-        Some(M::Float(value)) => Value::FloatingPoint(*value as f64),
+        Some(M::Float(value)) => Value::FloatingPoint(f64::from(*value)),
         Some(M::Double(value)) => Value::FloatingPoint(*value),
         Some(M::Date(year, month, day, hour, minute, second, micros)) => {
             if *year == 0 && *month == 0 && *day == 0 {
@@ -98,7 +98,7 @@ fn read_value(row: &Row, index: usize) -> Value {
         Some(M::Time(negative, days, hours, minutes, seconds, _micros)) => Value::Time(format!(
             "{}{:02}:{:02}:{:02}",
             if *negative { "-" } else { "" },
-            *days * 24 + *hours as u32,
+            *days * 24 + u32::from(*hours),
             minutes,
             seconds
         )),
@@ -113,7 +113,7 @@ fn read_value(row: &Row, index: usize) -> Value {
     }
 }
 
-fn to_page(rows: Vec<Row>, request: &PageRequest, elapsed: u64) -> Page {
+fn to_page(rows: &[Row], request: &PageRequest, elapsed: u64) -> Page {
     let columns: Vec<ColumnDescriptor> = rows
         .first()
         .map(|row| {
@@ -137,7 +137,7 @@ fn to_page(rows: Vec<Row>, request: &PageRequest, elapsed: u64) -> Page {
 fn bounded(sql: &str, request: &PageRequest) -> String {
     format!(
         "SELECT * FROM ({sql}) AS veronica_page LIMIT {} OFFSET {}",
-        request.page_size.get() as u64 + 1,
+        u64::from(request.page_size.get()) + 1,
         request.offset
     )
 }
@@ -204,9 +204,7 @@ impl Adapter for MysqlAdapter {
             .await
             .ok()
             .flatten();
-        let is_replica = read_only
-            .map(|(_, value)| value.eq_ignore_ascii_case("ON"))
-            .unwrap_or(false);
+        let is_replica = read_only.is_some_and(|(_, value)| value.eq_ignore_ascii_case("ON"));
 
         Ok(ProductIdentity {
             version: Some(Version::parse(&version)),
@@ -294,7 +292,7 @@ impl Adapter for MysqlAdapter {
         let started = std::time::Instant::now();
         let sql = bounded(&format!("SELECT * FROM {}", qualified(object)), request);
         let rows: Vec<Row> = self.connection.query(sql).await?;
-        Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
+        Ok(to_page(&rows, request, crate::elapsed_millis(started)))
     }
 
     async fn query(&mut self, statement: &str, request: &PageRequest) -> Result<Page> {
@@ -311,7 +309,7 @@ impl Adapter for MysqlAdapter {
         } else {
             super::client_window(self.read_only_rows(body.to_string()).await?, request)
         };
-        Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
+        Ok(to_page(&rows, request, crate::elapsed_millis(started)))
     }
 
     async fn count(&mut self, object: &ObjectIdentifier) -> Result<Option<u64>> {

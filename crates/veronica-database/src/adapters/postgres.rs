@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use anyhow::{Context, Result};
 use tokio_postgres::types::Type;
 use tokio_postgres::{Client, NoTls};
@@ -157,7 +159,7 @@ fn read_value(row: &tokio_postgres::Row, index: usize) -> Value {
     })
 }
 
-fn to_page(rows: Vec<tokio_postgres::Row>, request: &PageRequest, elapsed: u64) -> Page {
+fn to_page(rows: &[tokio_postgres::Row], request: &PageRequest, elapsed: u64) -> Page {
     let columns: Vec<ColumnDescriptor> = rows
         .first()
         .map(|row| {
@@ -184,7 +186,7 @@ fn to_page(rows: Vec<tokio_postgres::Row>, request: &PageRequest, elapsed: u64) 
 fn bounded(sql: &str, request: &PageRequest) -> String {
     format!(
         "SELECT * FROM ({sql}) AS veronica_page LIMIT {} OFFSET {}",
-        request.page_size.get() as u64 + 1,
+        u64::from(request.page_size.get()) + 1,
         request.offset
     )
 }
@@ -309,7 +311,7 @@ impl Adapter for PostgresAdapter {
         let started = std::time::Instant::now();
         let sql = bounded(&format!("SELECT * FROM {}", qualified(object)), request);
         let rows = self.client.query(&sql, &[]).await?;
-        Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
+        Ok(to_page(&rows, request, crate::elapsed_millis(started)))
     }
 
     async fn query(&mut self, statement: &str, request: &PageRequest) -> Result<Page> {
@@ -326,7 +328,7 @@ impl Adapter for PostgresAdapter {
         } else {
             super::client_window(self.read_only_rows(body).await?, request)
         };
-        Ok(to_page(rows, request, started.elapsed().as_millis() as u64))
+        Ok(to_page(&rows, request, crate::elapsed_millis(started)))
     }
 
     async fn count(&mut self, object: &ObjectIdentifier) -> Result<Option<u64>> {
@@ -334,7 +336,7 @@ impl Adapter for PostgresAdapter {
             .client
             .query_one(&format!("SELECT COUNT(*) FROM {}", qualified(object)), &[])
             .await?;
-        Ok(Some(row.get::<_, i64>(0) as u64))
+        Ok(u64::try_from(row.get::<_, i64>(0)).ok())
     }
 
     async fn execute(&mut self, payload: &Payload) -> Result<u64> {
@@ -372,16 +374,21 @@ fn bind_text(value: &Value) -> Option<String> {
         Value::UnsignedInteger(value) => Some(value.to_string()),
         Value::FloatingPoint(value) => Some(value.to_string()),
         Value::Decimal(Decimal(text)) => Some(text.clone()),
-        Value::String(value) => Some(value.clone()),
+        Value::String(value)
+        | Value::Date(value)
+        | Value::Time(value)
+        | Value::Timestamp(value) => Some(value.clone()),
         Value::Uuid(value) => Some(value.to_string()),
-        Value::Date(value) | Value::Time(value) | Value::Timestamp(value) => Some(value.clone()),
         Value::Binary(binary) => Some(match binary {
             crate::value::Binary::Complete { data, .. }
             | crate::value::Binary::Preview { bytes: data, .. } => {
                 match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, data) {
                     Ok(bytes) => format!(
                         "\\x{}",
-                        bytes.iter().map(|b| format!("{b:02x}")).collect::<String>()
+                        bytes.iter().fold(String::new(), |mut hex, byte| {
+                            let _ = write!(hex, "{byte:02x}");
+                            hex
+                        })
                     ),
                     Err(_) => String::new(),
                 }

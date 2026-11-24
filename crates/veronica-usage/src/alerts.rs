@@ -74,7 +74,7 @@ impl NotifySettings {
         let minutes = |key: &str, fallback: i64| {
             settings
                 .get(key)
-                .and_then(|value| value.as_i64())
+                .and_then(serde_json::Value::as_i64)
                 .filter(|value| *value >= 1)
                 .unwrap_or(fallback)
         };
@@ -101,11 +101,11 @@ impl NotifySettings {
             thresholds: ordered_thresholds(
                 settings
                     .get("limitsWarnPercent")
-                    .and_then(|value| value.as_i64())
+                    .and_then(serde_json::Value::as_i64)
                     .unwrap_or(DEFAULT_WARN_PERCENT),
                 settings
                     .get("limitsCritPercent")
-                    .and_then(|value| value.as_i64())
+                    .and_then(serde_json::Value::as_i64)
                     .unwrap_or(DEFAULT_CRITICAL_PERCENT),
             ),
         }
@@ -126,7 +126,7 @@ fn ordered_thresholds(warning_percent: i64, critical_percent: i64) -> UsageThres
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct NotifierState {
     pub session_level: UsageLevel,
@@ -479,8 +479,10 @@ fn escalation(
                 return LimitAlert::new(
                     id,
                     "5h almost capped",
-                    left.map(|left| format!("Easy until reset, {left} left"))
-                        .unwrap_or_else(|| "Limit almost reached".to_string()),
+                    left.map_or_else(
+                        || "Limit almost reached".to_string(),
+                        |left| format!("Easy until reset, {left} left"),
+                    ),
                 );
             }
             let zone = pacing.unwrap_or(PacingZone::OnTrack);
@@ -510,15 +512,19 @@ fn escalation(
                 return LimitAlert::new(
                     id,
                     "Weekly almost capped",
-                    when.map(|when| format!("Take it slow until {when}"))
-                        .unwrap_or_else(|| "Weekly limit almost reached".to_string()),
+                    when.map_or_else(
+                        || "Weekly limit almost reached".to_string(),
+                        |when| format!("Take it slow until {when}"),
+                    ),
                 );
             }
             LimitAlert::new(
                 id,
                 "Weekly filling up",
-                when.map(|when| format!("Resets {when}"))
-                    .unwrap_or_else(|| "Past the weekly warning".to_string()),
+                when.map_or_else(
+                    || "Past the weekly warning".to_string(),
+                    |when| format!("Resets {when}"),
+                ),
             )
         }
     }
@@ -531,8 +537,10 @@ fn recovery(kind: LimitWindowKind, window: LimitWindow, now: DateTime<Utc>) -> L
             LimitAlert::new(
                 "recovery_session",
                 "5h cleared",
-                at.map(|at| format!("Fresh slate at {at}"))
-                    .unwrap_or_else(|| "Fresh slate, you're back".to_string()),
+                at.map_or_else(
+                    || "Fresh slate, you're back".to_string(),
+                    |at| format!("Fresh slate at {at}"),
+                ),
             )
         }
         LimitWindowKind::Weekly => {
@@ -540,8 +548,10 @@ fn recovery(kind: LimitWindowKind, window: LimitWindow, now: DateTime<Utc>) -> L
             LimitAlert::new(
                 "recovery_weekly",
                 "Weekly reset",
-                at.map(|at| format!("New cycle, you're back at {at}"))
-                    .unwrap_or_else(|| "New cycle, you're back".to_string()),
+                at.map_or_else(
+                    || "New cycle, you're back".to_string(),
+                    |at| format!("New cycle, you're back at {at}"),
+                ),
             )
         }
     }

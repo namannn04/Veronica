@@ -41,7 +41,7 @@ fn to_window(raw: &RawWindow) -> Option<(f64, LimitWindow)> {
     }
     let resets_at = raw
         .resets_at
-        .and_then(|seconds| chrono::DateTime::from_timestamp(seconds as i64, 0));
+        .and_then(|seconds| chrono::DateTime::from_timestamp(crate::truncate_to_i64(seconds), 0));
     Some((
         raw.window_duration_mins.unwrap_or(0.0),
         LimitWindow { percent, resets_at },
@@ -190,10 +190,10 @@ pub async fn fetch_limits() -> Result<CodexLimits> {
     let _ = child.start_kill();
     let diagnostics = stderr_task.await.unwrap_or_default();
     result.with_context(|| {
-        diagnostics
-            .last()
-            .map(|line| format!("codex app-server: {line}"))
-            .unwrap_or_else(|| "codex app-server returned no diagnostics".to_string())
+        diagnostics.last().map_or_else(
+            || "codex app-server returned no diagnostics".to_string(),
+            |line| format!("codex app-server: {line}"),
+        )
     })
 }
 
@@ -226,8 +226,8 @@ mod tests {
     #[test]
     fn shorter_window_is_the_session_regardless_of_naming() {
         let snapshot = json!({
-            "primary":   {"usedPercent": 45.0, "resetsAt": 1787200000, "windowDurationMins": 10080},
-            "secondary": {"usedPercent": 81.0, "resetsAt": 1787100000, "windowDurationMins": 300}
+            "primary":   {"usedPercent": 45.0, "resetsAt": 1_787_200_000, "windowDurationMins": 10080},
+            "secondary": {"usedPercent": 81.0, "resetsAt": 1_787_100_000, "windowDurationMins": 300}
         });
         let limits = parse_snapshot(&snapshot);
         assert_eq!(limits.session.unwrap().percent, 81.0);
@@ -247,16 +247,16 @@ mod tests {
     #[test]
     fn reset_times_are_read_from_unix_seconds() {
         let snapshot = json!({
-            "primary": {"usedPercent": 5.0, "resetsAt": 1787100000, "windowDurationMins": 300}
+            "primary": {"usedPercent": 5.0, "resetsAt": 1_787_100_000, "windowDurationMins": 300}
         });
         let window = parse_snapshot(&snapshot).session.unwrap();
-        assert_eq!(window.resets_at.unwrap().timestamp(), 1787100000);
+        assert_eq!(window.resets_at.unwrap().timestamp(), 1_787_100_000);
     }
 
     #[test]
     fn a_window_without_a_percentage_is_skipped() {
         let snapshot = json!({
-            "primary": {"resetsAt": 1787100000, "windowDurationMins": 300},
+            "primary": {"resetsAt": 1_787_100_000, "windowDurationMins": 300},
             "secondary": {"usedPercent": 20.0, "windowDurationMins": 10080}
         });
         let limits = parse_snapshot(&snapshot);

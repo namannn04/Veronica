@@ -28,14 +28,14 @@ impl Action {
     pub fn is_strongest(self) -> bool {
         matches!(
             self,
-            Action::Truncate
-                | Action::DropObject
-                | Action::SchemaChange
-                | Action::PermissionChange
-                | Action::TerminateSession
-                | Action::Maintenance
-                | Action::Reindex
-                | Action::AsynchronousMutation
+            Self::Truncate
+                | Self::DropObject
+                | Self::SchemaChange
+                | Self::PermissionChange
+                | Self::TerminateSession
+                | Self::Maintenance
+                | Self::Reindex
+                | Self::AsynchronousMutation
         )
     }
 
@@ -178,51 +178,49 @@ pub enum Payload {
 impl Payload {
     pub fn product(&self) -> Product {
         match self {
-            Payload::Relational { product, .. }
-            | Payload::Keyspace { product, .. }
-            | Payload::Document { product, .. }
-            | Payload::Search { product, .. }
-            | Payload::Analytical { product, .. }
-            | Payload::Administrative { product, .. } => *product,
+            Self::Relational { product, .. }
+            | Self::Keyspace { product, .. }
+            | Self::Document { product, .. }
+            | Self::Search { product, .. }
+            | Self::Analytical { product, .. }
+            | Self::Administrative { product, .. } => *product,
         }
     }
 
     pub fn kind(&self) -> PayloadKind {
         match self {
-            Payload::Relational { .. } => PayloadKind::Sql,
-            Payload::Keyspace { .. } => PayloadKind::Keyspace,
-            Payload::Document { .. } => PayloadKind::Document,
-            Payload::Search { .. } => PayloadKind::Search,
-            Payload::Analytical { .. } => PayloadKind::Analytical,
-            Payload::Administrative { .. } => PayloadKind::Administrative,
+            Self::Relational { .. } => PayloadKind::Sql,
+            Self::Keyspace { .. } => PayloadKind::Keyspace,
+            Self::Document { .. } => PayloadKind::Document,
+            Self::Search { .. } => PayloadKind::Search,
+            Self::Analytical { .. } => PayloadKind::Analytical,
+            Self::Administrative { .. } => PayloadKind::Administrative,
         }
     }
 
     pub fn command(&self) -> &str {
         match self {
-            Payload::Relational { statement, .. } | Payload::Analytical { statement, .. } => {
-                statement
-            }
-            Payload::Keyspace { command, .. } | Payload::Administrative { command, .. } => command,
-            Payload::Document { operation, .. } | Payload::Search { operation, .. } => operation,
+            Self::Relational { statement, .. } | Self::Analytical { statement, .. } => statement,
+            Self::Keyspace { command, .. } | Self::Administrative { command, .. } => command,
+            Self::Document { operation, .. } | Self::Search { operation, .. } => operation,
         }
     }
 
     fn parameters(&self) -> &[Parameter] {
         match self {
-            Payload::Relational { parameters, .. }
-            | Payload::Document { parameters, .. }
-            | Payload::Search { parameters, .. }
-            | Payload::Analytical { parameters, .. }
-            | Payload::Administrative { parameters, .. } => parameters,
-            Payload::Keyspace { arguments, .. } => arguments,
+            Self::Relational { parameters, .. }
+            | Self::Document { parameters, .. }
+            | Self::Search { parameters, .. }
+            | Self::Analytical { parameters, .. }
+            | Self::Administrative { parameters, .. } => parameters,
+            Self::Keyspace { arguments, .. } => arguments,
         }
     }
 
     fn body(&self) -> Option<&Value> {
         match self {
-            Payload::Document { body, .. } | Payload::Search { body, .. } => Some(body),
-            Payload::Administrative { body, .. } => body.as_ref(),
+            Self::Document { body, .. } | Self::Search { body, .. } => Some(body),
+            Self::Administrative { body, .. } => body.as_ref(),
             _ => None,
         }
     }

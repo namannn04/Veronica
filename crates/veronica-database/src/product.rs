@@ -13,11 +13,11 @@ pub enum Family {
 impl Family {
     pub fn title(self) -> &'static str {
         match self {
-            Family::Relational => "Relational",
-            Family::KeyValue => "Key-value",
-            Family::Document => "Document",
-            Family::Search => "Search",
-            Family::Analytical => "Analytical",
+            Self::Relational => "Relational",
+            Self::KeyValue => "Key-value",
+            Self::Document => "Document",
+            Self::Search => "Search",
+            Self::Analytical => "Analytical",
         }
     }
 }
@@ -42,81 +42,79 @@ pub enum Product {
 }
 
 impl Product {
-    pub const ALL: [Product; 10] = [
-        Product::Postgresql,
-        Product::Mysql,
-        Product::MariaDb,
-        Product::Sqlite,
-        Product::Redis,
-        Product::Valkey,
-        Product::MongoDb,
-        Product::Elasticsearch,
-        Product::OpenSearch,
-        Product::ClickHouse,
+    pub const ALL: [Self; 10] = [
+        Self::Postgresql,
+        Self::Mysql,
+        Self::MariaDb,
+        Self::Sqlite,
+        Self::Redis,
+        Self::Valkey,
+        Self::MongoDb,
+        Self::Elasticsearch,
+        Self::OpenSearch,
+        Self::ClickHouse,
     ];
 
     pub fn family(self) -> Family {
         match self {
-            Product::Postgresql | Product::Mysql | Product::MariaDb | Product::Sqlite => {
-                Family::Relational
-            }
-            Product::Redis | Product::Valkey => Family::KeyValue,
-            Product::MongoDb => Family::Document,
-            Product::Elasticsearch | Product::OpenSearch => Family::Search,
-            Product::ClickHouse => Family::Analytical,
+            Self::Postgresql | Self::Mysql | Self::MariaDb | Self::Sqlite => Family::Relational,
+            Self::Redis | Self::Valkey => Family::KeyValue,
+            Self::MongoDb => Family::Document,
+            Self::Elasticsearch | Self::OpenSearch => Family::Search,
+            Self::ClickHouse => Family::Analytical,
         }
     }
 
     pub fn title(self) -> &'static str {
         match self {
-            Product::Postgresql => "PostgreSQL",
-            Product::Mysql => "MySQL",
-            Product::MariaDb => "MariaDB",
-            Product::Sqlite => "SQLite",
-            Product::Redis => "Redis",
-            Product::Valkey => "Valkey",
-            Product::MongoDb => "MongoDB",
-            Product::Elasticsearch => "Elasticsearch",
-            Product::OpenSearch => "OpenSearch",
-            Product::ClickHouse => "ClickHouse",
+            Self::Postgresql => "PostgreSQL",
+            Self::Mysql => "MySQL",
+            Self::MariaDb => "MariaDB",
+            Self::Sqlite => "SQLite",
+            Self::Redis => "Redis",
+            Self::Valkey => "Valkey",
+            Self::MongoDb => "MongoDB",
+            Self::Elasticsearch => "Elasticsearch",
+            Self::OpenSearch => "OpenSearch",
+            Self::ClickHouse => "ClickHouse",
         }
     }
 
     pub fn key(self) -> &'static str {
         match self {
-            Product::Postgresql => "postgresql",
-            Product::Mysql => "mysql",
-            Product::MariaDb => "mariadb",
-            Product::Sqlite => "sqlite",
-            Product::Redis => "redis",
-            Product::Valkey => "valkey",
-            Product::MongoDb => "mongodb",
-            Product::Elasticsearch => "elasticsearch",
-            Product::OpenSearch => "opensearch",
-            Product::ClickHouse => "clickhouse",
+            Self::Postgresql => "postgresql",
+            Self::Mysql => "mysql",
+            Self::MariaDb => "mariadb",
+            Self::Sqlite => "sqlite",
+            Self::Redis => "redis",
+            Self::Valkey => "valkey",
+            Self::MongoDb => "mongodb",
+            Self::Elasticsearch => "elasticsearch",
+            Self::OpenSearch => "opensearch",
+            Self::ClickHouse => "clickhouse",
         }
     }
 
     pub fn default_port(self) -> Option<u16> {
         match self {
-            Product::Postgresql => Some(5432),
-            Product::Mysql | Product::MariaDb => Some(3306),
-            Product::Redis | Product::Valkey => Some(6379),
-            Product::MongoDb => Some(27017),
-            Product::Elasticsearch | Product::OpenSearch => Some(9200),
-            Product::ClickHouse => Some(8123),
-            Product::Sqlite => None,
+            Self::Postgresql => Some(5432),
+            Self::Mysql | Self::MariaDb => Some(3306),
+            Self::Redis | Self::Valkey => Some(6379),
+            Self::MongoDb => Some(27017),
+            Self::Elasticsearch | Self::OpenSearch => Some(9200),
+            Self::ClickHouse => Some(8123),
+            Self::Sqlite => None,
         }
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
         let lowered = raw.to_lowercase();
-        Product::ALL
+        Self::ALL
             .into_iter()
             .find(|product| product.key() == lowered)
             .or(match lowered.as_str() {
-                "postgres" | "pg" => Some(Product::Postgresql),
-                "mongo" => Some(Product::MongoDb),
+                "postgres" | "pg" => Some(Self::Postgresql),
+                "mongo" => Some(Self::MongoDb),
                 _ => None,
             })
     }

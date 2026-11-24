@@ -35,8 +35,8 @@ pub enum LimitProvider {
 impl LimitProvider {
     pub fn label(self) -> &'static str {
         match self {
-            LimitProvider::Codex => "Codex",
-            LimitProvider::Claude => "Claude",
+            Self::Codex => "Codex",
+            Self::Claude => "Claude",
         }
     }
 }
@@ -99,11 +99,11 @@ pub enum UsageLevel {
 impl UsageLevel {
     pub fn from_percent(pct: f64, thresholds: UsageThresholds) -> Self {
         if pct >= thresholds.critical_percent as f64 {
-            UsageLevel::Red
+            Self::Red
         } else if pct >= thresholds.warning_percent as f64 {
-            UsageLevel::Orange
+            Self::Orange
         } else {
-            UsageLevel::Green
+            Self::Green
         }
     }
 }
@@ -127,8 +127,8 @@ pub enum LimitWindowKind {
 impl LimitWindowKind {
     pub fn duration_secs(self) -> f64 {
         match self {
-            LimitWindowKind::Session => SESSION_WINDOW_SECS,
-            LimitWindowKind::Weekly => WEEKLY_WINDOW_SECS,
+            Self::Session => SESSION_WINDOW_SECS,
+            Self::Weekly => WEEKLY_WINDOW_SECS,
         }
     }
 }
@@ -145,27 +145,27 @@ pub fn confidence(e: f64) -> f64 {
     1.0 - (-K * e.max(0.0)).exp()
 }
 
-pub fn combined_risk(u: f64, e: f64, m: f64) -> f64 {
-    if u >= 1.0 {
+pub fn combined_risk(used: f64, elapsed: f64, margin: f64) -> f64 {
+    if used >= 1.0 {
         return 1.0;
     }
-    let a_raw = smoothstep(ABSOLUTE_LOWER, ABSOLUTE_UPPER, u);
-    let projection_health = if e > 0.0001 {
-        smoothstep(0.7, 1.0, u / e)
+    let absolute_raw = smoothstep(ABSOLUTE_LOWER, ABSOLUTE_UPPER, used);
+    let projection_health = if elapsed > 0.0001 {
+        smoothstep(0.7, 1.0, used / elapsed)
     } else {
         1.0
     };
-    let a = a_raw * projection_health;
+    let absolute = absolute_raw * projection_health;
 
-    let b = if u > 0.0001 && e > 0.0001 {
-        smoothstep(1.0, PROJ_UPPER, u / e) * confidence(e)
+    let projected = if used > 0.0001 && elapsed > 0.0001 {
+        smoothstep(1.0, PROJ_UPPER, used / elapsed) * confidence(elapsed)
     } else {
         0.0
     };
 
-    let c = smoothstep(m, m + 0.15, u - e) * confidence(e);
+    let pacing = smoothstep(margin, margin + 0.15, used - elapsed) * confidence(elapsed);
 
-    a.max(b).max(c)
+    absolute.max(projected).max(pacing)
 }
 
 pub fn smart_risk(
@@ -263,7 +263,8 @@ pub fn pacing_delta(
     window_duration_secs: f64,
     now: DateTime<Utc>,
 ) -> f64 {
-    let start = resets_at - chrono::Duration::milliseconds((window_duration_secs * 1000.0) as i64);
+    let start = resets_at
+        - chrono::Duration::milliseconds(crate::truncate_to_i64(window_duration_secs * 1000.0));
     let elapsed_secs = (now - start).num_milliseconds() as f64 / 1000.0;
     let elapsed = (elapsed_secs / window_duration_secs).clamp(0.0, 1.0);
     utilization - elapsed * 100.0
@@ -404,7 +405,7 @@ mod tests {
     #[test]
     fn burning_exactly_on_pace_is_low_risk_but_double_pace_is_not() {
         let now = at(0);
-        let resets = at((SESSION_WINDOW_SECS / 2.0) as i64);
+        let resets = at(crate::truncate_to_i64(SESSION_WINDOW_SECS / 2.0));
         let on_pace = smart_risk(50.0, Some(resets), SESSION_WINDOW_SECS, 10.0, now);
         let double = smart_risk(95.0, Some(resets), SESSION_WINDOW_SECS, 10.0, now);
         assert!(on_pace < 0.5, "on-pace risk was {on_pace}");
@@ -448,14 +449,14 @@ mod tests {
 
     #[test]
     fn pacing_delta_is_zero_when_usage_tracks_elapsed_time() {
-        let resets = at((SESSION_WINDOW_SECS / 2.0) as i64);
+        let resets = at(crate::truncate_to_i64(SESSION_WINDOW_SECS / 2.0));
         let delta = pacing_delta(50.0, resets, SESSION_WINDOW_SECS, at(0));
         assert!(delta.abs() < 1e-9, "delta was {delta}");
     }
 
     #[test]
     fn pacing_delta_is_positive_when_ahead_of_the_burn() {
-        let resets = at((SESSION_WINDOW_SECS / 2.0) as i64);
+        let resets = at(crate::truncate_to_i64(SESSION_WINDOW_SECS / 2.0));
         assert!(pacing_delta(80.0, resets, SESSION_WINDOW_SECS, at(0)) > 0.0);
         assert!(pacing_delta(20.0, resets, SESSION_WINDOW_SECS, at(0)) < 0.0);
     }

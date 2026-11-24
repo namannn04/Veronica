@@ -24,13 +24,13 @@ pub enum Backing {
 impl Backing {
     pub fn title(self) -> &'static str {
         match self {
-            Backing::SecretService => "the desktop keyring",
-            Backing::File => "a 0600 file under the state directory",
+            Self::SecretService => "the desktop keyring",
+            Self::File => "a 0600 file under the state directory",
         }
     }
 
     pub fn is_preferred(self) -> bool {
-        self == Backing::SecretService
+        self == Self::SecretService
     }
 }
 
@@ -136,7 +136,7 @@ impl Service {
         label: String,
         secret: &[u8],
     ) -> Result<()> {
-        let properties: HashMap<&str, ZValue> = HashMap::from([
+        let properties: HashMap<&str, ZValue<'_>> = HashMap::from([
             ("org.freedesktop.Secret.Item.Label", ZValue::from(label)),
             (
                 "org.freedesktop.Secret.Item.Attributes",

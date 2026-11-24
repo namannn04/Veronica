@@ -107,12 +107,9 @@ pub enum FilterOperator {
 impl FilterOperator {
     pub fn arity(self) -> usize {
         match self {
-            FilterOperator::IsNull
-            | FilterOperator::IsNotNull
-            | FilterOperator::IsMissing
-            | FilterOperator::IsNotMissing => 0,
-            FilterOperator::Between => 2,
-            FilterOperator::In | FilterOperator::NotIn => usize::MAX,
+            Self::IsNull | Self::IsNotNull | Self::IsMissing | Self::IsNotMissing => 0,
+            Self::Between => 2,
+            Self::In | Self::NotIn => usize::MAX,
             _ => 1,
         }
     }
@@ -154,29 +151,29 @@ impl FilterPredicate {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Filter {
     Predicate { predicate: FilterPredicate },
-    All { children: Vec<Filter> },
-    Any { children: Vec<Filter> },
-    Not { child: Box<Filter> },
+    All { children: Vec<Self> },
+    Any { children: Vec<Self> },
+    Not { child: Box<Self> },
 }
 
 impl Filter {
     pub fn depth(&self) -> usize {
         match self {
-            Filter::Predicate { .. } => 1,
-            Filter::All { children } | Filter::Any { children } => {
-                1 + children.iter().map(Filter::depth).max().unwrap_or(0)
+            Self::Predicate { .. } => 1,
+            Self::All { children } | Self::Any { children } => {
+                1 + children.iter().map(Self::depth).max().unwrap_or(0)
             }
-            Filter::Not { child } => 1 + child.depth(),
+            Self::Not { child } => 1 + child.depth(),
         }
     }
 
     pub fn predicates(&self) -> Vec<&FilterPredicate> {
         match self {
-            Filter::Predicate { predicate } => vec![predicate],
-            Filter::All { children } | Filter::Any { children } => {
-                children.iter().flat_map(Filter::predicates).collect()
+            Self::Predicate { predicate } => vec![predicate],
+            Self::All { children } | Self::Any { children } => {
+                children.iter().flat_map(Self::predicates).collect()
             }
-            Filter::Not { child } => child.predicates(),
+            Self::Not { child } => child.predicates(),
         }
     }
 

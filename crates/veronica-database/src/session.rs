@@ -158,7 +158,7 @@ impl Session {
 
         let started = std::time::Instant::now();
         let outcome = self.adapter.execute(&measured.payload).await;
-        let elapsed = started.elapsed().as_millis() as u64;
+        let elapsed = crate::elapsed_millis(started);
 
         let record = OperationRecord {
             id: Uuid::new_v4(),
@@ -210,7 +210,7 @@ mod tests {
     fn sqlite_connection(path: &str) -> ConnectionDefinition {
         let now = chrono::Utc::now();
         ConnectionDefinition {
-            version: crate::connection::SCHEMA_VERSION,
+            version: SCHEMA_VERSION,
             id: Uuid::new_v4(),
             display_name: "Test".into(),
             product_hint: Product::Sqlite,

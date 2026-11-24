@@ -231,7 +231,7 @@ pub async fn limits_for_user(now: DateTime<Utc>) -> Result<Option<ClaudeLimits>>
         match credentials.usable_refresh_token(now) {
             Some(refresh) => {
                 let response = refresh_token(refresh).await?;
-                access_token = response.access_token.clone();
+                access_token.clone_from(&response.access_token);
                 crate::credentials::ensure_owner_only(&path)?;
                 Credentials::persist(&path, &credentials.applied(&response, now))?;
                 tracing::debug!("refreshed the Claude access token");
