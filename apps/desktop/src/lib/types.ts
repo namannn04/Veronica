@@ -901,6 +901,21 @@ export interface ExtensionManifest {
 
 export type ExtensionOrigin = "builtin" | "catalog" | "sideload";
 
+export type ShortcutState = "active" | "unbound" | "invalid" | "conflict" | "unavailable";
+
+export interface PlannedShortcut {
+  owner: string;
+  origin: ExtensionOrigin | null;
+  id: string;
+  title: string;
+  default: string | null;
+  run: string[];
+  binding: string | null;
+  overridden: boolean;
+  state: ShortcutState;
+  conflictsWith?: string;
+}
+
 export interface InstalledExtension {
   id: string;
   version: string;

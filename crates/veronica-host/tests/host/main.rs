@@ -6,4 +6,5 @@ mod install;
 mod launcher;
 mod mcp;
 mod packaged;
+mod shortcuts;
 mod update;

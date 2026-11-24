@@ -83,6 +83,7 @@ import type {
   PackageUpdate,
   PackageUpdateResult,
   PickResult,
+  PlannedShortcut,
   PowerStatus,
   PresenterView,
   QuinjetBoard,
@@ -162,6 +163,7 @@ export const ipc = {
 
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
   settingsSet: (key: string, value: unknown) => invoke<void>("settings_set", { key, value }),
+  shortcutsList: () => invoke<PlannedShortcut[]>("shortcuts_list"),
   launchAtLoginStatus: () => invoke<LaunchAtLoginStatus>("launch_at_login_status"),
   launchAtLoginSet: (enabled: boolean) =>
     invoke<LaunchAtLoginStatus>("launch_at_login_set", { enabled }),

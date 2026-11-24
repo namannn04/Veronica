@@ -11,6 +11,7 @@ pub mod mcp;
 pub mod permissions;
 pub mod registry;
 pub mod router;
+pub mod shortcuts;
 pub mod supervisor;
 pub mod trust;
 pub mod update;

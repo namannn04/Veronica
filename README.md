@@ -67,7 +67,8 @@ sudo snap install --classic --dangerous ./Veronica_<version>_amd64.snap
 
 Global shortcuts: `Ctrl+Alt+V` opens Veronica, `Ctrl+Alt+B` clipboard,
 `Ctrl+Alt+M` mic mute, `Ctrl+Alt+P` color picker, `Ctrl+Alt+E` emoji picker and
-`Ctrl+K` searches every page.
+`Ctrl+K` searches every page. Extensions can add their own, and Settings,
+Shortcuts lists every one with a way to change or turn it off.
 
 ## Command line
 
