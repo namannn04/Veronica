@@ -249,3 +249,14 @@ jobs:
               exit 1
             fi
           done
+
+  extensions-publish:
+    name: Publish extensions
+    needs: [ci-gate, extensions]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      actions: write
+      contents: write
+    uses: ./.github/workflows/extensions-publish.yml
+    with:
+      matrix: ${{ needs.extensions.outputs.matrix }}

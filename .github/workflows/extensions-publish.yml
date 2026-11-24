@@ -1,0 +1,119 @@
+name: Publish extensions
+
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        description: Extensions built in this run, as the plan job's JSON matrix
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: extensions-publish
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Check the catalog signing key
+    if: inputs.matrix != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: extension-catalog
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.trusted.outputs.ready || steps.secret.outputs.ready }}
+    steps:
+      - name: Look for the signing key
+        id: secret
+        env:
+          SIGNING_KEY: ${{ secrets.EXTENSIONS_SIGNING_KEY }}
+        run: |
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "::notice::EXTENSIONS_SIGNING_KEY is not set in the extension-catalog environment, so no extension is published."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "present=true" >>"$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        if: steps.secret.outputs.present == 'true'
+        with:
+          persist-credentials: false
+      - name: Build the packaging tool
+        if: steps.secret.outputs.present == 'true'
+        run: cargo build --release --locked -p veronica-pack
+      - name: Require a key the host trusts
+        id: trusted
+        if: steps.secret.outputs.present == 'true'
+        env:
+          EXTENSIONS_SIGNING_KEY: ${{ secrets.EXTENSIONS_SIGNING_KEY }}
+        run: |
+          status="$(target/release/vr-pack --json key-status --key env:EXTENSIONS_SIGNING_KEY)"
+          key_id="$(jq -r .keyId <<<"$status")"
+          if [ "$(jq -r .trusted <<<"$status")" = true ]; then
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "::notice::The signing key $key_id is not a release key in crates/veronica-host/src/trust.rs, so no extension is published."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    name: Publish ${{ matrix.extension.id }}
+    needs: gate
+    if: needs.gate.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        extension: ${{ fromJSON(inputs.matrix) }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ext-${{ matrix.extension.id }}
+          path: package
+      - name: Create the immutable extension release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXTENSION: ${{ matrix.extension.id }}
+          VERSION: ${{ matrix.extension.version }}
+        run: |
+          name="veronica-ext-${EXTENSION}-${VERSION}-linux-x86_64.tar.zst"
+          tag="ext/${EXTENSION}/v${VERSION}"
+          for file in "$name" "$name.sha256" "$name.json"; do
+            test -f "package/$file" || { echo "::error::the build artifact has no $file"; exit 1; }
+          done
+          built="$(jq -r .fingerprint "package/$name.json")"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            existing="$RUNNER_TEMP/existing"
+            mkdir -p "$existing"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$name.json" --dir "$existing" --clobber
+            published="$(jq -r .fingerprint "$existing/$name.json")"
+            if [ "$published" = "$built" ]; then
+              echo "::notice::$tag is already published with fingerprint $built."
+              exit 0
+            fi
+            echo "::error::$tag is published with fingerprint $published but this build has $built. Releases are immutable; change an input so the version moves."
+            exit 1
+          fi
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --latest=false --title "$EXTENSION $VERSION" \
+            --notes "Extension package for $EXTENSION, built from $GITHUB_SHA." \
+            "package/$name" "package/$name.sha256" "package/$name.json"
+
+  catalog:
+    name: Rebuild the signed catalog
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Start the Pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main

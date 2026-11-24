@@ -2,6 +2,10 @@ name: Extensions
 
 on:
   workflow_call:
+    outputs:
+      matrix:
+        description: The extensions this run built, as a JSON matrix
+        value: ${{ jobs.plan.outputs.matrix }}
   workflow_dispatch:
 
 permissions: {}
