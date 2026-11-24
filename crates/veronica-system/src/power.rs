@@ -79,10 +79,10 @@ pub struct InhibitorLock {
     what: InhibitWhat,
     reason: String,
     // The lock exists precisely because logind's descriptor is still open.
-    _fd: OwnedFd,
+    _logind_lock_fd: OwnedFd,
     // gnome-session drops an inhibitor when its caller leaves the bus, so the
     // dedicated connection is the lock; closing it on drop releases it.
-    session: Option<Connection>,
+    gnome_session_lock: Option<Connection>,
 }
 
 impl InhibitorLock {
@@ -96,7 +96,7 @@ impl InhibitorLock {
 
     /// Whether the GNOME session also honours this lock.
     pub fn holds_session_inhibitor(&self) -> bool {
-        self.session.is_some()
+        self.gnome_session_lock.is_some()
     }
 }
 
@@ -105,7 +105,7 @@ impl std::fmt::Debug for InhibitorLock {
         f.debug_struct("InhibitorLock")
             .field("what", &self.what.as_str())
             .field("reason", &self.reason)
-            .field("session", &self.session.is_some())
+            .field("session", &self.gnome_session_lock.is_some())
             .finish()
     }
 }
@@ -149,8 +149,8 @@ pub async fn inhibit(
     Ok(InhibitorLock {
         what,
         reason: reason.to_string(),
-        _fd: fd,
-        session,
+        _logind_lock_fd: fd,
+        gnome_session_lock: session,
     })
 }
 
