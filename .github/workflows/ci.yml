@@ -96,3 +96,46 @@ jobs:
           name: Veronica-amd64-deb
           path: target/release/bundle/deb/Veronica_*_amd64.deb
           if-no-files-found: error
+
+  snap:
+    needs: quality-and-package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Fetch the installable package
+        uses: actions/download-artifact@v6
+        with:
+          name: Veronica-amd64-deb
+          path: target/ci-deb
+
+      - name: Install Snapcraft and the desktop libraries Ubuntu ships
+        run: |
+          sudo snap install snapcraft --classic
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libgtk-3-0t64 libwebkit2gtk-4.1-0
+
+      - name: Build the snap
+        run: sudo ./scripts/build-snap.sh target/ci-deb/Veronica_*_amd64.deb
+
+      - name: Install and smoke-test the snap
+        run: |
+          sudo snap install --classic --dangerous target/snap/Veronica_*_amd64.snap
+          snap info --verbose veronica | grep -q 'confinement: *classic'
+          /snap/bin/veronica.vr extensions --help | grep -q enable
+          test -f /snap/veronica/current/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/metadata.json
+          test -f /snap/veronica/current/usr/share/doc/veronica/NOTICE
+          test -x /snap/veronica/current/usr/bin/jq
+          /snap/veronica/current/usr/bin/jq --version
+          grep -q '^Icon=/snap/veronica/' /var/lib/snapd/desktop/applications/veronica_veronica.desktop
+          missing="$(ldd /snap/veronica/current/usr/bin/veronica /snap/veronica/current/usr/lib/x86_64-linux-gnu/libayatana-appindicator3.so.1 /snap/veronica/current/usr/bin/jq | grep 'not found' || true)"
+          test -z "$missing" || { echo "$missing"; exit 1; }
+
+      - name: Keep the snap
+        uses: actions/upload-artifact@v6
+        with:
+          name: Veronica-amd64-snap
+          path: target/snap/Veronica_*_amd64.snap
+          if-no-files-found: error
