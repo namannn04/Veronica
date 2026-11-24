@@ -565,7 +565,7 @@ mod tests {
     }
 
     #[test]
-    fn normalises_status_words_like_edith() {
+    fn normalises_status_words_into_board_states() {
         assert_eq!(status("waiting_for_input"), "blocked");
         assert_eq!(status("needs-attention"), "blocked");
         assert_eq!(status("In Progress"), "working");
