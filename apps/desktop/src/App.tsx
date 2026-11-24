@@ -87,7 +87,6 @@ export function App() {
     void applyPresenterState();
   }, [applySettings, applyPresenterState, loadDiagnostics]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: route is the trigger: every navigation starts the main view at the top
   useEffect(() => {
     if (!routeIsVisible(route, enabledExtensions)) {
       setRoute("home");

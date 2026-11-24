@@ -37,7 +37,6 @@ export function Segmented<T extends string>({
     >
       {options.map((option) => {
         const segment = (
-          // biome-ignore lint/a11y/useSemanticElements: segmented control drawn as styled buttons; role radio with aria-checked exposes the selected segment
           <button
             key={option.value}
             type="button"

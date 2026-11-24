@@ -26,7 +26,7 @@ deps_check() {
 }
 
 web() {
-  bunx --bun @biomejs/biome@2.6.6 ci .
+  bunx --bun @biomejs/biome@2.6.6 ci --error-on-warnings .
   (cd apps/desktop && bunx tsc --noEmit)
 }
 
