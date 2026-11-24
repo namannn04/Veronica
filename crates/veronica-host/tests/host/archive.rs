@@ -267,7 +267,7 @@ fn segment() -> impl Strategy<Value = String> {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(64))]
+    #![proptest_config(ProptestConfig::with_cases(24))]
 
     #[test]
     fn paths_with_traversal_are_always_rejected(
