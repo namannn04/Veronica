@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
@@ -8,9 +8,9 @@ import { ipc, isDesktopApp, listenEvent } from "../lib/ipc";
 import {
   appearanceOf,
   applyAppearance,
+  type LimitProvider,
   limitProviderOf,
   storedLimitProvider,
-  type LimitProvider,
 } from "../lib/preferences";
 import type {
   Diagnostics,

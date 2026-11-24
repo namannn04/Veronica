@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Package, RefreshCw } from "lucide-react";
-
-import { ipc } from "../lib/ipc";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { bytes } from "../lib/format";
+import { ipc } from "../lib/ipc";
 import type { PackageInstalled, PackageSource, PackageUpdate, RemovalPlan } from "../lib/types";
 import {
   Badge,

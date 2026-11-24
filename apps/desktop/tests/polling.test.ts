@@ -1,5 +1,6 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { startVisiblePolling } from "../src/lib/polling";
+
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 test("hidden surfaces stop timers, outstanding calls do not overlap, teardown detaches", async () => {
   let visibility: (() => void) | undefined;

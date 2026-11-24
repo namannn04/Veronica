@@ -1,9 +1,8 @@
 import { ExternalLink } from "lucide-react";
-
+import veronicaLogo from "../assets/veronica-logo.png";
 import { ipc } from "../lib/ipc";
 import type { Diagnostics } from "../lib/types";
 import { Button, ButtonGroup, Card, KeyValueList, Page, Skeleton } from "../ui";
-import veronicaLogo from "../assets/veronica-logo.png";
 import "./About.css";
 
 const SOURCE_URL = "https://github.com/namannn04/veronica";

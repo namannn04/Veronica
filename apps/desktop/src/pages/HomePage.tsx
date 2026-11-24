@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   ArrowUpRight,
@@ -6,17 +5,32 @@ import {
   Coffee,
   Cpu,
   EyeOff,
+  Gauge as GaugeIcon,
   Globe2,
   Keyboard,
   LaptopMinimal,
   Music2,
   Plus,
   Sparkles,
-  Gauge as GaugeIcon,
   X,
   Zap,
 } from "lucide-react";
-
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { ringStatus, SpendCalendar } from "../components/charts";
+import { NotificationList } from "../components/NotificationList";
+import { ProviderSelector } from "../components/ProviderSelector";
+import { money, tokens } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
+import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
+import type {
+  AgendaView,
+  GaugeReport,
+  NowPlaying,
+  PresenterView,
+  SystemSnapshot,
+  UsageView,
+} from "../lib/types";
 import {
   Badge,
   Button,
@@ -33,21 +47,6 @@ import {
   SearchField,
   Skeleton,
 } from "../ui";
-import { SpendCalendar, ringStatus } from "../components/charts";
-import { NotificationList } from "../components/NotificationList";
-import { ProviderSelector } from "../components/ProviderSelector";
-import { money, tokens } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import { limitProviderOf, storedLimitProvider, type LimitProvider } from "../lib/preferences";
-import type {
-  AgendaView,
-  GaugeReport,
-  NowPlaying,
-  PresenterView,
-  SystemSnapshot,
-  UsageView,
-} from "../lib/types";
 import "./HomePage.css";
 
 type HomeRoute = "usage" | "media" | "calendar" | "system";

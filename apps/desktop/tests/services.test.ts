@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { endpointLabel, matchesContainer, matchesPort } from "../src/lib/services";
 import type { DockerContainer, ListeningPort } from "../src/lib/types";
+
 const port: ListeningPort = {
   address: "::1",
   port: 3000,

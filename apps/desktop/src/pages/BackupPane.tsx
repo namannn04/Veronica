@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Archive, FileSearch, RotateCcw } from "lucide-react";
+import { useState } from "react";
 
 import { bytes } from "../lib/format";
 import { ipc } from "../lib/ipc";

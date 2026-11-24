@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Container, Network, RefreshCw } from "lucide-react";
-
-import { startVisiblePolling } from "../lib/polling";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
 import { endpointLabel, matchesContainer, matchesPort } from "../lib/services";
 import type {
   DockerContainer,
@@ -24,8 +23,8 @@ import {
   Section,
   SkeletonRows,
   StatusDot,
-  Toolbar,
   type Tone,
+  Toolbar,
 } from "../ui";
 import "./ServicesPage.css";
 

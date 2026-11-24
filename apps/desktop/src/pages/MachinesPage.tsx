@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUp,
   ChevronRight,
@@ -13,12 +12,12 @@ import {
   X,
   Zap,
 } from "lucide-react";
-
-import { startVisiblePolling } from "../lib/polling";
-import { ipc } from "../lib/ipc";
-import { bytes, countdown } from "../lib/format";
-import type { ContainerInfo, MachineDirectory, MachineReport } from "../lib/types";
+import { useCallback, useEffect, useState } from "react";
 import { MeterStat } from "../components/MeterStat";
+import { bytes, countdown } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
+import type { ContainerInfo, MachineDirectory, MachineReport } from "../lib/types";
 import {
   Button,
   Card,
@@ -40,8 +39,8 @@ import {
   StatusDot,
   Table,
   TextField,
-  Toolbar,
   type Tone,
+  Toolbar,
 } from "../ui";
 import "./MachinesPage.css";
 

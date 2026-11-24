@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Bluetooth, Mic, MicOff, Volume2, VolumeX, X } from "lucide-react";
-
-import { startVisiblePolling } from "../lib/polling";
-import { ipc, listenEvent } from "../lib/ipc";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MeterStat, thresholdTone } from "../components/MeterStat";
 import { bytes, countdown } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
 import type {
   AudioStream,
   BluetoothState,
@@ -37,7 +37,6 @@ import {
   Tabs,
   type Tone,
 } from "../ui";
-import { MeterStat, thresholdTone } from "../components/MeterStat";
 import { CleanerPane } from "./CleanerPane";
 import "./SystemPage.css";
 

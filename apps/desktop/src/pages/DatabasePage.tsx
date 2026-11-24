@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ArrowUp, ChevronLeft, ChevronRight, Database, Play, Table2 } from "lucide-react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 
 import { ipc } from "../lib/ipc";
 import type {
   DatabaseConnection,
   DatabaseObject,
-  DatabasePage as ResultPage,
   DatabaseOperation,
+  DatabasePage as ResultPage,
 } from "../lib/types";
 import {
   Badge,

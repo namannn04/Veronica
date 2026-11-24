@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart3, RefreshCw, Share2 } from "lucide-react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { colorScale, DayBars, HourBars, RankedBars, SpendCalendar } from "../components/charts";
+import { LimitRings } from "../components/LimitRings";
+import { ModelTable } from "../components/ModelTable";
+import { ProjectList } from "../components/ProjectList";
+import { modelLabel, money, timeAgo, tokens } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import type { CollectorEvent, UsageView } from "../lib/types";
 import {
   Button,
   Card,
@@ -16,13 +22,6 @@ import {
   StatGrid,
   Toolbar,
 } from "../ui";
-import { DayBars, HourBars, RankedBars, SpendCalendar, colorScale } from "../components/charts";
-import { LimitRings } from "../components/LimitRings";
-import { ProjectList } from "../components/ProjectList";
-import { ModelTable } from "../components/ModelTable";
-import { ipc, listenEvent } from "../lib/ipc";
-import { money, modelLabel, timeAgo, tokens } from "../lib/format";
-import type { CollectorEvent, UsageView } from "../lib/types";
 import "./UsagePage.css";
 
 type Range = "7" | "30" | "90" | "all";

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
 import { ScanSearch, Trash2 } from "lucide-react";
-
-import { ipc } from "../lib/ipc";
+import { useCallback, useEffect, useState } from "react";
 import { bytes } from "../lib/format";
+import { ipc } from "../lib/ipc";
 import type { CleanerCategory, CleanerScan } from "../lib/types";
 import {
   Button,
