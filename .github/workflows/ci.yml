@@ -131,6 +131,11 @@ jobs:
       - name: Build the interface
         working-directory: apps/desktop
         run: bun run build
+      - name: Test the extension interface client
+        working-directory: packages/extension-api
+        run: |
+          bun test
+          bun run build
       - name: Test GNOME extension logic
         working-directory: extension
         run: npm test
