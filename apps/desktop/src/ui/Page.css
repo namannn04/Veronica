@@ -250,3 +250,25 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.ui-page[data-tab-swap="a"] > .ui-page-body {
+  animation: ui-tab-swap-a var(--duration-snap) var(--ease-out);
+}
+
+.ui-page[data-tab-swap="b"] > .ui-page-body {
+  animation: ui-tab-swap-b var(--duration-snap) var(--ease-out);
+}
+
+@keyframes ui-tab-swap-a {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-offset));
+  }
+}
+
+@keyframes ui-tab-swap-b {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-offset));
+  }
+}

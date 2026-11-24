@@ -23,7 +23,8 @@
     background-color var(--motion-feedback),
     border-color var(--motion-feedback),
     color var(--motion-feedback),
-    opacity var(--motion-feedback);
+    opacity var(--motion-feedback),
+    transform var(--motion-feedback);
 }
 
 .ui-button:hover:not(:disabled) {
@@ -32,6 +33,7 @@
 
 .ui-button:active:not(:disabled) {
   background: var(--button-bg-pressed);
+  transform: scale(var(--press-scale));
 }
 
 .ui-button:disabled {
@@ -125,7 +127,8 @@
   color: var(--text-2);
   transition:
     background-color var(--motion-feedback),
-    color var(--motion-feedback);
+    color var(--motion-feedback),
+    transform var(--motion-feedback);
 }
 
 .ui-icon-button svg {
@@ -157,6 +160,10 @@
 .ui-icon-button:hover:not(:disabled) {
   background: var(--fill-hover);
   color: var(--text-1);
+}
+
+.ui-icon-button:active:not(:disabled) {
+  transform: scale(var(--press-scale));
 }
 
 .ui-icon-button:active:not(:disabled),

@@ -139,12 +139,14 @@ progress {
 :root {
   --enter-offset: 4px;
   --enter-scale: 0.97;
+  --press-scale: 0.97;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --enter-offset: 0px;
     --enter-scale: 1;
+    --press-scale: 1;
   }
 }
 
@@ -152,4 +154,10 @@ progress {
   to {
     transform: rotate(360deg);
   }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-glide);
+  animation-timing-function: var(--ease-out);
 }
