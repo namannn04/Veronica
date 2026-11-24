@@ -192,7 +192,10 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
 
     let state = AppState::new(directories.clone(), veronica_core::DesktopSession::detect())?;
     let host = std::sync::Arc::clone(&state.extensions);
-    let bundles = extensions::protocol::Bundles::discover(host.layout().clone());
+    let bundles = extensions::protocol::Bundles::discover(
+        host.layout().clone(),
+        std::sync::Arc::clone(host.files()),
+    );
 
     tauri::Builder::default()
         .register_uri_scheme_protocol(extensions::protocol::SCHEME, move |_context, request| {
@@ -327,6 +330,24 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::notifications_clear,
             commands::show_main_window,
             commands::open_external,
+            extensions::commands::ext_list,
+            extensions::commands::ext_status,
+            extensions::commands::ext_restart,
+            extensions::commands::ext_catalog_refresh,
+            extensions::commands::ext_catalog_search,
+            extensions::commands::ext_catalog_info,
+            extensions::commands::ext_install,
+            extensions::commands::ext_sideload,
+            extensions::commands::ext_update,
+            extensions::commands::ext_enable,
+            extensions::commands::ext_disable,
+            extensions::commands::ext_remove,
+            extensions::commands::ext_rollback,
+            extensions::commands::ext_jobs,
+            extensions::commands::ext_page_opened,
+            extensions::commands::ext_page_closed,
+            extensions::commands::ext_confirm_answer,
+            extensions::commands::ext_bridge,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
