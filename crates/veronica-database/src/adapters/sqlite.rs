@@ -104,7 +104,6 @@ fn page(connection: &Sqlite, sql: &str, request: &PageRequest, client_paged: boo
         .with_context(|| format!("SQLite refused the statement: {sql}"))?;
     let columns: Vec<ColumnDescriptor> = statement
         .column_names()
-        .into_iter()
         .map(|name| ColumnDescriptor {
             name: name.to_string(),
             type_name: None,
