@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 
 import {
   NAV_ITEMS,
+  type Route,
   routeFromSearch,
   routeIsVisible,
   searchNav,
   visibleNavGroups,
-  type Route,
 } from "../src/lib/navigation";
 import { isEmojiPickerSurface } from "../src/lib/surfaces";
 

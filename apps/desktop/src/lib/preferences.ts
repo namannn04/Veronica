@@ -1,13 +1,3 @@
-/**
- * Every appearance Veronica offers, in the order the picker shows them.
- *
- * `family` groups the picker and says which token block in `ui/themes.css` a
- * theme belongs to; `swatch` is the three colours its preview tile paints -
- * page, card and accent - copied from that theme's block so one tile stands
- * for the whole palette. Adding a theme means a block in `ui/themes.css`, its id
- * in that block's family list, an entry here, and the matching notch rules in
- * `extension/stylesheet.css`.
- */
 export const APPEARANCES = [
   {
     id: "system",
@@ -106,7 +96,6 @@ export const APPEARANCES = [
 export type Appearance = (typeof APPEARANCES)[number]["id"];
 export type AppearanceFamily = (typeof APPEARANCES)[number]["family"];
 
-/** The picker's sections, in order. `system` leads and stands alone. */
 export const APPEARANCE_FAMILIES: { id: AppearanceFamily; label: string }[] = [
   { id: "system", label: "Automatic" },
   { id: "light", label: "Light" },
@@ -116,38 +105,29 @@ export const APPEARANCE_FAMILIES: { id: AppearanceFamily; label: string }[] = [
 const APPEARANCE_IDS = new Set<string>(APPEARANCES.map((theme) => theme.id));
 
 export function appearanceOf(value: unknown): Appearance {
-  return typeof value === "string" && APPEARANCE_IDS.has(value)
-    ? value as Appearance
-    : "system";
+  return typeof value === "string" && APPEARANCE_IDS.has(value) ? (value as Appearance) : "system";
 }
 
 export function applyAppearance(value: unknown) {
   const appearance = appearanceOf(value);
-  // `system` deliberately leaves the attribute off: the stylesheet's
-  // prefers-color-scheme block then answers, including before this runs.
-  if (appearance === "system") delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = appearance;
+  if (appearance === "system") {
+    delete document.documentElement.dataset.theme;
+  } else {
+    document.documentElement.dataset.theme = appearance;
+  }
 }
 
 export const LIMIT_PROVIDERS = ["Claude", "Codex"] as const;
 export type LimitProvider = (typeof LIMIT_PROVIDERS)[number];
 
 export function limitProviderOf(value: unknown): LimitProvider {
-  return typeof value === "string" && value.toLowerCase() === "codex"
-    ? "Codex"
-    : "Claude";
+  return typeof value === "string" && value.toLowerCase() === "codex" ? "Codex" : "Claude";
 }
 
 export function storedLimitProvider(provider: LimitProvider) {
   return provider.toLowerCase();
 }
 
-/**
- * Categories presenter mode can blur, matching `BlurCategory` in the core.
- *
- * The document attribute names are derived from the class names so the two
- * cannot drift: `blur-money` is switched by `data-blur-money`.
- */
 export const BLUR_CATEGORIES = [
   { id: "money", css: "blur-money", label: "Spend" },
   { id: "usage", css: "blur-usage", label: "Tokens and charts" },
@@ -158,24 +138,17 @@ export const BLUR_CATEGORIES = [
 
 export type BlurCategoryId = (typeof BLUR_CATEGORIES)[number]["id"];
 
-/** The settings key for one category, as Edith names it. */
 export function blurKey(id: BlurCategoryId): string {
   return `presenterBlur${id.charAt(0).toUpperCase()}${id.slice(1)}`;
 }
 
-/**
- * Apply the resolved presenter state to the document.
- *
- * `active` is the gate the core computed; `blurredClasses` are the categories
- * still switched on. Both are written as attributes so the stylesheet holds the
- * decisions rather than the components.
- */
 export function applyPresenter(active: boolean, blurredClasses: string[]) {
   const root = document.documentElement;
   root.dataset.presenter = active ? "true" : "false";
   for (const category of BLUR_CATEGORIES) {
     const blurred = active && blurredClasses.includes(category.css);
-    root.dataset[`blur${category.id.charAt(0).toUpperCase()}${category.id.slice(1)}`] =
-      blurred ? "true" : "false";
+    root.dataset[`blur${category.id.charAt(0).toUpperCase()}${category.id.slice(1)}`] = blurred
+      ? "true"
+      : "false";
   }
 }

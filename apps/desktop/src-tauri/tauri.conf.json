@@ -35,15 +35,8 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "deb",
-      "appimage"
-    ],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/icon.png"
-    ],
+    "targets": ["deb", "appimage"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.png"],
     "category": "Utility",
     "shortDescription": "Native control center for Ubuntu",
     "longDescription": "Veronica combines agent usage tracking, machine monitoring, media control and desktop utilities into one application.",
@@ -61,9 +54,7 @@
           "gstreamer1.0-plugins-good",
           "pipewire-bin"
         ],
-        "recommends": [
-          "bun"
-        ],
+        "recommends": ["bun"],
         "section": "utils",
         "desktopTemplate": "../../../packaging/linux/veronica.desktop",
         "files": {

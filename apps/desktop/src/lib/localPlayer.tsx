@@ -1,5 +1,14 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ipc } from "./ipc";
 import type { LocalTrack } from "./types";
@@ -36,7 +45,9 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
   const current = tracks[index];
 
   const loadLibrary = useCallback(() => {
-    if (libraryStatus === "loading" || libraryStatus === "ready") return;
+    if (libraryStatus === "loading" || libraryStatus === "ready") {
+      return;
+    }
     setLibraryStatus("loading");
     void ipc
       .musicLibrary()
@@ -50,31 +61,48 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
       });
   }, [libraryStatus]);
 
-  const play = useCallback((next: number) => {
-    const track = tracks[next];
-    if (!track) return;
-    const element = audio.current;
-    setIndex(next);
-    element.src = convertFileSrc(track.path);
-    void element.play().catch(() => setPlaying(false));
-  }, [tracks]);
+  const play = useCallback(
+    (next: number) => {
+      const track = tracks[next];
+      if (!track) {
+        return;
+      }
+      const element = audio.current;
+      setIndex(next);
+      element.src = convertFileSrc(track.path);
+      void element.play().catch(() => setPlaying(false));
+    },
+    [tracks],
+  );
 
   const toggle = useCallback(() => {
     const element = audio.current;
-    if (!element.src) return;
-    if (element.paused) void element.play().catch(() => setPlaying(false));
-    else element.pause();
+    if (!element.src) {
+      return;
+    }
+    if (element.paused) {
+      void element.play().catch(() => setPlaying(false));
+    } else {
+      element.pause();
+    }
   }, []);
 
-  const step = useCallback((by: number) => {
-    if (tracks.length === 0) return;
-    play(((index < 0 ? 0 : index) + by + tracks.length) % tracks.length);
-  }, [index, play, tracks.length]);
+  const step = useCallback(
+    (by: number) => {
+      if (tracks.length === 0) {
+        return;
+      }
+      play((Math.max(index, 0) + by + tracks.length) % tracks.length);
+    },
+    [index, play, tracks.length],
+  );
   const next = useCallback(() => step(1), [step]);
   const previous = useCallback(() => step(-1), [step]);
 
   const seek = useCallback((seconds: number) => {
-    if (Number.isFinite(seconds)) audio.current.currentTime = seconds;
+    if (Number.isFinite(seconds)) {
+      audio.current.currentTime = seconds;
+    }
   }, []);
   useEffect(() => {
     const element = audio.current;
@@ -99,7 +127,9 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
     return () => element.removeEventListener("ended", next);
   }, [next]);
   useEffect(() => {
-    if (!current || !("mediaSession" in navigator)) return;
+    if (!current || !("mediaSession" in navigator)) {
+      return;
+    }
     navigator.mediaSession.metadata = new MediaMetadata({
       title: current.title,
       artist: current.artist,
@@ -112,16 +142,46 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
     navigator.mediaSession.setActionHandler("previoustrack", previous);
   }, [current, next, previous, toggle]);
 
-  const value = useMemo<LocalPlayer>(() => ({
-    tracks, libraryStatus, index, current, playing, position, duration,
-    play, toggle, next, previous, seek, loadLibrary,
-  }), [tracks, libraryStatus, index, current, playing, position, duration, play, toggle, next, previous, seek, loadLibrary]);
+  const value = useMemo<LocalPlayer>(
+    () => ({
+      tracks,
+      libraryStatus,
+      index,
+      current,
+      playing,
+      position,
+      duration,
+      play,
+      toggle,
+      next,
+      previous,
+      seek,
+      loadLibrary,
+    }),
+    [
+      tracks,
+      libraryStatus,
+      index,
+      current,
+      playing,
+      position,
+      duration,
+      play,
+      toggle,
+      next,
+      previous,
+      seek,
+      loadLibrary,
+    ],
+  );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
 export function useLocalPlayer(): LocalPlayer {
   const player = useContext(Context);
-  if (!player) throw new Error("useLocalPlayer needs a LocalPlayerProvider above it");
+  if (!player) {
+    throw new Error("useLocalPlayer needs a LocalPlayerProvider above it");
+  }
   return player;
 }

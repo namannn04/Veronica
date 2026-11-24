@@ -1,49 +1,25 @@
-/** Typed wrappers over the Tauri command layer. */
-
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import {
-  listen as tauriListen,
   type EventCallback,
   type EventName,
+  listen as tauriListen,
   type UnlistenFn,
 } from "@tauri-apps/api/event";
 
-/**
- * Call a command, and fail in words a person can act on.
- *
- * A Rust command already rejects with its own message, written for the
- * screen, and that is passed straight through. What is not fit to show is
- * everything else: with no Tauri bridge on the page - a browser preview, or
- * the dev server opened directly - `invoke` is undefined and every page on
- * screen would otherwise print `TypeError: Cannot read properties of
- * undefined (reading 'invoke')` in its error banner.
- *
- * The rejection stays a string rather than becoming an `Error`, because that
- * is what Tauri itself rejects with and what the pages already render.
- */
 function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   return tauriInvoke<T>(command, args).catch((reason: unknown) => {
     throw describe(reason);
   });
 }
 
-/** Whether the page has a Tauri bridge at all. */
 export function isDesktopApp(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
-/**
- * Subscribe to a desktop event when the Tauri bridge exists.
- *
- * Browser previews deliberately render the same React application without a
- * native bridge. Returning a no-op unsubscriber keeps those previews useful
- * and prevents Tauri's event API from throwing before a page can render.
- */
-export function listenEvent<T>(
-  event: EventName,
-  handler: EventCallback<T>,
-): Promise<UnlistenFn> {
-  if (!isDesktopApp()) return Promise.resolve(() => {});
+export function listenEvent<T>(event: EventName, handler: EventCallback<T>): Promise<UnlistenFn> {
+  if (!isDesktopApp()) {
+    return Promise.resolve(() => {});
+  }
   return tauriListen<T>(event, handler);
 }
 
@@ -51,126 +27,153 @@ function describe(reason: unknown): string {
   if (!isDesktopApp()) {
     return "Veronica is open outside the desktop app, so nothing on this page can load. Launch Veronica from the Ubuntu app grid, or run `vr` for the same data on the command line.";
   }
-  if (typeof reason === "string") return reason;
-  if (reason instanceof Error) return reason.message;
+  if (typeof reason === "string") {
+    return reason;
+  }
+  if (reason instanceof Error) {
+    return reason.message;
+  }
   return String(reason);
 }
 
 import type {
   AgendaView,
   AlertsView,
-  BackupSummary,
-  ImportReport,
   AttentionFocusSession,
-  AttentionStatus,
   AttentionOverview,
   AttentionSettings,
-  CompanionItem,
-  CompanionRecordingStatus,
-  PresenterView,
-  ClipRow,
-  CopyFormatOption,
-  CopyResult,
-  PickResult,
-  SwatchRow,
-  GaugeReport,
-  DesktopNotification,
-  Machine,
-  MachineReport,
-  MachineDirectory,
-  ContainerInfo,
-  Dashboard,
-  Diagnostics,
-  MediaAction,
-  NowPlaying,
-  SystemSnapshot,
-  RunningProcess,
-  HerdrBoard,
-  ToolSurvey,
-  ToolInstallOutcome,
-  UsageView,
-  VolumeState,
+  AttentionStatus,
   AudioStream,
+  AuditReport,
+  BackupSummary,
   BluetoothState,
   CleanerCategory,
   CleanerItem,
-  AuditReport,
-  QuinjetBoard,
-  DatabaseConnection,
-  DatabaseObject,
-  DatabasePage,
-  DatabaseOperation,
-  PackageSource,
-  PackageUpdate,
-  PackageInstalled,
-  PackageUpdateResult,
-  RemovalPlan,
   CleanerScan,
   CleanReport,
+  ClipRow,
+  CompanionItem,
+  CompanionRecordingStatus,
+  ContainerInfo,
+  CopyFormatOption,
+  CopyResult,
+  Dashboard,
+  DatabaseConnection,
+  DatabaseObject,
+  DatabaseOperation,
+  DatabasePage,
+  DesktopNotification,
+  Diagnostics,
+  EmojiCopyResult,
   EmojiGroup,
   EmojiRow,
-  EmojiCopyResult,
-  LocalTrack,
+  GaugeReport,
+  HerdrBoard,
+  ImportReport,
   LaunchAtLoginStatus,
-  ShellExtensionStatus,
+  LocalTrack,
+  Machine,
+  MachineDirectory,
+  MachineReport,
+  MediaAction,
+  NowPlaying,
+  PackageInstalled,
+  PackageSource,
+  PackageUpdate,
+  PackageUpdateResult,
+  PickResult,
   PowerStatus,
+  PresenterView,
+  QuinjetBoard,
+  RemovalPlan,
+  RunningProcess,
+  ShellExtensionStatus,
+  SwatchRow,
+  SystemSnapshot,
+  ToolInstallOutcome,
+  ToolSurvey,
   UpdateInfo,
+  UsageView,
+  VolumeState,
 } from "./types";
 
 export const ipc = {
-  chatJournal:(text:string)=>invoke<import("./companionChat").ChatMessage>("chat_journal",{text}),
-  chatView:()=>invoke<import("./companionChat").ChatView>("chat_view"),
-  chatConfigure:(config:import("./companionChat").ModelConfig,memory:string)=>invoke<void>("chat_configure",{config,memory}),
-  chatEnable:(enabled:boolean)=>invoke<import("./companionChat").ChatView>("chat_enable",{enabled}),
-  chatSend:(text:string,key:string,includeHistory:boolean,includeMemory:boolean)=>invoke<import("./companionChat").ChatMessage>("chat_send",{text,key,includeHistory,includeMemory}),
-  chatPreview:(text:string,includeHistory:boolean,includeMemory:boolean)=>invoke<unknown>("chat_preview",{text,includeHistory,includeMemory}),
-  chatModels:(config:import("./companionChat").ModelConfig)=>invoke<string[]>("chat_models",{config}),
-  chatPull:(config:import("./companionChat").ModelConfig,confirmed:boolean)=>invoke<void>("chat_pull",{config,confirmed}),
-  chatClear:(memory:boolean)=>invoke<void>("chat_clear",{memory}),
-  chatExport:()=>invoke<string>("chat_export"),
-  agentHerdrAttach:(session:string,pane:string,confirmed:boolean)=>invoke<import("./agents").AgentView>("agent_herdr_attach",{session,pane,confirmed}),
-  agentTracking:(enabled:boolean,confirmed:boolean)=>invoke<void>("agent_tracking",{enabled,confirmed}),
-  agentProfiles:()=>invoke<import("./agents").AgentProfile[]>("agent_profiles"),
-  agentProfilesSave:(profiles:import("./agents").AgentProfile[])=>invoke<void>("agent_profiles_save",{profiles}),
-  agentList:()=>invoke<import("./agents").AgentView[]>("agent_list"),
-  agentExternal:()=>invoke<import("./agents").AgentView[]>("agent_external"),
-  agentStart:(profile:import("./agents").AgentProfile,cwd:string)=>invoke<import("./agents").AgentView>("agent_start",{profile,cwd}),
-  agentOutput:(id:string,cursor:number)=>invoke<import("./agents").TerminalOutput>("agent_output",{id,cursor}),
-  agentInput:(id:string,bytes:string)=>invoke<void>("agent_input",{id,bytes}),
-  agentResize:(id:string,cols:number,rows:number)=>invoke<void>("agent_resize",{id,cols,rows}),
-  agentStop:(id:string)=>invoke<void>("agent_stop",{id}),
-  graftDiscover: (connection: import("./workspace").GraftConnection) => invoke<import("./workspace").GraftDiscovery>("graft_discover", { connection }),
-  graftCall: (connection: import("./workspace").GraftConnection, name: string, argumentsValue: Record<string, unknown>, confirmed: boolean) => invoke<unknown>("graft_call", { connection, name, arguments: argumentsValue, confirmed }),
-  workspaceDoctor: (request: { root: string; ports: number[]; containers: string[] }) => invoke<import("./workspace").DoctorReport>("workspace_doctor", { request }),
+  chatJournal: (text: string) =>
+    invoke<import("./companionChat").ChatMessage>("chat_journal", { text }),
+  chatView: () => invoke<import("./companionChat").ChatView>("chat_view"),
+  chatConfigure: (config: import("./companionChat").ModelConfig, memory: string) =>
+    invoke<void>("chat_configure", { config, memory }),
+  chatEnable: (enabled: boolean) =>
+    invoke<import("./companionChat").ChatView>("chat_enable", { enabled }),
+  chatSend: (text: string, key: string, includeHistory: boolean, includeMemory: boolean) =>
+    invoke<import("./companionChat").ChatMessage>("chat_send", {
+      text,
+      key,
+      includeHistory,
+      includeMemory,
+    }),
+  chatPreview: (text: string, includeHistory: boolean, includeMemory: boolean) =>
+    invoke<unknown>("chat_preview", { text, includeHistory, includeMemory }),
+  chatModels: (config: import("./companionChat").ModelConfig) =>
+    invoke<string[]>("chat_models", { config }),
+  chatPull: (config: import("./companionChat").ModelConfig, confirmed: boolean) =>
+    invoke<void>("chat_pull", { config, confirmed }),
+  chatClear: (memory: boolean) => invoke<void>("chat_clear", { memory }),
+  chatExport: () => invoke<string>("chat_export"),
+  agentHerdrAttach: (session: string, pane: string, confirmed: boolean) =>
+    invoke<import("./agents").AgentView>("agent_herdr_attach", { session, pane, confirmed }),
+  agentTracking: (enabled: boolean, confirmed: boolean) =>
+    invoke<void>("agent_tracking", { enabled, confirmed }),
+  agentProfiles: () => invoke<import("./agents").AgentProfile[]>("agent_profiles"),
+  agentProfilesSave: (profiles: import("./agents").AgentProfile[]) =>
+    invoke<void>("agent_profiles_save", { profiles }),
+  agentList: () => invoke<import("./agents").AgentView[]>("agent_list"),
+  agentExternal: () => invoke<import("./agents").AgentView[]>("agent_external"),
+  agentStart: (profile: import("./agents").AgentProfile, cwd: string) =>
+    invoke<import("./agents").AgentView>("agent_start", { profile, cwd }),
+  agentOutput: (id: string, cursor: number) =>
+    invoke<import("./agents").TerminalOutput>("agent_output", { id, cursor }),
+  agentInput: (id: string, bytes: string) => invoke<void>("agent_input", { id, bytes }),
+  agentResize: (id: string, cols: number, rows: number) =>
+    invoke<void>("agent_resize", { id, cols, rows }),
+  agentStop: (id: string) => invoke<void>("agent_stop", { id }),
+  graftDiscover: (connection: import("./workspace").GraftConnection) =>
+    invoke<import("./workspace").GraftDiscovery>("graft_discover", { connection }),
+  graftCall: (
+    connection: import("./workspace").GraftConnection,
+    name: string,
+    argumentsValue: Record<string, unknown>,
+    confirmed: boolean,
+  ) => invoke<unknown>("graft_call", { connection, name, arguments: argumentsValue, confirmed }),
+  workspaceDoctor: (request: { root: string; ports: number[]; containers: string[] }) =>
+    invoke<import("./workspace").DoctorReport>("workspace_doctor", { request }),
   diagnostics: () => invoke<Diagnostics>("diagnostics"),
 
-  /** `days` of null means the whole history; empty `sources` means all. */
   usageView: (days: number | null, sources: string[]) =>
     invoke<UsageView>("usage_view", { days, sources }),
 
   usageLimits: () => invoke<GaugeReport>("usage_limits"),
 
-  /** Writes branded PNG cards to ~/Pictures and returns their paths. */
   usageExport: (cards: string[], days: number | null, sources: string[] = []) =>
     invoke<string[]>("usage_export", { cards, days, sources }),
   usageRefresh: () => invoke<string>("usage_refresh"),
 
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
-  settingsSet: (key: string, value: unknown) =>
-    invoke<void>("settings_set", { key, value }),
+  settingsSet: (key: string, value: unknown) => invoke<void>("settings_set", { key, value }),
   launchAtLoginStatus: () => invoke<LaunchAtLoginStatus>("launch_at_login_status"),
   launchAtLoginSet: (enabled: boolean) =>
     invoke<LaunchAtLoginStatus>("launch_at_login_set", { enabled }),
   shellExtensionStatus: () => invoke<ShellExtensionStatus>("shell_extension_status"),
   shellExtensionEnable: () => invoke<ShellExtensionStatus>("shell_extension_enable"),
-  backupExport: (path: string | null = null) =>
-    invoke<BackupSummary>("backup_export", { path }),
+  backupExport: (path: string | null = null) => invoke<BackupSummary>("backup_export", { path }),
   backupInspect: (path: string) => invoke<BackupSummary>("backup_inspect", { path }),
   backupImport: (path: string, confirm: boolean) =>
     invoke<ImportReport>("backup_import", { path, confirm }),
   companionList: (query = "") => invoke<CompanionItem[]>("companion_list", { query }),
-  companionNoteCreate: (title: string, body: string) => invoke<CompanionItem>("companion_note_create", { title, body }),
-  companionUpdate: (id: number, title: string, body: string, pinned: boolean) => invoke<CompanionItem>("companion_update", { id, title, body, pinned }),
+  companionNoteCreate: (title: string, body: string) =>
+    invoke<CompanionItem>("companion_note_create", { title, body }),
+  companionUpdate: (id: number, title: string, body: string, pinned: boolean) =>
+    invoke<CompanionItem>("companion_update", { id, title, body, pinned }),
   companionRemove: (id: number) => invoke<void>("companion_remove", { id }),
   companionRecordingStatus: () => invoke<CompanionRecordingStatus>("companion_recording_status"),
   companionRecordStart: () => invoke<void>("companion_record_start"),
@@ -184,7 +187,8 @@ export const ipc = {
   attentionHistory: () => invoke<AttentionFocusSession[]>("attention_history"),
   attentionOverview: (days: number) => invoke<AttentionOverview>("attention_overview", { days }),
   attentionSettings: () => invoke<AttentionSettings>("attention_settings"),
-  attentionSettingsSave: (settings: AttentionSettings) => invoke<void>("attention_settings_save", { settings }),
+  attentionSettingsSave: (settings: AttentionSettings) =>
+    invoke<void>("attention_settings_save", { settings }),
   shellAction: (action: "cleanKeys" | "pickColor" | "showClipboard") =>
     invoke<void>("shell_action", { action }),
 
@@ -193,20 +197,15 @@ export const ipc = {
   clipboardClear: () => invoke<void>("clipboard_clear"),
 
   presenterState: () => invoke<PresenterView>("presenter_state"),
-  /** One of enable, disable, start, stop, dismiss, resume. */
   presenterSet: (action: string) => invoke<void>("presenter_set", { action }),
 
   alertsView: () => invoke<AlertsView>("alerts_view"),
-  /** Posts one sample banner without consuming a real alert's edge. */
   alertsTest: () => invoke<string>("alerts_test"),
-  /** Forgets the remembered levels, so the next poll starts fresh. */
   alertsReset: () => invoke<void>("alerts_reset"),
 
   colorFormats: () => invoke<CopyFormatOption[]>("color_formats"),
   colorSwatches: () => invoke<SwatchRow[]>("color_swatches"),
-  /** Opens the compositor's eyedropper; resolves once a pixel is clicked. */
   colorPick: () => invoke<PickResult>("color_pick"),
-  /** `format` of null uses the configured one. */
   colorCopy: (id: number, format: string | null) =>
     invoke<CopyResult>("color_copy", { id, format }),
   colorForget: (id: number) => invoke<void>("color_forget", { id }),
@@ -222,21 +221,25 @@ export const ipc = {
     invoke<MachineDirectory>("machines_files", { id, path }),
   machinesFileDownload: (id: string, path: string) =>
     invoke<string>("machines_file_download", { id, path }),
-  machinesContainers: (id: string) =>
-    invoke<ContainerInfo[]>("machines_containers", { id }),
-  machinesContainerAction: (id: string, engine: string, container: string, action: "start" | "stop" | "restart") =>
-    invoke<void>("machines_container_action", { id, engine, container, action }),
+  machinesContainers: (id: string) => invoke<ContainerInfo[]>("machines_containers", { id }),
+  machinesContainerAction: (
+    id: string,
+    engine: string,
+    container: string,
+    action: "start" | "stop" | "restart",
+  ) => invoke<void>("machines_container_action", { id, engine, container, action }),
   machinesContainerLogs: (id: string, engine: string, container: string, lines = 200) =>
     invoke<string>("machines_container_logs", { id, engine, container, lines }),
-  /** Refused for this computer, and never escalated on the far end. */
   machinesPower: (id: string, action: "restart" | "shutdown") =>
     invoke<void>("machines_power", { id, action }),
   machinesWake: (id: string) => invoke<void>("machines_wake", { id }),
 
   portsSnapshot: () => invoke<import("./types").PortsSnapshot>("ports_snapshot"),
-  portsStop: (request: { pid: number; startedAt: string; inode: string }) => invoke<string>("ports_stop", { request }),
+  portsStop: (request: { pid: number; startedAt: string; inode: string }) =>
+    invoke<string>("ports_stop", { request }),
   dockerSnapshot: () => invoke<import("./types").DockerSnapshot>("docker_snapshot"),
-  dockerAction: (endpoint: string, id: string, action: "start" | "stop" | "restart") => invoke<void>("docker_action", { endpoint, id, action }),
+  dockerAction: (endpoint: string, id: string, action: "start" | "stop" | "restart") =>
+    invoke<void>("docker_action", { endpoint, id, action }),
   systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
   powerStatus: () => invoke<PowerStatus>("power_status"),
   updateCheck: () => invoke<UpdateInfo>("update_check"),
@@ -244,7 +247,6 @@ export const ipc = {
   appRestart: () => invoke<void>("app_restart"),
   systemProcesses: () => invoke<RunningProcess[]>("system_processes"),
   systemQuitProcess: (pid: number) => invoke<void>("system_quit_process", { pid }),
-  /** Fetches the pages being audited and nothing else; no result leaves this computer. */
   auditSite: (site: string, limit: number, concurrency: number) =>
     invoke<AuditReport>("audit_site", { site, limit, concurrency }),
 
@@ -252,7 +254,6 @@ export const ipc = {
   databaseTest: (connection: string) => invoke<unknown>("database_test", { connection }),
   databaseBrowse: (connection: string, path: string[]) =>
     invoke<DatabaseObject[]>("database_browse", { connection, path }),
-  /** Reads only; a statement that would write is refused by the adapter. */
   databaseQuery: (connection: string, statement: string, limit: number, offset: number) =>
     invoke<DatabasePage>("database_query", { connection, statement, limit, offset }),
   databaseRead: (connection: string, path: string[], limit: number, offset: number) =>
@@ -263,29 +264,22 @@ export const ipc = {
     invoke<DatabaseOperation[]>("database_operations", { limit }),
 
   packagesSources: () => invoke<PackageSource[]>("packages_sources"),
-  /** Discovery only; installs nothing. */
   packagesUpdates: () => invoke<PackageUpdate[]>("packages_updates"),
   packagesInventory: () => invoke<PackageInstalled[]>("packages_inventory"),
-  /** An empty `names` means every update from that source. */
   packagesUpdate: (source: string, names: string[]) =>
     invoke<PackageUpdateResult>("packages_update", { source, names }),
   packagesRemovalPlan: (packageName: string) =>
     invoke<RemovalPlan>("packages_removal_plan", { package: packageName }),
 
   cleanerCategories: () => invoke<CleanerCategory[]>("cleaner_categories"),
-  /** An empty list means every category. Reads only. */
   cleanerScan: (categories: string[]) => invoke<CleanerScan>("cleaner_scan", { categories }),
-  /** Moves exactly these items to the Trash — the ones the user was shown. */
   cleanerClean: (items: CleanerItem[]) => invoke<CleanReport>("cleaner_clean", { items }),
   toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
-  /** The click is consent; apt asks for authentication in the system dialog. */
-  toolsInstall: (tool: string) =>
-    invoke<ToolInstallOutcome>("tools_install", { tool }),
+  toolsInstall: (tool: string) => invoke<ToolInstallOutcome>("tools_install", { tool }),
   herdrBoard: () => invoke<HerdrBoard>("herdr_board"),
   herdrOpen: (session: string, paneId: string | null = null) =>
     invoke<void>("herdr_open", { session, paneId }),
   quinjetProjects: () => invoke<QuinjetBoard>("quinjet_projects"),
-  /** Opens Quinjet's review TUI in the installed terminal. */
   quinjetOpen: (worktree: string) => invoke<void>("quinjet_open", { worktree }),
   microphoneState: () => invoke<VolumeState>("microphone_state"),
   microphoneToggle: () => invoke<VolumeState>("microphone_toggle"),
@@ -296,30 +290,34 @@ export const ipc = {
   bluetoothState: () => invoke<BluetoothState>("bluetooth_state"),
 
   emojiGroups: () => invoke<EmojiGroup[]>("emoji_groups"),
-  /** `group` is a catalogue index; null searches every group. */
   emojiSearch: (query: string, group: number | null, limit: number) =>
     invoke<EmojiRow[]>("emoji_search", { query, group, limit }),
   emojiRecents: (limit: number) => invoke<EmojiRow[]>("emoji_recents", { limit }),
   emojiCopy: (character: string, insert: boolean) =>
     invoke<EmojiCopyResult>("emoji_copy", { character, insert }),
 
-  /** `withLinks` costs one D-Bus round trip per event; skip it for the notch. */
   calendarAgenda: (days: number, withLinks: boolean) =>
     invoke<AgendaView>("calendar_agenda", { days, withLinks }),
   calendarOpen: () => invoke<void>("calendar_open"),
 
   mediaNowPlaying: () => invoke<NowPlaying | null>("media_now_playing"),
-  mediaControl: (action: MediaAction) =>
-    invoke<void>("media_control", { action }),
+  mediaControl: (action: MediaAction) => invoke<void>("media_control", { action }),
   musicLibrary: () => invoke<LocalTrack[]>("music_library"),
 
   notificationsList: () => invoke<DesktopNotification[]>("notifications_list"),
-  notificationsDismiss: (id: number) =>
-    invoke<void>("notifications_dismiss", { id }),
+  notificationsDismiss: (id: number) => invoke<void>("notifications_dismiss", { id }),
   notificationsClear: () => invoke<void>("notifications_clear"),
 
   showMainWindow: () => invoke<void>("show_main_window"),
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
 
-export type { AgendaView, Dashboard, Diagnostics, NowPlaying, SystemSnapshot, UsageView, VolumeState };
+export type {
+  AgendaView,
+  Dashboard,
+  Diagnostics,
+  NowPlaying,
+  SystemSnapshot,
+  UsageView,
+  VolumeState,
+};
