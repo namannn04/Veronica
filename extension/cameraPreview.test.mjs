@@ -38,7 +38,7 @@ function preview({ brokenBuffer = false, upload = true, width = 320, height = 18
     } };
     let stops = 0;
     camera.stop = () => { stops++; camera._pipeline = null; };
-    return { camera, pipeline: cameraPipeline, errors, sizes, flips, flush: () => idles.forEach(fn => fn()),
+    return { camera, pipeline: cameraPipeline, errors, sizes, flips, flush: () => { for (const fn of idles) { fn(); } },
         frames: () => frames, redraws: () => redraws, stops: () => stops };
 }
 

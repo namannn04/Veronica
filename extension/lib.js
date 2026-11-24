@@ -86,7 +86,7 @@ export async function runJson(args, cancellable = null, { terminateOnCancel = fa
             console.debug(`veronica: vr ${args.join(' ')} failed: ${stderr?.trim() ?? ''}`);
             return null;
         }
-        if (!stdout || !stdout.trim()) {
+        if (!stdout?.trim()) {
             return null;
         }
         return JSON.parse(stdout);

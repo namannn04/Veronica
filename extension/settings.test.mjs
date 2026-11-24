@@ -26,7 +26,7 @@ function harness() {
     return { watcher, timers, directoryWatches: () => directoryWatches,
         set: value => { text = value; },
         replace() { changed(monitor, { get_basename: () => '.settings.tmp' }, { get_basename: () => 'settings.json' }); },
-        flush() { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach(fn => fn()); } };
+        flush() { const callbacks = [...timers.values()]; timers.clear(); for (const fn of callbacks) { fn(); } } };
 }
 
 test('unreadable and invalid snapshots do not release an active awake switch', () => {

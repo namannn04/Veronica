@@ -22,7 +22,7 @@ test('reduced motion applies immediately and destroy clears transitions',()=>{
 });
 
 test('theme measurement waits for stage attachment',()=>{
-    const h=setup(); let measured=0;
+    setup(); let measured=0;
     const label={width:-1,opacity:255,get_preferred_width(){measured++;return [40,40];},remove_all_transitions(){}};
     const signals={}; let attached=false;
     const button={_veronicaLabel:label,get_stage:()=>attached?{}:null,has_key_focus:()=>false,connect(n,fn){signals[n]=fn;}};

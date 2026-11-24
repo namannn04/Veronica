@@ -66,7 +66,7 @@ export class ClipboardWatcher {
                 return;
             }
             this._pending = false;
-            if (!text || !text.trim()) {
+            if (!text?.trim()) {
                 return;
             }
             if (text === this._lastText) {

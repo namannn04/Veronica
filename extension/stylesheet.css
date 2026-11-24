@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: flagged pairs style disjoint elements or theme overrides; reordering rules would risk changing the cascade */
 .veronica-section {
   padding: 6px 12px 10px 12px;
 }

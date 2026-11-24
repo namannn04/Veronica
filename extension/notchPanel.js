@@ -12,7 +12,7 @@ import { installCapsule } from './capsuleMotion.js';
 import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
 import { PowerInhibitors } from './inhibitors.js';
-import { brandIcon, launchApp, launchFileShelf, launchNotchTools, launchServices, runJson, vbox } from './lib.js';
+import { brandIcon, launchApp, launchFileShelf, launchServices, runJson, vbox } from './lib.js';
 import { NowPlayingCard } from './nowPlaying.js';
 import { presenterClick, presenterState } from './presenterGate.js';
 import { isTheme } from './themes.js';
@@ -587,7 +587,8 @@ export class NotchPanel {
     }
 
     async _fileAction(args) {
-        const request = this._filesRequest = (this._filesRequest ?? 0) + 1;
+        this._filesRequest = (this._filesRequest ?? 0) + 1;
+        const request = this._filesRequest;
         const reading = args[0] === 'list';
         const scope = reading ? this._readScope() : this._cancellable;
         const result = await runJson(['shelf', ...args], scope, { terminateOnCancel: reading });
