@@ -2,6 +2,7 @@ use std::fs::{self, File};
 use std::io::{self, Read};
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{bail, ensure, Context, Result};
 use chrono::{SecondsFormat, Utc};
@@ -11,9 +12,12 @@ use veronica_protocol::manifest::{Engines, Target};
 use veronica_protocol::{Manifest, PackageVersion};
 
 use crate::archive::{self, Limits, FILE_INDEX};
+use crate::connection::BackendError;
+use crate::host_api::HostServices;
 use crate::layout::Layout;
 use crate::lock::ExtensionsLock;
 use crate::registry::{InstalledExtension, Origin, Registry};
+use crate::supervisor::{verify_starts, CrashRecord};
 
 pub const HOST_API: u32 = 1;
 const TREE: &str = "tree";
@@ -72,11 +76,27 @@ impl HostIdentity {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Installer {
     layout: Layout,
     host: HostIdentity,
     limits: Limits,
+    health_check: Option<Arc<HostServices>>,
+}
+
+fn check_backend(services: &Arc<HostServices>, id: &str) -> Result<(), BackendError> {
+    std::thread::scope(|scope| {
+        scope
+            .spawn(|| {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|error| BackendError::Launch(error.to_string()))?
+                    .block_on(verify_starts(services, id))
+            })
+            .join()
+            .unwrap_or_else(|_| Err(BackendError::Launch("the health check panicked".into())))
+    })
 }
 
 fn read_manifest(root: &Path) -> Result<Manifest> {
@@ -132,7 +152,14 @@ impl Installer {
             layout,
             host,
             limits: Limits::default(),
+            health_check: None,
         }
+    }
+
+    #[must_use]
+    pub fn with_health_check(mut self, services: Arc<HostServices>) -> Self {
+        self.health_check = Some(services);
+        self
     }
 
     #[must_use]
@@ -252,6 +279,14 @@ impl Installer {
             placement.undo();
             return Err(error);
         }
+        if let (Some(services), Some(_)) = (&self.health_check, &manifest.backend) {
+            if let Err(error) = check_backend(services, id) {
+                self.reject(&mut registry, id, &entry, before)?;
+                placement.undo();
+                bail!("{id} {version} failed its health check and was rolled back: {error}");
+            }
+        }
+        CrashRecord::clear(&self.layout, id)?;
         if let Some(displaced) = placement.displaced {
             let _ = fs::remove_dir_all(displaced);
         }
@@ -339,6 +374,23 @@ impl Installer {
             }
         }
         Ok(())
+    }
+
+    fn reject(
+        &self,
+        registry: &mut Registry,
+        id: &str,
+        entry: &InstalledExtension,
+        before: Option<InstalledExtension>,
+    ) -> Result<()> {
+        let Some(mut restored) = before else {
+            registry.extensions.remove(id);
+            registry.save(&self.layout.installed_file())?;
+            self.point(id, CURRENT, None)?;
+            return self.point(id, PREVIOUS, None);
+        };
+        restored.quarantined.insert(entry.version);
+        self.switch(registry, id, restored, Some(entry))
     }
 
     pub fn rollback(&self, id: &str) -> Result<InstalledExtension> {
