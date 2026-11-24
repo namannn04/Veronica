@@ -25,6 +25,14 @@ deps_check() {
   cargo machete
 }
 
+extensions_check() {
+  if [ -d extensions ]; then
+    cargo run -q --locked -p veronica-pack -- validate
+  else
+    echo "no extensions directory, skipping manifest validation"
+  fi
+}
+
 web() {
   bunx --bun @biomejs/biome@2.6.6 ci --error-on-warnings .
   (cd apps/desktop && bunx tsc --noEmit)
@@ -49,7 +57,7 @@ workflows_check() {
   uvx --quiet zizmor@1.18.0 --persona=pedantic --min-severity=low .github/workflows
 }
 
-all_checks=(em_dash comments typos_check rust deps_check web python_check shell_check yaml_check markdown_check workflows_check)
+all_checks=(em_dash comments typos_check rust deps_check extensions_check web python_check shell_check yaml_check markdown_check workflows_check)
 
 if [ "$#" -eq 0 ]; then
   set -- "${all_checks[@]}"

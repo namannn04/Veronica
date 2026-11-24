@@ -56,8 +56,8 @@ jobs:
           tool: cargo-deny,cargo-machete
       - name: Build the interface the desktop crate embeds
         run: mkdir -p apps/desktop/dist
-      - name: Check formatting, lints and dependencies
-        run: scripts/check.sh rust deps_check
+      - name: Check formatting, lints, dependencies and extension manifests
+        run: scripts/check.sh rust deps_check extensions_check
 
   rust-test:
     name: Rust tests
