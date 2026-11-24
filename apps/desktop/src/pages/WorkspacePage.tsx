@@ -216,11 +216,11 @@ export function WorkspacePage() {
                   }
                 />
                 <List inset={false} label="Checks" className="ws-checks">
-                  {report.checks.map((check, index) => {
+                  {report.checks.map((check) => {
                     const pass = check.status === "pass";
                     return (
                       <ListRow
-                        key={index}
+                        key={check.name}
                         className={pass ? "ws-check-pass" : "ws-check-warn"}
                         leading={
                           pass ? (

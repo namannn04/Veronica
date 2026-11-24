@@ -410,6 +410,7 @@ export function CompanionPage() {
                   spellCheck
                 />
                 {selected.kind === "voice" && audio && (
+                  // biome-ignore lint/a11y/useMediaCaption: user-recorded voice notes have no caption track to provide
                   <audio className="comp-audio" src={audio} controls preload="metadata" />
                 )}
                 <TextArea
