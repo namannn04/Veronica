@@ -1,0 +1,66 @@
+.agent-terminal-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-card);
+  background: var(--bg-inset);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.agent-terminal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--card-padding);
+  border-bottom: 1px solid var(--separator);
+  background: var(--bg-card);
+}
+
+.agent-terminal-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-semibold);
+}
+
+.agent-terminal-status {
+  color: var(--text-3);
+  font-size: var(--text-caption);
+}
+
+.agent-terminal-notice {
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.agent-terminal {
+  height: 380px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.agent-terminal .xterm {
+  height: 100%;
+}
+
+.agent-terminal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--card-padding);
+  border-top: 1px solid var(--separator);
+  background: var(--bg-card);
+  color: var(--text-3);
+  font-size: var(--text-caption);
+}
+
+.agent-terminal-foot > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}

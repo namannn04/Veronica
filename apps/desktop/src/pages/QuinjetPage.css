@@ -1,0 +1,43 @@
+.quinjet-chevron {
+  color: var(--text-3);
+}
+
+.quinjet-chevron[data-open] {
+  transform: rotate(90deg);
+}
+
+.quinjet-project .ui-list-row-title {
+  font-weight: var(--weight-semibold);
+}
+
+.quinjet-worktree .ui-list-row-main {
+  padding-left: calc(var(--card-padding) + 28px);
+}
+
+.quinjet-worktree .ui-list-row-leading {
+  color: var(--text-3);
+}
+
+.quinjet-worktree + .quinjet-worktree::before {
+  left: calc(var(--card-padding) + 28px);
+}
+
+.quinjet-worktree .ui-list-row-title {
+  font-size: var(--text-callout);
+}
+
+.quinjet-empty {
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+}
+
+@container main (max-width: 720px) {
+  .quinjet-worktree .ui-list-row-main {
+    padding-left: calc(var(--card-padding) + 12px);
+  }
+
+  .quinjet-worktree + .quinjet-worktree::before {
+    left: calc(var(--card-padding) + 12px);
+  }
+}

@@ -1,0 +1,139 @@
+.ws-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: var(--card-gap);
+  height: 100%;
+  min-height: 0;
+}
+
+.ws-pane {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ws-pane-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+
+.ws-pane-stack > * {
+  flex: none;
+}
+
+.ws-pane-result {
+  display: flex;
+  flex-direction: column;
+}
+
+.ws-pane-pad {
+  padding: var(--card-padding);
+}
+
+.ws-pane-empty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 240px;
+}
+
+.ws-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ws-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--control-gap);
+}
+
+.ws-footnote,
+.ws-text {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
+.ws-text {
+  color: var(--text-2);
+  font-size: var(--text-callout);
+}
+
+.ws-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+}
+
+.ws-checks .ui-list-row-subtitle {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.ws-check-pass .ui-list-row-leading {
+  color: var(--tone-good-text);
+}
+
+.ws-check-warn .ui-list-row-leading {
+  color: var(--tone-warning-text);
+}
+
+.ws-disclosure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ws-disclosure > .ws-code {
+  align-self: stretch;
+}
+
+.ws-code {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-m);
+  background: var(--bg-inset);
+  color: var(--text-1);
+  font-size: var(--text-callout);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ws-code-placeholder {
+  color: var(--text-3);
+}
+
+.ui-notice .ws-code {
+  margin-top: var(--space-2);
+  background: var(--bg-card);
+}
+
+@container main (max-width: 720px) {
+  .ws-page.ui-page-fill {
+    height: auto;
+  }
+
+  .ws-panes {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .ws-pane {
+    overflow: visible;
+  }
+}
+
+.ws-pane-result > .ui-list {
+  margin: 0;
+}
