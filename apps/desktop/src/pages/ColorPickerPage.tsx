@@ -274,7 +274,7 @@ export function ColorPickerPage() {
         </Section>
       )}
 
-      {loaded && (
+      {loaded && formats.length > 0 && (
         <FormGroup title="Picking">
           <FormRow
             label="Copy format"

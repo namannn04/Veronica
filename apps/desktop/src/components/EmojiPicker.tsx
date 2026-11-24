@@ -198,19 +198,21 @@ export function EmojiPicker() {
             </div>
           </section>
         )}
-        <section aria-label={heading}>
-          <h2 className="emoji-picker-label">{heading}</h2>
-          {emoji === null ? null : emoji.length > 0 ? (
-            <div className="emoji-picker-grid">
-              {emoji.map((row, offset) => {
-                const index = visibleRecents.length + offset;
-                return <PickerCell key={row.character} row={row} index={index} active={index === active} disabled={busy} onPick={pick} onFocus={setActive} />;
-              })}
-            </div>
-          ) : (
-            <p className="emoji-picker-empty">{query.trim() ? `No emoji match “${query.trim()}”` : "No emoji loaded"}</p>
-          )}
-        </section>
+        {emoji !== null && (
+          <section aria-label={heading}>
+            <h2 className="emoji-picker-label">{heading}</h2>
+            {emoji.length > 0 ? (
+              <div className="emoji-picker-grid">
+                {emoji.map((row, offset) => {
+                  const index = visibleRecents.length + offset;
+                  return <PickerCell key={row.character} row={row} index={index} active={index === active} disabled={busy} onPick={pick} onFocus={setActive} />;
+                })}
+              </div>
+            ) : (
+              <p className="emoji-picker-empty">{query.trim() ? `No emoji match “${query.trim()}”` : "No emoji loaded"}</p>
+            )}
+          </section>
+        )}
       </div>
 
       <footer className="emoji-picker-foot">

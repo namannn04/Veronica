@@ -183,9 +183,9 @@ export function EmojiPage() {
         </Section>
       )}
 
-      <Section title={resultsTitle} description={resultsNote}>
-        {emoji === null ? (
-          error ? null : (
+      {!(emoji === null && error) && (
+        <Section title={resultsTitle} description={resultsNote}>
+          {emoji === null ? (
             <Card padding="compact" aria-label="Loading emoji">
               <div className="emoji-grid">
                 {Array.from({ length: 48 }, (_, index) => (
@@ -193,23 +193,22 @@ export function EmojiPage() {
                 ))}
               </div>
             </Card>
-          )
-        ) : emoji.length === 0 ? (
-          <Card>
-            {searching ? (
-              <EmptyState
-                size="compact"
-                icon={<SearchX />}
-                title={`Nothing matches “${query.trim()}”`}
-                action={<Button onClick={() => setQuery("")}>Clear search</Button>}
-              >
-                Try a shorter word, or one of the keywords an emoji is known by.
-              </EmptyState>
-            ) : (
-              <EmptyState size="compact" icon={<Smile />} title="No emoji loaded">
-                The catalogue ships with Veronica and is read at launch. Run vr emoji search smile to see what it reports.
-              </EmptyState>
-            )}
+          ) : emoji.length === 0 ? (
+            <Card>
+              {searching ? (
+                <EmptyState
+                  size="compact"
+                  icon={<SearchX />}
+                  title={`Nothing matches “${query.trim()}”`}
+                  action={<Button onClick={() => setQuery("")}>Clear search</Button>}
+                >
+                  Try a shorter word, or one of the keywords an emoji is known by.
+                </EmptyState>
+              ) : (
+                <EmptyState size="compact" icon={<Smile />} title="No emoji loaded">
+                  The catalogue ships with Veronica and is read at launch. Run vr emoji search smile to see what it reports.
+                </EmptyState>
+      )}
           </Card>
         ) : (
           <Card padding="compact">
@@ -217,6 +216,7 @@ export function EmojiPage() {
           </Card>
         )}
       </Section>
+      )}
 
       <p className="ui-visually-hidden" role="status">
         {copied ? `Copied ${copied}` : ""}

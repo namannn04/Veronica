@@ -108,7 +108,7 @@ export function ClipboardPage() {
     >
       <Toolbar
         leading={<SearchField ref={search} className="clip-search" value={query} onChange={setQuery} placeholder="Search the history" />}
-        trailing={loaded && <span className="clip-count ui-num">{query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}</span>}
+        trailing={loaded && !error && <span className="clip-count ui-num">{query ? `${rows.length} ${rows.length === 1 ? "match" : "matches"}` : count}</span>}
       />
 
       {error && (
