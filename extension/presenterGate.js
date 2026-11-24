@@ -13,7 +13,8 @@ function flag(values, key, fallback) {
 export function presenterState(values) {
     const enabled = flag(values, 'presenterEnabled', false);
     const manual = enabled && flag(values, 'presenterMode', false);
-    const autoEffective = enabled &&
+    const autoEffective =
+        enabled &&
         flag(values, 'presenterAutoActive', false) &&
         flag(values, 'presenterAutoEnabled', true) &&
         !flag(values, 'presenterAutoPaused', false);

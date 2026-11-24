@@ -36,9 +36,17 @@ test('a switched-off session with a stale deadline is neither active nor expired
 
 test('the next deadline is the soonest running one', () => {
     assert.equal(nextDeadline({}, NOW), null);
-    assert.equal(nextDeadline({
-        preventSleep: true, preventSleepUntil: NOW + 500,
-        lidAwakeEnabled: true, lidAwakeUntil: NOW + 100,
-    }, NOW), NOW + 100);
+    assert.equal(
+        nextDeadline(
+            {
+                preventSleep: true,
+                preventSleepUntil: NOW + 500,
+                lidAwakeEnabled: true,
+                lidAwakeUntil: NOW + 100,
+            },
+            NOW
+        ),
+        NOW + 100
+    );
     assert.equal(nextDeadline({ preventSleep: true, preventSleepUntil: NOW - 1 }, NOW), null);
 });

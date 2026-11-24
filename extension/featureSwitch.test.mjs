@@ -15,7 +15,8 @@ test('only real booleans override an extension default', () => {
 test('a featured extension starts on a missing first-launch setting', () => {
     const calls = [];
     const feature = new FeatureSwitch(
-        'notchShelfEnabled', true,
+        'notchShelfEnabled',
+        true,
         () => calls.push('start'),
         () => calls.push('stop')
     );
@@ -28,7 +29,8 @@ test('a featured extension starts on a missing first-launch setting', () => {
 test('settings changes stop and restore a feature without a restart', () => {
     const calls = [];
     const feature = new FeatureSwitch(
-        'clipboardEnabled', true,
+        'clipboardEnabled',
+        true,
         () => calls.push('start'),
         () => calls.push('stop')
     );
@@ -45,7 +47,8 @@ test('settings changes stop and restore a feature without a restart', () => {
 test('an unfeatured extension stays stopped until explicitly enabled', () => {
     const calls = [];
     const feature = new FeatureSwitch(
-        'colorPickerEnabled', false,
+        'colorPickerEnabled',
+        false,
         () => calls.push('start'),
         () => calls.push('stop')
     );

@@ -1,18 +1,7 @@
 import St from 'gi://St';
 
 import { entryText, recentEntries } from './clipboard.js';
-import {
-    band,
-    countdown,
-    emptyLabel,
-    heading,
-    meterRow,
-    money,
-    runJson,
-    textRow,
-    tokens,
-    vbox,
-} from './lib.js';
+import { band, countdown, emptyLabel, heading, meterRow, money, runJson, textRow, tokens, vbox } from './lib.js';
 
 export class Section {
     constructor(title) {
@@ -76,15 +65,15 @@ export async function refreshUsageSection(section, cancellable) {
     }
 
     for (const gauge of data.gauges.slice(0, 4)) {
-        const resets = Number.isFinite(gauge.resetsInSecs)
-            ? ` · ${countdown(gauge.resetsInSecs)}`
-            : '';
-        section.add(meterRow(
-            `${gauge.provider} ${gauge.window}`,
-            (gauge.percent ?? 0) / 100,
-            `${Math.round(gauge.percent ?? 0)}%${resets}`,
-            band(gauge.percent ?? 0)
-        ));
+        const resets = Number.isFinite(gauge.resetsInSecs) ? ` · ${countdown(gauge.resetsInSecs)}` : '';
+        section.add(
+            meterRow(
+                `${gauge.provider} ${gauge.window}`,
+                (gauge.percent ?? 0) / 100,
+                `${Math.round(gauge.percent ?? 0)}%${resets}`,
+                band(gauge.percent ?? 0)
+            )
+        );
     }
 
     const totals = data.summary.totals ?? {};
@@ -96,12 +85,7 @@ export async function refreshUsageSection(section, cancellable) {
         const highest = Math.max(...data.sources.map(s => s.cost ?? 0), 0);
         for (const source of data.sources.slice(0, 4)) {
             const cost = source.cost ?? 0;
-            section.add(meterRow(
-                source.label || source.name,
-                highest > 0 ? cost / highest : 0,
-                money(cost),
-                null
-            ));
+            section.add(meterRow(source.label || source.name, highest > 0 ? cost / highest : 0, money(cost), null));
         }
     }
 }
@@ -161,8 +145,7 @@ export async function refreshMachineSection(section, cancellable) {
 
     const sessionInfo = diagnose.session ?? {};
     const states = diagnose.capabilities?.states ?? {};
-    const available = Object.values(states)
-        .filter(state => state.state === 'available').length;
+    const available = Object.values(states).filter(state => state.state === 'available').length;
     const total = Object.keys(states).length;
 
     section.add(textRow('Session', `${sessionInfo.kind ?? 'unknown'} · ${sessionInfo.desktop ?? ''}`.trim(), true));
@@ -194,6 +177,6 @@ export async function refreshMachineLine(getLabel, cancellable) {
     const enabled = extensions.filter(e => e.enabled).length;
     const session = diagnose.session ?? {};
     label.text =
-        `${session.kind ?? 'unknown'} · ${session.desktop ?? ''} · `
-        + `${available}/${total} capabilities · ${enabled}/${extensions.length} extensions`;
+        `${session.kind ?? 'unknown'} · ${session.desktop ?? ''} · ` +
+        `${available}/${total} capabilities · ${enabled}/${extensions.length} extensions`;
 }

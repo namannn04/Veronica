@@ -58,13 +58,7 @@ const NAMED_KEYS = new Map([
 ]);
 
 const MODIFIER_KEYVALS = new Set([
-    0xffe1, 0xffe2,
-    0xffe3, 0xffe4,
-    0xffe9, 0xffea,
-    0xffeb, 0xffec,
-    0xffe7, 0xffe8,
-    0xfe03,
-    0xffe5,
+    0xffe1, 0xffe2, 0xffe3, 0xffe4, 0xffe9, 0xffea, 0xffeb, 0xffec, 0xffe7, 0xffe8, 0xfe03, 0xffe5,
 ]);
 
 function functionKeyLabel(keyval) {
@@ -79,7 +73,11 @@ function keypadLabel(keyval) {
         return String(keyval - 0xffb0);
     }
     const operators = new Map([
-        [0xffaa, '*'], [0xffab, '+'], [0xffad, '-'], [0xffae, '.'], [0xffaf, '/'],
+        [0xffaa, '*'],
+        [0xffab, '+'],
+        [0xffad, '-'],
+        [0xffae, '.'],
+        [0xffaf, '/'],
     ]);
     return operators.get(keyval) ?? null;
 }

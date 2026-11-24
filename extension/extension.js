@@ -33,7 +33,8 @@ export default class VeronicaExtension extends Extension {
         this._keyboardCleaner = new KeyboardCleaner();
         this._panelReplacement = new PanelReplacement();
         this._clipboardSwitch = new FeatureSwitch(
-            'clipboardEnabled', true,
+            'clipboardEnabled',
+            true,
             () => {
                 if (this._clipboard?.enable()) {
                     console.debug('veronica: watching the clipboard');
@@ -42,10 +43,15 @@ export default class VeronicaExtension extends Extension {
             () => this._clipboard?.disable()
         );
         this._notchSwitch = new FeatureSwitch(
-            'notchShelfEnabled', true,
-            () => this._panelReplacement?.enable(
-                this._clipboard, this._cancellable, this._settings, this._keyboardCleaner
-            ),
+            'notchShelfEnabled',
+            true,
+            () =>
+                this._panelReplacement?.enable(
+                    this._clipboard,
+                    this._cancellable,
+                    this._settings,
+                    this._keyboardCleaner
+                ),
             () => this._panelReplacement?.disable()
         );
         this._standaloneStats = new StandaloneStats(this._settings);
@@ -54,8 +60,7 @@ export default class VeronicaExtension extends Extension {
             this._notchSwitch?.update(values);
             if (booleanSetting(values, 'notchShelfEnabled', true)) {
                 this._standaloneStats?.hide();
-            }
-            else {
+            } else {
                 this._standaloneStats?.show();
             }
         });

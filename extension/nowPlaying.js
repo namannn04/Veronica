@@ -94,9 +94,8 @@ export class NowPlayingCard {
         this._lastArtist = playing.artist || playing.identity || '';
         this._title.text = this._private ? 'Private' : this._lastTitle;
         this._artist.text = this._private ? 'Presenter mode' : this._lastArtist;
-        this._playPauseIcon.icon_name = playing.status === 'playing'
-            ? 'media-playback-pause-symbolic'
-            : 'media-playback-start-symbolic';
+        this._playPauseIcon.icon_name =
+            playing.status === 'playing' ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic';
         this._setEnabled(this._next, playing.canGoNext !== false);
         this._setEnabled(this._previous, playing.canGoPrevious !== false);
         this._setVisible(true);
@@ -121,9 +120,7 @@ export class NowPlayingCard {
         this._title.text = privateMode ? 'Private' : this._lastTitle;
         this._artist.text = privateMode ? 'Presenter mode' : this._lastArtist;
         this.actor.set_style_class_name(
-            privateMode
-                ? 'veronica-card veronica-now-playing presenter-private'
-                : 'veronica-card veronica-now-playing'
+            privateMode ? 'veronica-card veronica-now-playing presenter-private' : 'veronica-card veronica-now-playing'
         );
     }
 

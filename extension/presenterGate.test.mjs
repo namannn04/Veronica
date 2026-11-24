@@ -25,34 +25,39 @@ test('a detected share blurs on its own, until dismissed or detection is off', (
 
 test('a revealed category stays visible', () => {
     const state = presenterState({
-        presenterEnabled: true, presenterMode: true,
+        presenterEnabled: true,
+        presenterMode: true,
         presenterBlurMusic: false,
-        presenterBlurMoney: false, presenterBlurUsage: false, presenterBlurAgents: false,
+        presenterBlurMoney: false,
+        presenterBlurUsage: false,
+        presenterBlurAgents: false,
     });
     assert.equal(state.active, true);
     assert.equal(state.musicPrivate, false);
     assert.equal(state.usagePrivate, false);
     const onlyRings = presenterState({
-        presenterEnabled: true, presenterMode: true,
-        presenterBlurMoney: false, presenterBlurUsage: false,
+        presenterEnabled: true,
+        presenterMode: true,
+        presenterBlurMoney: false,
+        presenterBlurUsage: false,
     });
     assert.equal(onlyRings.usagePrivate, true, 'rate limits still blur');
 });
 
 test('a click undoes whatever is holding presenter mode on', () => {
     assert.deepEqual(presenterClick(presenterState({ presenterEnabled: true })), ['start']);
+    assert.deepEqual(presenterClick(presenterState({ presenterEnabled: true, presenterMode: true })), ['stop']);
+    assert.deepEqual(presenterClick(presenterState({ presenterEnabled: true, presenterAutoActive: true })), [
+        'dismiss',
+    ]);
     assert.deepEqual(
-        presenterClick(presenterState({ presenterEnabled: true, presenterMode: true })),
-        ['stop']
-    );
-    assert.deepEqual(
-        presenterClick(presenterState({ presenterEnabled: true, presenterAutoActive: true })),
-        ['dismiss']
-    );
-    assert.deepEqual(
-        presenterClick(presenterState({
-            presenterEnabled: true, presenterMode: true, presenterAutoActive: true,
-        })),
+        presenterClick(
+            presenterState({
+                presenterEnabled: true,
+                presenterMode: true,
+                presenterAutoActive: true,
+            })
+        ),
         ['stop', 'dismiss']
     );
 });

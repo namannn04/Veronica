@@ -99,13 +99,16 @@ export class SettingsWatcher {
             if (ok) {
                 text = decoder.decode(bytes);
             }
-        } catch {
-        }
+        } catch {}
         if (text === null) {
             return;
         }
         let parsed;
-        try { parsed = JSON.parse(text); } catch { return; }
+        try {
+            parsed = JSON.parse(text);
+        } catch {
+            return;
+        }
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
             return;
         }

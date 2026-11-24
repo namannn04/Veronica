@@ -20,10 +20,7 @@ const CLI_FALLBACKS = [
     '/usr/bin/vr',
     '/usr/local/bin/vr',
     `${GLib.get_home_dir()}/.local/bin/vr`,
-    GLib.build_filenamev([
-        GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]),
-        'vr',
-    ]),
+    GLib.build_filenamev([GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]), 'vr']),
 ];
 
 export function brandIcon() {
@@ -63,23 +60,40 @@ export function resetCliCache() {
 }
 
 export async function runJson(args, cancellable = null, { terminateOnCancel = false } = {}) {
-    if (cancellable?.is_cancelled()) { return null; }
+    if (cancellable?.is_cancelled()) {
+        return null;
+    }
     const cli = findCli();
     if (!cli) {
         return null;
     }
 
-    let proc = null, cancelledId = 0, deadlineId = 0;
+    let proc = null,
+        cancelledId = 0,
+        deadlineId = 0;
     try {
         proc = Gio.Subprocess.new(
             [cli, ...args, '--json'],
             Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
         );
         if (terminateOnCancel) {
-            const stop = () => { try { proc.force_exit(); } catch {} };
-            if (cancellable?.is_cancelled()) { stop(); return null; }
-            if (cancellable) { cancelledId = cancellable.connect(stop); }
-            deadlineId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => { deadlineId = 0; stop(); return GLib.SOURCE_REMOVE; });
+            const stop = () => {
+                try {
+                    proc.force_exit();
+                } catch {}
+            };
+            if (cancellable?.is_cancelled()) {
+                stop();
+                return null;
+            }
+            if (cancellable) {
+                cancelledId = cancellable.connect(stop);
+            }
+            deadlineId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => {
+                deadlineId = 0;
+                stop();
+                return GLib.SOURCE_REMOVE;
+            });
         }
         const [stdout, stderr] = await proc.communicate_utf8_async(null, cancellable);
         if (!proc.get_successful()) {
@@ -97,14 +111,17 @@ export async function runJson(args, cancellable = null, { terminateOnCancel = fa
         console.debug(`veronica: cannot run vr ${args.join(' ')}: ${error}`);
         return null;
     } finally {
-        if (cancelledId) { cancellable.disconnect(cancelledId); }
-        if (deadlineId) { GLib.Source.remove(deadlineId); }
+        if (cancelledId) {
+            cancellable.disconnect(cancelledId);
+        }
+        if (deadlineId) {
+            GLib.Source.remove(deadlineId);
+        }
     }
 }
 
 export function launchApp() {
-    const app = DesktopAppInfo.new('Veronica.desktop') ??
-        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    const app = DesktopAppInfo.new('Veronica.desktop') ?? DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
     if (app) {
         app.launch([], null);
         return;
@@ -117,8 +134,7 @@ export function launchApp() {
 }
 
 export function launchFileShelf() {
-    const app = DesktopAppInfo.new('Veronica.desktop') ??
-        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    const app = DesktopAppInfo.new('Veronica.desktop') ?? DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
     if (app?.list_actions().includes('FileShelf')) {
         app.launch_action('FileShelf', null);
         return;
@@ -131,8 +147,7 @@ export function launchFileShelf() {
 }
 
 export function launchNotchTools() {
-    const app = DesktopAppInfo.new('Veronica.desktop') ??
-        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    const app = DesktopAppInfo.new('Veronica.desktop') ?? DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
     if (app?.list_actions().includes('NotchTools')) {
         app.launch_action('NotchTools', null);
         return;
@@ -152,7 +167,7 @@ export function tokens(value) {
         [1e6, 'M'],
         [1e3, 'K'],
     ];
-    const decimals = scaled => scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
+    const decimals = scaled => (scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2);
     const round = (scaled, places) => Math.round(scaled * 10 ** places) / 10 ** places;
     for (let index = 0; index < units.length; index++) {
         const [scale, suffix] = units[index];
@@ -186,9 +201,9 @@ export function band(value) {
 const BOX_HAS_ORIENTATION = 'orientation' in St.BoxLayout.prototype;
 
 export function vbox(params = {}) {
-    return new St.BoxLayout(BOX_HAS_ORIENTATION
-        ? { ...params, orientation: Clutter.Orientation.VERTICAL }
-        : { ...params, vertical: true });
+    return new St.BoxLayout(
+        BOX_HAS_ORIENTATION ? { ...params, orientation: Clutter.Orientation.VERTICAL } : { ...params, vertical: true }
+    );
 }
 
 export function heading(text) {
@@ -202,11 +217,13 @@ export function meterRow(labelText, fraction, valueText, statusBand) {
         y_align: Clutter.ActorAlign.CENTER,
     });
 
-    row.add_child(new St.Label({
-        text: labelText,
-        style_class: 'veronica-row-label',
-        y_align: Clutter.ActorAlign.CENTER,
-    }));
+    row.add_child(
+        new St.Label({
+            text: labelText,
+            style_class: 'veronica-row-label',
+            y_align: Clutter.ActorAlign.CENTER,
+        })
+    );
 
     const trackWidth = 110;
     const track = new St.Widget({
@@ -224,29 +241,35 @@ export function meterRow(labelText, fraction, valueText, statusBand) {
     track.add_child(fill);
     row.add_child(track);
 
-    row.add_child(new St.Label({
-        text: valueText,
-        style_class: 'veronica-row-value',
-        x_expand: true,
-        x_align: Clutter.ActorAlign.END,
-        y_align: Clutter.ActorAlign.CENTER,
-    }));
+    row.add_child(
+        new St.Label({
+            text: valueText,
+            style_class: 'veronica-row-value',
+            x_expand: true,
+            x_align: Clutter.ActorAlign.END,
+            y_align: Clutter.ActorAlign.CENTER,
+        })
+    );
 
     return row;
 }
 
 export function textRow(labelText, valueText, dim = false) {
     const row = new St.BoxLayout({ style_class: 'veronica-row', x_expand: true });
-    row.add_child(new St.Label({
-        text: labelText,
-        style_class: `veronica-row-label${dim ? ' veronica-dim' : ''}`,
-    }));
-    row.add_child(new St.Label({
-        text: valueText,
-        style_class: 'veronica-row-value',
-        x_expand: true,
-        x_align: Clutter.ActorAlign.END,
-    }));
+    row.add_child(
+        new St.Label({
+            text: labelText,
+            style_class: `veronica-row-label${dim ? ' veronica-dim' : ''}`,
+        })
+    );
+    row.add_child(
+        new St.Label({
+            text: valueText,
+            style_class: 'veronica-row-value',
+            x_expand: true,
+            x_align: Clutter.ActorAlign.END,
+        })
+    );
     return row;
 }
 
@@ -274,8 +297,7 @@ export function countdown(seconds) {
 }
 
 export function launchServices() {
-    const app = DesktopAppInfo.new('Veronica.desktop') ??
-        DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
+    const app = DesktopAppInfo.new('Veronica.desktop') ?? DesktopAppInfo.new('io.github.namannn04.Veronica.desktop');
     if (app?.list_actions().includes('Services')) {
         app.launch_action('Services', null);
         return;

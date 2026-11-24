@@ -25,8 +25,12 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         surface.opacity = 255;
     };
     const compact = (motion, fade) => {
-        if (!motion) { return { x: 1, y: 1 }; }
-        if (!fade) { return { x: 0.96, y: 0.96 }; }
+        if (!motion) {
+            return { x: 1, y: 1 };
+        }
+        if (!fade) {
+            return { x: 0.96, y: 0.96 };
+        }
         const button = buttonSize();
         const width = box.width || box.get_preferred_width?.(-1)?.[1] || 580;
         const height = box.height || box.get_preferred_height?.(-1)?.[1] || 290;
@@ -58,21 +62,29 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
         box._muteInput = animateNow;
         box.show();
         const finish = () => {
-            if (token !== generation) { return; }
+            if (token !== generation) {
+                return;
+            }
             box._muteInput = false;
             onComplete?.();
             onOpened?.();
         };
         if (!animateNow) {
-            reset(); finish(); return;
+            reset();
+            finish();
+            return;
         }
         surface.ease({
-            scale_x: 1, scale_y: 1, opacity: 255,
-            duration, mode: modes.EASE_OUT_CUBIC,
+            scale_x: 1,
+            scale_y: 1,
+            opacity: 255,
+            duration,
+            mode: modes.EASE_OUT_CUBIC,
             onComplete: finish,
         });
         content.ease({
-            opacity: 255, translation_y: 0,
+            opacity: 255,
+            translation_y: 0,
             delay: fade && content.opacity === 0 ? 75 : 0,
             duration: fade ? 180 : duration,
             mode: modes.EASE_OUT_CUBIC,
@@ -81,26 +93,39 @@ export function installNotchAnimation(box, { buttonSize, enabled, modes, flags, 
 
     box.close = (animate, onComplete) => {
         const token = stop();
-        if (!box.visible) { onComplete?.(); return; }
+        if (!box.visible) {
+            onComplete?.();
+            return;
+        }
         const animateNow = enabled() && animate !== flags.NONE;
         const motion = animateNow && Boolean(animate & flags.SLIDE);
         const fade = animateNow && Boolean(animate & flags.FADE);
         const size = compact(motion, fade);
         box._muteInput = box._muteKeys = true;
         const finish = () => {
-            if (token !== generation) { return; }
+            if (token !== generation) {
+                return;
+            }
             box.hide();
             reset();
             onComplete?.();
         };
-        if (!animateNow) { finish(); return; }
+        if (!animateNow) {
+            finish();
+            return;
+        }
         content.ease({
-            opacity: fade ? 0 : 255, translation_y: motion ? 2 : 0,
-            duration: 80, mode: modes.EASE_OUT_CUBIC,
+            opacity: fade ? 0 : 255,
+            translation_y: motion ? 2 : 0,
+            duration: 80,
+            mode: modes.EASE_OUT_CUBIC,
         });
         surface.ease({
-            scale_x: size.x, scale_y: size.y, opacity: fade ? 0 : 255,
-            duration: 240, mode: modes.EASE_IN_OUT_CUBIC,
+            scale_x: size.x,
+            scale_y: size.y,
+            opacity: fade ? 0 : 255,
+            duration: 240,
+            mode: modes.EASE_IN_OUT_CUBIC,
             onComplete: finish,
         });
     };

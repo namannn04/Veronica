@@ -20,8 +20,7 @@ export class FeatureSwitch {
         this._wanted = wanted;
         if (wanted) {
             this._start();
-        }
-        else {
+        } else {
             this._stop();
         }
     }

@@ -71,13 +71,22 @@ export class NotchPanel {
         this._addPanel('home', this._homePanel());
         this._addPanel('notifications', this._notificationsPanel());
         this._addPanel('files', this._filesPanel());
-        this._imageTool = new UtilityPanel('image', this._cancellable, () => { this.showTab('image'); this._reopenFiles?.('image'); });
-        this._qrTool = new UtilityPanel('qr', this._cancellable, () => { this.showTab('qr'); this._reopenFiles?.('qr'); });
+        this._imageTool = new UtilityPanel('image', this._cancellable, () => {
+            this.showTab('image');
+            this._reopenFiles?.('image');
+        });
+        this._qrTool = new UtilityPanel('qr', this._cancellable, () => {
+            this.showTab('qr');
+            this._reopenFiles?.('qr');
+        });
         this._addPanel('image', this._imageTool.actor);
         this._addPanel('qr', this._qrTool.actor);
         this.actor.connect('key-press-event', (_actor, event) => {
-            if (this._activeTab === 'image' && (event.get_state() & Clutter.ModifierType.CONTROL_MASK)
-                && [Clutter.KEY_v, Clutter.KEY_V].includes(event.get_key_symbol())) {
+            if (
+                this._activeTab === 'image' &&
+                event.get_state() & Clutter.ModifierType.CONTROL_MASK &&
+                [Clutter.KEY_v, Clutter.KEY_V].includes(event.get_key_symbol())
+            ) {
                 this._imageTool?._paste();
                 return Clutter.EVENT_STOP;
             }
@@ -87,16 +96,13 @@ export class NotchPanel {
         this._addPanel('clipboard', this._clipboardPanel());
         this._addPanel('camera', this._cameraPanel());
         this._selectTab('home');
-        this._featureUnsubscribe = this._settings?.subscribe(
-            values => {
+        this._featureUnsubscribe =
+            this._settings?.subscribe(values => {
                 this._applyFeatureSettings(values);
                 this._usage?.setProvider(values.limitsProvider);
                 this._applyTheme(values.appearance);
-            }
-        ) ?? null;
-        this._awakeUnsubscribe = this._settings?.subscribe(
-            values => this._applyAwake(values)
-        ) ?? null;
+            }) ?? null;
+        this._awakeUnsubscribe = this._settings?.subscribe(values => this._applyAwake(values)) ?? null;
     }
 
     get isLive() {
@@ -122,9 +128,13 @@ export class NotchPanel {
             });
             const content = new St.BoxLayout({ style_class: 'veronica-shelf-tab-content' });
             const logo = id === 'home' ? brandIcon() : null;
-            content.add_child(new St.Icon(logo
-                ? { gicon: logo, style_class: 'veronica-shelf-tab-icon' }
-                : { icon_name: icon, style_class: 'veronica-shelf-tab-icon' }));
+            content.add_child(
+                new St.Icon(
+                    logo
+                        ? { gicon: logo, style_class: 'veronica-shelf-tab-icon' }
+                        : { icon_name: icon, style_class: 'veronica-shelf-tab-icon' }
+                )
+            );
             const label = new St.Label({
                 text: title,
                 style_class: 'veronica-shelf-tab-label',
@@ -153,10 +163,18 @@ export class NotchPanel {
         });
         const settingsContent = new St.BoxLayout({ style_class: 'veronica-shelf-tab-content' });
         settingsContent.add_child(new St.Icon({ icon_name: 'emblem-system-symbolic' }));
-        settings._veronicaLabel = new St.Label({ text: 'Settings', style_class: 'veronica-shelf-tab-label', y_align: Clutter.ActorAlign.CENTER });
+        settings._veronicaLabel = new St.Label({
+            text: 'Settings',
+            style_class: 'veronica-shelf-tab-label',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
         settingsContent.add_child(settings._veronicaLabel);
         settings.set_child(settingsContent);
-        installCapsule(settings, { active: () => false, enabled: () => St.Settings.get().enable_animations, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
+        installCapsule(settings, {
+            active: () => false,
+            enabled: () => St.Settings.get().enable_animations,
+            mode: Clutter.AnimationMode.EASE_OUT_CUBIC,
+        });
         settings.connect('clicked', () => {
             this._closeMenu?.();
             launchApp();
@@ -172,18 +190,22 @@ export class NotchPanel {
     }
 
     _selectTab(id) {
-        if (id !== this._activeTab) { this._viewCancellable?.cancel(); }
-        if (this._activeTab === 'image' && id !== 'image') { this._imageTool?.close(); }
-        if (this._activeTab === 'qr' && id !== 'qr') { this._qrTool?.close(); }
+        if (id !== this._activeTab) {
+            this._viewCancellable?.cancel();
+        }
+        if (this._activeTab === 'image' && id !== 'image') {
+            this._imageTool?.close();
+        }
+        if (this._activeTab === 'qr' && id !== 'qr') {
+            this._qrTool?.close();
+        }
         if (this._activeTab === 'camera' && id !== 'camera') {
             this._stopCameraPreview();
         }
         this._activeTab = id;
         for (const [tabId, button] of this._tabButtons) {
             const active = tabId === id;
-            button.set_style_class_name(
-                active ? 'veronica-shelf-tab active' : 'veronica-shelf-tab'
-            );
+            button.set_style_class_name(active ? 'veronica-shelf-tab active' : 'veronica-shelf-tab');
             button._syncCapsule?.();
         }
         for (const [panelId, panel] of this._panels) {
@@ -194,7 +216,9 @@ export class NotchPanel {
             if (entering && St.Settings.get().enable_animations && panel.mapped) {
                 panel.opacity = 0;
                 panel.ease({ opacity: 255, duration: 120, mode: Clutter.AnimationMode.EASE_OUT_CUBIC });
-            } else { panel.opacity = 255; }
+            } else {
+                panel.opacity = 255;
+            }
         }
         if (id === 'clipboard') {
             this._refreshClipboard().catch(() => {});
@@ -202,7 +226,9 @@ export class NotchPanel {
         if (id === 'files') {
             this._refreshFiles().catch(() => {});
         }
-        if (id === 'home' && this.actor?.mapped) { this.refresh().catch(() => {}); }
+        if (id === 'home' && this.actor?.mapped) {
+            this.refresh().catch(() => {});
+        }
     }
 
     _homePanel() {
@@ -227,16 +253,20 @@ export class NotchPanel {
             style_class: 'veronica-card veronica-empty-music',
         });
         this._emptyMusic.add_child(new St.Widget({ y_expand: true }));
-        this._emptyMusic.add_child(new St.Icon({
-            icon_name: 'emblem-music-symbolic',
-            style_class: 'veronica-empty-music-icon',
-            x_align: Clutter.ActorAlign.CENTER,
-        }));
-        this._emptyMusic.add_child(new St.Label({
-            text: 'Nothing playing',
-            style_class: 'veronica-empty-music-label',
-            x_align: Clutter.ActorAlign.CENTER,
-        }));
+        this._emptyMusic.add_child(
+            new St.Icon({
+                icon_name: 'emblem-music-symbolic',
+                style_class: 'veronica-empty-music-icon',
+                x_align: Clutter.ActorAlign.CENTER,
+            })
+        );
+        this._emptyMusic.add_child(
+            new St.Label({
+                text: 'Nothing playing',
+                style_class: 'veronica-empty-music-label',
+                x_align: Clutter.ActorAlign.CENTER,
+            })
+        );
         this._emptyMusic.add_child(new St.Widget({ y_expand: true }));
         musicWrap.add_child(this._emptyMusic);
         glance.add_child(musicWrap);
@@ -246,35 +276,28 @@ export class NotchPanel {
         panel.add_child(glance);
 
         const actions = new St.BoxLayout({ style_class: 'veronica-actions-row' });
-        actions.add_child(this._actionTile(
-            'input-keyboard-symbolic', 'Clean keys', () => {
+        actions.add_child(
+            this._actionTile('input-keyboard-symbolic', 'Clean keys', () => {
                 this._closeMenu?.();
                 this._keyboardCleaner?.start();
-            }
-        ));
-        const [keepAwake, lidAwake] = AWAKE_SWITCHES;
-        this._keepAwake = this._actionTile(
-            'weather-clear-night-symbolic', 'Keep awake',
-            () => this._toggleAwake(keepAwake, this._keepAwake)
+            })
         );
-        this._lidAwake = this._actionTile(
-            'computer-laptop-symbolic', 'Lid awake',
-            () => this._toggleAwake(lidAwake, this._lidAwake)
+        const [keepAwake, lidAwake] = AWAKE_SWITCHES;
+        this._keepAwake = this._actionTile('weather-clear-night-symbolic', 'Keep awake', () =>
+            this._toggleAwake(keepAwake, this._keepAwake)
+        );
+        this._lidAwake = this._actionTile('computer-laptop-symbolic', 'Lid awake', () =>
+            this._toggleAwake(lidAwake, this._lidAwake)
         );
         actions.add_child(this._keepAwake);
         actions.add_child(this._lidAwake);
-        this._presenter = this._actionTile(
-            'avatar-default-symbolic', 'Presenter', () => this._togglePresenter()
-        );
+        this._presenter = this._actionTile('avatar-default-symbolic', 'Presenter', () => this._togglePresenter());
         actions.add_child(this._presenter);
-        this._pickColorTile = this._actionTile(
-            'color-select-symbolic', 'Pick color', () => this._pickColor()
-        );
+        this._pickColorTile = this._actionTile('color-select-symbolic', 'Pick color', () => this._pickColor());
         actions.add_child(this._pickColorTile);
         panel.add_child(actions);
-        this._presenterUnsubscribe = this._settings?.subscribe(
-            values => this._applyPresenter(presenterState(values))
-        ) ?? null;
+        this._presenterUnsubscribe =
+            this._settings?.subscribe(values => this._applyPresenter(presenterState(values))) ?? null;
         return panel;
     }
 
@@ -294,13 +317,27 @@ export class NotchPanel {
         const card = vbox({ style_class: 'veronica-utility-card veronica-services-card', x_expand: true });
         card.add_child(new St.Icon({ icon_name: 'network-server-symbolic', icon_size: 32 }));
         card.add_child(new St.Label({ text: 'Ports & Docker', style_class: 'veronica-utility-title' }));
-        card.add_child(new St.Label({ text: 'Find a busy port. Manage your local containers.', style_class: 'veronica-utility-detail' }));
-        const services = new St.Button({ label: 'Open developer services', can_focus: true, style_class: 'veronica-utility-button' });
-        services.connect('clicked', () => {
-            try { launchServices(); this._closeMenu?.(); }
-            catch (error) { Main.notify('Veronica', `Could not open developer services: ${error.message}`); }
+        card.add_child(
+            new St.Label({
+                text: 'Find a busy port. Manage your local containers.',
+                style_class: 'veronica-utility-detail',
+            })
+        );
+        const services = new St.Button({
+            label: 'Open developer services',
+            can_focus: true,
+            style_class: 'veronica-utility-button',
         });
-        card.add_child(services); panel.add_child(card);
+        services.connect('clicked', () => {
+            try {
+                launchServices();
+                this._closeMenu?.();
+            } catch (error) {
+                Main.notify('Veronica', `Could not open developer services: ${error.message}`);
+            }
+        });
+        card.add_child(services);
+        panel.add_child(card);
         return panel;
     }
 
@@ -310,17 +347,21 @@ export class NotchPanel {
             x_expand: true,
         });
         const toolbar = new St.BoxLayout({ style_class: 'veronica-files-toolbar' });
-        toolbar.add_child(new St.Label({
-            text: 'File shelf',
-            style_class: 'veronica-files-title',
-            y_align: Clutter.ActorAlign.CENTER,
-        }));
+        toolbar.add_child(
+            new St.Label({
+                text: 'File shelf',
+                style_class: 'veronica-files-title',
+                y_align: Clutter.ActorAlign.CENTER,
+            })
+        );
         toolbar.add_child(new St.Widget({ x_expand: true }));
         toolbar.add_child(this._smallButton('list-add-symbolic', 'Add files', () => this._chooseFiles()));
         toolbar.add_child(this._smallButton('view-grid-symbolic', 'Open drag-and-drop shelf', () => launchFileShelf()));
-        toolbar.add_child(this._smallButton('edit-clear-all-symbolic', 'Clear shelf', () => {
-            this._fileAction(['clear']).catch(() => {});
-        }));
+        toolbar.add_child(
+            this._smallButton('edit-clear-all-symbolic', 'Clear shelf', () => {
+                this._fileAction(['clear']).catch(() => {});
+            })
+        );
         panel.add_child(toolbar);
 
         const scroll = new St.ScrollView({
@@ -364,11 +405,13 @@ export class NotchPanel {
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._cameraPlaceholder.add_child(new St.Icon({
-            icon_name: 'camera-photo-symbolic',
-            style_class: 'veronica-camera-icon',
-            x_align: Clutter.ActorAlign.CENTER,
-        }));
+        this._cameraPlaceholder.add_child(
+            new St.Icon({
+                icon_name: 'camera-photo-symbolic',
+                style_class: 'veronica-camera-icon',
+                x_align: Clutter.ActorAlign.CENTER,
+            })
+        );
         this._cameraTitle = new St.Label({
             text: 'Camera preview',
             style_class: 'veronica-camera-title',
@@ -401,12 +444,11 @@ export class NotchPanel {
         });
         this._cameraFlipButton.connect('clicked', () => {
             const next = !this._cameraFlipHorizontal;
-            runJson(['config', 'set', 'cameraFlipHorizontal', String(next)], this._cancellable)
-                .then(result => {
-                    if (result !== null) {
-                        this._applyCameraOrientation(next);
-                    }
-                });
+            runJson(['config', 'set', 'cameraFlipHorizontal', String(next)], this._cancellable).then(result => {
+                if (result !== null) {
+                    this._applyCameraOrientation(next);
+                }
+            });
         });
         const controls = new St.BoxLayout({ style: 'spacing: 8px;', x_align: Clutter.ActorAlign.CENTER });
         panel.remove_child(this._cameraButton);
@@ -456,16 +498,20 @@ export class NotchPanel {
             style_class: 'veronica-shelf-panel veronica-status-panel',
             x_expand: true,
         });
-        panel.add_child(new St.Icon({
-            icon_name: iconName,
-            style_class: 'veronica-status-panel-icon',
-            x_align: Clutter.ActorAlign.CENTER,
-        }));
-        panel.add_child(new St.Label({
-            text: title,
-            style_class: 'veronica-status-panel-title',
-            x_align: Clutter.ActorAlign.CENTER,
-        }));
+        panel.add_child(
+            new St.Icon({
+                icon_name: iconName,
+                style_class: 'veronica-status-panel-icon',
+                x_align: Clutter.ActorAlign.CENTER,
+            })
+        );
+        panel.add_child(
+            new St.Label({
+                text: title,
+                style_class: 'veronica-status-panel-title',
+                x_align: Clutter.ActorAlign.CENTER,
+            })
+        );
         const detailLabel = new St.Label({
             text: detail,
             style_class: 'veronica-status-panel-detail',
@@ -486,11 +532,13 @@ export class NotchPanel {
         });
         const content = new St.BoxLayout({ style_class: 'veronica-action-content' });
         content.add_child(new St.Icon({ icon_name: iconName, style_class: 'veronica-action-icon' }));
-        content.add_child(new St.Label({
-            text: label,
-            style_class: 'veronica-action-label',
-            y_align: Clutter.ActorAlign.CENTER,
-        }));
+        content.add_child(
+            new St.Label({
+                text: label,
+                style_class: 'veronica-action-label',
+                y_align: Clutter.ActorAlign.CENTER,
+            })
+        );
         button.set_child(content);
         button.connect('clicked', onClicked);
         return button;
@@ -581,9 +629,7 @@ export class NotchPanel {
 
     _setToggle(button, active) {
         button._veronicaActive = active;
-        button.set_style_class_name(
-            active ? 'veronica-action-tile active' : 'veronica-action-tile'
-        );
+        button.set_style_class_name(active ? 'veronica-action-tile active' : 'veronica-action-tile');
     }
 
     async _fileAction(args) {
@@ -592,18 +638,24 @@ export class NotchPanel {
         const reading = args[0] === 'list';
         const scope = reading ? this._readScope() : this._cancellable;
         const result = await runJson(['shelf', ...args], scope, { terminateOnCancel: reading });
-        if (reading && scope?.is_cancelled()) { return; }
+        if (reading && scope?.is_cancelled()) {
+            return;
+        }
         if (!this._fileRows || request !== this._filesRequest) {
             return;
         }
         this._fileRows.destroy_all_children();
         const entries = result?.entries;
         if (!Array.isArray(entries) || entries.length === 0) {
-            this._fileRows.add_child(new St.Label({
-                text: Array.isArray(entries) ? 'Add files to keep a copy here' : 'The shelf could not be loaded. Check that Veronica and vr are up to date.',
-                style_class: 'veronica-empty veronica-files-empty',
-                x_align: Clutter.ActorAlign.CENTER,
-            }));
+            this._fileRows.add_child(
+                new St.Label({
+                    text: Array.isArray(entries)
+                        ? 'Add files to keep a copy here'
+                        : 'The shelf could not be loaded. Check that Veronica and vr are up to date.',
+                    style_class: 'veronica-empty veronica-files-empty',
+                    x_align: Clutter.ActorAlign.CENTER,
+                })
+            );
             return;
         }
         for (const entry of entries) {
@@ -613,15 +665,18 @@ export class NotchPanel {
 
     async _chooseFiles() {
         try {
-            const process = Gio.Subprocess.new([
-                'zenity', '--file-selection', '--multiple', '--separator=\n',
-                '--title=Park files in Veronica',
-            ], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
+            const process = Gio.Subprocess.new(
+                ['zenity', '--file-selection', '--multiple', '--separator=\n', '--title=Park files in Veronica'],
+                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
+            );
             const [stdout] = await process.communicate_utf8_async(null, this._cancellable);
             if (!process.get_successful() || !stdout?.trim()) {
                 return;
             }
-            const selected = stdout.split('\n').map(path => path.trim()).filter(Boolean);
+            const selected = stdout
+                .split('\n')
+                .map(path => path.trim())
+                .filter(Boolean);
             await this._fileAction(['add', ...selected]);
         } catch (error) {
             console.debug(`veronica: file chooser failed: ${error}`);
@@ -658,9 +713,11 @@ export class NotchPanel {
             }
         });
         row.add_child(open);
-        row.add_child(this._smallButton('user-trash-symbolic', `Remove ${path}`, () => {
-            this._fileAction(['remove', id]).catch(() => {});
-        }));
+        row.add_child(
+            this._smallButton('user-trash-symbolic', `Remove ${path}`, () => {
+                this._fileAction(['remove', id]).catch(() => {});
+            })
+        );
         return row;
     }
 
@@ -734,8 +791,7 @@ export class NotchPanel {
         }
         if (!this._clipboardEnabled && this._activeTab === 'clipboard') {
             this._selectTab('home');
-        }
-        else if (clipboardPanel && this._activeTab !== 'clipboard') {
+        } else if (clipboardPanel && this._activeTab !== 'clipboard') {
             clipboardPanel.visible = false;
         }
 
@@ -775,8 +831,7 @@ export class NotchPanel {
         const value = picked.value ?? picked.hex;
         if (picked.copiedVia) {
             Main.notify('Color copied', value);
-        }
-        else {
+        } else {
             Main.notify('Color picked, not copied', `${value}, saved in Color Picker's history`);
         }
     }
@@ -792,11 +847,13 @@ export class NotchPanel {
         }
         this._clipboardRows.destroy_all_children();
         if (rows.length === 0) {
-            this._clipboardRows.add_child(new St.Label({
-                text: 'Nothing copied yet',
-                style_class: 'veronica-empty veronica-clipboard-empty',
-                x_align: Clutter.ActorAlign.CENTER,
-            }));
+            this._clipboardRows.add_child(
+                new St.Label({
+                    text: 'Nothing copied yet',
+                    style_class: 'veronica-empty veronica-clipboard-empty',
+                    x_align: Clutter.ActorAlign.CENTER,
+                })
+            );
             return;
         }
         for (const row of rows) {
@@ -835,20 +892,31 @@ export class NotchPanel {
     }
 
     _readScope() {
-        if (!this._viewCancellable || this._viewCancellable.is_cancelled()) { this._viewCancellable = new Gio.Cancellable(); }
+        if (!this._viewCancellable || this._viewCancellable.is_cancelled()) {
+            this._viewCancellable = new Gio.Cancellable();
+        }
         return this._viewCancellable;
     }
 
     async refresh() {
-        if (!this.actor || this._refreshing) { return; }
+        if (!this.actor || this._refreshing) {
+            return;
+        }
         this._refreshing = true;
         try {
-            if (this._activeTab === 'home') { await Promise.all([
-                this._usage?.refresh(this._readScope()), this._nowPlaying?.refresh(this._readScope()),
-            ]); }
-            else if (this._activeTab === 'clipboard') { await this._refreshClipboard(); }
-            else if (this._activeTab === 'files') { await this._refreshFiles(); }
-        } finally { this._refreshing = false; }
+            if (this._activeTab === 'home') {
+                await Promise.all([
+                    this._usage?.refresh(this._readScope()),
+                    this._nowPlaying?.refresh(this._readScope()),
+                ]);
+            } else if (this._activeTab === 'clipboard') {
+                await this._refreshClipboard();
+            } else if (this._activeTab === 'files') {
+                await this._refreshFiles();
+            }
+        } finally {
+            this._refreshing = false;
+        }
     }
 
     _applyTheme(value) {
