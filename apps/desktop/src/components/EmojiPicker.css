@@ -155,3 +155,16 @@ body:has(.emoji-picker),
 .emoji-picker-keys .ui-kbd:not(:first-child) {
   margin-left: var(--space-2);
 }
+
+.emoji-picker-cell-skeleton {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+}
+
+.emoji-picker-group-skeleton {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}

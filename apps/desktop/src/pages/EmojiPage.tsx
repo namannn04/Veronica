@@ -15,6 +15,7 @@ import {
   Section,
   Select,
   Skeleton,
+  SkeletonText,
   Tabs,
   Toolbar,
   Tooltip,
@@ -45,11 +46,12 @@ const SHORT_GROUP_NAMES: Record<string, string> = {
 const PAGE = 240;
 const WHOLE_GROUP = 2_000;
 const ALL = "all";
+const TAB_PLACEHOLDERS = [20, 52, 48, 44, 36, 40, 52, 48, 54, 34];
 
 export function EmojiPage() {
-  const [groups, setGroups] = useState<EmojiGroup[]>([]);
+  const [groups, setGroups] = useState<EmojiGroup[] | null>(null);
   const [emoji, setEmoji] = useState<EmojiRow[] | null>(null);
-  const [recents, setRecents] = useState<EmojiRow[]>([]);
+  const [recents, setRecents] = useState<EmojiRow[] | null>(null);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<number | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
@@ -72,7 +74,10 @@ export function EmojiPage() {
     void ipc
       .emojiGroups()
       .then(setGroups)
-      .catch((reason) => setError(String(reason)));
+      .catch((reason) => {
+        setGroups([]);
+        setError(String(reason));
+      });
     void ipc
       .settingsAll()
       .then(setSettings)
@@ -134,14 +139,14 @@ export function EmojiPage() {
   };
 
   const groupName = useMemo(
-    () => new Map(groups.map((entry, index) => [index, entry.name])),
+    () => new Map((groups ?? []).map((entry, index) => [index, entry.name])),
     [groups],
   );
 
   const tabs = useMemo(
     () => [
       { id: ALL, label: "All" },
-      ...groups.map((entry, index) => ({
+      ...(groups ?? []).map((entry, index) => ({
         id: String(index),
         label: SHORT_GROUP_NAMES[entry.id] ?? entry.name,
       })),
@@ -162,7 +167,7 @@ export function EmojiPage() {
       : (groupName.get(activeGroup) ?? "Emoji");
   const resultsNote =
     emoji === null
-      ? undefined
+      ? <SkeletonText width={56} />
       : emoji.length === PAGE && activeGroup === null
         ? `Showing the first ${PAGE}`
         : `${emoji.length} emoji`;
@@ -178,13 +183,21 @@ export function EmojiPage() {
             </>
           }
           accessory={
-            groups.length > 0 && (
+            groups === null ? (
+              <div className="emoji-tabs-skeleton" role="status" aria-label="Reading categories">
+                {TAB_PLACEHOLDERS.map((width, index) => (
+                  <SkeletonText key={`${index}-${width}`} width={width} />
+                ))}
+              </div>
+            ) : (
+              groups.length > 0 && (
               <Tabs
                 items={tabs}
                 value={activeGroup === null ? ALL : String(activeGroup)}
                 onChange={selectGroup}
                 label="Emoji categories"
               />
+              )
             )
           }
         />
@@ -230,7 +243,15 @@ export function EmojiPage() {
         </Notice>
       )}
 
-      {recents.length > 0 && !searching && activeGroup === null && (
+      {recents === null && !searching && activeGroup === null && (
+        <Section title="Most used" description="Yours, kept on this computer">
+          <Card padding="compact">
+            <CellSkeletons count={10} label="Reading most used emoji" />
+          </Card>
+        </Section>
+      )}
+
+      {recents && recents.length > 0 && !searching && activeGroup === null && (
         <Section title="Most used" description="Yours, kept on this computer">
           <Card padding="compact">
             <EmojiGrid
@@ -247,12 +268,8 @@ export function EmojiPage() {
       {!(emoji === null && error) && (
         <Section title={resultsTitle} description={resultsNote}>
           {emoji === null ? (
-            <Card padding="compact" aria-label="Loading emoji">
-              <div className="emoji-grid">
-                {Array.from({ length: 48 }, (_, index) => index).map((slot) => (
-                  <Skeleton key={slot} width={40} height={40} radius={8} />
-                ))}
-              </div>
+            <Card padding="compact">
+              <CellSkeletons count={60} label="Loading emoji" />
             </Card>
           ) : emoji.length === 0 ? (
             <Card>
@@ -290,6 +307,18 @@ export function EmojiPage() {
         {copied ? `Copied ${copied}` : ""}
       </p>
     </Page>
+  );
+}
+
+function CellSkeletons({ count, label }: { count: number; label: string }) {
+  return (
+    <div className="emoji-grid" role="status" aria-label={label}>
+      {Array.from({ length: count }, (_, index) => index).map((slot) => (
+        <span className="emoji-cell" key={slot}>
+          <Skeleton width={24} height={24} radius={6} />
+        </span>
+      ))}
+    </div>
   );
 }
 
