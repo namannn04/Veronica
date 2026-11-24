@@ -1,0 +1,12 @@
+@font-face {
+  font-family: "Probe Sans";
+  src: url("probe.woff2") format("woff2");
+}
+
+:root {
+  --probe-style: loaded;
+}
+
+.probe {
+  font-family: "Probe Sans", sans-serif;
+}

@@ -18,6 +18,10 @@ pub(crate) fn show(app: &tauri::AppHandle, route: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
+    open(app, route.map(|route| format!("index.html?route={route}")))
+}
+
+pub(crate) fn open(app: &tauri::AppHandle, url: Option<String>) -> Result<()> {
     let mut config = app
         .config()
         .app
@@ -26,8 +30,8 @@ pub(crate) fn show(app: &tauri::AppHandle, route: Option<&str>) -> Result<()> {
         .find(|config| config.label == LABEL)
         .cloned()
         .context("main window configuration is missing")?;
-    if let Some(route) = route {
-        config.url = WebviewUrl::App(format!("index.html?route={route}").into());
+    if let Some(url) = url {
+        config.url = WebviewUrl::App(url.into());
     }
 
     app.state::<crate::state::AppState>().agents.open();

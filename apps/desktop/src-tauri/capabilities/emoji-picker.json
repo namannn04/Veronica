@@ -1,7 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "emoji-picker",
-  "description": "Allow the compact emoji picker to close and drag its own window.",
+  "description": "Allow the compact emoji picker to close and drag its own window, and to reach the commands it renders from.",
   "windows": ["emoji-picker"],
-  "permissions": ["core:window:allow-close", "core:window:allow-start-dragging"]
+  "permissions": [
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "allow-emoji-groups",
+    "allow-emoji-search",
+    "allow-emoji-recents",
+    "allow-emoji-copy",
+    "allow-settings-all"
+  ]
 }
