@@ -105,9 +105,9 @@ fn run_probe() -> Run {
 
 fn rejected_keys(log: &str, marker: &str) -> usize {
     log.lines()
-        .filter(|line| line.contains("__TAURI_INVOKE_KEY__ expected"))
+        .filter(|line| line.contains("refused an invoke with the wrong key"))
         .filter(|line| {
-            line.split("but received ")
+            line.split(", received ")
                 .nth(1)
                 .is_some_and(|received| received.starts_with(marker))
         })
@@ -190,6 +190,11 @@ fn a_hostile_bundle_cannot_leave_its_frame() {
         run.settings
     );
 
+    assert!(
+        !run.log.contains("__TAURI_INVOKE_KEY__ expected"),
+        "{}",
+        run.log
+    );
     assert_eq!(host["forged"], "posted");
     assert_eq!(host_rejections, 1);
     let exposed = report["exposure"]["ipcHandler"] != "undefined";

@@ -5,6 +5,7 @@ mod emoji_picker;
 mod extensions;
 mod file_shelf;
 mod image_tools;
+mod logging;
 mod main_window;
 mod notch_tools;
 mod presenter;
@@ -21,7 +22,7 @@ use veronica_core::AppDirectories;
 use state::AppState;
 
 fn main() {
-    init_logging();
+    logging::init();
     force_x11_backend();
 
     let shelf = std::env::args().any(|arg| arg == "--file-shelf");
@@ -38,14 +39,6 @@ fn main() {
 fn is_background_launch(args: impl IntoIterator<Item = impl AsRef<std::ffi::OsStr>>) -> bool {
     args.into_iter()
         .any(|argument| argument.as_ref() == std::ffi::OsStr::new("--background"))
-}
-
-fn init_logging() {
-    let filter = std::env::var("VERONICA_LOG").unwrap_or_else(|_| "warn,veronica=info".to_string());
-    tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .with_env_filter(filter)
-        .init();
 }
 
 fn force_x11_backend() {
@@ -177,6 +170,10 @@ fn handle_shortcut(app: &tauri::AppHandle, shortcut: &Shortcut) {
     }
 }
 
+#[expect(
+    clippy::items_after_statements,
+    reason = "with tracing on, the command handler macro expands each command after its span statements"
+)]
 fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()> {
     let instance = match single_instance::claim(background, shelf, tools, services) {
         Some(single_instance::Claim::AlreadyRunning) => return Ok(()),

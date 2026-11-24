@@ -26,7 +26,7 @@ veronica-host = { path = "../../../crates/veronica-host" }
 veronica-protocol = { workspace = true }
 zbus = { workspace = true }
 
-tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset"] }
+tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset", "tracing"] }
 tauri-plugin-global-shortcut = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
