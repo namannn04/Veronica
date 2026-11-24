@@ -236,7 +236,7 @@ mod tests {
         let meta = parse(PAGE, &base());
         assert_eq!(
             meta.title.as_deref(),
-            Some("Veronica — a control center for Ubuntu")
+            Some("Veronica \u{2014} a control center for Ubuntu")
         );
         assert_eq!(meta.description.as_deref(), Some("Everything in one app."));
         assert_eq!(meta.robots.as_deref(), Some("index,follow"));
@@ -348,7 +348,7 @@ mod tests {
         assert_eq!(decode("&lt;tag&gt;"), "<tag>");
         assert_eq!(decode("&quot;quoted&quot;"), "\"quoted\"");
         assert_eq!(decode("caf&#233;"), "café");
-        assert_eq!(decode("&#x2014;"), "—");
+        assert_eq!(decode("&#x2014;"), "\u{2014}");
     }
 
     #[test]
