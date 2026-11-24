@@ -220,10 +220,16 @@ jobs:
           path: target/snap/Veronica_*_amd64.snap
           if-no-files-found: error
 
+  extensions:
+    name: Extensions
+    permissions:
+      contents: read
+    uses: ./.github/workflows/extensions.yml
+
   ci-gate:
     name: ci-gate
     if: always()
-    needs: [hygiene, rust-lint, rust-test, frame-isolation, web, package, snap]
+    needs: [hygiene, rust-lint, rust-test, frame-isolation, web, package, snap, extensions]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
