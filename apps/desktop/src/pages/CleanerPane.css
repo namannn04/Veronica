@@ -1,0 +1,59 @@
+.clean-pad {
+  padding: var(--space-2) var(--card-padding);
+}
+
+.clean-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.clean-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--card-padding);
+  transition: background-color var(--motion-feedback);
+}
+
+.clean-row:hover {
+  background: var(--fill-hover);
+}
+
+.clean-row + .clean-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--card-padding);
+  right: 0;
+  height: 1px;
+  background: var(--separator);
+}
+
+.clean-row .ui-checkbox {
+  flex: 1;
+}
+
+.clean-size {
+  flex: none;
+  padding-top: 1px;
+  color: var(--text-1);
+  font-size: var(--text-callout);
+  font-weight: var(--weight-semibold);
+}
+
+.clean-footer {
+  padding: var(--space-3) var(--card-padding);
+  border-top: 1px solid var(--separator);
+  background: var(--bg-inset);
+}
+
+.clean-summary {
+  color: var(--text-3);
+  font-size: var(--text-callout);
+  line-height: 1.45;
+}
+
+.clean-error {
+  white-space: pre-line;
+}

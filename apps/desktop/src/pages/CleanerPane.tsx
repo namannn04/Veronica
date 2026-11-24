@@ -1,31 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
+import { ScanSearch, Trash2 } from "lucide-react";
 
 import { ipc } from "../lib/ipc";
 import { bytes } from "../lib/format";
 import type { CleanerCategory, CleanerScan } from "../lib/types";
+import { Button, Card, Checkbox, ConfirmDialog, EmptyState, Notice, Section, SkeletonRows, Toolbar } from "../ui";
+import "./CleanerPane.css";
 
-/**
- * The disk cleaner.
- *
- * Two things are true of every clean and are repeated wherever it can be
- * started: it moves what the scan found to the Trash rather than deleting it,
- * and the Trash keeps occupying the disk until it is emptied. The paths sent to
- * the clean are the ones on screen, not a fresh scan, so nothing the user never
- * saw can be swept along with what they agreed to.
- *
- * Project directories — node_modules, target, .venv — are swept from a folder
- * you point at, which the CLI does with `vr cleaner scan --root`. This card
- * covers the fixed caches, where there is nothing to choose but the categories.
- */
+const STROKE = 1.75;
+
+function items(count: number) {
+  return `${count} item${count === 1 ? "" : "s"}`;
+}
+
 export function CleanerPane() {
-  const [categories, setCategories] = useState<CleanerCategory[]>([]);
+  const [categories, setCategories] = useState<CleanerCategory[] | null>(null);
+  const [categoriesError, setCategoriesError] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [scan, setScan] = useState<CleanerScan | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"" | "scan" | "clean">("");
+  const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const loadCategories = useCallback(() => {
+    setCategoriesError("");
     void ipc
       .cleanerCategories()
       .then((all) => {
@@ -33,78 +32,120 @@ export function CleanerPane() {
         setCategories(caches);
         setSelected(new Set(caches.filter((entry) => entry.onByDefault).map((entry) => entry.id)));
       })
-      .catch((reason) => setError(String(reason)));
+      .catch((reason) => setCategoriesError(String(reason)));
   }, []);
 
+  useEffect(loadCategories, [loadCategories]);
+
   const measure = useCallback(async (ids: Set<string>) => {
-    setBusy(true); setError(""); setNotice("");
+    setBusy("scan"); setError(""); setNotice("");
     try { setScan(await ipc.cleanerScan([...ids])); }
     catch (reason) { setError(String(reason)); }
-    finally { setBusy(false); }
+    finally { setBusy(""); }
   }, []);
 
   const toggle = (id: string) => {
     const next = new Set(selected);
     if (next.has(id)) next.delete(id); else next.add(id);
     setSelected(next);
-    // A stale total under a changed set of ticks would be a lie, so it goes.
     setScan(null);
   };
 
   const clean = async () => {
     if (!scan || scan.items.length === 0) return;
-    if (!window.confirm(
-      `Move ${scan.items.length} item${scan.items.length === 1 ? "" : "s"} (${bytes(scan.totalBytes)}) to the Trash?\n\n` +
-      "Nothing is deleted in place, so this is recoverable from Files — but the Trash keeps occupying the disk until you empty it."
-    )) return;
-    setBusy(true); setError("");
+    setBusy("clean"); setError("");
     try {
       const report = await ipc.cleanerClean(scan.items);
-      setNotice(
-        `Moved ${report.trashed.length} item${report.trashed.length === 1 ? "" : "s"} to the Trash, ${bytes(report.bytesReclaimed)}. ` +
-        "Empty the Trash to actually free the space."
-      );
+      setNotice(`Moved ${items(report.trashed.length)} to the Trash, ${bytes(report.bytesReclaimed)}. Empty the Trash to actually free the space.`);
       if (report.failed.length > 0) {
         setError(report.failed.map(([path, why]) => `${path}: ${why}`).join("\n"));
       }
       setScan(null);
     } catch (reason) { setError(String(reason)); }
-    finally { setBusy(false); }
+    finally { setBusy(""); setConfirming(false); }
   };
 
-  return <section className="card cleaner-card">
-    <div className="card-head">
-      <h2>Disk cleaner</h2>
-      <span className="card-note">{scan ? `${bytes(scan.totalBytes)} reclaimable` : "developer caches"}</span>
-    </div>
+  const summary = scan
+    ? scan.items.length === 0
+      ? "Nothing to reclaim in the selected caches."
+      : `${items(scan.items.length)}, ${bytes(scan.totalBytes)} reclaimable. Moving to the Trash does not free the space until you empty it.`
+    : "Scanning only reads. Sweep project folders such as node_modules with vr cleaner scan --root <folder>.";
 
-    <div className="cleaner-categories">
-      {categories.map((entry) => (
-        <label key={entry.id} className={selected.has(entry.id) ? "on" : ""} title={entry.cost}>
-          <input type="checkbox" checked={selected.has(entry.id)} onChange={() => toggle(entry.id)} />
-          <span><strong>{entry.title}</strong><small>{entry.cost}</small></span>
-          {scan?.totals[entry.id] !== undefined && <code>{bytes(scan.totals[entry.id])}</code>}
-        </label>
-      ))}
-    </div>
+  return (
+    <Section
+      title="Developer caches"
+      description="Cleaning moves what the scan found to the Trash, so it stays recoverable from Files."
+    >
+      {categoriesError ? (
+        <Notice tone="critical" title="Cache categories could not be read" actions={<Button size="small" onClick={loadCategories}>Retry</Button>}>
+          {categoriesError}
+        </Notice>
+      ) : (
+        <Card padding="none">
+          {categories === null ? (
+            <div className="clean-pad"><SkeletonRows rows={4} label="Reading cache categories" /></div>
+          ) : categories.length === 0 ? (
+            <EmptyState size="compact" title="No caches to clean">This system reports no developer caches Veronica knows how to sweep.</EmptyState>
+          ) : (
+            <div className="clean-list" role="list" aria-label="Cache categories">
+              {categories.map((entry) => (
+                <div className="clean-row" role="listitem" key={entry.id} data-checked={selected.has(entry.id) || undefined}>
+                  <Checkbox
+                    checked={selected.has(entry.id)}
+                    onChange={() => toggle(entry.id)}
+                    label={entry.title}
+                    description={entry.cost}
+                  />
+                  {scan?.totals[entry.id] !== undefined && (
+                    <span className="clean-size ui-num">{bytes(scan.totals[entry.id])}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {categories !== null && categories.length > 0 && (
+            <div className="clean-footer">
+              <Toolbar
+                leading={<span className="clean-summary">{summary}</span>}
+                trailing={
+                  <>
+                    <Button
+                      icon={<ScanSearch strokeWidth={STROKE} />}
+                      busy={busy === "scan"}
+                      disabled={busy !== "" || selected.size === 0}
+                      onClick={() => void measure(selected)}
+                    >
+                      {busy === "scan" ? "Scanning…" : scan ? "Scan again" : "Scan"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      icon={<Trash2 strokeWidth={STROKE} />}
+                      disabled={busy !== "" || !scan || scan.items.length === 0}
+                      onClick={() => setConfirming(true)}
+                    >
+                      Move to Trash
+                    </Button>
+                  </>
+                }
+              />
+            </div>
+          )}
+        </Card>
+      )}
 
-    {error && <div className="banner error">{error}</div>}
-    {notice && <div className="banner">{notice}</div>}
+      {error && <Notice tone="critical" title="Some items could not be cleaned"><span className="clean-error">{error}</span></Notice>}
+      {notice && <Notice tone="good">{notice}</Notice>}
 
-    <div className="cleaner-actions">
-      <button className="button" disabled={busy || selected.size === 0} onClick={() => void measure(selected)}>
-        {busy ? "Working…" : "Scan"}
-      </button>
-      <button className="button danger" disabled={busy || !scan || scan.items.length === 0} onClick={() => void clean()}>
-        Move to Trash
-      </button>
-      <span className="card-note">
-        {scan
-          ? scan.items.length === 0
-            ? "Nothing to reclaim."
-            : `${scan.items.length} item${scan.items.length === 1 ? "" : "s"} · moving to the Trash does not free the space until you empty it`
-          : "Scanning reads only. Project folders such as node_modules are swept with vr cleaner scan --root <folder>."}
-      </span>
-    </div>
-  </section>;
+      <ConfirmDialog
+        open={confirming}
+        onClose={() => { if (busy !== "clean") setConfirming(false); }}
+        onConfirm={() => void clean()}
+        title={scan ? `Move ${items(scan.items.length)} to the Trash?` : "Move to the Trash?"}
+        message={`${scan ? bytes(scan.totalBytes) : "Nothing"} goes to the Trash. Nothing is deleted in place, so it stays recoverable from Files, but the Trash keeps occupying the disk until you empty it.`}
+        confirmLabel="Move to Trash"
+        destructive
+        busy={busy === "clean"}
+      />
+    </Section>
+  );
 }
