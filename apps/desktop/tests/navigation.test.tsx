@@ -30,7 +30,7 @@ describe("extension-aware navigation", () => {
 
   test("every feature page points at its catalogue extension", () => {
     const expected: Record<
-      Exclude<BuiltinRoute, "home" | "extensions" | "settings" | "about">,
+      Exclude<BuiltinRoute, "home" | "library" | "settings" | "about">,
       string
     > = {
       usage: "usage",
@@ -57,7 +57,7 @@ describe("extension-aware navigation", () => {
 
   test("Veronica's own pages can never be hidden", () => {
     const none = new Set<string>();
-    for (const route of ["home", "extensions", "settings", "about"] as const) {
+    for (const route of ["home", "library", "settings", "about"] as const) {
       expect(routeIsVisible(route, none)).toBe(true);
     }
   });
@@ -83,10 +83,15 @@ function installed(id: string, pages: ExtensionUiPage[], enabled = true): Instal
   return {
     id,
     version: "1.0.0",
+    origin: "catalog",
     enabled,
+    installedAt: "2026-11-25T00:00:00Z",
+    previous: null,
     state: "stopped",
+    update: null,
     manifest: {
       id,
+      category: "utilities",
       title: id.charAt(0).toUpperCase() + id.slice(1),
       summary: `${id} summary`,
       permissions: { host: [], filesystem: [], network: [] },
@@ -134,11 +139,7 @@ describe("extension pages in navigation", () => {
     expect(labels).toEqual(["Agents", "This computer", "Tools", "Listening", "Veronica"]);
     const tools = groups.find((group) => group.label === "Tools")?.items ?? [];
     expect(tools.slice(-2).map((item) => item.id)).toEqual(["ext:weather/main", "ext:notes/main"]);
-    expect(groups.at(-1)?.items.map((item) => item.id)).toEqual([
-      "extensions",
-      "settings",
-      "about",
-    ]);
+    expect(groups.at(-1)?.items.map((item) => item.id)).toEqual(["library", "settings", "about"]);
     expect(NAV_ITEMS.some((item) => item.id.startsWith("ext:"))).toBe(false);
   });
 

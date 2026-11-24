@@ -873,19 +873,98 @@ export interface ExtensionUiPage {
   keywords?: string[];
 }
 
+export interface ExtensionPermissions {
+  network?: string[];
+  filesystem?: { path: string; access: "read" | "readWrite" }[];
+  dbus?: { session?: string[]; system?: string[] };
+  spawn?: string[];
+  shell?: string[];
+  host?: Granted["host"];
+}
+
+export interface ExtensionRequirements {
+  tools?: string[];
+  capabilities?: string[];
+}
+
 export interface ExtensionManifest {
   id: string;
   title: string;
   summary: string;
   icon?: string;
+  category: string;
+  labs?: boolean;
   ui?: { root: string; pages: ExtensionUiPage[] };
-  permissions: Granted;
+  permissions: Granted & ExtensionPermissions;
+  requires?: ExtensionRequirements;
 }
+
+export type ExtensionOrigin = "builtin" | "catalog" | "sideload";
 
 export interface InstalledExtension {
   id: string;
   version: string;
+  origin: ExtensionOrigin;
   enabled: boolean;
+  installedAt: string;
+  previous: string | null;
   state: BackendState;
+  update: string | null;
   manifest: ExtensionManifest | null;
+}
+
+export interface CatalogCategory {
+  id: string;
+  title: string;
+  hidden?: boolean;
+}
+
+export interface CatalogOffer {
+  id: string;
+  title: string;
+  summary: string;
+  category: string;
+  icon?: string;
+  labs?: boolean;
+  permissions: ExtensionPermissions;
+  requires: ExtensionRequirements;
+  latest: string;
+  installed: string | null;
+  available: string | null;
+}
+
+export interface CatalogShelf {
+  revision: number;
+  generatedAt: string;
+  stale: boolean;
+  provenance: "seed" | "cache" | "network";
+  categories: CatalogCategory[];
+  extensions: CatalogOffer[];
+}
+
+export type ExtensionJobKind =
+  | "install"
+  | "sideload"
+  | "update"
+  | "enable"
+  | "disable"
+  | "remove"
+  | "purge"
+  | "rollback";
+
+export interface ExtensionJob {
+  id: number;
+  kind: ExtensionJobKind;
+  extension: string;
+  phase: "queued" | "running" | "succeeded" | "failed";
+  message: string | null;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
+export interface AutoUpdatePreferences {
+  enabled: boolean;
+  intervalHours: number;
+  disabled: string[];
 }
