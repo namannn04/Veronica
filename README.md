@@ -54,17 +54,17 @@ installs `vr` as `veronica.vr`.
 
 ## Features
 
-| Area | What you get |
-| --- | --- |
-| Agent usage | Local spend and token accounting for Claude, Codex, Cursor and Command Code, rate-limit rings with pace, a dashboard, an activity calendar and shareable cards |
-| Alerts | One notification per threshold crossing, time-aware levels and optional reset reminders, off by default |
-| This computer | CPU, memory, disks, sensors, processes, a per-app audio mixer, Bluetooth and a mic mute switch |
-| Machines | Any SSH host with live stats, files, containers and power controls, using your existing SSH config |
-| Media and calendar | Every MPRIS player, a local music library, and your GNOME calendars with one-tap meeting links |
-| Tools | Clipboard history, color picker, emoji picker, keystroke display, Focus Dim and presenter blur |
-| Developer | Database browser with confirmed writes, Site Audit, Herdr and Quinjet boards, Project Doctor and Graftcode |
-| Maintenance | apt, snap and flatpak updates in one list, review-first removal and a disk cleaner that uses the Trash |
-| Top bar | CPU and memory beside the clock and a notch with now playing, notifications, files, clipboard and camera |
+| Area               | What you get                                                                                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent usage        | Local spend and token accounting for Claude, Codex, Cursor and Command Code, rate-limit rings with pace, a dashboard, an activity calendar and shareable cards |
+| Alerts             | One notification per threshold crossing, time-aware levels and optional reset reminders, off by default                                                        |
+| This computer      | CPU, memory, disks, sensors, processes, a per-app audio mixer, Bluetooth and a mic mute switch                                                                 |
+| Machines           | Any SSH host with live stats, files, containers and power controls, using your existing SSH config                                                             |
+| Media and calendar | Every MPRIS player, a local music library, and your GNOME calendars with one-tap meeting links                                                                 |
+| Tools              | Clipboard history, color picker, emoji picker, keystroke display, Focus Dim and presenter blur                                                                 |
+| Developer          | Database browser with confirmed writes, Site Audit, Herdr and Quinjet boards, Project Doctor and Graftcode                                                     |
+| Maintenance        | apt, snap and flatpak updates in one list, review-first removal and a disk cleaner that uses the Trash                                                         |
+| Top bar            | CPU and memory beside the clock and a notch with now playing, notifications, files, clipboard and camera                                                       |
 
 Global shortcuts: `Ctrl+Alt+V` opens Veronica, `Ctrl+Alt+B` clipboard,
 `Ctrl+Alt+M` mic mute, `Ctrl+Alt+P` color picker, `Ctrl+Alt+E` emoji picker and

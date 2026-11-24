@@ -1,6 +1,6 @@
 id: io.github.namannn04.Veronica
 runtime: org.gnome.Platform
-runtime-version: '50'
+runtime-version: "50"
 sdk: org.gnome.Sdk
 command: veronica
 

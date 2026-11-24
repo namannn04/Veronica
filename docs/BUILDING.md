@@ -42,8 +42,8 @@ are not. `extension/package.json` exists to declare the directory as ES modules
 for node and editors, and is not installed.
 
 Focus Dim's clamps exist in both Rust and JavaScript on purpose. The Rust copy
-stops a bad value being *stored*; the JavaScript copy stops a hand-edited
-settings file being *applied*, which matters because an overlay at full opacity
+stops a bad value being _stored_; the JavaScript copy stops a hand-edited
+settings file being _applied_, which matters because an overlay at full opacity
 would leave the user unable to see the desktop well enough to undo it.
 
 ## Running during development

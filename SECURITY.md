@@ -5,11 +5,11 @@
 Security fixes are applied to the latest published release and the `main`
 branch.
 
-| Version | Supported |
-| --- | --- |
-| Latest release | Yes |
-| `main` | Yes |
-| Older releases | No |
+| Version        | Supported |
+| -------------- | --------- |
+| Latest release | Yes       |
+| `main`         | Yes       |
+| Older releases | No        |
 
 ## Reporting a Vulnerability
 
