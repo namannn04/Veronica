@@ -15,6 +15,10 @@
     color var(--motion-feedback);
 }
 
+.models-table th.num .models-sort {
+  flex-direction: row-reverse;
+}
+
 .models-sort:hover {
   background: var(--fill-hover);
   color: var(--text-1);
