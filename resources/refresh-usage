@@ -15,8 +15,8 @@ export PATH="$EDCACHE/bin:$EDCACHE/bun/bin:$PATH"
 if ! command -v bun >/dev/null 2>&1; then
   NODE_DIR="$HOME/.nvm/versions/node"
   if [ -d "$NODE_DIR" ]; then
-    NODE_VERSION="$(find "$NODE_DIR" -mindepth 1 -maxdepth 1 -printf '%f\n' 2>/dev/null | sort | tail -1)"
-    export PATH="$NODE_DIR/$NODE_VERSION/bin:$PATH"
+    for NODE_VERSION in "$NODE_DIR"/*; do :; done
+    export PATH="$NODE_VERSION/bin:$PATH"
   fi
 fi
 
