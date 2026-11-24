@@ -1,0 +1,12 @@
+[files]
+extend-exclude = [
+  "packaging/flatpak/shared-modules",
+  "resources/emoji-catalog.json",
+  "*.lock",
+  "package-lock.json",
+  "*.svg",
+  "*.gpg",
+]
+
+[default.extend-words]
+gir = "gir"

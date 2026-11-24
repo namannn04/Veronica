@@ -1,0 +1,50 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "**",
+      "!packaging/flatpak/shared-modules",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/bun.lock",
+      "!**/package-lock.json",
+      "!apps/desktop/src-tauri/gen"
+    ]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error",
+        "useExhaustiveDependencies": "error"
+      },
+      "style": {
+        "useImportType": "error",
+        "useConst": "error",
+        "noNonNullAssertion": "error",
+        "useBlockStatements": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConsole": { "level": "error", "options": { "allow": ["debug", "error", "warn"] } }
+      }
+    }
+  },
+  "javascript": { "globals": ["global", "log", "logError", "imports"] },
+  "overrides": [
+    {
+      "includes": ["extension/**/*.css"],
+      "linter": {
+        "rules": {
+          "correctness": { "noUnknownProperty": "off", "noUnknownTypeSelector": "off" }
+        }
+      }
+    }
+  ]
+}
