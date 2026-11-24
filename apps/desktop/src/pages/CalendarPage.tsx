@@ -33,14 +33,18 @@ export function CalendarPage() {
 
   const load = useCallback(
     async (quiet = false) => {
-      if (!quiet) setLoading(true);
+      if (!quiet) {
+        setLoading(true);
+      }
       try {
         setView(await ipc.calendarAgenda(days, true));
         setError(null);
       } catch (reason) {
         setError(String(reason));
       } finally {
-        if (!quiet) setLoading(false);
+        if (!quiet) {
+          setLoading(false);
+        }
       }
     },
     [days],
@@ -53,7 +57,9 @@ export function CalendarPage() {
   useEffect(() => {
     const stop = startVisiblePolling(() => load(true), RELOAD_MS, document, false);
     const tick = window.setInterval(() => {
-      if (!document.hidden) setTick((value) => value + 1);
+      if (!document.hidden) {
+        setTick((value) => value + 1);
+      }
     }, TICK_MS);
     return () => {
       stop();
@@ -237,8 +243,12 @@ function dayDescription(date: string, label: string): string {
 
 function durationLabel(start: Date, end: Date): string {
   const minutes = Math.round((end.getTime() - start.getTime()) / 60_000);
-  if (!Number.isFinite(minutes) || minutes <= 0) return "No duration";
-  if (minutes < 60) return `${minutes} min`;
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    return "No duration";
+  }
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest ? `${hours} h ${rest} min` : `${hours} h`;

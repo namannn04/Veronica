@@ -76,7 +76,9 @@ export function AuditPage() {
   const [open, setOpen] = useState<string | null>(null);
 
   const run = async () => {
-    if (!site.trim() || running) return;
+    if (!site.trim() || running) {
+      return;
+    }
     setOpen(null);
     await startAudit(site.trim(), limit);
   };
@@ -212,7 +214,9 @@ function Results({
       ) : (
         SEVERITIES.map((severity) => {
           const issues = report.byCode.filter(([, level]) => level === severity.id);
-          if (issues.length === 0) return null;
+          if (issues.length === 0) {
+            return null;
+          }
           return (
             <Section key={severity.id} title={severity.label}>
               <List label={severity.label}>
@@ -265,8 +269,12 @@ function Results({
 }
 
 function PageBadge({ page }: { page: AuditedPage }) {
-  if (page.error) return <Badge tone="critical">Failed</Badge>;
-  if (page.issues.length === 0) return <Badge tone="good">Clean</Badge>;
+  if (page.error) {
+    return <Badge tone="critical">Failed</Badge>;
+  }
+  if (page.issues.length === 0) {
+    return <Badge tone="good">Clean</Badge>;
+  }
   const tone: Tone = page.issues.some((issue) => issue.severity === "error")
     ? "critical"
     : page.issues.some((issue) => issue.severity === "warning")

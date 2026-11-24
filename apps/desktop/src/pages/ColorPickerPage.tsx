@@ -111,11 +111,16 @@ export function ColorPickerPage() {
           ? { tone: "good", text: `${result.value} copied via ${result.copiedVia}` }
           : { tone: "neutral", text: `${result.value} recorded but not copied` },
       );
-      if (result.copyError) setError(result.copyError);
+      if (result.copyError) {
+        setError(result.copyError);
+      }
     } catch (reason) {
       const text = String(reason);
-      if (/cancel/i.test(text)) setMessage({ tone: "neutral", text: "No color picked." });
-      else setError(text);
+      if (/cancel/i.test(text)) {
+        setMessage({ tone: "neutral", text: "No color picked." });
+      } else {
+        setError(text);
+      }
     } finally {
       setPicking(false);
     }
@@ -137,7 +142,9 @@ export function ColorPickerPage() {
   const forget = async (id: number) => {
     try {
       await ipc.colorForget(id);
-      if (selectedId === id) setSelectedId(null);
+      if (selectedId === id) {
+        setSelectedId(null);
+      }
       await load();
     } catch (reason) {
       setError(String(reason));

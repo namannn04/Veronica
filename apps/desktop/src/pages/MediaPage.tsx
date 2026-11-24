@@ -87,7 +87,9 @@ function LibraryView() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (libraryStatus === "idle") loadLibrary();
+    if (libraryStatus === "idle") {
+      loadLibrary();
+    }
   }, [libraryStatus, loadLibrary]);
 
   const visible = useMemo(() => {

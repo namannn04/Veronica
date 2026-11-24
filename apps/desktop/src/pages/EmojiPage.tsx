@@ -95,7 +95,9 @@ export function EmojiPage() {
         }
       })
       .catch((reason) => {
-        if (live) setError(String(reason));
+        if (live) {
+          setError(String(reason));
+        }
       });
     return () => {
       live = false;

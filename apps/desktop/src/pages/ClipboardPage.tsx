@@ -79,7 +79,9 @@ export function ClipboardPage() {
   const askToClear = async () => {
     try {
       const total = query ? (await ipc.clipboardList("")).length : rows.length;
-      if (total === 0) return;
+      if (total === 0) {
+        return;
+      }
       setClearRequest({ total, matching: rows.length, query });
     } catch (reason) {
       setError(String(reason));
@@ -244,9 +246,15 @@ export function ClipboardPage() {
 
 function kindIcon(row: ClipRow) {
   const text = row.text.trim();
-  if (/^https?:\/\/\S+$/i.test(text)) return <Link2 aria-label="Link" />;
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return <AtSign aria-label="Email address" />;
-  if (row.lines > 1) return <TextAlignStart aria-label="Multiline text" />;
+  if (/^https?:\/\/\S+$/i.test(text)) {
+    return <Link2 aria-label="Link" />;
+  }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) {
+    return <AtSign aria-label="Email address" />;
+  }
+  if (row.lines > 1) {
+    return <TextAlignStart aria-label="Multiline text" />;
+  }
   return <Type aria-label="Text" />;
 }
 
