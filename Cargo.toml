@@ -20,6 +20,7 @@ rust-version = "1.82"
 license = "GPL-3.0-only"
 repository = "https://github.com/namannn04/veronica"
 authors = ["Veronica contributors"]
+publish = false
 
 [workspace.dependencies]
 veronica-core = { path = "crates/veronica-core" }
