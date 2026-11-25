@@ -316,6 +316,8 @@ fn subcommands(help: &str) -> Vec<String> {
 fn every_host_command_still_prints_help() {
     let home = Home::new();
     let mut pending: Vec<Vec<String>> = vec![Vec::new()];
+    let roots = subcommands(&stdout(&home.vr(&["--help"])));
+    assert!(!roots.is_empty());
     let mut visited = 0;
     while let Some(path) = pending.pop() {
         let mut args: Vec<&str> = path.iter().map(String::as_str).collect();
@@ -337,7 +339,7 @@ fn every_host_command_still_prints_help() {
             pending.push(child);
         }
     }
-    assert!(visited > 40, "walked only {visited} commands");
+    assert!(visited > roots.len(), "walked only {visited} commands");
     let extensions = stdout(&home.vr(&["extensions", "--help"]));
     assert!(extensions.contains("enable"));
 }

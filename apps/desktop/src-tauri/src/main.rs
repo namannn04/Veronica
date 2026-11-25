@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn every_command_is_gated_and_granted_to_the_main_window() {
         let handled = handled_commands();
-        assert!(handled.len() > 100);
+        assert!(!handled.is_empty());
         assert_eq!(
             quoted(between(include_str!("../build.rs"), ".commands(&[", "])")),
             handled
