@@ -79,10 +79,9 @@ impl ExtensionEntry {
 
 use Capability::{
     ClipboardHistory, CompanionService, DatabaseBroker, ExternalMediaControl, GlobalPaste,
-    GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation, LocalTerminal,
-    MachineManagement, MicrophoneControl, Notifications, PackageManagement, PreventSleep,
-    RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection,
-    WindowDimming,
+    GlobalShortcuts, InputSuppression, KeystrokeObservation, LocalTerminal, MachineManagement,
+    MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
+    ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection, WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -98,18 +97,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_capabilities: &[UsageCollection],
         optional_capabilities: &[Notifications],
         required_tools: &["claude", "codex"],
-    },
-    ExtensionEntry {
-        id: "herdr",
-        title: "Herdr",
-        subtitle: "Live Herdr sessions on this computer and your SSH machines.",
-        icon: "columns-3",
-        group: G::Agent,
-        featured: true,
-        defaults_key: "tabHerdrEnabled",
-        required_capabilities: &[HerdrSessions],
-        optional_capabilities: &[],
-        required_tools: &["herdr"],
     },
     ExtensionEntry {
         id: "quinjet",
@@ -301,6 +288,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         featured: true,
     },
     LegacyToggle {
+        id: "herdr",
+        extension: "herdr",
+        defaults_key: "tabHerdrEnabled",
+        featured: true,
+    },
+    LegacyToggle {
         id: "seoAudit",
         extension: "audit",
         defaults_key: "tabSEOAuditEnabled",
@@ -375,7 +368,6 @@ mod tests {
     fn the_catalogue_keeps_its_order() {
         let ported = [
             "usage",
-            "herdr",
             "quinjet",
             "system",
             "appMaintenance",
@@ -414,6 +406,7 @@ mod tests {
         assert_eq!(successor("seoAudit"), Some("audit"));
         assert_eq!(successor("audit"), Some("audit"));
         assert_eq!(successor("attention"), Some("attention"));
+        assert_eq!(successor("herdr"), Some("herdr"));
         assert_eq!(successor("calendar"), Some("calendar"));
         assert_eq!(successor("music"), Some("media"));
         assert_eq!(successor("colorPicker"), Some("color"));
@@ -473,10 +466,20 @@ mod tests {
 
     #[test]
     fn filter_matches_subtitle_case_insensitively() {
-        let hits = filter("SSH", None);
-        let ids: Vec<_> = hits.iter().map(|e| e.id).collect();
-        assert!(ids.contains(&"machines"));
-        assert!(ids.contains(&"herdr"));
+        let first = ENTRIES.first().unwrap();
+        let word = first
+            .subtitle
+            .split_whitespace()
+            .max_by_key(|word| word.len())
+            .unwrap()
+            .trim_matches(|character: char| !character.is_alphanumeric());
+        let needle = word.to_lowercase();
+        let hits = filter(&word.to_uppercase(), None);
+        assert!(hits.iter().any(|entry| entry.id == first.id));
+        assert!(hits.iter().all(|entry| {
+            entry.title.to_lowercase().contains(&needle)
+                || entry.subtitle.to_lowercase().contains(&needle)
+        }));
     }
 
     #[test]

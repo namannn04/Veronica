@@ -68,6 +68,7 @@ export const SearchIcon = icon(Search);
 
 const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   hourglass: AttentionIcon,
+  "columns-3": HerdrIcon,
   music: MusicIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,

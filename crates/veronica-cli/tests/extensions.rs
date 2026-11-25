@@ -371,7 +371,7 @@ fn sideloads_install_and_remove_only_when_confirmed() {
     assert_eq!(document(&installed)["origin"], "sideload");
     let listed = document(&home.vr(&["--json", "extensions", "ls"]));
     assert!(ids(&listed).contains(&"fixture".to_string()));
-    assert!(ids(&listed).contains(&"herdr".to_string()));
+    assert!(ids(&listed).contains(&"presenter".to_string()));
     assert_eq!(code(&home.vr(&["fixture", "echo", "hi"])), 0);
 
     let kept = home.vr(&["--json", "extensions", "remove", "fixture", "--purge"]);
@@ -386,7 +386,7 @@ fn sideloads_install_and_remove_only_when_confirmed() {
     );
     let listed = document(&home.vr(&["--json", "extensions", "ls"]));
     assert!(!ids(&listed).contains(&"fixture".to_string()));
-    let builtin = home.vr(&["--json", "-y", "extensions", "remove", "herdr"]);
+    let builtin = home.vr(&["--json", "-y", "extensions", "remove", "presenter"]);
     assert_eq!(code(&builtin), 2);
 }
 
@@ -403,10 +403,10 @@ fn enable_and_disable_reach_installed_and_built_in_extensions() {
     assert_eq!(code(&home.vr(&["extensions", "enable", "fixture"])), 0);
     assert_eq!(code(&home.vr(&["fixture", "echo", "hi"])), 0);
 
-    let builtin = home.vr(&["--json", "extensions", "enable", "herdr"]);
+    let builtin = home.vr(&["--json", "extensions", "enable", "presenter"]);
     assert_eq!(code(&builtin), 0, "{}", stderr(&builtin));
     assert_eq!(document(&builtin)["origin"], "builtin");
-    let key = veronica_core::extensions::entry("herdr")
+    let key = veronica_core::extensions::entry("presenter")
         .unwrap()
         .defaults_key;
     assert_eq!(home.settings()[key], true);
@@ -435,7 +435,7 @@ fn verify_rehashes_installed_trees() {
         .as_str()
         .unwrap()
         .contains("bin/backend"));
-    assert_eq!(code(&home.vr(&["extensions", "verify", "herdr"])), 2);
+    assert_eq!(code(&home.vr(&["extensions", "verify", "presenter"])), 2);
 }
 
 #[test]

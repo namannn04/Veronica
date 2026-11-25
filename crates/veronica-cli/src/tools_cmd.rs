@@ -82,11 +82,29 @@ pub(crate) async fn run(command: &ToolCommand, output: Output, yes: bool) -> Res
 mod tests {
     use veronica_core::tools::wanted_by;
 
+    fn packaged_tools() -> Vec<String> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../extensions");
+        std::fs::read_dir(root)
+            .unwrap()
+            .filter_map(|entry| std::fs::read(entry.ok()?.path().join("manifest.json")).ok())
+            .filter_map(|raw| serde_json::from_slice::<serde_json::Value>(&raw).ok())
+            .flat_map(|manifest| {
+                manifest["requires"]["tools"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|tool| tool.as_str().map(String::from))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
     #[test]
     fn every_tool_in_the_catalogue_is_wanted_by_an_extension() {
+        let packaged = packaged_tools();
         for tool in veronica_core::tools::CATALOG {
             assert!(
-                !wanted_by(tool.id).is_empty(),
+                !wanted_by(tool.id).is_empty() || packaged.iter().any(|id| id == tool.id),
                 "no extension declares '{}'",
                 tool.id
             );

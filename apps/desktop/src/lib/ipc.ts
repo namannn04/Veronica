@@ -61,7 +61,6 @@ import type {
   EmojiGroup,
   EmojiRow,
   GaugeReport,
-  HerdrBoard,
   ImportReport,
   InstalledExtension,
   LaunchAtLoginStatus,
@@ -110,8 +109,6 @@ export const ipc = {
     invoke<void>("chat_pull", { config, confirmed }),
   chatClear: (memory: boolean) => invoke<void>("chat_clear", { memory }),
   chatExport: () => invoke<string>("chat_export"),
-  agentHerdrAttach: (session: string, pane: string, confirmed: boolean) =>
-    invoke<import("./agents").AgentView>("agent_herdr_attach", { session, pane, confirmed }),
   agentTracking: (enabled: boolean, confirmed: boolean) =>
     invoke<void>("agent_tracking", { enabled, confirmed }),
   agentProfiles: () => invoke<import("./agents").AgentProfile[]>("agent_profiles"),
@@ -258,9 +255,6 @@ export const ipc = {
   cleanerClean: (items: CleanerItem[]) => invoke<CleanReport>("cleaner_clean", { items }),
   toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
   toolsInstall: (tool: string) => invoke<ToolInstallOutcome>("tools_install", { tool }),
-  herdrBoard: () => invoke<HerdrBoard>("herdr_board"),
-  herdrOpen: (session: string, paneId: string | null = null) =>
-    invoke<void>("herdr_open", { session, paneId }),
   quinjetProjects: () => invoke<QuinjetBoard>("quinjet_projects"),
   quinjetOpen: (worktree: string) => invoke<void>("quinjet_open", { worktree }),
   microphoneState: () => invoke<VolumeState>("microphone_state"),

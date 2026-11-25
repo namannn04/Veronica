@@ -439,8 +439,20 @@ mod tests {
 
     #[test]
     fn herdr_without_herdr_is_unmet() {
+        let needs_herdr = veronica_core::extensions::ExtensionEntry {
+            id: "board",
+            title: "Board",
+            subtitle: "Needs Herdr.",
+            icon: "columns-3",
+            group: veronica_core::extensions::ExtensionGroup::Agent,
+            featured: false,
+            defaults_key: "boardEnabled",
+            required_capabilities: &[],
+            optional_capabilities: &[],
+            required_tools: &["herdr"],
+        };
         let reports = vec![report("herdr", false)];
-        assert_eq!(ids(unmet(entry("herdr"), &reports)), vec!["herdr"]);
+        assert_eq!(ids(unmet(&needs_herdr, &reports)), vec!["herdr"]);
     }
 
     #[test]
