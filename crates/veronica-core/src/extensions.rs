@@ -469,7 +469,10 @@ mod tests {
         let hits = filter("SSH", None);
         let ids: Vec<_> = hits.iter().map(|e| e.id).collect();
         assert!(ids.contains(&"machines"));
-        assert!(ids.contains(&"herdr"));
+        assert!(hits.iter().all(|entry| {
+            entry.title.to_lowercase().contains("ssh")
+                || entry.subtitle.to_lowercase().contains("ssh")
+        }));
     }
 
     #[test]
