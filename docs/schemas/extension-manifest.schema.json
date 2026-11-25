@@ -252,6 +252,9 @@
           },
           "type": "array"
         },
+        "blurCategory": {
+          "type": ["string", "null"]
+        },
         "id": {
           "type": "string"
         },

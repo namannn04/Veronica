@@ -195,7 +195,7 @@ pub fn declared(manifest: &Manifest, surface: &str, state: &Value) -> Vec<Surfac
             title: Some(card.title.clone()),
             opens: card.opens.clone(),
             priority: 0,
-            blur_category: None,
+            blur_category: card.blur_category.clone(),
             actions: card.actions.clone(),
             state: state.clone(),
         });
