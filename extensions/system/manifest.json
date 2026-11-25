@@ -1,0 +1,338 @@
+{
+  "schema": 1,
+  "id": "system",
+  "version": "1.0",
+  "title": "System",
+  "summary": "Running apps, listening ports, Docker, audio and Bluetooth for this computer.",
+  "category": "system",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "activation": {
+    "mode": "background",
+    "idleStopSeconds": 0
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "System",
+        "entry": "index.html",
+        "icon": "cpu",
+        "nav": {
+          "group": "This computer",
+          "order": 10
+        },
+        "hint": "CPU, memory, disks and audio",
+        "keywords": [
+          "cpu",
+          "memory",
+          "ram",
+          "disk",
+          "temperature",
+          "sensors",
+          "audio",
+          "volume",
+          "bluetooth",
+          "processes"
+        ]
+      },
+      {
+        "id": "services",
+        "title": "Ports & Docker",
+        "entry": "index.html",
+        "icon": "network",
+        "nav": {
+          "group": "This computer",
+          "order": 20
+        },
+        "hint": "Listening ports and local containers",
+        "keywords": [
+          "ports",
+          "port",
+          "localhost",
+          "3000",
+          "8080",
+          "server",
+          "process",
+          "stop",
+          "docker",
+          "containers",
+          "daemon"
+        ]
+      }
+    ]
+  },
+  "homeCards": [
+    {
+      "id": "cpu",
+      "template": "meter",
+      "title": "CPU",
+      "opens": "main"
+    },
+    {
+      "id": "memory",
+      "template": "meter",
+      "title": "Memory",
+      "opens": "main"
+    }
+  ],
+  "commands": [
+    {
+      "name": "ports",
+      "about": "Inspect local TCP/UDP ports and gracefully stop owned processes",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "list",
+          "about": "TCP listeners and bound, unconnected UDP sockets, IPv4 and IPv6",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "port",
+              "kind": "option",
+              "long": "port",
+              "type": "integer"
+            }
+          ]
+        },
+        {
+          "name": "stop",
+          "about": "Send SIGTERM after verifying the process and socket identity",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "pid",
+              "kind": "option",
+              "long": "pid",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "name": "started_at",
+              "kind": "option",
+              "long": "started-at",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "inode",
+              "kind": "option",
+              "long": "inode",
+              "type": "string",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "docker",
+      "about": "Local Docker status, containers and published ports",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "status",
+          "about": "Local daemon availability, containers and published ports",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "action",
+          "about": "Start, stop or restart a container from a status reading",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "action",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "values": ["start", "stop", "restart"]
+            },
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "endpoint",
+              "kind": "option",
+              "long": "endpoint",
+              "type": "string",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "system",
+      "about": "CPU, memory, storage and battery information",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "snapshot",
+          "about": "Read CPU, memory, disks, temperatures and battery state",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "stats",
+          "about": "Sample CPU, memory and load for this computer",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "disks",
+          "about": "Mounted volumes and their free space",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "processes",
+          "about": "Running processes, by CPU or memory",
+          "aliases": ["ps"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "sort",
+              "kind": "option",
+              "long": "sort",
+              "type": "string",
+              "default": "cpu",
+              "values": ["cpu", "memory", "name"],
+              "help": "Sort by `cpu`, `memory` or `name`"
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 15,
+              "help": "How many rows to print. Ignored with `--json`, which emits them all"
+            }
+          ]
+        },
+        {
+          "name": "audio",
+          "about": "The per-application audio mixer: every stream and its volume",
+          "json": true,
+          "subcommands": [
+            {
+              "name": "list",
+              "about": "List every application stream, playing or recording",
+              "aliases": ["ls"],
+              "effect": "read",
+              "json": true
+            },
+            {
+              "name": "volume",
+              "about": "Set one stream's volume, as a percentage or a fraction",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "id",
+                  "kind": "positional",
+                  "type": "integer",
+                  "required": true,
+                  "help": "The PipeWire node id, as printed by `vr system audio list`"
+                },
+                {
+                  "name": "level",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true,
+                  "help": "`40`, `40%` or `0.4`, all the same volume"
+                }
+              ]
+            },
+            {
+              "name": "mute",
+              "about": "Mute one stream, or every stream at once with `--all`",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "id",
+                  "kind": "positional",
+                  "type": "integer",
+                  "help": "The PipeWire node id. Omit it with `--all`"
+                },
+                {
+                  "name": "all",
+                  "kind": "flag",
+                  "long": "all",
+                  "type": "boolean",
+                  "help": "Apply to every application stream"
+                }
+              ]
+            },
+            {
+              "name": "unmute",
+              "about": "Unmute one stream, or every stream at once with `--all`",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "id",
+                  "kind": "positional",
+                  "type": "integer"
+                },
+                {
+                  "name": "all",
+                  "kind": "flag",
+                  "long": "all",
+                  "type": "boolean"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "bluetooth",
+          "about": "Bluetooth adapters and the devices BlueZ knows about",
+          "effect": "read",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "filesystem": [
+      {
+        "path": "/proc",
+        "access": "read"
+      },
+      {
+        "path": "/sys",
+        "access": "read"
+      },
+      {
+        "path": "/var/run/docker.sock",
+        "access": "readWrite"
+      }
+    ],
+    "dbus": {
+      "system": ["org.bluez"]
+    },
+    "spawn": ["python3", "wpctl", "pw-dump"]
+  },
+  "requires": {
+    "capabilities": ["runningApplications"]
+  }
+}

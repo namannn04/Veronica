@@ -32,6 +32,7 @@ members = [
     "extensions/workspace/backend",
     "extensions/media/backend",
     "extensions/shelf/backend",
+    "extensions/system/backend",
     "extensions/usage/backend",
     "extensions/utility/backend",
 ]

@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 use veronica_core::{AppDirectories, DesktopSession, Settings};
-use veronica_system::MetricsSampler;
 
 pub(crate) struct AppState {
     pub agents: veronica_system::agents::AgentManager,
@@ -11,7 +10,6 @@ pub(crate) struct AppState {
     pub settings: Mutex<Settings>,
     pub lid_awake: Mutex<Option<veronica_system::power::InhibitorLock>>,
     pub prevent_sleep: Mutex<Option<veronica_system::power::InhibitorLock>>,
-    pub sampler: Mutex<MetricsSampler>,
     pub notifications: Mutex<Vec<veronica_system::Notification>>,
     pub emoji: veronica_core::EmojiCatalog,
     pub extensions: Arc<crate::extensions::host::Host>,
@@ -29,7 +27,6 @@ impl AppState {
             settings: Mutex::new(settings),
             lid_awake: Mutex::new(None),
             prevent_sleep: Mutex::new(None),
-            sampler: Mutex::new(MetricsSampler::new()),
             notifications: Mutex::new(Vec::new()),
         })
     }

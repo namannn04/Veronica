@@ -78,25 +78,12 @@ impl ExtensionEntry {
 }
 
 use Capability::{
-    DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression, MachineManagement,
-    MicrophoneControl, PreventSleep, RunningApplications, ScreenShareDetection, ShellIntegration,
-    SystemMetrics,
+    DatabaseBroker, ExternalMediaControl, GlobalShortcuts, MachineManagement, MicrophoneControl,
+    PreventSleep, ScreenShareDetection, ShellIntegration, SystemMetrics,
 };
 use ExtensionGroup as G;
 
 pub const ENTRIES: &[ExtensionEntry] = &[
-    ExtensionEntry {
-        id: "system",
-        title: "System",
-        subtitle: "Running apps, listening ports, Docker, sleep controls and keyboard cleaning.",
-        icon: "toggle-right",
-        group: G::System,
-        featured: true,
-        defaults_key: "tabSystemEnabled",
-        required_capabilities: &[RunningApplications],
-        optional_capabilities: &[PreventSleep, InputSuppression],
-        required_tools: &[],
-    },
     ExtensionEntry {
         id: "database",
         title: "Database",
@@ -209,6 +196,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         featured: true,
     },
     LegacyToggle {
+        id: "system",
+        extension: "system",
+        defaults_key: "tabSystemEnabled",
+        featured: true,
+    },
+    LegacyToggle {
         id: "machines",
         extension: "machines",
         defaults_key: "tabMachinesEnabled",
@@ -314,7 +307,6 @@ mod tests {
     #[test]
     fn the_catalogue_keeps_its_order() {
         let ported = [
-            "system",
             "database",
             "systemStats",
             "micMute",
@@ -392,15 +384,6 @@ mod tests {
                 "non-GNOME {kind:?}"
             );
         }
-    }
-
-    #[test]
-    fn system_is_available_on_gnome_with_compositor_input_suppression() {
-        let entry = entry("system").unwrap();
-        assert_eq!(
-            entry.availability(&gnome_caps(SessionKind::Wayland, true)),
-            ExtensionAvailability::Available
-        );
     }
 
     #[test]
