@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "id": "keystroke-highlight",
+  "version": "1.0",
+  "title": "Keystroke Highlight",
+  "summary": "Shows each key press on screen for demos and recordings.",
+  "category": "desk",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Keystroke Highlight",
+        "entry": "index.html",
+        "icon": "keyboard",
+        "nav": {
+          "group": "Desk",
+          "order": 20
+        },
+        "hint": "Key presses on screen",
+        "keywords": ["keys", "keystroke", "keycap", "demo", "recording", "screencast"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "keystroke-highlight",
+      "about": "Keystroke Highlight: show each key press on screen for demos",
+      "aliases": ["keys"],
+      "json": true,
+      "subcommands": [
+        {
+          "name": "status",
+          "about": "Report the current settings and whether the shell can apply them",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "on",
+          "about": "Start the overlay",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "off",
+          "about": "Pause the overlay, keeping the extension enabled",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "enable",
+          "about": "Enable the extension",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "disable",
+          "about": "Disable the extension, which also stops the overlay",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "duration",
+          "about": "How long a keycap stays on screen, in seconds",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "seconds",
+              "kind": "positional",
+              "type": "number",
+              "required": true,
+              "help": "0.5 to 3. Values outside the range are clamped, not rejected"
+            }
+          ]
+        },
+        {
+          "name": "position",
+          "about": "Where the row of keycaps sits",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "position",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "top or bottom"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": ["org.freedesktop.DBus"]
+    },
+    "shell": ["keystrokeOverlay"]
+  },
+  "requires": {
+    "capabilities": ["keystrokeObservation"]
+  }
+}
