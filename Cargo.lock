@@ -6264,6 +6264,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-keystroke-highlight"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "veronica-core",
+ "veronica-sdk",
+ "veronica-system",
+]
+
+[[package]]
 name = "veronica-ext-media"
 version = "0.1.26"
 dependencies = [

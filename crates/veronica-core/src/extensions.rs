@@ -78,9 +78,9 @@ impl ExtensionEntry {
 }
 
 use Capability::{
-    DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression, KeystrokeObservation,
-    MachineManagement, MicrophoneControl, Notifications, PackageManagement, PreventSleep,
-    RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics,
+    DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression, MachineManagement,
+    MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
+    ScreenShareDetection, ShellIntegration, SystemMetrics,
 };
 use ExtensionGroup as G;
 
@@ -182,18 +182,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_tools: &[],
     },
     ExtensionEntry {
-        id: "keystrokeHighlight",
-        title: "Keystroke Highlight",
-        subtitle: "Show each key press on screen for polished demos.",
-        icon: "keyboard",
-        group: G::Utilities,
-        featured: false,
-        defaults_key: "keystrokeHighlightEnabled",
-        required_capabilities: &[KeystrokeObservation],
-        optional_capabilities: &[GlobalShortcuts],
-        required_tools: &[],
-    },
-    ExtensionEntry {
         id: "presenter",
         title: "Presenter",
         subtitle: "Blurs sensitive numbers while sharing your screen.",
@@ -230,6 +218,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         id: "companion",
         extension: "companion",
         defaults_key: "tabCompanionEnabled",
+        featured: false,
+    },
+    LegacyToggle {
+        id: "keystrokeHighlight",
+        extension: "keystroke-highlight",
+        defaults_key: "keystrokeHighlightEnabled",
         featured: false,
     },
     LegacyToggle {
@@ -340,7 +334,6 @@ mod tests {
             "micMute",
             "lidAwake",
             "notchShelf",
-            "keystrokeHighlight",
             "presenter",
         ];
         let ids: Vec<&str> = ENTRIES.iter().map(|entry| entry.id).collect();
