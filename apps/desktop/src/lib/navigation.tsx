@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import {
   AboutIcon,
-  ClipboardIcon,
   CompanionIcon,
   DatabaseIcon,
   ExtensionsIcon,
@@ -28,7 +27,6 @@ export type BuiltinRoute =
   | "machines"
   | "maintenance"
   | "database"
-  | "clipboard"
   | "companion"
   | "library"
   | "settings"
@@ -129,14 +127,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Tools",
     items: [
-      {
-        id: "clipboard",
-        label: "Clipboard",
-        icon: <ClipboardIcon />,
-        extensionId: "clipboard",
-        hint: "What you have copied",
-        keywords: "copy paste history snippets",
-      },
       {
         id: "companion",
         label: "Companion",

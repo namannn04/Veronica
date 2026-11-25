@@ -45,7 +45,6 @@ import type {
   CleanerItem,
   CleanerScan,
   CleanReport,
-  ClipRow,
   CompanionItem,
   CompanionRecordingStatus,
   ContainerInfo,
@@ -157,10 +156,6 @@ export const ipc = {
   attentionOverview: (days: number) => invoke<AttentionOverview>("attention_overview", { days }),
   shellAction: (action: "cleanKeys" | "pickColor" | "showClipboard") =>
     invoke<void>("shell_action", { action }),
-
-  clipboardList: (query: string) => invoke<ClipRow[]>("clipboard_list", { query }),
-  clipboardRemove: (id: number) => invoke<void>("clipboard_remove", { id }),
-  clipboardClear: () => invoke<void>("clipboard_clear"),
 
   presenterState: () => invoke<PresenterView>("presenter_state"),
   extList: () => invoke<InstalledExtension[]>("ext_list"),

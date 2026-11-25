@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "id": "clipboard",
+  "version": "1.0",
+  "title": "Clipboard",
+  "summary": "Clipboard history, searchable, with one-click copy back.",
+  "category": "utilities",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Clipboard",
+        "entry": "index.html",
+        "icon": "clipboard-list",
+        "nav": {
+          "group": "Tools",
+          "order": 30
+        },
+        "hint": "What you have copied",
+        "keywords": ["copy", "paste", "history", "snippets"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "clipboard",
+      "about": "The clipboard history",
+      "aliases": ["clip"],
+      "json": true,
+      "subcommands": [
+        {
+          "name": "record",
+          "about": "Record a copy, reading the text from stdin",
+          "longAbout": "Record a copy, reading the text from stdin.\n\nUsed by the shell extension. Silent and idempotent by design: re-copying something moves it to the front rather than adding a duplicate.",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 200,
+              "help": "Keep at most this many entries"
+            },
+            {
+              "name": "exact",
+              "kind": "flag",
+              "long": "exact",
+              "type": "boolean",
+              "help": "Keep the text byte for byte. Without it one trailing newline is dropped, since `echo text | vr clipboard record` adds one; the shell extension passes the copy exactly and uses this"
+            }
+          ],
+          "stdin": true
+        },
+        {
+          "name": "list",
+          "about": "List the history, newest first",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "query",
+              "kind": "option",
+              "long": "query",
+              "type": "string",
+              "default": "",
+              "help": "Only entries containing this text"
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 20,
+              "help": "Show at most this many"
+            }
+          ]
+        },
+        {
+          "name": "get",
+          "about": "Print one entry's full text, for piping onward",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "remove",
+          "about": "Forget one entry",
+          "aliases": ["rm"],
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "clear",
+          "about": "Forget everything",
+          "effect": "destructive",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "shell": ["clipboard.watch"],
+    "host": ["clipboard:write"]
+  },
+  "requires": {
+    "capabilities": ["clipboardHistory"],
+    "optionalCapabilities": ["globalPaste", "globalShortcuts", "shellIntegration"]
+  }
+}

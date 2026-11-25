@@ -109,7 +109,7 @@ fn built_in(app: &AppHandle, extension: &str) {
             let handle = app.clone();
             tauri::async_runtime::spawn(async move {
                 if commands::call_shell_method("ShowClipboard").await.is_err() {
-                    show_route(&handle, "clipboard");
+                    show_route(&handle, "ext:clipboard/main");
                 }
             });
         }

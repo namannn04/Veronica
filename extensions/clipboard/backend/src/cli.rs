@@ -1,12 +1,9 @@
-use std::io::Read;
-
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
 use veronica_core::clipboard::{ClipboardHistory, DEFAULT_LIMIT};
-use veronica_core::AppDirectories;
-
-use crate::format::{self, Output};
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::{format, Output};
 
 #[derive(clap::Subcommand)]
 pub(crate) enum ClipboardCommand {
@@ -41,17 +38,17 @@ pub(crate) enum ClipboardCommand {
 pub(crate) fn run(
     directories: &AppDirectories,
     command: &ClipboardCommand,
-    output: Output,
+    output: Output<'_>,
+    stdin: Option<&str>,
 ) -> Result<()> {
     let path = directories.clipboard_db();
     let mut history = ClipboardHistory::load(&path)?;
 
     match command {
         ClipboardCommand::Record { limit, exact } => {
-            let mut text = String::new();
-            std::io::stdin()
-                .read_to_string(&mut text)
-                .context("cannot read the clipboard text from stdin")?;
+            let text = stdin
+                .context("cannot read the clipboard text from stdin")?
+                .to_string();
 
             let text = if *exact {
                 text.as_str()
@@ -122,12 +119,11 @@ pub(crate) fn run(
             let entry = history
                 .get(*id)
                 .with_context(|| format!("no clipboard entry {id}"))?;
-            match output {
-                Output::Json => output.emit(entry, String::new),
-                Output::Text => {
-                    print!("{}", entry.text);
-                    Ok(())
-                }
+            if output.is_json() {
+                output.emit(entry, String::new)
+            } else {
+                output.write(&entry.text);
+                Ok(())
             }
         }
 

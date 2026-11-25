@@ -6175,6 +6175,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-clipboard"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+ "veronica-core",
+ "veronica-sdk",
+]
+
+[[package]]
 name = "veronica-ext-color"
 version = "0.1.26"
 dependencies = [

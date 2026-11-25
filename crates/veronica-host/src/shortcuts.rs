@@ -78,6 +78,8 @@ pub fn host_shortcuts() -> Vec<Declared> {
     ]
 }
 
+const SHELL_PANELS: [&str; 1] = ["clipboard"];
+
 #[must_use]
 pub fn builtin_shortcuts(extension: &str) -> Vec<Declared> {
     let (id, title, default) = match extension {
@@ -120,6 +122,9 @@ pub fn declared(layout: &Layout, settings: &Settings) -> Result<Vec<Declared>> {
         if entry.origin == Origin::Builtin {
             declared.extend(builtin_shortcuts(id));
             continue;
+        }
+        if SHELL_PANELS.contains(&id.as_str()) {
+            declared.extend(builtin_shortcuts(id));
         }
         let path = layout.current_link(id).join("manifest.json");
         let manifest = std::fs::read_to_string(&path)

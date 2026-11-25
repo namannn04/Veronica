@@ -101,12 +101,8 @@ fn built_in_features_keep_todays_default_bindings() {
             .filter_map(|(_, binding, _)| binding)
             .collect()
     };
-    assert_eq!(
-        enabled(&settings),
-        ["Ctrl+Alt+V", "Ctrl+Alt+K", "Ctrl+Alt+B"]
-    );
+    assert_eq!(enabled(&settings), ["Ctrl+Alt+V", "Ctrl+Alt+K"]);
 
-    settings.set("clipboardEnabled", Value::Bool(false));
     settings.set("micMuteEnabled", Value::Bool(true));
     settings.set("colorPickerEnabled", Value::Bool(true));
     settings.set("emojiEnabled", Value::Bool(true));
@@ -114,4 +110,24 @@ fn built_in_features_keep_todays_default_bindings() {
         enabled(&settings),
         ["Ctrl+Alt+V", "Ctrl+Alt+K", "Ctrl+Alt+M"]
     );
+}
+
+#[test]
+fn the_clipboard_extension_keeps_the_panel_shortcut() {
+    let home = tempfile::tempdir().unwrap();
+    let installer = installer(home.path());
+    sideload(&installer, "clipboard", &json!([]));
+    let settings = Settings::default();
+    let planned = current(installer.layout(), &settings).unwrap();
+    let open = planned
+        .iter()
+        .find(|planned| planned.declared.key() == "clipboard/open")
+        .unwrap();
+    assert_eq!(open.declared.origin, Some(Origin::Builtin));
+    assert_eq!(open.binding.as_deref(), Some("Ctrl+Alt+B"));
+    installer.set_enabled("clipboard", false).unwrap();
+    assert!(current(installer.layout(), &settings)
+        .unwrap()
+        .iter()
+        .all(|planned| planned.declared.owner != "clipboard"));
 }

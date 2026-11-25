@@ -24,7 +24,6 @@ import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
 import { AgentsPage } from "./pages/AgentsPage";
-import { ClipboardPage } from "./pages/ClipboardPage";
 import { CompanionPage } from "./pages/CompanionPage";
 import { DatabasePage } from "./pages/DatabasePage";
 import { HomePage } from "./pages/HomePage";
@@ -257,7 +256,6 @@ export function App() {
           {route === "machines" && <MachinesPage />}
           {route === "maintenance" && <MaintenancePage />}
           {route === "database" && <DatabasePage />}
-          {route === "clipboard" && <ClipboardPage />}
           {route === "companion" && <CompanionPage />}
           {route === "library" && (
             <LibraryPage diagnostics={diagnostics} onChanged={loadDiagnostics} />
