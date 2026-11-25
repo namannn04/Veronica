@@ -27,9 +27,6 @@ const SELF_PREVIEW: [&str; 9] = [
 ];
 
 pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
-    ("alerts clear", Effect::Write),
-    ("alerts state", Effect::Read),
-    ("alerts test", Effect::Write),
     ("attention configure", Effect::Write),
     ("attention focus start", Effect::Write),
     ("attention focus status", Effect::Read),
@@ -174,15 +171,6 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("system stats", Effect::Read),
     ("tools install", Effect::Write),
     ("tools ls", Effect::Read),
-    ("usage alerts", Effect::Read),
-    ("usage calendar", Effect::Read),
-    ("usage export", Effect::Write),
-    ("usage limits", Effect::Read),
-    ("usage models", Effect::Read),
-    ("usage projects", Effect::Read),
-    ("usage refresh", Effect::Write),
-    ("usage sources", Effect::Read),
-    ("usage summary", Effect::Read),
     ("utility image", Effect::Write),
     ("utility qr", Effect::Write),
     ("workspace doctor", Effect::Read),

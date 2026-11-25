@@ -1,0 +1,293 @@
+{
+  "schema": 1,
+  "id": "usage",
+  "version": "1.0",
+  "title": "Agent Usage",
+  "summary": "Claude and Codex limits, usage stats, and alerts.",
+  "category": "agents",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "suggestFor": [
+    {
+      "tool": "claude"
+    },
+    {
+      "tool": "codex"
+    }
+  ],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "commands": [
+    {
+      "name": "usage",
+      "about": "Agent usage: totals, limits, projects and collection",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "summary",
+          "about": "Totals, day count and model spread for a window",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer",
+              "help": "How many recent days to include; omit for the full history"
+            },
+            {
+              "name": "sources",
+              "kind": "option",
+              "long": "source",
+              "type": "string",
+              "multiple": true,
+              "help": "Restrict to these collector ids, e.g. --source cli --source codex"
+            }
+          ]
+        },
+        {
+          "name": "sources",
+          "about": "Spend per collector",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer"
+            }
+          ]
+        },
+        {
+          "name": "models",
+          "about": "Spend per model",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer"
+            },
+            {
+              "name": "sources",
+              "kind": "option",
+              "long": "source",
+              "type": "string",
+              "multiple": true
+            }
+          ]
+        },
+        {
+          "name": "projects",
+          "about": "Spend per project, with its chats",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer"
+            },
+            {
+              "name": "sources",
+              "kind": "option",
+              "long": "source",
+              "type": "string",
+              "multiple": true
+            },
+            {
+              "name": "chats",
+              "kind": "flag",
+              "long": "chats",
+              "type": "boolean",
+              "help": "Show the chats inside each project"
+            }
+          ]
+        },
+        {
+          "name": "calendar",
+          "about": "The daily spend calendar",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer"
+            }
+          ]
+        },
+        {
+          "name": "limits",
+          "about": "Rate limits for Claude and Codex, as live gauges",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "warn",
+              "kind": "option",
+              "long": "warn",
+              "type": "integer",
+              "default": 60,
+              "help": "Warn above this utilisation"
+            },
+            {
+              "name": "critical",
+              "kind": "option",
+              "long": "critical",
+              "type": "integer",
+              "default": 85,
+              "help": "Treat above this as critical"
+            }
+          ]
+        },
+        {
+          "name": "alerts",
+          "about": "What the alert notifier would do right now",
+          "longAbout": "What the alert notifier would do right now.\n\nA dry run: it reads the live windows and the stored notifier state, then reports which alerts a poll at this instant would post. Nothing is posted and no state is written, so it is safe to run repeatedly.",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "settings",
+              "kind": "flag",
+              "long": "settings",
+              "type": "boolean",
+              "help": "Also print every switch, so a misfiring alert can be traced to one"
+            }
+          ]
+        },
+        {
+          "name": "export",
+          "about": "Render usage as branded PNG cards, for sharing",
+          "longAbout": "Render usage as branded PNG cards, for sharing.\n\nA card never shows a repository name, a folder path, a chat title or a dollar cost: it exists to be posted somewhere public, and those are the four fields that would leak a client, an employer or an income.",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "cards",
+              "kind": "option",
+              "long": "card",
+              "type": "string",
+              "multiple": true,
+              "help": "Which card. Repeat for several; `all` is every one. Defaults to all"
+            },
+            {
+              "name": "output",
+              "kind": "option",
+              "long": "output",
+              "type": "string",
+              "help": "A directory, or the destination file when there is exactly one card. Defaults to the current directory"
+            },
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer",
+              "help": "How many recent days to include; omit for the full history"
+            },
+            {
+              "name": "sources",
+              "kind": "option",
+              "long": "source",
+              "type": "string",
+              "multiple": true
+            },
+            {
+              "name": "svg",
+              "kind": "flag",
+              "long": "svg",
+              "type": "boolean",
+              "help": "Write the SVG rather than a PNG. Useful with no fonts installed, and for editing a card before posting it"
+            }
+          ]
+        },
+        {
+          "name": "refresh",
+          "about": "Run the collector and rewrite usage.json",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "progress",
+              "kind": "flag",
+              "long": "progress",
+              "type": "boolean",
+              "help": "Print each collector phase as it completes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "alerts",
+      "about": "Rate-limit alerts: the notifier's state, a delivery check and a reset",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "state",
+          "about": "Print what the notifier is comparing against",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "test",
+          "about": "Post one sample banner, to confirm notifications arrive at all",
+          "longAbout": "Post one sample banner, to confirm notifications arrive at all.\n\nDeliberately does not touch the notifier state: consuming a real edge to prove delivery works would suppress the alert being tested.",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "clear",
+          "about": "Forget the remembered levels and zones",
+          "longAbout": "Forget the remembered levels and zones.\n\nWorth doing after changing a threshold, since the stored comparison is then against the old scale.",
+          "effect": "write",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": ["api.anthropic.com", "platform.claude.com", "github.com", "registry.npmjs.org"],
+    "filesystem": [
+      {
+        "path": "~/.claude",
+        "access": "read"
+      },
+      {
+        "path": "~/.codex",
+        "access": "read"
+      },
+      {
+        "path": "~/Pictures",
+        "access": "readWrite"
+      }
+    ],
+    "dbus": {
+      "session": ["org.freedesktop.Notifications"]
+    },
+    "spawn": ["bash", "bun", "npx", "curl", "jq", "perl", "sqlite3", "unzip", "md5sum"]
+  },
+  "requires": {
+    "tools": ["claude", "codex"],
+    "capabilities": ["usageCollection"],
+    "optionalCapabilities": ["notifications"]
+  }
+}

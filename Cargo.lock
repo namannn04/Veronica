@@ -6062,7 +6062,6 @@ dependencies = [
  "veronica-sdk",
  "veronica-system",
  "veronica-usage",
- "zbus",
 ]
 
 [[package]]
@@ -6202,6 +6201,21 @@ dependencies = [
  "tracing",
  "veronica-media",
  "veronica-sdk",
+ "zbus",
+]
+
+[[package]]
+name = "veronica-ext-usage"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+ "veronica-sdk",
+ "veronica-system",
+ "veronica-usage",
  "zbus",
 ]
 
