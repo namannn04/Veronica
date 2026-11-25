@@ -27,9 +27,7 @@ import { DatabasePage } from "./pages/DatabasePage";
 import { HomePage } from "./pages/HomePage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
-import { ServicesPage } from "./pages/ServicesPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { SystemPage } from "./pages/SystemPage";
 import { Sidebar } from "./shell/Sidebar";
 import "./shell/Shell.css";
 import "./shell/Presenter.css";
@@ -232,8 +230,6 @@ export function App() {
         <Fragment key={route}>
           {route === "home" && <HomePage onNavigate={navigateTo} />}
           {route === "agents" && <AgentsPage />}
-          {route === "services" && <ServicesPage />}
-          {route === "system" && <SystemPage />}
           {route === "database" && <DatabasePage />}
           {route === "library" && (
             <LibraryPage diagnostics={diagnostics} onChanged={loadDiagnostics} />

@@ -37,9 +37,7 @@ function describe(reason: unknown): string {
 }
 
 import type {
-  AudioStream,
   BackupSummary,
-  BluetoothState,
   DatabaseConnection,
   DatabaseObject,
   DatabaseOperation,
@@ -55,13 +53,10 @@ import type {
   PlannedShortcut,
   PowerStatus,
   PresenterView,
-  RunningProcess,
   ShellExtensionStatus,
-  SystemSnapshot,
   ToolInstallOutcome,
   ToolSurvey,
   UpdateInfo,
-  VolumeState,
 } from "./types";
 
 export const ipc = {
@@ -108,19 +103,10 @@ export const ipc = {
     invoke<boolean>("ext_confirm_answer", { request, accepted }),
   presenterSet: (action: string) => invoke<void>("presenter_set", { action }),
 
-  portsSnapshot: () => invoke<import("./types").PortsSnapshot>("ports_snapshot"),
-  portsStop: (request: { pid: number; startedAt: string; inode: string }) =>
-    invoke<string>("ports_stop", { request }),
-  dockerSnapshot: () => invoke<import("./types").DockerSnapshot>("docker_snapshot"),
-  dockerAction: (endpoint: string, id: string, action: "start" | "stop" | "restart") =>
-    invoke<void>("docker_action", { endpoint, id, action }),
-  systemSnapshot: () => invoke<SystemSnapshot>("system_snapshot"),
   powerStatus: () => invoke<PowerStatus>("power_status"),
   updateCheck: () => invoke<UpdateInfo>("update_check"),
   updateInstall: (version: string) => invoke<string>("update_install", { version }),
   appRestart: () => invoke<void>("app_restart"),
-  systemProcesses: () => invoke<RunningProcess[]>("system_processes"),
-  systemQuitProcess: (pid: number) => invoke<void>("system_quit_process", { pid }),
 
   databaseConnections: () => invoke<DatabaseConnection[]>("database_connections"),
   databaseTest: (connection: string) => invoke<unknown>("database_test", { connection }),
@@ -137,13 +123,6 @@ export const ipc = {
 
   toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
   toolsInstall: (tool: string) => invoke<ToolInstallOutcome>("tools_install", { tool }),
-  microphoneState: () => invoke<VolumeState>("microphone_state"),
-  microphoneToggle: () => invoke<VolumeState>("microphone_toggle"),
-  audioStreams: () => invoke<AudioStream[]>("audio_streams"),
-  audioStreamVolume: (id: number, volume: number) =>
-    invoke<void>("audio_stream_volume", { id, volume }),
-  audioStreamToggleMute: (id: number) => invoke<boolean>("audio_stream_toggle_mute", { id }),
-  bluetoothState: () => invoke<BluetoothState>("bluetooth_state"),
 
   emojiGroups: () => invoke<EmojiGroup[]>("emoji_groups"),
   emojiSearch: (query: string, group: number | null, limit: number) =>
@@ -160,4 +139,4 @@ export const ipc = {
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
 
-export type { Diagnostics, SystemSnapshot, VolumeState };
+export type { Diagnostics };
