@@ -12,14 +12,15 @@ import {
   TextArea,
   TextField,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { Check, Copy, PlugZap } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ipc } from "../lib/ipc";
-import { type GraftDiscovery, methodArguments, methodResult } from "../lib/workspace";
+import { type GraftDiscovery, methodArguments, methodResult } from "./workspace";
 
 const ICON = { strokeWidth: 1.75 };
 
 export function GraftPlayground() {
+  const client = useClient();
   const [endpoint, setEndpoint] = useState("http://127.0.0.1:18772/mcp");
   const [token, setToken] = useState("");
   const [discovery, setDiscovery] = useState<GraftDiscovery | null>(null);
@@ -69,14 +70,19 @@ export function GraftPlayground() {
           return;
         }
         setResult(undefined);
-        const value = await ipc.graftCall(connection, name, pending, true);
+        const value = await client.backend.call("call", {
+          connection,
+          name,
+          arguments: pending,
+          confirmed: true,
+        });
         if (live.current) {
           setResult(value);
           setPending(null);
         }
       } else {
         reset();
-        const value = await ipc.graftDiscover(connection);
+        const value = await client.backend.call<GraftDiscovery>("discover", { connection });
         if (live.current) {
           setDiscovery(value);
           setName(value.tools[0]?.name || "");
@@ -131,7 +137,7 @@ export function GraftPlayground() {
   };
 
   const copyResult = () => {
-    void navigator.clipboard
+    void client.clipboard
       .writeText(JSON.stringify(displayResult, null, 2))
       .then(() => setCopied(true))
       .catch(() => setError("Clipboard unavailable. Select and copy the result manually."));

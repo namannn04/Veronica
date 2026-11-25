@@ -1,6 +1,6 @@
-use crate::format::Output;
 use anyhow::Result;
 use clap::Subcommand;
+use veronica_sdk::Output;
 use veronica_system::workspace::{self, DoctorRequest};
 #[derive(Subcommand)]
 pub(crate) enum WorkspaceCommand {
@@ -27,7 +27,7 @@ pub(crate) enum WorkspaceCommand {
         containers: Vec<String>,
     },
 }
-pub(crate) async fn run(command: &WorkspaceCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &WorkspaceCommand, output: Output<'_>) -> Result<()> {
     match command {
         WorkspaceCommand::Graft(command) => return graft(command, output).await,
         WorkspaceCommand::Doctor {
@@ -70,7 +70,7 @@ pub(crate) enum GraftCommand {
         confirm: bool,
     },
 }
-async fn graft(command: &GraftCommand, output: Output) -> Result<()> {
+async fn graft(command: &GraftCommand, output: Output<'_>) -> Result<()> {
     use veronica_system::graftcode::{self, Connection};
     let endpoint = match command {
         GraftCommand::Discover { endpoint } | GraftCommand::Call { endpoint, .. } => endpoint,

@@ -15,11 +15,11 @@ import {
   Tabs,
   TextField,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { AlertTriangle, CheckCircle2, Stethoscope } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { GraftPlayground } from "../components/GraftPlayground";
-import { ipc } from "../lib/ipc";
-import type { DoctorReport } from "../lib/workspace";
+import { GraftPlayground } from "./GraftPlayground";
+import type { DoctorReport } from "./workspace";
 import "./WorkspacePage.css";
 
 type Tool = "doctor" | "graft";
@@ -35,6 +35,7 @@ const SUBTITLES: Record<Tool, string> = {
 };
 
 export function WorkspacePage() {
+  const client = useClient();
   const [tab, setTab] = useState<Tool>("doctor");
   const [root, setRoot] = useState("");
   const [ports, setPorts] = useState("");
@@ -69,10 +70,12 @@ export function WorkspacePage() {
             return Number(p);
           })
         : [];
-      const result = await ipc.workspaceDoctor({
-        root: root.trim(),
-        ports: selected,
-        containers: containers.trim() ? containers.split(",").map((s) => s.trim()) : [],
+      const result = await client.backend.call<DoctorReport>("doctor", {
+        request: {
+          root: root.trim(),
+          ports: selected,
+          containers: containers.trim() ? containers.split(",").map((s) => s.trim()) : [],
+        },
       });
       if (live.current) {
         setReport(result);
