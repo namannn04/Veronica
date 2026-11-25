@@ -4,7 +4,6 @@ import {
   AboutIcon,
   AttentionIcon,
   ClipboardIcon,
-  ColorIcon,
   CompanionIcon,
   DatabaseIcon,
   EmojiIcon,
@@ -37,7 +36,6 @@ export type BuiltinRoute =
   | "database"
   | "attention"
   | "clipboard"
-  | "color"
   | "emoji"
   | "companion"
   | "library"
@@ -172,14 +170,7 @@ export const NAV_GROUPS: NavGroup[] = [
         hint: "What you have copied",
         keywords: "copy paste history snippets",
       },
-      {
-        id: "color",
-        label: "Color Picker",
-        icon: <ColorIcon />,
-        extensionId: "colorPicker",
-        hint: "Sample and keep colours",
-        keywords: "colour eyedropper hex rgb swatch pick",
-      },
+
       {
         id: "emoji",
         label: "Emoji",

@@ -17,6 +17,7 @@ members = [
     "apps/desktop/src-tauri",
     "extensions/audit/backend",
     "extensions/calendar/backend",
+    "extensions/color/backend",
     "extensions/fixture/backend",
     "extensions/media/backend",
 ]

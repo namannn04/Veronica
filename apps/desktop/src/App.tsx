@@ -25,7 +25,6 @@ import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
 import { AttentionPage } from "./pages/AttentionPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
-import { ColorPickerPage } from "./pages/ColorPickerPage";
 import { CompanionPage } from "./pages/CompanionPage";
 import { DatabasePage } from "./pages/DatabasePage";
 import { EmojiPage } from "./pages/EmojiPage";
@@ -266,7 +265,6 @@ export function App() {
           {route === "database" && <DatabasePage />}
           {route === "attention" && <AttentionPage />}
           {route === "clipboard" && <ClipboardPage />}
-          {route === "color" && <ColorPickerPage />}
           {route === "emoji" && <EmojiPage />}
           {route === "companion" && <CompanionPage />}
           {route === "library" && (

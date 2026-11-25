@@ -43,7 +43,6 @@ describe("extension-aware navigation", () => {
       database: "database",
       attention: "attention",
       clipboard: "clipboard",
-      color: "colorPicker",
       emoji: "emoji",
       companion: "companion",
     };

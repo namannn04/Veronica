@@ -20,7 +20,7 @@ const DETAILS: Record<string, string> = {
   "veronica/cleanKeys": "Take a compositor grab until you click Done.",
   "clipboard/open": "Open the notch clipboard, or the app as a fallback.",
   "micMute/toggle": "Toggle the default PipeWire microphone system-wide.",
-  "colorPicker/pick": "Open GNOME's eyedropper and save the swatch.",
+  "color/pick": "Open GNOME's eyedropper and save the swatch.",
   "emoji/open": "Open the picker. Clicking an emoji copies it.",
 };
 

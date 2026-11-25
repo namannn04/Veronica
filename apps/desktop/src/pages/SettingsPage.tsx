@@ -538,24 +538,24 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
           <FormGroup
             title="Color picker"
-            description="Sampling and swatch history live on the Color Picker page."
+            description="Sampling and swatch history live on the Color Picker extension's page."
           >
             <SwitchRow
               label="Color picker"
-              description="Adds the page and the top bar's Pick Color action."
+              description="Adds Pick Color to the top bar."
               checked={Boolean(values.colorPickerEnabled)}
               onChange={(value) => void set("colorPickerEnabled", value)}
             />
             <ChoiceRow
               label="History size"
               description="How many swatches to keep."
-              value={Number(values.colorPickerHistorySize ?? 100)}
+              value={Number(values["ext.color.historySize"] ?? 100)}
               options={[10, 25, 50, 100].map((count) => ({
                 value: count,
                 label: `${count} swatches`,
               }))}
               format={(count) => `${count} swatches`}
-              onChange={(count) => void set("colorPickerHistorySize", count)}
+              onChange={(count) => void set("ext.color.historySize", count)}
             />
           </FormGroup>
         </Stack>

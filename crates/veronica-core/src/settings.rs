@@ -193,7 +193,10 @@ mod tests {
     fn extension_default_follows_the_featured_flag() {
         let settings = Settings::default();
         let usage = crate::extensions::entry("usage").unwrap();
-        let color = crate::extensions::entry("colorPicker").unwrap();
+        let color = crate::extensions::ENTRIES
+            .iter()
+            .find(|entry| !entry.featured)
+            .unwrap();
         assert!(
             settings.extension_enabled(usage),
             "featured is on by default"

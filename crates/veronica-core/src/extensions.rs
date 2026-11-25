@@ -81,8 +81,8 @@ use Capability::{
     ClipboardHistory, CompanionService, DatabaseBroker, EmojiInsertion, ExternalMediaControl,
     GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation,
     LocalTerminal, MachineManagement, MicrophoneControl, Notifications, PackageManagement,
-    PreventSleep, RunningApplications, ScreenColorSampling, ScreenShareDetection, ShellIntegration,
-    SystemMetrics, UsageCollection, WindowDimming,
+    PreventSleep, RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics,
+    UsageCollection, WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -303,18 +303,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         optional_capabilities: &[EmojiInsertion, GlobalShortcuts],
         required_tools: &[],
     },
-    ExtensionEntry {
-        id: "colorPicker",
-        title: "Color Picker",
-        subtitle: "System loupe on a hotkey, sampled color to your clipboard.",
-        icon: "pipette",
-        group: G::Utilities,
-        featured: false,
-        defaults_key: "colorPickerEnabled",
-        required_capabilities: &[ScreenColorSampling],
-        optional_capabilities: &[GlobalShortcuts],
-        required_tools: &[],
-    },
 ];
 
 pub fn entry(id: &str) -> Option<&'static ExtensionEntry> {
@@ -346,6 +334,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         id: "music",
         extension: "media",
         defaults_key: "tabMusicEnabled",
+        featured: false,
+    },
+    LegacyToggle {
+        id: "colorPicker",
+        extension: "color",
+        defaults_key: "colorPickerEnabled",
         featured: false,
     },
 ];
@@ -410,7 +404,6 @@ mod tests {
             "focusDim",
             "presenter",
             "emoji",
-            "colorPicker",
         ];
         let ids: Vec<&str> = ENTRIES.iter().map(|entry| entry.id).collect();
         assert_eq!(ids, ported, "the catalogue order drifted");
@@ -436,6 +429,7 @@ mod tests {
         assert_eq!(successor("audit"), Some("audit"));
         assert_eq!(successor("calendar"), Some("calendar"));
         assert_eq!(successor("music"), Some("media"));
+        assert_eq!(successor("colorPicker"), Some("color"));
         assert_eq!(successor("usage"), None);
     }
 

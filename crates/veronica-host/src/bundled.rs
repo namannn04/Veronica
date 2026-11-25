@@ -31,7 +31,7 @@ pub const PROFILE_KEY: &str = "profile";
 const MANIFEST: &str = "manifest.json";
 const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
 
-const LEGACY_IDS: [(&str, &str); 2] = [("appMaintenance", "maintenance"), ("colorPicker", "color")];
+const LEGACY_IDS: [(&str, &str); 1] = [("appMaintenance", "maintenance")];
 
 pub fn bundled_dir(environment: &LaunchEnvironment) -> Option<PathBuf> {
     match environment.packaging {
