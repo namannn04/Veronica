@@ -7,7 +7,6 @@ import {
   HerdrIcon,
   HomeIcon,
   MachinesIcon,
-  MaintenanceIcon,
   NamedIcon,
   PortsIcon,
   SettingsIcon,
@@ -22,7 +21,6 @@ export type BuiltinRoute =
   | "system"
   | "services"
   | "machines"
-  | "maintenance"
   | "database"
   | "library"
   | "settings"
@@ -95,14 +93,6 @@ export const NAV_GROUPS: NavGroup[] = [
         extensionId: "machines",
         hint: "This computer and SSH hosts",
         keywords: "ssh remote servers hosts docker containers wake",
-      },
-      {
-        id: "maintenance",
-        label: "App Maintenance",
-        icon: <MaintenanceIcon />,
-        extensionId: "appMaintenance",
-        hint: "Updates, packages and cleanup",
-        keywords: "apt snap flatpak update upgrade packages clean cache trash",
       },
       {
         id: "database",

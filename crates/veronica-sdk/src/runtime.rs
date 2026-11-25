@@ -83,6 +83,10 @@ pub trait Extension: Send + Sync + 'static {
         async { Err(ErrorObject::method_not_found(CliRun::NAME)) }
     }
 
+    fn previews_itself(&self, _argv: &[String]) -> bool {
+        false
+    }
+
     fn cli_preview(
         &self,
         context: Context,
@@ -449,7 +453,10 @@ async fn cli<E: Extension>(
     context: Context,
     params: CliRunParams,
 ) -> Result<CliRunResult, ErrorObject> {
-    if params.confirm || !context.gate.needs_confirmation(&params.argv) {
+    if params.confirm
+        || !context.gate.needs_confirmation(&params.argv)
+        || extension.previews_itself(&params.argv)
+    {
         return extension.cli_run(context, params).await;
     }
     let mut result = extension.cli_preview(context, params).await?;

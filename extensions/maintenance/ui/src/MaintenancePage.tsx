@@ -18,11 +18,11 @@ import {
   Tabs,
   Toolbar,
 } from "@veronica/ui";
+import { bytes } from "@veronica/ui/format";
 import { CheckCircle2, Package, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { bytes } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import type { PackageInstalled, PackageSource, PackageUpdate, RemovalPlan } from "../lib/types";
+import { errorText, ipc } from "./api";
+import type { PackageInstalled, PackageSource, PackageUpdate, RemovalPlan } from "./types";
 import "./MaintenancePage.css";
 
 const STROKE = 1.75;
@@ -57,7 +57,7 @@ export function MaintenancePage() {
     try {
       setUpdates(await ipc.packagesUpdates());
     } catch (reason) {
-      setUpdatesError(String(reason));
+      setUpdatesError(errorText(reason));
     } finally {
       setBusy("");
     }
@@ -67,7 +67,7 @@ export function MaintenancePage() {
     void ipc
       .packagesSources()
       .then(setSources)
-      .catch((reason) => setSourcesError(String(reason)));
+      .catch((reason) => setSourcesError(errorText(reason)));
     void loadUpdates();
   }, [loadUpdates]);
 
@@ -77,7 +77,7 @@ export function MaintenancePage() {
     void ipc
       .packagesInventory()
       .then(setInstalled)
-      .catch((reason) => setInstalledError(String(reason)))
+      .catch((reason) => setInstalledError(errorText(reason)))
       .finally(() => setBusy(""));
   }, []);
 
@@ -140,7 +140,7 @@ export function MaintenancePage() {
         setError(failures.join("\n\n"));
       }
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy("");
     }
@@ -153,7 +153,7 @@ export function MaintenancePage() {
     try {
       setPlan(await ipc.packagesRemovalPlan(name));
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy("");
     }

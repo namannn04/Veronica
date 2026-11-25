@@ -1,0 +1,224 @@
+{
+  "schema": 1,
+  "id": "maintenance",
+  "version": "1.0",
+  "title": "App Maintenance",
+  "summary": "Packages, updates across apt, snap and flatpak, and review-first removal.",
+  "category": "system",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "App Maintenance",
+        "entry": "index.html",
+        "icon": "wrench",
+        "nav": {
+          "group": "This computer",
+          "order": 50
+        },
+        "hint": "Updates, packages and cleanup",
+        "keywords": [
+          "apt",
+          "snap",
+          "flatpak",
+          "update",
+          "upgrade",
+          "packages",
+          "clean",
+          "cache",
+          "trash"
+        ]
+      },
+      {
+        "id": "cleaner",
+        "title": "Disk Cleaner",
+        "entry": "index.html",
+        "icon": "trash-2",
+        "nav": {
+          "group": "This computer",
+          "order": 51
+        },
+        "hint": "Reclaim space from caches and build output",
+        "keywords": ["cleaner", "cache", "node_modules", "trash", "disk", "space"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "cleaner",
+      "about": "The disk cleaner: measure developer caches and build output, and move what you choose to the Trash",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "scan",
+          "about": "Measure what could be reclaimed. Reads only",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "root",
+              "kind": "option",
+              "long": "root",
+              "type": "string",
+              "help": "Also sweep this folder for project directories such as `node_modules`. Without it, only the fixed caches are measured"
+            },
+            {
+              "name": "categories",
+              "kind": "option",
+              "long": "category",
+              "type": "string",
+              "multiple": true,
+              "help": "Restrict to these category ids. Repeatable"
+            }
+          ]
+        },
+        {
+          "name": "categories",
+          "about": "List the categories the cleaner knows, and what each one costs",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "clean",
+          "about": "Re-scan, then move everything found to the Trash",
+          "longAbout": "Re-scan, then move everything found to the Trash.\n\nDoes nothing without `--yes`.",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "root",
+              "kind": "option",
+              "long": "root",
+              "type": "string"
+            },
+            {
+              "name": "categories",
+              "kind": "option",
+              "long": "category",
+              "type": "string",
+              "multiple": true
+            }
+          ]
+        },
+        {
+          "name": "drives",
+          "about": "The mounted volumes and how full they are",
+          "effect": "read",
+          "json": true
+        }
+      ]
+    },
+    {
+      "name": "maintenance",
+      "about": "App Maintenance: what is installed, what can be updated, and removing it with the consequences shown first",
+      "aliases": ["pkg"],
+      "json": true,
+      "subcommands": [
+        {
+          "name": "inventory",
+          "about": "What is installed, from every source on this computer",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "source",
+              "kind": "option",
+              "long": "source",
+              "type": "string",
+              "help": "Restrict to one source: apt, snap or flatpak"
+            }
+          ]
+        },
+        {
+          "name": "updates",
+          "about": "What has a newer version available. Installs nothing",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "source",
+              "kind": "option",
+              "long": "source",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "update",
+          "about": "Apply updates",
+          "longAbout": "Apply updates.\n\nWith no names, everything from that source. Prints the plan and stops unless `--yes` is given.",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "source",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "Which source to update. Required, because the three take different commands and \"everything everywhere\" is rarely what is meant"
+            },
+            {
+              "name": "names",
+              "kind": "positional",
+              "type": "string",
+              "multiple": true,
+              "help": "Specific packages. Omit for every update from that source"
+            }
+          ]
+        },
+        {
+          "name": "remove",
+          "about": "What removing a package would take with it",
+          "longAbout": "What removing a package would take with it.\n\nPrints the plan and stops unless `--yes` is given. apt only: snap and flatpak have no equivalent simulation to review first.",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "package",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "sources",
+          "about": "Which package sources this computer has",
+          "effect": "read",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "filesystem": [
+      {
+        "path": "~",
+        "access": "readWrite"
+      }
+    ],
+    "spawn": ["apt", "apt-get", "dpkg-query", "snap", "flatpak", "pkexec", "gio"]
+  },
+  "requires": {
+    "capabilities": ["packageManagement"],
+    "optionalCapabilities": ["notifications"]
+  }
+}

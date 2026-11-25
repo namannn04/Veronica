@@ -41,7 +41,6 @@ import type {
   SystemSnapshot,
   VolumeState,
 } from "../lib/types";
-import { CleanerPane } from "./CleanerPane";
 import "./SystemPage.css";
 
 const TICK_MS = 2000;
@@ -50,13 +49,12 @@ const PROCESS_LIMIT = 40;
 const STROKE = 1.75;
 
 type SortKey = "name" | "cpu" | "memory";
-type View = "overview" | "apps" | "devices" | "cleaner";
+type View = "overview" | "apps" | "devices";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "apps", label: "Apps" },
   { id: "devices", label: "Audio and Bluetooth" },
-  { id: "cleaner", label: "Cleaner" },
 ];
 
 export function SystemPage() {
@@ -500,8 +498,6 @@ export function SystemPage() {
           </Card>
         </Columns>
       )}
-
-      {view === "cleaner" && <CleanerPane />}
 
       <ConfirmDialog
         open={quitting !== null}

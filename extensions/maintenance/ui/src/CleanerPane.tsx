@@ -9,11 +9,11 @@ import {
   Section,
   Toolbar,
 } from "@veronica/ui";
+import { bytes } from "@veronica/ui/format";
 import { ScanSearch, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { bytes } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import type { CleanerCategory, CleanerScan } from "../lib/types";
+import { errorText, ipc } from "./api";
+import type { CleanerCategory, CleanerScan } from "./types";
 import "./CleanerPane.css";
 
 const STROKE = 1.75;
@@ -41,7 +41,7 @@ export function CleanerPane() {
         setCategories(caches);
         setSelected(new Set(caches.filter((entry) => entry.onByDefault).map((entry) => entry.id)));
       })
-      .catch((reason) => setCategoriesError(String(reason)));
+      .catch((reason) => setCategoriesError(errorText(reason)));
   }, []);
 
   useEffect(loadCategories, [loadCategories]);
@@ -53,7 +53,7 @@ export function CleanerPane() {
     try {
       setScan(await ipc.cleanerScan([...ids]));
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy("");
     }
@@ -86,7 +86,7 @@ export function CleanerPane() {
       }
       setScan(null);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy("");
       setConfirming(false);

@@ -4,7 +4,8 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_system::packages::{self, Source};
 
-use crate::format::{self, Output};
+use veronica_sdk::cli::confirmation;
+use veronica_sdk::{format, Output};
 
 #[derive(clap::Subcommand)]
 pub(crate) enum MaintenanceCommand {
@@ -49,7 +50,7 @@ fn source(raw: &str) -> Result<Source> {
     })
 }
 
-pub(crate) async fn run(command: &MaintenanceCommand, output: Output, yes: bool) -> Result<()> {
+pub(crate) async fn run(command: &MaintenanceCommand, output: Output<'_>, yes: bool) -> Result<()> {
     match command {
         MaintenanceCommand::Sources => {
             let mut rows = Vec::new();
@@ -172,7 +173,7 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output, yes: bool)
                         || format!("nothing to update from {}", source.title()),
                     );
                 }
-                return Err(format::confirmation(
+                return Err(confirmation(
                     output,
                     &json!({ "command": command, "wouldUpdate": pending }),
                     || {
@@ -209,7 +210,7 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output, yes: bool)
         MaintenanceCommand::Remove { package } => {
             let plan = packages::removal_plan(package).await?;
             if !yes {
-                return Err(format::confirmation(output, &plan, || {
+                return Err(confirmation(output, &plan, || {
                     let mut out = format!("Removing {} would remove:\n", plan.package);
                     for name in &plan.removed {
                         let _ = writeln!(out, "  {name}");
@@ -229,7 +230,7 @@ pub(crate) async fn run(command: &MaintenanceCommand, output: Output, yes: bool)
             }
 
             let argv = packages::removal_command(package, true)?;
-            let status = tokio::process::Command::from(veronica_core::host::command(&argv[0]))
+            let status = tokio::process::Command::from(veronica_sdk::spawn::command(&argv[0]))
                 .args(&argv[1..])
                 .env("DEBIAN_FRONTEND", "noninteractive")
                 .status()
