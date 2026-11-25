@@ -17,14 +17,14 @@ import {
   Toolbar,
 } from "@veronica/ui";
 import { colorScale, DayBars, HourBars, RankedBars, SpendCalendar } from "@veronica/ui/charts";
+import { modelLabel, money, timeAgo, tokens } from "@veronica/ui/format";
 import { BarChart3, RefreshCw, Share2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LimitRings } from "../components/LimitRings";
-import { ModelTable } from "../components/ModelTable";
-import { ProjectList } from "../components/ProjectList";
-import { modelLabel, money, timeAgo, tokens } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { CollectorEvent, UsageView } from "../lib/types";
+import { errorText, ipc, listenEvent } from "./api";
+import { LimitRings } from "./LimitRings";
+import { ModelTable } from "./ModelTable";
+import { ProjectList } from "./ProjectList";
+import type { CollectorEvent, UsageView } from "./types";
 import "./UsagePage.css";
 
 type Range = "7" | "30" | "90" | "all";
@@ -56,7 +56,7 @@ export function UsagePage() {
       setView(await ipc.usageView(days, sources));
       setError(null);
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     }
   }, [days, sources]);
 
@@ -122,7 +122,7 @@ export function UsagePage() {
       await load();
       setProgress("");
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
       setProgress("");
     } finally {
       setRefreshing(false);
@@ -139,7 +139,7 @@ export function UsagePage() {
         text: `Saved ${files.length} card${files.length === 1 ? "" : "s"} to ~/Pictures`,
       });
     } catch (reason) {
-      setExported({ tone: "critical", text: String(reason) });
+      setExported({ tone: "critical", text: errorText(reason) });
     } finally {
       setExporting(false);
     }

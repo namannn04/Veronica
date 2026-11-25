@@ -5,7 +5,6 @@ mod legacy;
 mod maintenance;
 mod shortcuts;
 mod system;
-mod usage;
 
 pub(crate) use attention::*;
 pub(crate) use clipboard::*;
@@ -14,7 +13,6 @@ pub(crate) use legacy::*;
 pub(crate) use maintenance::*;
 pub(crate) use shortcuts::*;
 pub(crate) use system::*;
-pub(crate) use usage::*;
 
 type CommandResult<T> = Result<T, String>;
 

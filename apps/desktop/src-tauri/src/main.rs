@@ -1,4 +1,3 @@
-mod alerts;
 mod commands;
 mod emoji_picker;
 mod extensions;
@@ -12,7 +11,6 @@ mod shortcuts;
 mod single_instance;
 mod state;
 mod tray;
-mod usage_schedule;
 
 use anyhow::Result;
 use tauri::{Emitter, Manager, RunEvent, WindowEvent};
@@ -108,11 +106,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::graft_call,
             commands::diagnostics,
             commands::capabilities,
-            commands::usage_view,
-            commands::usage_refresh,
-            commands::usage_refreshing,
-            commands::usage_export,
-            commands::usage_limits,
             commands::settings_all,
             commands::settings_set,
             commands::launch_at_login_status,
@@ -188,9 +181,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::clipboard_clear,
             commands::presenter_state,
             commands::presenter_set,
-            commands::alerts_view,
-            commands::alerts_test,
-            commands::alerts_reset,
             commands::notifications_list,
             commands::notifications_dismiss,
             commands::notifications_clear,
@@ -362,16 +352,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 if let Err(error) = result {
                     tracing::info!("notification history unavailable: {error:#}");
                 }
-            });
-
-            let collecting = handle.clone();
-            tauri::async_runtime::spawn(async move {
-                usage_schedule::run(collecting).await;
-            });
-
-            let alerting = handle.clone();
-            tauri::async_runtime::spawn(async move {
-                alerts::run(alerting).await;
             });
 
             let presenting = handle.clone();

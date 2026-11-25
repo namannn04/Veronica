@@ -11,49 +11,38 @@ import {
   PageHeader,
   ProgressBar,
   SearchField,
-  Skeleton,
   SkeletonText,
 } from "@veronica/ui";
-import { ringStatus, SpendCalendar } from "@veronica/ui/charts";
 import {
-  Activity,
   ArrowUpRight,
   Coffee,
   Cpu,
   EyeOff,
-  Gauge as GaugeIcon,
   Globe2,
   Keyboard,
   LaptopMinimal,
   Plus,
-  Sparkles,
   X,
   Zap,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ExtensionCards } from "../components/ExtensionCards";
 import { NotificationList } from "../components/NotificationList";
-import { ProviderSelector } from "../components/ProviderSelector";
 import { WelcomeCard } from "../components/WelcomeCard";
-import { money, tokens } from "../lib/format";
 import { ipc, listenEvent } from "../lib/ipc";
 import type { ExtensionRoute } from "../lib/navigation";
 import { STARTERS_KEY, storedStarters } from "../lib/onboarding";
 import { startVisiblePolling } from "../lib/polling";
-import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
-import type { GaugeReport, PresenterView, SystemSnapshot, UsageView } from "../lib/types";
+import type { PresenterView, SystemSnapshot } from "../lib/types";
 import "./HomePage.css";
 
-type HomeRoute = "usage" | "system" | "library" | ExtensionRoute;
+type HomeRoute = "system" | "library" | ExtensionRoute;
 type HomeData = {
-  usage: UsageView | null;
-  limits: GaugeReport | null;
   system: SystemSnapshot | null;
 };
 
-const EMPTY: HomeData = { usage: null, limits: null, system: null };
+const EMPTY: HomeData = { system: null };
 const LIVE_POLL_MS = 3_000;
-const LIMITS_POLL_MS = 5 * 60_000;
 const DEFAULT_ZONES = ["America/New_York", "America/Los_Angeles"];
 const ZONE_SUGGESTIONS = [
   "Europe/London",
@@ -128,8 +117,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
 
   const refresh = useCallback(async () => {
     const requests = await Promise.allSettled([
-      ipc.usageView(null, []),
-      ipc.usageLimits(),
       ipc.systemSnapshot(),
       ipc.settingsAll(),
       ipc.presenterState(),
@@ -138,15 +125,13 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       setDesktopReady(false);
     }
     setData({
-      usage: requests[0].status === "fulfilled" ? requests[0].value : null,
-      limits: requests[1].status === "fulfilled" ? requests[1].value : null,
-      system: requests[2].status === "fulfilled" ? requests[2].value : null,
+      system: requests[0].status === "fulfilled" ? requests[0].value : null,
     });
-    if (requests[3].status === "fulfilled") {
-      setSettings(requests[3].value);
+    if (requests[1].status === "fulfilled") {
+      setSettings(requests[1].value);
     }
-    if (requests[4].status === "fulfilled") {
-      setPresenter(requests[4].value);
+    if (requests[2].status === "fulfilled") {
+      setPresenter(requests[2].value);
     }
     setLoaded(true);
   }, []);
@@ -166,16 +151,9 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       }
       setData((current) => ({ ...current, system: system ?? current.system }));
     });
-    const stopLimits = every(LIMITS_POLL_MS, async () => {
-      const limits = await ipc.usageLimits().catch(() => null);
-      if (live && limits) {
-        setData((current) => ({ ...current, limits }));
-      }
-    });
     return () => {
       live = false;
       stopLive();
-      stopLimits();
     };
   }, []);
 
@@ -190,12 +168,10 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
         .then(setPresenter)
         .catch(() => {});
     });
-    const usage = listenEvent("usage-updated", () => void refresh());
     return () => {
       void changed.then((unlisten) => unlisten());
-      void usage.then((unlisten) => unlisten());
     };
-  }, [refresh]);
+  }, []);
 
   const set = async (key: string, value: unknown) => {
     const previous = settings[key];
@@ -239,13 +215,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     }
   };
 
-  const totals = data.usage?.dashboard?.totals;
-  const heatmap = data.usage?.dashboard?.heatmap ?? [];
-  const selectedProvider = limitProviderOf(settings.limitsProvider);
-  const gauges =
-    data.limits?.gauges.filter((gauge) => gauge.provider === selectedProvider).slice(0, 3) ?? [];
-  const providerNeedsAttention =
-    data.limits?.notes.some((note) => note.startsWith(selectedProvider)) ?? false;
   const subtitle = useMemo(
     () =>
       `${now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}, ${now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
@@ -324,117 +293,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
               onClick={() => void set("lidAwakeEnabled", !settings.lidAwakeEnabled)}
             />
           </div>
-        </Widget>
-
-        <Widget
-          className="home-span-4 home-activity"
-          icon={<Activity />}
-          title="Activity"
-          meta="Daily estimated spend"
-          bodyClassName="blur-money"
-        >
-          {!loaded ? (
-            <div className="home-heat-skeleton">
-              <Skeleton height={164} radius={8} />
-            </div>
-          ) : heatmap.length > 0 ? (
-            <SpendCalendar cells={heatmap} />
-          ) : (
-            <Quiet>
-              No activity collected yet. Agent usage fills this in after its first collection.
-            </Quiet>
-          )}
-        </Widget>
-
-        <Widget
-          className="home-span-2"
-          icon={<Sparkles />}
-          title="Agent usage"
-          meta="All time"
-          bodyClassName="blur-money blur-usage"
-          actions={
-            <IconButton
-              size="small"
-              label="Open agent usage"
-              icon={<ArrowUpRight />}
-              onClick={() => onNavigate("usage")}
-            />
-          }
-        >
-          <div className="home-metrics home-metrics-pair">
-            <Metric label="Spend" value={totals ? money(totals.cost) : null} loading={!loaded} />
-            <Metric
-              label="Tokens"
-              value={totals ? tokens(totals.tokens) : null}
-              loading={!loaded}
-            />
-          </div>
-        </Widget>
-
-        <Widget
-          className="home-span-2"
-          icon={<GaugeIcon />}
-          title="Rate limits"
-          bodyClassName="blur-agents"
-          actions={
-            <>
-              <ProviderSelector
-                compact
-                value={selectedProvider}
-                onChange={(provider: LimitProvider) =>
-                  void set("limitsProvider", storedLimitProvider(provider))
-                }
-              />
-              <IconButton
-                size="small"
-                label="Open rate limits"
-                icon={<ArrowUpRight />}
-                onClick={() => onNavigate("usage")}
-              />
-            </>
-          }
-        >
-          {!loaded ? (
-            <div className="home-limits" role="status" aria-label="Reading rate limits">
-              {[56, 44, 72].map((width) => (
-                <div className="home-limit" key={width}>
-                  <span className="home-limit-name">
-                    <SkeletonText width={width} />
-                  </span>
-                  <ProgressBar value={0} tone="neutral" size="thin" />
-                  <span className="home-limit-value">
-                    <SkeletonText width={28} />
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : gauges.length > 0 ? (
-            <div className="home-limits">
-              {gauges.map((gauge) => {
-                const status = ringStatus(gauge.percent);
-                const tone =
-                  status === "good" ? "good" : status === "critical" ? "critical" : "warning";
-                return (
-                  <div className="home-limit" key={`${gauge.provider}-${gauge.window}`}>
-                    <span className="home-limit-name">{gauge.window}</span>
-                    <ProgressBar
-                      value={gauge.percent / 100}
-                      tone={tone}
-                      size="thin"
-                      label={`${gauge.window} usage`}
-                    />
-                    <span className="home-limit-value ui-num">{Math.round(gauge.percent)}%</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <Quiet>
-              {providerNeedsAttention
-                ? `${selectedProvider} needs attention. Open rate limits for details.`
-                : "No limit data yet."}
-            </Quiet>
-          )}
         </Widget>
 
         <NotificationList limit={4} className="home-card home-span-4" />

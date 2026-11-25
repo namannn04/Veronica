@@ -165,27 +165,25 @@ test('Ports and Docker launches only through the explicit utility action', () =>
     assert.equal(h.closed(), 1);
 });
 
-test('utility tabs do not refresh hidden Home data and repeated Home reads coalesce', async () => {
+test('utility tabs do not refresh hidden clipboard data and repeated reads coalesce', async () => {
     const h = harness();
     h.panel.actor = {};
-    let usage = 0,
+    let reads = 0,
         release;
     const wait = new Promise(resolve => {
         release = resolve;
     });
-    h.panel._usage = {
-        refresh: async () => {
-            usage++;
-            await wait;
-        },
+    h.panel._refreshClipboard = async () => {
+        reads++;
+        await wait;
     };
     h.panel._activeTab = 'qr';
     await h.panel.refresh();
-    assert.equal(usage, 0);
-    h.panel._activeTab = 'home';
+    assert.equal(reads, 0);
+    h.panel._activeTab = 'clipboard';
     const first = h.panel.refresh();
     await h.panel.refresh();
-    assert.equal(usage, 1);
+    assert.equal(reads, 1);
     release();
     await first;
 });

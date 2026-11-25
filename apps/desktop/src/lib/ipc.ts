@@ -37,7 +37,6 @@ function describe(reason: unknown): string {
 }
 
 import type {
-  AlertsView,
   AttentionOverview,
   AudioStream,
   BackupSummary,
@@ -50,7 +49,6 @@ import type {
   CompanionItem,
   CompanionRecordingStatus,
   ContainerInfo,
-  Dashboard,
   DatabaseConnection,
   DatabaseObject,
   DatabaseOperation,
@@ -60,7 +58,6 @@ import type {
   EmojiCopyResult,
   EmojiGroup,
   EmojiRow,
-  GaugeReport,
   ImportReport,
   InstalledExtension,
   LaunchAtLoginStatus,
@@ -81,7 +78,6 @@ import type {
   ToolInstallOutcome,
   ToolSurvey,
   UpdateInfo,
-  UsageView,
   VolumeState,
 } from "./types";
 
@@ -135,16 +131,6 @@ export const ipc = {
     invoke<import("./workspace").DoctorReport>("workspace_doctor", { request }),
   diagnostics: () => invoke<Diagnostics>("diagnostics"),
 
-  usageView: (days: number | null, sources: string[]) =>
-    invoke<UsageView>("usage_view", { days, sources }),
-
-  usageLimits: () => invoke<GaugeReport>("usage_limits"),
-
-  usageExport: (cards: string[], days: number | null, sources: string[] = []) =>
-    invoke<string[]>("usage_export", { cards, days, sources }),
-  usageRefresh: () => invoke<string>("usage_refresh"),
-  usageRefreshing: () => invoke<boolean>("usage_refreshing"),
-
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),
   settingsSet: (key: string, value: unknown) => invoke<void>("settings_set", { key, value }),
   shortcutsList: () => invoke<PlannedShortcut[]>("shortcuts_list"),
@@ -186,10 +172,6 @@ export const ipc = {
   extConfirmAnswer: (request: number, accepted: boolean) =>
     invoke<boolean>("ext_confirm_answer", { request, accepted }),
   presenterSet: (action: string) => invoke<void>("presenter_set", { action }),
-
-  alertsView: () => invoke<AlertsView>("alerts_view"),
-  alertsTest: () => invoke<string>("alerts_test"),
-  alertsReset: () => invoke<void>("alerts_reset"),
 
   machinesProbe: () => invoke<MachineReport[]>("machines_probe"),
   machinesAdd: (target: string, name: string | null, port: number | null) =>
@@ -277,4 +259,4 @@ export const ipc = {
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
 
-export type { Dashboard, Diagnostics, SystemSnapshot, UsageView, VolumeState };
+export type { Diagnostics, SystemSnapshot, VolumeState };

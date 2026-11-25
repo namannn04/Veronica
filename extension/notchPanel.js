@@ -16,7 +16,6 @@ import { brandIcon, launchApp, launchFileShelf, launchServices, runJson, vbox } 
 import { presenterClick, presenterState } from './presenterGate.js';
 import { SurfaceStrip } from './surfaces.js';
 import { isTheme } from './themes.js';
-import { UsageCard } from './usageCard.js';
 import { UtilityPanel } from './utilityPanel.js';
 
 const TABS = [
@@ -99,7 +98,6 @@ export class NotchPanel {
         this._featureUnsubscribe =
             this._settings?.subscribe(values => {
                 this._applyFeatureSettings(values);
-                this._usage?.setProvider(values.limitsProvider);
                 this._applyTheme(values.appearance);
             }) ?? null;
         this._awakeUnsubscribe = this._settings?.subscribe(values => this._applyAwake(values)) ?? null;
@@ -236,11 +234,6 @@ export class NotchPanel {
             style_class: 'veronica-shelf-panel veronica-shelf-home',
             x_expand: true,
         });
-
-        const glance = new St.BoxLayout({ style_class: 'veronica-glance-row', x_expand: true });
-        this._usage = new UsageCard();
-        glance.add_child(this._usage.actor);
-        panel.add_child(glance);
 
         this._surfaces = new SurfaceStrip(this._cancellable, () => this._presenterState);
         panel.add_child(this._surfaces.actor);
@@ -778,7 +771,6 @@ export class NotchPanel {
             this._presenter.visible = state.enabled;
             this._setToggle(this._presenter, state.active);
         }
-        this._usage?.setPrivate(state.usagePrivate);
     }
 
     async _togglePresenter() {
@@ -874,9 +866,7 @@ export class NotchPanel {
         }
         this._refreshing = true;
         try {
-            if (this._activeTab === 'home') {
-                await this._usage?.refresh(this._readScope());
-            } else if (this._activeTab === 'clipboard') {
+            if (this._activeTab === 'clipboard') {
                 await this._refreshClipboard();
             } else if (this._activeTab === 'files') {
                 await this._refreshFiles();
@@ -920,7 +910,6 @@ export class NotchPanel {
         this._imageTool?.destroy();
         this._qrTool?.destroy();
         this._imageTool = this._qrTool = null;
-        this._usage?.destroy();
         this._surfaces?.destroy();
         this._surfaces = null;
         this._clipboardRows = null;

@@ -23,7 +23,8 @@ describe("extension-aware navigation", () => {
   });
 
   test("an on-demand window opens its requested route safely", () => {
-    expect(routeFromSearch("?route=usage")).toBe("usage");
+    expect(routeFromSearch("?route=settings")).toBe("settings");
+    expect(routeFromSearch("?route=ext:usage/main")).toBe("ext:usage/main");
     expect(routeFromSearch("?route=not-a-page")).toBe("home");
     expect(routeFromSearch("")).toBe("home");
   });
@@ -33,7 +34,6 @@ describe("extension-aware navigation", () => {
       Exclude<BuiltinRoute, "home" | "library" | "settings" | "about">,
       string
     > = {
-      usage: "usage",
       system: "system",
       services: "system",
       machines: "machines",

@@ -1,9 +1,17 @@
+mod alerts;
 mod alerts_cli;
+mod refresh;
+mod rpc;
+mod schedule;
+mod surfaces;
 mod usage_cli;
 
 use clap::{Parser, Subcommand};
+use serde_json::Value;
 use veronica_sdk::paths::AppDirectories;
-use veronica_sdk::protocol::rpc::{CliRunParams, CliRunResult, ErrorObject};
+use veronica_sdk::protocol::rpc::{
+    CliRunParams, CliRunResult, ErrorObject, RpcCallParams, RunMode,
+};
 use veronica_sdk::{Capture, Context, Extension};
 
 #[derive(Parser)]
@@ -59,6 +67,42 @@ async fn run(
 struct Usage;
 
 impl Extension for Usage {
+    fn methods(&self) -> Vec<String> {
+        rpc::METHODS.map(String::from).to_vec()
+    }
+
+    fn topics(&self) -> Vec<String> {
+        [
+            refresh::PROGRESS,
+            refresh::STARTED,
+            refresh::FINISHED,
+            refresh::UPDATED,
+            alerts::POSTED,
+            alerts::LIMITS,
+        ]
+        .map(String::from)
+        .to_vec()
+    }
+
+    async fn initialize(&self, context: &Context) -> Result<(), ErrorObject> {
+        if context.mode() == RunMode::Service {
+            let directories =
+                AppDirectories::current().map_err(|error| veronica_sdk::rpc::failure(&error))?;
+            tokio::spawn(schedule::run(context.clone(), directories.clone()));
+            tokio::spawn(alerts::run(context.clone(), directories.clone()));
+            tokio::spawn(surfaces::run(context.clone(), directories));
+        }
+        Ok(())
+    }
+
+    async fn rpc_call(
+        &self,
+        context: Context,
+        params: RpcCallParams,
+    ) -> Result<Value, ErrorObject> {
+        rpc::call(&context, &params.method, params.params).await
+    }
+
     async fn cli_run(
         &self,
         context: Context,
@@ -70,6 +114,15 @@ impl Extension for Usage {
         };
         let capture = Capture::new(params.json);
         let outcome = run(&program, &params, &context, &capture).await;
+        let chose_provider = matches!(
+            program.root,
+            Root::Usage(usage_cli::UsageCommand::Provider { .. })
+        );
+        if outcome.is_ok() && chose_provider && context.mode() == RunMode::Service {
+            if let Ok(directories) = AppDirectories::current() {
+                surfaces::publish_limits(&context, &directories).await;
+            }
+        }
         Ok(capture.finish(outcome))
     }
 }
@@ -85,7 +138,7 @@ mod tests {
 
     use super::Program;
 
-    const EFFECTS: [(&str, Effect); 12] = [
+    const EFFECTS: [(&str, Effect); 13] = [
         ("usage summary", Effect::Read),
         ("usage sources", Effect::Read),
         ("usage models", Effect::Read),
@@ -95,6 +148,7 @@ mod tests {
         ("usage alerts", Effect::Read),
         ("usage export", Effect::Write),
         ("usage refresh", Effect::Write),
+        ("usage provider", Effect::Write),
         ("alerts state", Effect::Read),
         ("alerts test", Effect::Write),
         ("alerts clear", Effect::Write),

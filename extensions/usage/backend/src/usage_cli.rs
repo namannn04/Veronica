@@ -97,6 +97,11 @@ pub(crate) enum UsageCommand {
         )]
         svg: bool,
     },
+    #[command(about = "Choose whose rate limits the Home card and the notch show")]
+    Provider {
+        #[arg(value_parser = ["claude", "codex"])]
+        provider: String,
+    },
     #[command(about = "Run the collector and rewrite usage.json")]
     Refresh {
         #[arg(long, help = "Print each collector phase as it completes")]
@@ -558,6 +563,16 @@ pub(crate) async fn run(
 
             output.emit(&json!({ "range": label, "files": written }), || {
                 written.join("\n")
+            })
+        }
+
+        UsageCommand::Provider { provider } => {
+            let path = directories.settings_file();
+            let mut settings = veronica_sdk::settings::Settings::load(&path)?;
+            settings.set(crate::surfaces::PROVIDER_KEY, json!(provider));
+            settings.save(&path)?;
+            output.emit(&json!({ "provider": provider }), || {
+                format!("rate limits now follow {provider}")
             })
         }
 

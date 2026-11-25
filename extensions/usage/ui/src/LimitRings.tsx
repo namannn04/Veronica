@@ -1,13 +1,14 @@
 import { Button, Card, CardHeader, IconButton, Notice, Skeleton, SkeletonText } from "@veronica/ui";
 import { LimitRing } from "@veronica/ui/charts";
+import { countdown } from "@veronica/ui/format";
+import { frameVisibility } from "@veronica/ui/frame";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import { RotateCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { countdown } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
-import type { Gauge, GaugeReport } from "../lib/types";
+import { errorText, ipc, listenEvent } from "./api";
 import { ProviderSelector } from "./ProviderSelector";
+import { type LimitProvider, limitProviderOf, storedLimitProvider } from "./providers";
+import type { Gauge, GaugeReport } from "./types";
 import "./LimitRings.css";
 
 const REFRESH_MS = 5 * 60 * 1000;
@@ -36,9 +37,9 @@ export function LimitRings() {
   }, []);
 
   useEffect(() => {
-    const stop = startVisiblePolling(load, REFRESH_MS);
+    const stop = startVisiblePolling(load, REFRESH_MS, frameVisibility);
     const tick = setInterval(() => {
-      if (!document.hidden) {
+      if (!frameVisibility.hidden) {
         setTick((n) => n + 1);
       }
     }, 1000);
@@ -65,7 +66,7 @@ export function LimitRings() {
       await ipc.settingsSet("limitsProvider", storedLimitProvider(next));
       setError(null);
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     }
   };
 

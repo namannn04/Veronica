@@ -384,10 +384,9 @@ Bluetooth, volume and battery:
 - The Notifications tab reuses GNOME's `CalendarMessageList` class but constrains
   it to the shelf height, so it scrolls instead of creating the stock two-column
   calendar popup shown beside the shelf.
-- `extension/notchPanel.js` owns the Edith-style surface. Home places
-  now-playing and two usage rings side by side with quick actions below;
-  Clipboard provides copy and delete interactions.
-  `St.DrawingArea` and Cairo draw the percentage rings (`extension/ring.js`).
+- `extension/notchPanel.js` owns the notch surface. Home shows the
+  activities installed extensions publish (`extension/surfaces.js`) above the
+  quick actions; Clipboard provides copy and delete interactions.
   Files and Camera remain visible with explicit backend status
   until their Linux implementations exist, avoiding the old dead-toggle state.
 
