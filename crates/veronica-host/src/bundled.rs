@@ -186,7 +186,10 @@ impl Bundled {
             .filter_map(|package| {
                 let (entry, only_bundled) = match catalog.extension(&package.id) {
                     Some(entry) => (entry.clone(), false),
-                    None => (listing(&self.manifest(&package.id).ok()?, package.version), true),
+                    None => (
+                        listing(&self.manifest(&package.id).ok()?, package.version),
+                        true,
+                    ),
                 };
                 Some(BundledListing {
                     entry,
