@@ -124,8 +124,6 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("system stats", Effect::Read),
     ("tools install", Effect::Write),
     ("tools ls", Effect::Read),
-    ("utility image", Effect::Write),
-    ("utility qr", Effect::Write),
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]

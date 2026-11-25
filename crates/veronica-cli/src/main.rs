@@ -17,7 +17,6 @@ mod services_cmd;
 mod surfaces_cmd;
 mod system_cmd;
 mod tools_cmd;
-mod utility_cmd;
 
 use anyhow::{Context, Result};
 use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand};
@@ -59,8 +58,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    #[command(subcommand, about = "Local notch image conversion and QR generation")]
-    Utility(utility_cmd::UtilityCommand),
     #[command(
         subcommand,
         about = "Inspect local TCP/UDP ports and gracefully stop owned processes"
@@ -268,7 +265,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         }
         Command::Config(command) => config(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
-        Command::Utility(command) => utility_cmd::run(&directories, command, output),
         Command::Ports(command) => services_cmd::ports(command, output).await,
         Command::Docker(command) => services_cmd::docker(command, output).await,
         Command::System(command) => system_cmd::run(command, output).await,
