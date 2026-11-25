@@ -109,6 +109,9 @@
           "default": false,
           "type": "boolean"
         },
+        "longAbout": {
+          "type": ["string", "null"]
+        },
         "mcp": {
           "anyOf": [
             {
