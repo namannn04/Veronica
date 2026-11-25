@@ -5,12 +5,22 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      "@veronica/extension-api": fileURLToPath(
-        new URL("../../packages/extension-api/src/index.ts", import.meta.url),
-      ),
-      "@veronica/ui": fileURLToPath(new URL("../../packages/ui/index.ts", import.meta.url)),
-    },
+    alias: [
+      {
+        find: /^@veronica\/extension-api$/,
+        replacement: fileURLToPath(
+          new URL("../../packages/extension-api/src/index.ts", import.meta.url),
+        ),
+      },
+      {
+        find: /^@veronica\/ui$/,
+        replacement: fileURLToPath(new URL("../../packages/ui/index.ts", import.meta.url)),
+      },
+      {
+        find: /^@veronica\/ui\/(.*)$/,
+        replacement: `${fileURLToPath(new URL("../../packages/ui", import.meta.url))}/$1`,
+      },
+    ],
     dedupe: [
       "react",
       "react-dom",

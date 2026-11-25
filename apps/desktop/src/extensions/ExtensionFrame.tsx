@@ -36,6 +36,7 @@ interface ExtensionFrameProps {
   granted?: Granted;
   state?: BackendState;
   handler?: BridgeHandler;
+  visible?: boolean;
 }
 
 function currentAppearance() {
@@ -59,10 +60,13 @@ export function ExtensionFrame({
   granted = NO_GRANTS,
   state,
   handler,
+  visible = true,
 }: ExtensionFrameProps) {
   const frame = useRef<HTMLIFrameElement>(null);
   const port = useRef<MessagePort | null>(null);
   const launch = useRef({ params, granted });
+  const shown = useRef(visible);
+  shown.current = visible;
   launch.current = { params, granted };
   const source = frameSource(extension, entry);
   const hosted = handler === undefined;
@@ -129,7 +133,10 @@ export function ExtensionFrame({
     const sendAppearance = () =>
       post({ event: "appearance.changed", payload: currentAppearance() });
     const sendVisibility = () =>
-      post({ event: "visibility.changed", payload: { visible: !document.hidden } });
+      post({
+        event: "visibility.changed",
+        payload: { visible: shown.current && !document.hidden },
+      });
     let presenter = currentPresenter().active;
     const observer = new MutationObserver(() => {
       sendAppearance();
@@ -154,6 +161,15 @@ export function ExtensionFrame({
       document.removeEventListener("visibilitychange", sendVisibility);
     };
   }, [hosted, extension, page]);
+
+  useEffect(() => {
+    if (hosted) {
+      port.current?.postMessage({
+        event: "visibility.changed",
+        payload: { visible: visible && !document.hidden },
+      });
+    }
+  }, [hosted, visible]);
 
   useEffect(() => {
     if (state !== undefined) {

@@ -2,7 +2,23 @@ import { type Appearance, type Client, connect, type Presenter } from "@veronica
 import { createContext, type ReactNode, StrictMode, useContext } from "react";
 import { createRoot } from "react-dom/client";
 
+import type { VisibilitySource } from "./polling";
+
 const ClientContext = createContext<Client | null>(null);
+
+class FrameVisibility extends EventTarget implements VisibilitySource {
+  hidden = false;
+
+  update(visible: boolean) {
+    if (this.hidden === !visible) {
+      return;
+    }
+    this.hidden = !visible;
+    this.dispatchEvent(new Event("visibilitychange"));
+  }
+}
+
+export const frameVisibility = new FrameVisibility();
 
 export function useClient(): Client {
   const client = useContext(ClientContext);
@@ -36,6 +52,7 @@ export function mountFrame(render: () => ReactNode): void {
       applyPresenter(client.context.presenter);
       client.on("appearance.changed", applyAppearance);
       client.on("presenter.changed", applyPresenter);
+      client.on("visibility.changed", ({ visible }) => frameVisibility.update(visible));
       createRoot(container).render(
         <StrictMode>
           <ClientContext.Provider value={client}>{render()}</ClientContext.Provider>
