@@ -77,11 +77,23 @@ impl Router {
         json: bool,
         confirmation: Confirmation,
     ) -> CliRunResult {
+        self.run_cli_with_stdin(id, argv, json, confirmation, None)
+            .await
+    }
+
+    pub async fn run_cli_with_stdin(
+        &self,
+        id: &str,
+        argv: Vec<String>,
+        json: bool,
+        confirmation: Confirmation,
+        stdin: Option<String>,
+    ) -> CliRunResult {
         let params = CliRunParams {
             argv,
             json,
             confirm: confirmation == Confirmation::Confirmed,
-            stdin: None,
+            stdin,
             cwd: std::env::current_dir().unwrap_or_default(),
             tty: !json && std::io::stdout().is_terminal(),
         };

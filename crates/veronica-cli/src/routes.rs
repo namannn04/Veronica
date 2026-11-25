@@ -365,10 +365,11 @@ async fn execute(
     json: bool,
     confirmation: Confirmation,
     limit: Option<Duration>,
+    stdin: Option<String>,
 ) -> Result<CliRunResult> {
     let router = Router::oneshot(Arc::new(HostServices::current()?));
     let call = async {
-        let run = router.run_cli(id, argv, json, confirmation);
+        let run = router.run_cli_with_stdin(id, argv, json, confirmation, stdin);
         match limit {
             Some(limit) => tokio::time::timeout(limit, run).await.unwrap_or_else(|_| {
                 let message = format!("{id} did not finish within {}s", limit.as_secs());
@@ -457,7 +458,27 @@ pub(crate) fn dispatch(
         .timeout_seconds
         .map(|seconds| Duration::from_secs(u64::from(seconds)));
     let confirmed = Confirmation::from_yes_flag(yes);
-    let result = match execute(&route.id, forwarded(arguments), json, confirmed, limit) {
+    let stdin = if leaf.stdin {
+        let mut text = String::new();
+        if let Err(error) = std::io::Read::read_to_string(&mut std::io::stdin(), &mut text) {
+            return format::fail(
+                json,
+                ExitCode::Failed,
+                &format!("cannot read stdin: {error}"),
+            );
+        }
+        Some(text)
+    } else {
+        None
+    };
+    let result = match execute(
+        &route.id,
+        forwarded(arguments),
+        json,
+        confirmed,
+        limit,
+        stdin,
+    ) {
         Ok(result) => result,
         Err(error) => return format::fail(json, ExitCode::Failed, &format!("{error:#}")),
     };

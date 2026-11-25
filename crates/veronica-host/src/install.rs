@@ -8,7 +8,7 @@ use anyhow::{bail, ensure, Context, Result};
 use chrono::{SecondsFormat, Utc};
 use tempfile::TempDir;
 use veronica_protocol::canonical;
-use veronica_protocol::manifest::{Engines, Target};
+use veronica_protocol::manifest::{Engines, ShellService, Target};
 use veronica_protocol::{Manifest, PackageVersion};
 
 use crate::archive::{self, Limits, FILE_INDEX};
@@ -17,6 +17,7 @@ use crate::host_api::HostServices;
 use crate::layout::Layout;
 use crate::lock::ExtensionsLock;
 use crate::registry::{InstalledExtension, Origin, Registry};
+use crate::shell_switches;
 use crate::supervisor::{verify_starts, CrashRecord};
 
 pub const HOST_API: u32 = 1;
@@ -366,8 +367,13 @@ impl Installer {
         let applied = (|| -> Result<()> {
             self.point(id, PREVIOUS, entry.previous)?;
             self.point(id, CURRENT, Some(entry.version))?;
+            let enabled = entry.enabled;
             registry.extensions.insert(id.to_string(), entry);
-            registry.save(&self.layout.installed_file())
+            registry.save(&self.layout.installed_file())?;
+            if enabled {
+                self.switch_on(id);
+            }
+            Ok(())
         })();
         if applied.is_err() {
             let _ = self.point(id, CURRENT, before.map(|entry| entry.version));
@@ -446,17 +452,37 @@ impl Installer {
         entry.enabled = enabled;
         let entry = entry.clone();
         registry.save(&self.layout.installed_file())?;
+        if enabled {
+            self.switch_on(id);
+        } else {
+            self.release(&registry, id, &shell_switches::declared(&self.layout, id));
+        }
         Ok(entry)
+    }
+
+    fn switch_on(&self, id: &str) {
+        let services = shell_switches::declared(&self.layout, id);
+        if let Err(error) = shell_switches::switch_on(&self.layout, &services) {
+            eprintln!("vr: cannot switch on the shell services {id} uses: {error:#}");
+        }
+    }
+
+    fn release(&self, registry: &Registry, id: &str, services: &[ShellService]) {
+        if let Err(error) = shell_switches::release(&self.layout, registry, id, services) {
+            eprintln!("vr: cannot switch off the shell services {id} used: {error:#}");
+        }
     }
 
     pub fn remove(&self, id: &str, purge: bool) -> Result<()> {
         let _lock = self.lock()?;
         let mut registry = self.registry()?;
+        let services = shell_switches::declared(&self.layout, id);
         ensure!(
             registry.extensions.remove(id).is_some(),
             "{id} is not installed"
         );
         registry.save(&self.layout.installed_file())?;
+        self.release(&registry, id, &services);
         remove_if_present(fs::remove_dir_all(self.layout.package_dir(id)))?;
         remove_if_present(fs::remove_file(self.layout.dev_link(id)))?;
         if purge {

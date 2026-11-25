@@ -13,6 +13,7 @@ pub mod mcp;
 pub mod permissions;
 pub mod registry;
 pub mod router;
+pub mod shell_switches;
 pub mod shortcuts;
 pub mod supervisor;
 pub mod surfaces;
