@@ -319,7 +319,10 @@ fn parser(arg: &Arg) -> ValueParser {
     }
 }
 
-fn leaf<'a>(mut command: &'a Command, mut matches: &ArgMatches) -> &'a Command {
+fn leaf<'a, 'm>(
+    mut command: &'a Command,
+    mut matches: &'m ArgMatches,
+) -> (&'a Command, &'m ArgMatches) {
     while let Some((name, next_matches)) = matches.subcommand() {
         let Some(next) = command.subcommands.iter().find(|sub| sub.name == name) else {
             break;
@@ -327,7 +330,20 @@ fn leaf<'a>(mut command: &'a Command, mut matches: &ArgMatches) -> &'a Command {
         command = next;
         matches = next_matches;
     }
-    command
+    (command, matches)
+}
+
+fn wants_stdin(command: &Command, matches: &ArgMatches) -> bool {
+    let mut positionals = command
+        .args
+        .iter()
+        .filter(|arg| arg.kind == ArgKind::Positional)
+        .peekable();
+    let all_given = positionals.peek().is_some()
+        && positionals.all(|arg| {
+            matches.value_source(&arg.name) == Some(clap::parser::ValueSource::CommandLine)
+        });
+    command.stdin && !all_given
 }
 
 fn failure(code: ExitCode, message: &str, json: bool) -> CliRunResult {
@@ -451,14 +467,14 @@ pub(crate) fn dispatch(
     json: bool,
     yes: bool,
 ) -> ExitCode {
-    let leaf = matches
+    let (leaf, leaf_matches) = matches
         .subcommand()
-        .map_or(&route.root, |(_, root)| leaf(&route.root, root));
+        .map_or((&route.root, matches), |(_, root)| leaf(&route.root, root));
     let limit = leaf
         .timeout_seconds
         .map(|seconds| Duration::from_secs(u64::from(seconds)));
     let confirmed = Confirmation::from_yes_flag(yes);
-    let stdin = if leaf.stdin {
+    let stdin = if wants_stdin(leaf, leaf_matches) {
         let mut text = String::new();
         if let Err(error) = std::io::Read::read_to_string(&mut std::io::stdin(), &mut text) {
             return format::fail(
