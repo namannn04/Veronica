@@ -467,8 +467,7 @@ mod tests {
     #[test]
     fn filter_matches_subtitle_case_insensitively() {
         let hits = filter("SSH", None);
-        let ids: Vec<_> = hits.iter().map(|e| e.id).collect();
-        assert!(ids.contains(&"machines"));
+        assert!(hits.iter().any(|entry| entry.id == "machines"));
         assert!(hits.iter().all(|entry| {
             entry.title.to_lowercase().contains("ssh")
                 || entry.subtitle.to_lowercase().contains("ssh")
