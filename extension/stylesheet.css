@@ -170,68 +170,19 @@
   spacing: 8px;
 }
 
-.veronica-home-card-wrap {
-  width: 360px;
-  height: 150px;
-}
-
 .veronica-card {
   border-radius: 14px;
   border: 1px solid transparent;
   padding: 12px;
 }
 
-.veronica-now-playing,
 .veronica-usage-card {
   height: 12em;
-}
-
-.veronica-now-playing {
-  spacing: 12px;
-  width: 13em;
-}
-
-.veronica-shelf-home .veronica-now-playing,
-.veronica-shelf-home .veronica-empty-music {
-  width: 334px;
-  height: 124px;
 }
 
 .veronica-shelf-home .veronica-usage-card {
   width: 154px;
   height: 124px;
-}
-
-.veronica-now-art {
-  icon-size: 40px;
-}
-
-.veronica-now-text {
-  spacing: 2px;
-}
-
-.veronica-now-title {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.veronica-now-artist {
-  font-size: 12px;
-}
-
-.veronica-now-controls {
-  spacing: 2px;
-}
-
-.veronica-now-btn {
-  padding: 5px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  transition-duration: 120ms;
-}
-
-.veronica-now-icon {
-  icon-size: 16px;
 }
 
 .veronica-usage-card {
@@ -291,18 +242,6 @@
 
 .veronica-shelf-home .veronica-machine-line {
   padding: 0 2px;
-}
-
-.veronica-empty-music {
-  spacing: 6px;
-}
-
-.veronica-empty-music-icon {
-  icon-size: 20px;
-}
-
-.veronica-empty-music-label {
-  font-size: 12px;
 }
 
 .veronica-actions-row {
@@ -778,7 +717,6 @@
   border-color: transparent;
   color: #c3c2b7;
 }
-.veronica-now-btn,
 .veronica-clipboard-delete {
   color: #c3c2b7;
 }
@@ -813,7 +751,6 @@
   border-color: rgba(255, 255, 255, 0.1);
   color: #f4f2ef;
 }
-.veronica-now-title,
 .veronica-files-title,
 .veronica-camera-title,
 .veronica-status-panel-title,
@@ -827,14 +764,12 @@
 .veronica-row-value {
   color: #f4f2ef;
 }
-.veronica-now-artist,
 .veronica-ring-caption,
 .veronica-usage-spend,
 .veronica-camera-detail,
 .veronica-status-panel-detail,
 .veronica-utility-detail,
 .veronica-empty,
-.veronica-empty-music-label,
 .veronica-heading,
 .veronica-dim,
 .veronica-action-icon {
@@ -842,8 +777,6 @@
 }
 .veronica-ring-resets,
 .veronica-machine-line,
-.veronica-now-art,
-.veronica-empty-music-icon,
 .veronica-camera-icon,
 .veronica-status-panel-icon,
 .veronica-file-icon,
@@ -865,7 +798,6 @@
 .veronica-shelf-settings:hover,
 .veronica-small-button:hover,
 .veronica-utility-button:hover,
-.veronica-now-btn:hover,
 .veronica-clipboard-delete:hover,
 .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(244, 242, 239, 0.07);
@@ -875,7 +807,6 @@
 .veronica-shelf-settings:active,
 .veronica-small-button:active,
 .veronica-utility-button:active,
-.veronica-now-btn:active,
 .veronica-clipboard-delete:active,
 .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(244, 242, 239, 0.11);
@@ -922,7 +853,6 @@
 .veronica-small-button:focus,
 .veronica-utility-button:focus,
 .veronica-utility-entry:focus,
-.veronica-now-btn:focus,
 .veronica-clipboard-delete:focus,
 .veronica-provider-switch:focus,
 .veronica-action-tile:focus,
@@ -990,7 +920,6 @@
   border-color: transparent;
   color: #b9c8dc;
 }
-.veronica-theme-midnight .veronica-now-btn,
 .veronica-theme-midnight .veronica-clipboard-delete {
   color: #b9c8dc;
 }
@@ -1025,7 +954,6 @@
   border-color: rgba(163, 197, 241, 0.12);
   color: #f2f6fc;
 }
-.veronica-theme-midnight .veronica-now-title,
 .veronica-theme-midnight .veronica-files-title,
 .veronica-theme-midnight .veronica-camera-title,
 .veronica-theme-midnight .veronica-status-panel-title,
@@ -1039,14 +967,12 @@
 .veronica-theme-midnight .veronica-row-value {
   color: #f2f6fc;
 }
-.veronica-theme-midnight .veronica-now-artist,
 .veronica-theme-midnight .veronica-ring-caption,
 .veronica-theme-midnight .veronica-usage-spend,
 .veronica-theme-midnight .veronica-camera-detail,
 .veronica-theme-midnight .veronica-status-panel-detail,
 .veronica-theme-midnight .veronica-utility-detail,
 .veronica-theme-midnight .veronica-empty,
-.veronica-theme-midnight .veronica-empty-music-label,
 .veronica-theme-midnight .veronica-heading,
 .veronica-theme-midnight .veronica-dim,
 .veronica-theme-midnight .veronica-action-icon {
@@ -1054,8 +980,6 @@
 }
 .veronica-theme-midnight .veronica-ring-resets,
 .veronica-theme-midnight .veronica-machine-line,
-.veronica-theme-midnight .veronica-now-art,
-.veronica-theme-midnight .veronica-empty-music-icon,
 .veronica-theme-midnight .veronica-camera-icon,
 .veronica-theme-midnight .veronica-status-panel-icon,
 .veronica-theme-midnight .veronica-file-icon,
@@ -1077,7 +1001,6 @@
 .veronica-theme-midnight .veronica-shelf-settings:hover,
 .veronica-theme-midnight .veronica-small-button:hover,
 .veronica-theme-midnight .veronica-utility-button:hover,
-.veronica-theme-midnight .veronica-now-btn:hover,
 .veronica-theme-midnight .veronica-clipboard-delete:hover,
 .veronica-theme-midnight .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(242, 246, 252, 0.07);
@@ -1087,7 +1010,6 @@
 .veronica-theme-midnight .veronica-shelf-settings:active,
 .veronica-theme-midnight .veronica-small-button:active,
 .veronica-theme-midnight .veronica-utility-button:active,
-.veronica-theme-midnight .veronica-now-btn:active,
 .veronica-theme-midnight .veronica-clipboard-delete:active,
 .veronica-theme-midnight .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(242, 246, 252, 0.11);
@@ -1134,7 +1056,6 @@
 .veronica-theme-midnight .veronica-small-button:focus,
 .veronica-theme-midnight .veronica-utility-button:focus,
 .veronica-theme-midnight .veronica-utility-entry:focus,
-.veronica-theme-midnight .veronica-now-btn:focus,
 .veronica-theme-midnight .veronica-clipboard-delete:focus,
 .veronica-theme-midnight .veronica-provider-switch:focus,
 .veronica-theme-midnight .veronica-action-tile:focus,
@@ -1202,7 +1123,6 @@
   border-color: transparent;
   color: #d8bacd;
 }
-.veronica-theme-aubergine .veronica-now-btn,
 .veronica-theme-aubergine .veronica-clipboard-delete {
   color: #d8bacd;
 }
@@ -1237,7 +1157,6 @@
   border-color: rgba(255, 197, 231, 0.11);
   color: #fff4fa;
 }
-.veronica-theme-aubergine .veronica-now-title,
 .veronica-theme-aubergine .veronica-files-title,
 .veronica-theme-aubergine .veronica-camera-title,
 .veronica-theme-aubergine .veronica-status-panel-title,
@@ -1251,14 +1170,12 @@
 .veronica-theme-aubergine .veronica-row-value {
   color: #fff4fa;
 }
-.veronica-theme-aubergine .veronica-now-artist,
 .veronica-theme-aubergine .veronica-ring-caption,
 .veronica-theme-aubergine .veronica-usage-spend,
 .veronica-theme-aubergine .veronica-camera-detail,
 .veronica-theme-aubergine .veronica-status-panel-detail,
 .veronica-theme-aubergine .veronica-utility-detail,
 .veronica-theme-aubergine .veronica-empty,
-.veronica-theme-aubergine .veronica-empty-music-label,
 .veronica-theme-aubergine .veronica-heading,
 .veronica-theme-aubergine .veronica-dim,
 .veronica-theme-aubergine .veronica-action-icon {
@@ -1266,8 +1183,6 @@
 }
 .veronica-theme-aubergine .veronica-ring-resets,
 .veronica-theme-aubergine .veronica-machine-line,
-.veronica-theme-aubergine .veronica-now-art,
-.veronica-theme-aubergine .veronica-empty-music-icon,
 .veronica-theme-aubergine .veronica-camera-icon,
 .veronica-theme-aubergine .veronica-status-panel-icon,
 .veronica-theme-aubergine .veronica-file-icon,
@@ -1289,7 +1204,6 @@
 .veronica-theme-aubergine .veronica-shelf-settings:hover,
 .veronica-theme-aubergine .veronica-small-button:hover,
 .veronica-theme-aubergine .veronica-utility-button:hover,
-.veronica-theme-aubergine .veronica-now-btn:hover,
 .veronica-theme-aubergine .veronica-clipboard-delete:hover,
 .veronica-theme-aubergine .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(255, 244, 250, 0.07);
@@ -1299,7 +1213,6 @@
 .veronica-theme-aubergine .veronica-shelf-settings:active,
 .veronica-theme-aubergine .veronica-small-button:active,
 .veronica-theme-aubergine .veronica-utility-button:active,
-.veronica-theme-aubergine .veronica-now-btn:active,
 .veronica-theme-aubergine .veronica-clipboard-delete:active,
 .veronica-theme-aubergine .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(255, 244, 250, 0.11);
@@ -1346,7 +1259,6 @@
 .veronica-theme-aubergine .veronica-small-button:focus,
 .veronica-theme-aubergine .veronica-utility-button:focus,
 .veronica-theme-aubergine .veronica-utility-entry:focus,
-.veronica-theme-aubergine .veronica-now-btn:focus,
 .veronica-theme-aubergine .veronica-clipboard-delete:focus,
 .veronica-theme-aubergine .veronica-provider-switch:focus,
 .veronica-theme-aubergine .veronica-action-tile:focus,
@@ -1414,7 +1326,6 @@
   border-color: transparent;
   color: #b7d1c4;
 }
-.veronica-theme-forest .veronica-now-btn,
 .veronica-theme-forest .veronica-clipboard-delete {
   color: #b7d1c4;
 }
@@ -1449,7 +1360,6 @@
   border-color: rgba(190, 239, 215, 0.11);
   color: #eff9f4;
 }
-.veronica-theme-forest .veronica-now-title,
 .veronica-theme-forest .veronica-files-title,
 .veronica-theme-forest .veronica-camera-title,
 .veronica-theme-forest .veronica-status-panel-title,
@@ -1463,14 +1373,12 @@
 .veronica-theme-forest .veronica-row-value {
   color: #eff9f4;
 }
-.veronica-theme-forest .veronica-now-artist,
 .veronica-theme-forest .veronica-ring-caption,
 .veronica-theme-forest .veronica-usage-spend,
 .veronica-theme-forest .veronica-camera-detail,
 .veronica-theme-forest .veronica-status-panel-detail,
 .veronica-theme-forest .veronica-utility-detail,
 .veronica-theme-forest .veronica-empty,
-.veronica-theme-forest .veronica-empty-music-label,
 .veronica-theme-forest .veronica-heading,
 .veronica-theme-forest .veronica-dim,
 .veronica-theme-forest .veronica-action-icon {
@@ -1478,8 +1386,6 @@
 }
 .veronica-theme-forest .veronica-ring-resets,
 .veronica-theme-forest .veronica-machine-line,
-.veronica-theme-forest .veronica-now-art,
-.veronica-theme-forest .veronica-empty-music-icon,
 .veronica-theme-forest .veronica-camera-icon,
 .veronica-theme-forest .veronica-status-panel-icon,
 .veronica-theme-forest .veronica-file-icon,
@@ -1501,7 +1407,6 @@
 .veronica-theme-forest .veronica-shelf-settings:hover,
 .veronica-theme-forest .veronica-small-button:hover,
 .veronica-theme-forest .veronica-utility-button:hover,
-.veronica-theme-forest .veronica-now-btn:hover,
 .veronica-theme-forest .veronica-clipboard-delete:hover,
 .veronica-theme-forest .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(239, 249, 244, 0.07);
@@ -1511,7 +1416,6 @@
 .veronica-theme-forest .veronica-shelf-settings:active,
 .veronica-theme-forest .veronica-small-button:active,
 .veronica-theme-forest .veronica-utility-button:active,
-.veronica-theme-forest .veronica-now-btn:active,
 .veronica-theme-forest .veronica-clipboard-delete:active,
 .veronica-theme-forest .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(239, 249, 244, 0.11);
@@ -1558,7 +1462,6 @@
 .veronica-theme-forest .veronica-small-button:focus,
 .veronica-theme-forest .veronica-utility-button:focus,
 .veronica-theme-forest .veronica-utility-entry:focus,
-.veronica-theme-forest .veronica-now-btn:focus,
 .veronica-theme-forest .veronica-clipboard-delete:focus,
 .veronica-theme-forest .veronica-provider-switch:focus,
 .veronica-theme-forest .veronica-action-tile:focus,
@@ -1626,7 +1529,6 @@
   border-color: transparent;
   color: #d8dee9;
 }
-.veronica-theme-nord .veronica-now-btn,
 .veronica-theme-nord .veronica-clipboard-delete {
   color: #d8dee9;
 }
@@ -1661,7 +1563,6 @@
   border-color: rgba(216, 222, 233, 0.11);
   color: #eceff4;
 }
-.veronica-theme-nord .veronica-now-title,
 .veronica-theme-nord .veronica-files-title,
 .veronica-theme-nord .veronica-camera-title,
 .veronica-theme-nord .veronica-status-panel-title,
@@ -1675,14 +1576,12 @@
 .veronica-theme-nord .veronica-row-value {
   color: #eceff4;
 }
-.veronica-theme-nord .veronica-now-artist,
 .veronica-theme-nord .veronica-ring-caption,
 .veronica-theme-nord .veronica-usage-spend,
 .veronica-theme-nord .veronica-camera-detail,
 .veronica-theme-nord .veronica-status-panel-detail,
 .veronica-theme-nord .veronica-utility-detail,
 .veronica-theme-nord .veronica-empty,
-.veronica-theme-nord .veronica-empty-music-label,
 .veronica-theme-nord .veronica-heading,
 .veronica-theme-nord .veronica-dim,
 .veronica-theme-nord .veronica-action-icon {
@@ -1690,8 +1589,6 @@
 }
 .veronica-theme-nord .veronica-ring-resets,
 .veronica-theme-nord .veronica-machine-line,
-.veronica-theme-nord .veronica-now-art,
-.veronica-theme-nord .veronica-empty-music-icon,
 .veronica-theme-nord .veronica-camera-icon,
 .veronica-theme-nord .veronica-status-panel-icon,
 .veronica-theme-nord .veronica-file-icon,
@@ -1713,7 +1610,6 @@
 .veronica-theme-nord .veronica-shelf-settings:hover,
 .veronica-theme-nord .veronica-small-button:hover,
 .veronica-theme-nord .veronica-utility-button:hover,
-.veronica-theme-nord .veronica-now-btn:hover,
 .veronica-theme-nord .veronica-clipboard-delete:hover,
 .veronica-theme-nord .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(236, 239, 244, 0.07);
@@ -1723,7 +1619,6 @@
 .veronica-theme-nord .veronica-shelf-settings:active,
 .veronica-theme-nord .veronica-small-button:active,
 .veronica-theme-nord .veronica-utility-button:active,
-.veronica-theme-nord .veronica-now-btn:active,
 .veronica-theme-nord .veronica-clipboard-delete:active,
 .veronica-theme-nord .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(236, 239, 244, 0.11);
@@ -1770,7 +1665,6 @@
 .veronica-theme-nord .veronica-small-button:focus,
 .veronica-theme-nord .veronica-utility-button:focus,
 .veronica-theme-nord .veronica-utility-entry:focus,
-.veronica-theme-nord .veronica-now-btn:focus,
 .veronica-theme-nord .veronica-clipboard-delete:focus,
 .veronica-theme-nord .veronica-provider-switch:focus,
 .veronica-theme-nord .veronica-action-tile:focus,
@@ -1838,7 +1732,6 @@
   border-color: transparent;
   color: #b0d6de;
 }
-.veronica-theme-ocean .veronica-now-btn,
 .veronica-theme-ocean .veronica-clipboard-delete {
   color: #b0d6de;
 }
@@ -1873,7 +1766,6 @@
   border-color: rgba(180, 235, 247, 0.11);
   color: #e8fbff;
 }
-.veronica-theme-ocean .veronica-now-title,
 .veronica-theme-ocean .veronica-files-title,
 .veronica-theme-ocean .veronica-camera-title,
 .veronica-theme-ocean .veronica-status-panel-title,
@@ -1887,14 +1779,12 @@
 .veronica-theme-ocean .veronica-row-value {
   color: #e8fbff;
 }
-.veronica-theme-ocean .veronica-now-artist,
 .veronica-theme-ocean .veronica-ring-caption,
 .veronica-theme-ocean .veronica-usage-spend,
 .veronica-theme-ocean .veronica-camera-detail,
 .veronica-theme-ocean .veronica-status-panel-detail,
 .veronica-theme-ocean .veronica-utility-detail,
 .veronica-theme-ocean .veronica-empty,
-.veronica-theme-ocean .veronica-empty-music-label,
 .veronica-theme-ocean .veronica-heading,
 .veronica-theme-ocean .veronica-dim,
 .veronica-theme-ocean .veronica-action-icon {
@@ -1902,8 +1792,6 @@
 }
 .veronica-theme-ocean .veronica-ring-resets,
 .veronica-theme-ocean .veronica-machine-line,
-.veronica-theme-ocean .veronica-now-art,
-.veronica-theme-ocean .veronica-empty-music-icon,
 .veronica-theme-ocean .veronica-camera-icon,
 .veronica-theme-ocean .veronica-status-panel-icon,
 .veronica-theme-ocean .veronica-file-icon,
@@ -1925,7 +1813,6 @@
 .veronica-theme-ocean .veronica-shelf-settings:hover,
 .veronica-theme-ocean .veronica-small-button:hover,
 .veronica-theme-ocean .veronica-utility-button:hover,
-.veronica-theme-ocean .veronica-now-btn:hover,
 .veronica-theme-ocean .veronica-clipboard-delete:hover,
 .veronica-theme-ocean .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(232, 251, 255, 0.07);
@@ -1935,7 +1822,6 @@
 .veronica-theme-ocean .veronica-shelf-settings:active,
 .veronica-theme-ocean .veronica-small-button:active,
 .veronica-theme-ocean .veronica-utility-button:active,
-.veronica-theme-ocean .veronica-now-btn:active,
 .veronica-theme-ocean .veronica-clipboard-delete:active,
 .veronica-theme-ocean .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(232, 251, 255, 0.11);
@@ -1982,7 +1868,6 @@
 .veronica-theme-ocean .veronica-small-button:focus,
 .veronica-theme-ocean .veronica-utility-button:focus,
 .veronica-theme-ocean .veronica-utility-entry:focus,
-.veronica-theme-ocean .veronica-now-btn:focus,
 .veronica-theme-ocean .veronica-clipboard-delete:focus,
 .veronica-theme-ocean .veronica-provider-switch:focus,
 .veronica-theme-ocean .veronica-action-tile:focus,
@@ -2050,7 +1935,6 @@
   border-color: transparent;
   color: #dcc6ae;
 }
-.veronica-theme-ember .veronica-now-btn,
 .veronica-theme-ember .veronica-clipboard-delete {
   color: #dcc6ae;
 }
@@ -2085,7 +1969,6 @@
   border-color: rgba(255, 222, 190, 0.11);
   color: #fdf3e8;
 }
-.veronica-theme-ember .veronica-now-title,
 .veronica-theme-ember .veronica-files-title,
 .veronica-theme-ember .veronica-camera-title,
 .veronica-theme-ember .veronica-status-panel-title,
@@ -2099,14 +1982,12 @@
 .veronica-theme-ember .veronica-row-value {
   color: #fdf3e8;
 }
-.veronica-theme-ember .veronica-now-artist,
 .veronica-theme-ember .veronica-ring-caption,
 .veronica-theme-ember .veronica-usage-spend,
 .veronica-theme-ember .veronica-camera-detail,
 .veronica-theme-ember .veronica-status-panel-detail,
 .veronica-theme-ember .veronica-utility-detail,
 .veronica-theme-ember .veronica-empty,
-.veronica-theme-ember .veronica-empty-music-label,
 .veronica-theme-ember .veronica-heading,
 .veronica-theme-ember .veronica-dim,
 .veronica-theme-ember .veronica-action-icon {
@@ -2114,8 +1995,6 @@
 }
 .veronica-theme-ember .veronica-ring-resets,
 .veronica-theme-ember .veronica-machine-line,
-.veronica-theme-ember .veronica-now-art,
-.veronica-theme-ember .veronica-empty-music-icon,
 .veronica-theme-ember .veronica-camera-icon,
 .veronica-theme-ember .veronica-status-panel-icon,
 .veronica-theme-ember .veronica-file-icon,
@@ -2137,7 +2016,6 @@
 .veronica-theme-ember .veronica-shelf-settings:hover,
 .veronica-theme-ember .veronica-small-button:hover,
 .veronica-theme-ember .veronica-utility-button:hover,
-.veronica-theme-ember .veronica-now-btn:hover,
 .veronica-theme-ember .veronica-clipboard-delete:hover,
 .veronica-theme-ember .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(253, 243, 232, 0.07);
@@ -2147,7 +2025,6 @@
 .veronica-theme-ember .veronica-shelf-settings:active,
 .veronica-theme-ember .veronica-small-button:active,
 .veronica-theme-ember .veronica-utility-button:active,
-.veronica-theme-ember .veronica-now-btn:active,
 .veronica-theme-ember .veronica-clipboard-delete:active,
 .veronica-theme-ember .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(253, 243, 232, 0.11);
@@ -2194,7 +2071,6 @@
 .veronica-theme-ember .veronica-small-button:focus,
 .veronica-theme-ember .veronica-utility-button:focus,
 .veronica-theme-ember .veronica-utility-entry:focus,
-.veronica-theme-ember .veronica-now-btn:focus,
 .veronica-theme-ember .veronica-clipboard-delete:focus,
 .veronica-theme-ember .veronica-provider-switch:focus,
 .veronica-theme-ember .veronica-action-tile:focus,
@@ -2262,7 +2138,6 @@
   border-color: transparent;
   color: #c9c9c9;
 }
-.veronica-theme-carbon .veronica-now-btn,
 .veronica-theme-carbon .veronica-clipboard-delete {
   color: #c9c9c9;
 }
@@ -2297,7 +2172,6 @@
   border-color: rgba(255, 255, 255, 0.14);
   color: #ffffff;
 }
-.veronica-theme-carbon .veronica-now-title,
 .veronica-theme-carbon .veronica-files-title,
 .veronica-theme-carbon .veronica-camera-title,
 .veronica-theme-carbon .veronica-status-panel-title,
@@ -2311,14 +2185,12 @@
 .veronica-theme-carbon .veronica-row-value {
   color: #ffffff;
 }
-.veronica-theme-carbon .veronica-now-artist,
 .veronica-theme-carbon .veronica-ring-caption,
 .veronica-theme-carbon .veronica-usage-spend,
 .veronica-theme-carbon .veronica-camera-detail,
 .veronica-theme-carbon .veronica-status-panel-detail,
 .veronica-theme-carbon .veronica-utility-detail,
 .veronica-theme-carbon .veronica-empty,
-.veronica-theme-carbon .veronica-empty-music-label,
 .veronica-theme-carbon .veronica-heading,
 .veronica-theme-carbon .veronica-dim,
 .veronica-theme-carbon .veronica-action-icon {
@@ -2326,8 +2198,6 @@
 }
 .veronica-theme-carbon .veronica-ring-resets,
 .veronica-theme-carbon .veronica-machine-line,
-.veronica-theme-carbon .veronica-now-art,
-.veronica-theme-carbon .veronica-empty-music-icon,
 .veronica-theme-carbon .veronica-camera-icon,
 .veronica-theme-carbon .veronica-status-panel-icon,
 .veronica-theme-carbon .veronica-file-icon,
@@ -2349,7 +2219,6 @@
 .veronica-theme-carbon .veronica-shelf-settings:hover,
 .veronica-theme-carbon .veronica-small-button:hover,
 .veronica-theme-carbon .veronica-utility-button:hover,
-.veronica-theme-carbon .veronica-now-btn:hover,
 .veronica-theme-carbon .veronica-clipboard-delete:hover,
 .veronica-theme-carbon .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(255, 255, 255, 0.07);
@@ -2359,7 +2228,6 @@
 .veronica-theme-carbon .veronica-shelf-settings:active,
 .veronica-theme-carbon .veronica-small-button:active,
 .veronica-theme-carbon .veronica-utility-button:active,
-.veronica-theme-carbon .veronica-now-btn:active,
 .veronica-theme-carbon .veronica-clipboard-delete:active,
 .veronica-theme-carbon .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(255, 255, 255, 0.11);
@@ -2406,7 +2274,6 @@
 .veronica-theme-carbon .veronica-small-button:focus,
 .veronica-theme-carbon .veronica-utility-button:focus,
 .veronica-theme-carbon .veronica-utility-entry:focus,
-.veronica-theme-carbon .veronica-now-btn:focus,
 .veronica-theme-carbon .veronica-clipboard-delete:focus,
 .veronica-theme-carbon .veronica-provider-switch:focus,
 .veronica-theme-carbon .veronica-action-tile:focus,
@@ -2474,7 +2341,6 @@
   border-color: transparent;
   color: #52514e;
 }
-.veronica-theme-light .veronica-now-btn,
 .veronica-theme-light .veronica-clipboard-delete {
   color: #52514e;
 }
@@ -2509,7 +2375,6 @@
   border-color: rgba(11, 11, 11, 0.1);
   color: #0b0b0b;
 }
-.veronica-theme-light .veronica-now-title,
 .veronica-theme-light .veronica-files-title,
 .veronica-theme-light .veronica-camera-title,
 .veronica-theme-light .veronica-status-panel-title,
@@ -2523,14 +2388,12 @@
 .veronica-theme-light .veronica-row-value {
   color: #0b0b0b;
 }
-.veronica-theme-light .veronica-now-artist,
 .veronica-theme-light .veronica-ring-caption,
 .veronica-theme-light .veronica-usage-spend,
 .veronica-theme-light .veronica-camera-detail,
 .veronica-theme-light .veronica-status-panel-detail,
 .veronica-theme-light .veronica-utility-detail,
 .veronica-theme-light .veronica-empty,
-.veronica-theme-light .veronica-empty-music-label,
 .veronica-theme-light .veronica-heading,
 .veronica-theme-light .veronica-dim,
 .veronica-theme-light .veronica-action-icon {
@@ -2538,8 +2401,6 @@
 }
 .veronica-theme-light .veronica-ring-resets,
 .veronica-theme-light .veronica-machine-line,
-.veronica-theme-light .veronica-now-art,
-.veronica-theme-light .veronica-empty-music-icon,
 .veronica-theme-light .veronica-camera-icon,
 .veronica-theme-light .veronica-status-panel-icon,
 .veronica-theme-light .veronica-file-icon,
@@ -2561,7 +2422,6 @@
 .veronica-theme-light .veronica-shelf-settings:hover,
 .veronica-theme-light .veronica-small-button:hover,
 .veronica-theme-light .veronica-utility-button:hover,
-.veronica-theme-light .veronica-now-btn:hover,
 .veronica-theme-light .veronica-clipboard-delete:hover,
 .veronica-theme-light .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(11, 11, 11, 0.07);
@@ -2571,7 +2431,6 @@
 .veronica-theme-light .veronica-shelf-settings:active,
 .veronica-theme-light .veronica-small-button:active,
 .veronica-theme-light .veronica-utility-button:active,
-.veronica-theme-light .veronica-now-btn:active,
 .veronica-theme-light .veronica-clipboard-delete:active,
 .veronica-theme-light .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(11, 11, 11, 0.11);
@@ -2618,7 +2477,6 @@
 .veronica-theme-light .veronica-small-button:focus,
 .veronica-theme-light .veronica-utility-button:focus,
 .veronica-theme-light .veronica-utility-entry:focus,
-.veronica-theme-light .veronica-now-btn:focus,
 .veronica-theme-light .veronica-clipboard-delete:focus,
 .veronica-theme-light .veronica-provider-switch:focus,
 .veronica-theme-light .veronica-action-tile:focus,
@@ -2686,7 +2544,6 @@
   border-color: transparent;
   color: #5f5044;
 }
-.veronica-theme-sandstone .veronica-now-btn,
 .veronica-theme-sandstone .veronica-clipboard-delete {
   color: #5f5044;
 }
@@ -2721,7 +2578,6 @@
   border-color: rgba(43, 33, 24, 0.11);
   color: #2b2118;
 }
-.veronica-theme-sandstone .veronica-now-title,
 .veronica-theme-sandstone .veronica-files-title,
 .veronica-theme-sandstone .veronica-camera-title,
 .veronica-theme-sandstone .veronica-status-panel-title,
@@ -2735,14 +2591,12 @@
 .veronica-theme-sandstone .veronica-row-value {
   color: #2b2118;
 }
-.veronica-theme-sandstone .veronica-now-artist,
 .veronica-theme-sandstone .veronica-ring-caption,
 .veronica-theme-sandstone .veronica-usage-spend,
 .veronica-theme-sandstone .veronica-camera-detail,
 .veronica-theme-sandstone .veronica-status-panel-detail,
 .veronica-theme-sandstone .veronica-utility-detail,
 .veronica-theme-sandstone .veronica-empty,
-.veronica-theme-sandstone .veronica-empty-music-label,
 .veronica-theme-sandstone .veronica-heading,
 .veronica-theme-sandstone .veronica-dim,
 .veronica-theme-sandstone .veronica-action-icon {
@@ -2750,8 +2604,6 @@
 }
 .veronica-theme-sandstone .veronica-ring-resets,
 .veronica-theme-sandstone .veronica-machine-line,
-.veronica-theme-sandstone .veronica-now-art,
-.veronica-theme-sandstone .veronica-empty-music-icon,
 .veronica-theme-sandstone .veronica-camera-icon,
 .veronica-theme-sandstone .veronica-status-panel-icon,
 .veronica-theme-sandstone .veronica-file-icon,
@@ -2773,7 +2625,6 @@
 .veronica-theme-sandstone .veronica-shelf-settings:hover,
 .veronica-theme-sandstone .veronica-small-button:hover,
 .veronica-theme-sandstone .veronica-utility-button:hover,
-.veronica-theme-sandstone .veronica-now-btn:hover,
 .veronica-theme-sandstone .veronica-clipboard-delete:hover,
 .veronica-theme-sandstone .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(43, 33, 24, 0.07);
@@ -2783,7 +2634,6 @@
 .veronica-theme-sandstone .veronica-shelf-settings:active,
 .veronica-theme-sandstone .veronica-small-button:active,
 .veronica-theme-sandstone .veronica-utility-button:active,
-.veronica-theme-sandstone .veronica-now-btn:active,
 .veronica-theme-sandstone .veronica-clipboard-delete:active,
 .veronica-theme-sandstone .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(43, 33, 24, 0.11);
@@ -2830,7 +2680,6 @@
 .veronica-theme-sandstone .veronica-small-button:focus,
 .veronica-theme-sandstone .veronica-utility-button:focus,
 .veronica-theme-sandstone .veronica-utility-entry:focus,
-.veronica-theme-sandstone .veronica-now-btn:focus,
 .veronica-theme-sandstone .veronica-clipboard-delete:focus,
 .veronica-theme-sandstone .veronica-provider-switch:focus,
 .veronica-theme-sandstone .veronica-action-tile:focus,
@@ -2898,7 +2747,6 @@
   border-color: transparent;
   color: #4a5666;
 }
-.veronica-theme-mist .veronica-now-btn,
 .veronica-theme-mist .veronica-clipboard-delete {
   color: #4a5666;
 }
@@ -2933,7 +2781,6 @@
   border-color: rgba(16, 22, 31, 0.1);
   color: #10161f;
 }
-.veronica-theme-mist .veronica-now-title,
 .veronica-theme-mist .veronica-files-title,
 .veronica-theme-mist .veronica-camera-title,
 .veronica-theme-mist .veronica-status-panel-title,
@@ -2947,14 +2794,12 @@
 .veronica-theme-mist .veronica-row-value {
   color: #10161f;
 }
-.veronica-theme-mist .veronica-now-artist,
 .veronica-theme-mist .veronica-ring-caption,
 .veronica-theme-mist .veronica-usage-spend,
 .veronica-theme-mist .veronica-camera-detail,
 .veronica-theme-mist .veronica-status-panel-detail,
 .veronica-theme-mist .veronica-utility-detail,
 .veronica-theme-mist .veronica-empty,
-.veronica-theme-mist .veronica-empty-music-label,
 .veronica-theme-mist .veronica-heading,
 .veronica-theme-mist .veronica-dim,
 .veronica-theme-mist .veronica-action-icon {
@@ -2962,8 +2807,6 @@
 }
 .veronica-theme-mist .veronica-ring-resets,
 .veronica-theme-mist .veronica-machine-line,
-.veronica-theme-mist .veronica-now-art,
-.veronica-theme-mist .veronica-empty-music-icon,
 .veronica-theme-mist .veronica-camera-icon,
 .veronica-theme-mist .veronica-status-panel-icon,
 .veronica-theme-mist .veronica-file-icon,
@@ -2985,7 +2828,6 @@
 .veronica-theme-mist .veronica-shelf-settings:hover,
 .veronica-theme-mist .veronica-small-button:hover,
 .veronica-theme-mist .veronica-utility-button:hover,
-.veronica-theme-mist .veronica-now-btn:hover,
 .veronica-theme-mist .veronica-clipboard-delete:hover,
 .veronica-theme-mist .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(16, 22, 31, 0.07);
@@ -2995,7 +2837,6 @@
 .veronica-theme-mist .veronica-shelf-settings:active,
 .veronica-theme-mist .veronica-small-button:active,
 .veronica-theme-mist .veronica-utility-button:active,
-.veronica-theme-mist .veronica-now-btn:active,
 .veronica-theme-mist .veronica-clipboard-delete:active,
 .veronica-theme-mist .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(16, 22, 31, 0.11);
@@ -3042,7 +2883,6 @@
 .veronica-theme-mist .veronica-small-button:focus,
 .veronica-theme-mist .veronica-utility-button:focus,
 .veronica-theme-mist .veronica-utility-entry:focus,
-.veronica-theme-mist .veronica-now-btn:focus,
 .veronica-theme-mist .veronica-clipboard-delete:focus,
 .veronica-theme-mist .veronica-provider-switch:focus,
 .veronica-theme-mist .veronica-action-tile:focus,
@@ -3110,7 +2950,6 @@
   border-color: transparent;
   color: #262626;
 }
-.veronica-theme-paper .veronica-now-btn,
 .veronica-theme-paper .veronica-clipboard-delete {
   color: #262626;
 }
@@ -3145,7 +2984,6 @@
   border-color: rgba(0, 0, 0, 0.34);
   color: #000000;
 }
-.veronica-theme-paper .veronica-now-title,
 .veronica-theme-paper .veronica-files-title,
 .veronica-theme-paper .veronica-camera-title,
 .veronica-theme-paper .veronica-status-panel-title,
@@ -3159,14 +2997,12 @@
 .veronica-theme-paper .veronica-row-value {
   color: #000000;
 }
-.veronica-theme-paper .veronica-now-artist,
 .veronica-theme-paper .veronica-ring-caption,
 .veronica-theme-paper .veronica-usage-spend,
 .veronica-theme-paper .veronica-camera-detail,
 .veronica-theme-paper .veronica-status-panel-detail,
 .veronica-theme-paper .veronica-utility-detail,
 .veronica-theme-paper .veronica-empty,
-.veronica-theme-paper .veronica-empty-music-label,
 .veronica-theme-paper .veronica-heading,
 .veronica-theme-paper .veronica-dim,
 .veronica-theme-paper .veronica-action-icon {
@@ -3174,8 +3010,6 @@
 }
 .veronica-theme-paper .veronica-ring-resets,
 .veronica-theme-paper .veronica-machine-line,
-.veronica-theme-paper .veronica-now-art,
-.veronica-theme-paper .veronica-empty-music-icon,
 .veronica-theme-paper .veronica-camera-icon,
 .veronica-theme-paper .veronica-status-panel-icon,
 .veronica-theme-paper .veronica-file-icon,
@@ -3197,7 +3031,6 @@
 .veronica-theme-paper .veronica-shelf-settings:hover,
 .veronica-theme-paper .veronica-small-button:hover,
 .veronica-theme-paper .veronica-utility-button:hover,
-.veronica-theme-paper .veronica-now-btn:hover,
 .veronica-theme-paper .veronica-clipboard-delete:hover,
 .veronica-theme-paper .veronica-utility-button.veronica-utility-secondary:hover {
   background-color: rgba(0, 0, 0, 0.07);
@@ -3207,7 +3040,6 @@
 .veronica-theme-paper .veronica-shelf-settings:active,
 .veronica-theme-paper .veronica-small-button:active,
 .veronica-theme-paper .veronica-utility-button:active,
-.veronica-theme-paper .veronica-now-btn:active,
 .veronica-theme-paper .veronica-clipboard-delete:active,
 .veronica-theme-paper .veronica-utility-button.veronica-utility-secondary:active {
   background-color: rgba(0, 0, 0, 0.11);
@@ -3254,7 +3086,6 @@
 .veronica-theme-paper .veronica-small-button:focus,
 .veronica-theme-paper .veronica-utility-button:focus,
 .veronica-theme-paper .veronica-utility-entry:focus,
-.veronica-theme-paper .veronica-now-btn:focus,
 .veronica-theme-paper .veronica-clipboard-delete:focus,
 .veronica-theme-paper .veronica-provider-switch:focus,
 .veronica-theme-paper .veronica-action-tile:focus,

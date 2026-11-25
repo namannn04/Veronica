@@ -1,4 +1,4 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { useClient } from "@veronica/ui/frame";
 import {
   createContext,
   type ReactNode,
@@ -10,7 +10,6 @@ import {
   useState,
 } from "react";
 
-import { ipc } from "./ipc";
 import type { LocalTrack } from "./types";
 
 export type LibraryStatus = "idle" | "loading" | "ready" | "failed";
@@ -33,7 +32,32 @@ type LocalPlayer = {
 
 const Context = createContext<LocalPlayer | null>(null);
 
+export function useFileUrl(path: string | null | undefined): string | null {
+  const client = useClient();
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    setUrl(null);
+    if (!path) {
+      return;
+    }
+    let live = true;
+    void client.files
+      .url(path)
+      .then((resolved) => {
+        if (live) {
+          setUrl(resolved);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [client, path]);
+  return url;
+}
+
 export function LocalPlayerProvider({ children }: { children: ReactNode }) {
+  const client = useClient();
   const [element] = useState(() => new Audio());
   const audio = useRef<HTMLAudioElement>(element);
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
@@ -49,8 +73,8 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
     setLibraryStatus("loading");
-    void ipc
-      .musicLibrary()
+    void client.backend
+      .call<LocalTrack[]>("library")
       .then((list) => {
         setTracks(list);
         setLibraryStatus("ready");
@@ -59,7 +83,7 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
         setTracks([]);
         setLibraryStatus("failed");
       });
-  }, [libraryStatus]);
+  }, [client, libraryStatus]);
 
   const play = useCallback(
     (next: number) => {
@@ -69,10 +93,15 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
       }
       const element = audio.current;
       setIndex(next);
-      element.src = convertFileSrc(track.path);
-      void element.play().catch(() => setPlaying(false));
+      void client.files
+        .url(track.path)
+        .then((source) => {
+          element.src = source;
+          return element.play();
+        })
+        .catch(() => setPlaying(false));
     },
-    [tracks],
+    [client, tracks],
   );
 
   const toggle = useCallback(() => {
@@ -126,6 +155,7 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
     element.addEventListener("ended", next);
     return () => element.removeEventListener("ended", next);
   }, [next]);
+  const artwork = useFileUrl(current?.artPath);
   useEffect(() => {
     if (!current || !("mediaSession" in navigator)) {
       return;
@@ -134,13 +164,13 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
       title: current.title,
       artist: current.artist,
       album: current.album,
-      artwork: current.artPath ? [{ src: convertFileSrc(current.artPath) }] : [],
+      artwork: artwork ? [{ src: artwork }] : [],
     });
     navigator.mediaSession.setActionHandler("play", toggle);
     navigator.mediaSession.setActionHandler("pause", toggle);
     navigator.mediaSession.setActionHandler("nexttrack", next);
     navigator.mediaSession.setActionHandler("previoustrack", previous);
-  }, [current, next, previous, toggle]);
+  }, [artwork, current, next, previous, toggle]);
 
   const value = useMemo<LocalPlayer>(
     () => ({

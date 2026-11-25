@@ -67,6 +67,7 @@ export const PortsIcon = icon(Network);
 export const SearchIcon = icon(Search);
 
 const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
+  music: MusicIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,
 };

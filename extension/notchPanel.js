@@ -13,7 +13,6 @@ import { entryText, recentEntries } from './clipboard.js';
 import { booleanSetting } from './featureSwitch.js';
 import { PowerInhibitors } from './inhibitors.js';
 import { brandIcon, launchApp, launchFileShelf, launchServices, runJson, vbox } from './lib.js';
-import { NowPlayingCard } from './nowPlaying.js';
 import { presenterClick, presenterState } from './presenterGate.js';
 import { SurfaceStrip } from './surfaces.js';
 import { isTheme } from './themes.js';
@@ -239,39 +238,6 @@ export class NotchPanel {
         });
 
         const glance = new St.BoxLayout({ style_class: 'veronica-glance-row', x_expand: true });
-        const musicWrap = new St.Widget({
-            style_class: 'veronica-home-card-wrap',
-            layout_manager: new Clutter.BinLayout(),
-            x_expand: true,
-        });
-        this._nowPlaying = new NowPlayingCard(visible => {
-            if (this._emptyMusic) {
-                this._emptyMusic.visible = !visible;
-            }
-        });
-        musicWrap.add_child(this._nowPlaying.actor);
-        this._emptyMusic = vbox({
-            style_class: 'veronica-card veronica-empty-music',
-        });
-        this._emptyMusic.add_child(new St.Widget({ y_expand: true }));
-        this._emptyMusic.add_child(
-            new St.Icon({
-                icon_name: 'emblem-music-symbolic',
-                style_class: 'veronica-empty-music-icon',
-                x_align: Clutter.ActorAlign.CENTER,
-            })
-        );
-        this._emptyMusic.add_child(
-            new St.Label({
-                text: 'Nothing playing',
-                style_class: 'veronica-empty-music-label',
-                x_align: Clutter.ActorAlign.CENTER,
-            })
-        );
-        this._emptyMusic.add_child(new St.Widget({ y_expand: true }));
-        musicWrap.add_child(this._emptyMusic);
-        glance.add_child(musicWrap);
-
         this._usage = new UsageCard();
         glance.add_child(this._usage.actor);
         panel.add_child(glance);
@@ -813,7 +779,6 @@ export class NotchPanel {
             this._setToggle(this._presenter, state.active);
         }
         this._usage?.setPrivate(state.usagePrivate);
-        this._nowPlaying?.setPrivate(state.musicPrivate);
     }
 
     async _togglePresenter() {
@@ -910,10 +875,7 @@ export class NotchPanel {
         this._refreshing = true;
         try {
             if (this._activeTab === 'home') {
-                await Promise.all([
-                    this._usage?.refresh(this._readScope()),
-                    this._nowPlaying?.refresh(this._readScope()),
-                ]);
+                await this._usage?.refresh(this._readScope());
             } else if (this._activeTab === 'clipboard') {
                 await this._refreshClipboard();
             } else if (this._activeTab === 'files') {
@@ -959,7 +921,6 @@ export class NotchPanel {
         this._qrTool?.destroy();
         this._imageTool = this._qrTool = null;
         this._usage?.destroy();
-        this._nowPlaying?.destroy();
         this._surfaces?.destroy();
         this._surfaces = null;
         this._clipboardRows = null;

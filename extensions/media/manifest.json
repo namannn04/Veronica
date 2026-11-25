@@ -37,8 +37,8 @@
           "group": "Tools",
           "order": 10
         },
-        "hint": "Players and your local library",
-        "keywords": ["player", "mpris", "spotify", "song", "track", "album", "pause"]
+        "hint": "Local library and players",
+        "keywords": ["music", "player", "spotify", "mpris", "tracks", "audio", "playback"]
       }
     ]
   },

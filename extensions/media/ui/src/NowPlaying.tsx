@@ -1,47 +1,48 @@
 import { Badge, IconButton, ProgressBar } from "@veronica/ui";
+import { frameVisibility, useClient } from "@veronica/ui/frame";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { trackTimeline } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type { MediaAction, NowPlaying as NowPlayingState } from "../lib/types";
+import { trackTimeline } from "./format";
+import type { MediaAction, NowPlaying as NowPlayingState } from "./types";
 import "./NowPlaying.css";
 
 const POLL_MS = 1000;
 
 export function useNowPlaying(active = true) {
+  const client = useClient();
   const [playing, setPlaying] = useState<NowPlayingState | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      setPlaying(await ipc.mediaNowPlaying());
+      setPlaying(await client.backend.call<NowPlayingState | null>("nowPlaying"));
       setUnavailable(false);
     } catch {
       setUnavailable(true);
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     if (!active) {
       return;
     }
-    return startVisiblePolling(refresh, POLL_MS);
+    return startVisiblePolling(refresh, POLL_MS, frameVisibility);
   }, [active, refresh]);
 
   const control = useCallback(
     async (action: MediaAction) => {
       try {
-        await ipc.mediaControl(action);
+        await client.backend.call("control", { action });
         await refresh();
       } catch {
         return;
       }
     },
-    [refresh],
+    [client, refresh],
   );
 
   return { playing, unavailable, loaded, control, refresh };

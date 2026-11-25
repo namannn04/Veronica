@@ -13,7 +13,6 @@ import {
   HomeIcon,
   MachinesIcon,
   MaintenanceIcon,
-  MusicIcon,
   NamedIcon,
   PortsIcon,
   QuinjetIcon,
@@ -36,7 +35,6 @@ export type BuiltinRoute =
   | "machines"
   | "maintenance"
   | "database"
-  | "media"
   | "attention"
   | "clipboard"
   | "color"
@@ -166,15 +164,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Tools",
     items: [
-      {
-        id: "media",
-        label: "Music",
-        icon: <MusicIcon />,
-        extensionId: "music",
-        hint: "Local library and players",
-        keywords: "music player spotify mpris tracks audio playback",
-      },
-
       {
         id: "clipboard",
         label: "Clipboard",

@@ -194,40 +194,6 @@
   text-align: right;
 }
 
-.home-track {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.home-track > .home-lines {
-  flex: 1;
-}
-
-.home-track-art {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-m);
-  background: var(--fill-control);
-  color: var(--text-3);
-  overflow: hidden;
-}
-
-.home-track-art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.home-track-art svg {
-  width: 18px;
-  height: 18px;
-}
-
 .home-heat-skeleton {
   padding-top: var(--space-1);
 }

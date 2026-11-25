@@ -169,7 +169,6 @@ test('utility tabs do not refresh hidden Home data and repeated Home reads coale
     const h = harness();
     h.panel.actor = {};
     let usage = 0,
-        media = 0,
         release;
     const wait = new Promise(resolve => {
         release = resolve;
@@ -180,21 +179,13 @@ test('utility tabs do not refresh hidden Home data and repeated Home reads coale
             await wait;
         },
     };
-    h.panel._nowPlaying = {
-        refresh: async () => {
-            media++;
-            await wait;
-        },
-    };
     h.panel._activeTab = 'qr';
     await h.panel.refresh();
     assert.equal(usage, 0);
-    assert.equal(media, 0);
     h.panel._activeTab = 'home';
     const first = h.panel.refresh();
     await h.panel.refresh();
     assert.equal(usage, 1);
-    assert.equal(media, 1);
     release();
     await first;
 });
