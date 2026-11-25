@@ -6,7 +6,6 @@ mod cleaner_cmd;
 mod clipboard_cmd;
 mod companion_cmd;
 mod database_cmd;
-mod emoji_cmd;
 mod extensions_cmd;
 mod focus_dim_cmd;
 mod format;
@@ -162,11 +161,6 @@ enum Command {
         about = "Keystroke Highlight: show each key press on screen for demos"
     )]
     Keystroke(keystroke_cmd::KeystrokeCommand),
-    #[command(
-        subcommand,
-        about = "Search the emoji catalogue and copy what you pick"
-    )]
-    Emoji(emoji_cmd::EmojiCommand),
     #[command(subcommand, about = "The live Herdr agent board")]
     Herdr(herdr_cmd::HerdrCommand),
     #[command(
@@ -329,10 +323,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
         Command::Herdr(command) => herdr_cmd::run(command, output).await,
         Command::Companion(command) => companion_cmd::run(&directories, command, output),
-        Command::Emoji(command) => {
-            let settings = Settings::load(&directories.settings_file())?;
-            emoji_cmd::run(&directories, &settings, command, output).await
-        }
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output),
         Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),

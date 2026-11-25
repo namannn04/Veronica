@@ -23,7 +23,7 @@ describe("extension-aware navigation", () => {
   });
 
   test("an on-demand window opens its requested route safely", () => {
-    expect(routeFromSearch("?route=emoji")).toBe("emoji");
+    expect(routeFromSearch("?route=usage")).toBe("usage");
     expect(routeFromSearch("?route=not-a-page")).toBe("home");
     expect(routeFromSearch("")).toBe("home");
   });
@@ -43,7 +43,6 @@ describe("extension-aware navigation", () => {
       database: "database",
       attention: "attention",
       clipboard: "clipboard",
-      emoji: "emoji",
       companion: "companion",
     };
     for (const [route, extensionId] of Object.entries(expected)) {

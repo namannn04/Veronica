@@ -71,7 +71,7 @@ impl AppState {
     pub(crate) fn emoji_tone(&self) -> veronica_core::SkinTone {
         veronica_core::SkinTone::parse(
             self.settings_snapshot()
-                .string("emojiSkinTone")
+                .string("ext.emoji.skinTone")
                 .unwrap_or("standard"),
         )
     }

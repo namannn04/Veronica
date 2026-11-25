@@ -78,11 +78,11 @@ impl ExtensionEntry {
 }
 
 use Capability::{
-    ClipboardHistory, CompanionService, DatabaseBroker, EmojiInsertion, ExternalMediaControl,
-    GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation,
-    LocalTerminal, MachineManagement, MicrophoneControl, Notifications, PackageManagement,
-    PreventSleep, RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics,
-    UsageCollection, WindowDimming,
+    ClipboardHistory, CompanionService, DatabaseBroker, ExternalMediaControl, GlobalPaste,
+    GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation, LocalTerminal,
+    MachineManagement, MicrophoneControl, Notifications, PackageManagement, PreventSleep,
+    RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection,
+    WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -291,18 +291,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         optional_capabilities: &[],
         required_tools: &[],
     },
-    ExtensionEntry {
-        id: "emoji",
-        title: "Emoji Picker",
-        subtitle: "Every emoji on a hotkey, straight into the app you are typing in.",
-        icon: "smile",
-        group: G::Utilities,
-        featured: false,
-        defaults_key: "emojiEnabled",
-        required_capabilities: &[],
-        optional_capabilities: &[EmojiInsertion, GlobalShortcuts],
-        required_tools: &[],
-    },
 ];
 
 pub fn entry(id: &str) -> Option<&'static ExtensionEntry> {
@@ -340,6 +328,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         id: "colorPicker",
         extension: "color",
         defaults_key: "colorPickerEnabled",
+        featured: false,
+    },
+    LegacyToggle {
+        id: "emoji",
+        extension: "emoji",
+        defaults_key: "emojiEnabled",
         featured: false,
     },
 ];
@@ -403,7 +397,6 @@ mod tests {
             "keystrokeHighlight",
             "focusDim",
             "presenter",
-            "emoji",
         ];
         let ids: Vec<&str> = ENTRIES.iter().map(|entry| entry.id).collect();
         assert_eq!(ids, ported, "the catalogue order drifted");
@@ -430,6 +423,7 @@ mod tests {
         assert_eq!(successor("calendar"), Some("calendar"));
         assert_eq!(successor("music"), Some("media"));
         assert_eq!(successor("colorPicker"), Some("color"));
+        assert_eq!(successor("emoji"), Some("emoji"));
         assert_eq!(successor("usage"), None);
     }
 

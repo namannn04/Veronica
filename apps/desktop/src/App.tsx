@@ -27,7 +27,6 @@ import { AttentionPage } from "./pages/AttentionPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
 import { CompanionPage } from "./pages/CompanionPage";
 import { DatabasePage } from "./pages/DatabasePage";
-import { EmojiPage } from "./pages/EmojiPage";
 import { HerdrPage } from "./pages/HerdrPage";
 import { HomePage } from "./pages/HomePage";
 import { LibraryPage } from "./pages/LibraryPage";
@@ -265,7 +264,6 @@ export function App() {
           {route === "database" && <DatabasePage />}
           {route === "attention" && <AttentionPage />}
           {route === "clipboard" && <ClipboardPage />}
-          {route === "emoji" && <EmojiPage />}
           {route === "companion" && <CompanionPage />}
           {route === "library" && (
             <LibraryPage diagnostics={diagnostics} onChanged={loadDiagnostics} />

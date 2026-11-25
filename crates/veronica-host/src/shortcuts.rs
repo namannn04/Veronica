@@ -83,7 +83,6 @@ pub fn builtin_shortcuts(extension: &str) -> Vec<Declared> {
     let (id, title, default) = match extension {
         "clipboard" => ("open", "Clipboard", "Ctrl+Alt+B"),
         "micMute" => ("toggle", "Microphone mute", "Ctrl+Alt+M"),
-        "emoji" => ("open", "Emoji", "Ctrl+Alt+E"),
         _ => return Vec::new(),
     };
     vec![Declared::new(
@@ -464,7 +463,6 @@ mod tests {
             [
                 ("clipboard".to_string(), "Ctrl+Alt+B".to_string()),
                 ("micMute".to_string(), "Ctrl+Alt+M".to_string()),
-                ("emoji".to_string(), "Ctrl+Alt+E".to_string()),
             ]
         );
     }

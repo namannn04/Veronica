@@ -516,14 +516,8 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
 
           <FormGroup
             title="Emoji picker"
-            description="Search and insert emoji with Ctrl+Alt+E. Copying always works; typing into the app you were in needs the shell extension."
+            description="The Emoji extension opens the picker with Ctrl+Alt+E. Copying always works; typing into the app you were in needs the shell extension."
           >
-            <SwitchRow
-              label="Emoji picker"
-              description="Adds the page and its shortcut."
-              checked={Boolean(values.emojiEnabled)}
-              onChange={(value) => void set("emojiEnabled", value)}
-            />
             <SwitchRow
               label="Type into the app I was in"
               description={
