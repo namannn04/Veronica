@@ -29,8 +29,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: http://asset.localhost; media-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost; frame-src veronica-ext:",
-      "assetProtocol": { "enable": true, "scope": ["$HOME/Music/**"] }
+      "csp": "default-src 'self'; img-src 'self' data:; media-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost; frame-src veronica-ext:"
     }
   },
   "bundle": {
