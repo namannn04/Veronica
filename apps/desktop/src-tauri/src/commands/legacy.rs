@@ -1,6 +1,6 @@
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use veronica_core::{Capabilities, Diagnostics};
+use veronica_core::Diagnostics;
 
 use super::maintenance::install_kind;
 use super::system::{sync_lid_awake, sync_prevent_sleep};
@@ -16,16 +16,6 @@ pub(crate) fn diagnostics(state: State<'_, AppState>) -> Diagnostics {
     let session = state.session.lock().expect("session lock").clone();
     let settings = state.settings_snapshot();
     Diagnostics::collect(&state.directories, session, &settings)
-}
-
-#[tauri::command]
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
-)]
-pub(crate) fn capabilities(state: State<'_, AppState>) -> Capabilities {
-    let session = state.session.lock().expect("session lock").clone();
-    Capabilities::resolve(&session)
 }
 
 #[tauri::command]
@@ -652,15 +642,6 @@ pub(crate) fn presenter_set(app: AppHandle, action: String) -> CommandResult<()>
     state.set_setting(key, value).map_err(fail)?;
     let _ = app.emit("settings-updated", "presenter");
     Ok(())
-}
-
-#[tauri::command]
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
-)]
-pub(crate) fn show_main_window(app: AppHandle) -> CommandResult<()> {
-    crate::main_window::show(&app, None).map_err(fail)
 }
 
 #[tauri::command]

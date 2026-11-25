@@ -118,7 +118,6 @@ export const ipc = {
   notificationsDismiss: (id: number) => invoke<void>("notifications_dismiss", { id }),
   notificationsClear: () => invoke<void>("notifications_clear"),
 
-  showMainWindow: () => invoke<void>("show_main_window"),
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
 
