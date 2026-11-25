@@ -6133,6 +6133,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-attention"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "veronica-core",
+ "veronica-sdk",
+]
+
+[[package]]
 name = "veronica-ext-audit"
 version = "0.1.26"
 dependencies = [

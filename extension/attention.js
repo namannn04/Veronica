@@ -33,8 +33,7 @@ export class AttentionTracker {
     }
 
     _pulse() {
-        const tracking = this._settings?.bool('attentionTrackingEnabled', true);
-        if (this._running || !this._settings?.bool('tabAttentionEnabled', false) || !tracking) {
+        if (this._running || !this._settings?.bool('attentionTrackingEnabled', false)) {
             return;
         }
         const cli = findCli();

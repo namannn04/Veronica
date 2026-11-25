@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import {
   AboutIcon,
-  AttentionIcon,
   ClipboardIcon,
   CompanionIcon,
   DatabaseIcon,
@@ -33,7 +32,6 @@ export type BuiltinRoute =
   | "machines"
   | "maintenance"
   | "database"
-  | "attention"
   | "clipboard"
   | "companion"
   | "library"
@@ -94,14 +92,6 @@ export const NAV_GROUPS: NavGroup[] = [
         extensionId: "quinjet",
         hint: "Review workspaces",
         keywords: "review worktree git projects",
-      },
-      {
-        id: "attention",
-        label: "Attention",
-        icon: <AttentionIcon />,
-        extensionId: "attention",
-        hint: "Focus sessions",
-        keywords: "focus pomodoro timer deep work",
       },
     ],
   },

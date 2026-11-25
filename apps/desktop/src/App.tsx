@@ -23,7 +23,6 @@ import { needsOnboarding } from "./lib/onboarding";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
-import { AttentionPage } from "./pages/AttentionPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
 import { CompanionPage } from "./pages/CompanionPage";
 import { DatabasePage } from "./pages/DatabasePage";
@@ -262,7 +261,6 @@ export function App() {
           {route === "machines" && <MachinesPage />}
           {route === "maintenance" && <MaintenancePage />}
           {route === "database" && <DatabasePage />}
-          {route === "attention" && <AttentionPage />}
           {route === "clipboard" && <ClipboardPage />}
           {route === "companion" && <CompanionPage />}
           {route === "library" && (
