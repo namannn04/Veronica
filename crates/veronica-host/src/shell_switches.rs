@@ -7,8 +7,10 @@ use veronica_protocol::Manifest;
 use crate::layout::Layout;
 use crate::registry::{Origin, Registry};
 
-pub const SWITCHES: [(ShellService, &str); 1] =
-    [(ShellService::ClipboardWatch, "clipboardEnabled")];
+pub const SWITCHES: [(ShellService, &str); 2] = [
+    (ShellService::ClipboardWatch, "clipboardEnabled"),
+    (ShellService::FocusDim, "focusDimEnabled"),
+];
 
 fn manifest(layout: &Layout, id: &str) -> Option<Manifest> {
     let raw = std::fs::read_to_string(layout.current_link(id).join("manifest.json")).ok()?;

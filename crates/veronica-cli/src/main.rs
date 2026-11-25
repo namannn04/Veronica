@@ -5,7 +5,6 @@ mod cleaner_cmd;
 mod companion_cmd;
 mod database_cmd;
 mod extensions_cmd;
-mod focus_dim_cmd;
 mod format;
 mod guide_cmd;
 mod invoke_cmd;
@@ -135,12 +134,6 @@ enum Command {
         about = "Presenter mode: blur sensitive figures on a shared screen"
     )]
     Presenter(presenter_cmd::PresenterCommand),
-    #[command(
-        subcommand,
-        name = "focus-dim",
-        about = "Focus Dim: darken everything behind the window you are working in"
-    )]
-    FocusDim(focus_dim_cmd::FocusDimCommand),
     #[command(
         subcommand,
         name = "keystroke-highlight",
@@ -303,7 +296,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::System(command) => system_cmd::run(command, output).await,
         Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
-        Command::FocusDim(command) => focus_dim_cmd::run(&directories, command, output).await,
         Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
         Command::Companion(command) => companion_cmd::run(&directories, command, output),
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,

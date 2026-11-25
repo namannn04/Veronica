@@ -6230,6 +6230,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-focus-dim"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "veronica-core",
+ "veronica-sdk",
+ "veronica-system",
+]
+
+[[package]]
 name = "veronica-ext-herdr"
 version = "0.1.26"
 dependencies = [
