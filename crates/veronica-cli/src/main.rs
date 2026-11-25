@@ -7,7 +7,6 @@ mod extensions_cmd;
 mod format;
 mod guide_cmd;
 mod invoke_cmd;
-mod keystroke_cmd;
 mod machines_cmd;
 mod maintenance_cmd;
 mod mcp_cmd;
@@ -130,13 +129,6 @@ enum Command {
         about = "Presenter mode: blur sensitive figures on a shared screen"
     )]
     Presenter(presenter_cmd::PresenterCommand),
-    #[command(
-        subcommand,
-        name = "keystroke-highlight",
-        alias = "keys",
-        about = "Keystroke Highlight: show each key press on screen for demos"
-    )]
-    Keystroke(keystroke_cmd::KeystrokeCommand),
     #[command(
         subcommand,
         about = "Owned file copies shared by the notch and native drop shelf"
@@ -289,7 +281,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::System(command) => system_cmd::run(command, output).await,
         Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
-        Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),
         Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,

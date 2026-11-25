@@ -52,7 +52,7 @@ const TABS: { id: Tab; label: string; subtitle: string }[] = [
   {
     id: "desktop",
     label: "Desktop",
-    subtitle: "Keystroke highlight, emoji and color picking",
+    subtitle: "Emoji and color picking",
   },
   {
     id: "permissions",
@@ -369,46 +369,6 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       {tab === "desktop" && (
         <Stack>
           <FormGroup
-            title="Keystroke highlight"
-            description="Shows a keycap for every key press, for demos and recordings. The GNOME Shell extension reads and draws them, never consumes a press, and records nothing while the lock screen or a password prompt is up."
-          >
-            <SwitchRow
-              label="Keystroke highlight"
-              description={
-                gnome
-                  ? "Adds the feature and its controls."
-                  : "This desktop is not GNOME, so nothing reads the presses."
-              }
-              checked={Boolean(values.keystrokeHighlightEnabled)}
-              onChange={(value) => void set("keystrokeHighlightEnabled", value)}
-            />
-            <SwitchRow
-              label="Show key presses now"
-              description="Pausing hides the keycaps without turning the feature off."
-              checked={Boolean(values.keystrokeHighlightActive)}
-              onChange={(value) => void set("keystrokeHighlightActive", value)}
-            />
-            <ChoiceRow
-              label="Duration"
-              description="How long one keycap stays on screen."
-              value={Number(values.keystrokeHighlightDuration ?? 1.5)}
-              options={[0.5, 1, 1.5, 2, 3].map((seconds) => ({
-                value: seconds,
-                label: `${seconds}s`,
-              }))}
-              format={(seconds) => `${seconds}s`}
-              onChange={(seconds) => void set("keystrokeHighlightDuration", seconds)}
-            />
-            <ModeRow
-              label="Position"
-              choices={KEYSTROKE_POSITIONS}
-              value={String(values.keystrokeHighlightPosition ?? "bottom")}
-              fallback={1}
-              onChange={(position) => void set("keystrokeHighlightPosition", position)}
-            />
-          </FormGroup>
-
-          <FormGroup
             title="Emoji picker"
             description="The Emoji extension opens the picker with Ctrl+Alt+E. Copying always works; typing into the app you were in needs the shell extension."
           >
@@ -518,44 +478,6 @@ function ShellExtensionRow({
         ) : (
           <Badge tone={state?.tone ?? "neutral"}>{state?.label ?? "Checking…"}</Badge>
         )
-      }
-    />
-  );
-}
-
-type ModeChoice = { id: string; label: string; detail: string };
-
-const KEYSTROKE_POSITIONS: ModeChoice[] = [
-  { id: "top", label: "Top", detail: "The row sits below the top bar." },
-  { id: "bottom", label: "Bottom", detail: "The row sits above the bottom of the work area." },
-];
-
-function ModeRow({
-  label,
-  choices,
-  value,
-  fallback = 0,
-  onChange,
-}: {
-  label: string;
-  choices: ModeChoice[];
-  value: string;
-  fallback?: number;
-  onChange: (value: string) => void;
-}) {
-  const active = choices.find((choice) => choice.id === value) ?? choices[fallback];
-  return (
-    <FormRow
-      label={label}
-      description={active.detail}
-      control={
-        <Segmented
-          label={label}
-          size="small"
-          value={active.id}
-          options={choices.map((choice) => ({ value: choice.id, label: choice.label }))}
-          onChange={onChange}
-        />
       }
     />
   );

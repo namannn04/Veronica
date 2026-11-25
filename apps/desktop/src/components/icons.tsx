@@ -4,7 +4,6 @@ import {
   Blocks,
   CalendarDays,
   ClipboardList,
-  Contrast,
   Cpu,
   Database,
   Gauge,
@@ -60,7 +59,6 @@ export const MaintenanceIcon = icon(Wrench);
 export const DatabaseIcon = icon(Database);
 export const ClipboardIcon = icon(ClipboardList);
 export const ColorIcon = icon(Palette);
-export const FocusDimIcon = icon(Contrast);
 export const EmojiIcon = icon(Smile);
 export const AuditIcon = icon(ScanSearch);
 export const CompanionIcon = icon(NotebookPen);
@@ -84,7 +82,6 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   "clipboard-list": ClipboardIcon,
   pipette: ColorIcon,
   smile: EmojiIcon,
-  contrast: FocusDimIcon,
 };
 
 export function NamedIcon({ name }: { name?: string }) {

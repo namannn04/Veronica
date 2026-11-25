@@ -7,9 +7,10 @@ use veronica_protocol::Manifest;
 use crate::layout::Layout;
 use crate::registry::{Origin, Registry};
 
-pub const SWITCHES: [(ShellService, &str); 2] = [
+pub const SWITCHES: [(ShellService, &str); 3] = [
     (ShellService::ClipboardWatch, "clipboardEnabled"),
     (ShellService::FocusDim, "focusDimEnabled"),
+    (ShellService::KeystrokeOverlay, "keystrokeHighlightEnabled"),
 ];
 
 fn manifest(layout: &Layout, id: &str) -> Option<Manifest> {

@@ -6,9 +6,9 @@ use veronica_core::keystroke::{
     clamp_duration, KeystrokeHighlightSettings, Position, MAXIMUM_VISIBLE, MAX_DURATION_SECS,
     MIN_DURATION_SECS,
 };
-use veronica_core::{AppDirectories, Settings};
-
-use crate::format::Output;
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::settings::Settings;
+use veronica_sdk::Output;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum KeystrokeCommand {
@@ -34,12 +34,8 @@ pub(crate) enum KeystrokeCommand {
     },
 }
 
-pub(crate) async fn run(
-    directories: &AppDirectories,
-    command: &KeystrokeCommand,
-    output: Output,
-) -> Result<()> {
-    let path = directories.settings_file();
+pub(crate) async fn run(command: &KeystrokeCommand, output: Output<'_>) -> Result<()> {
+    let path = AppDirectories::current()?.settings_file();
     let mut settings = Settings::load(&path)?;
 
     let write = match command {
@@ -76,19 +72,8 @@ pub(crate) async fn run(
     }
 
     let resolved = KeystrokeHighlightSettings::read(&settings);
-    let session = veronica_system::detect_session().await;
-    let can_apply = session.is_gnome;
-
-    let document = json!({
-        "enabled": resolved.enabled,
-        "active": resolved.active,
-        "running": resolved.is_running(),
-        "durationSeconds": resolved.duration_secs,
-        "position": resolved.position.key(),
-        "maximumVisible": MAXIMUM_VISIBLE,
-        "canApply": can_apply,
-        "drawnBy": "the Veronica GNOME Shell extension",
-    });
+    let can_apply = veronica_system::detect_session().await.is_gnome;
+    let document = report(&resolved, can_apply);
 
     output.emit(&document, || {
         let mut out = String::new();
@@ -116,5 +101,18 @@ pub(crate) async fn run(
             );
         }
         out.trim_end().to_string()
+    })
+}
+
+pub(crate) fn report(resolved: &KeystrokeHighlightSettings, can_apply: bool) -> serde_json::Value {
+    json!({
+        "enabled": resolved.enabled,
+        "active": resolved.active,
+        "running": resolved.is_running(),
+        "durationSeconds": resolved.duration_secs,
+        "position": resolved.position.key(),
+        "maximumVisible": MAXIMUM_VISIBLE,
+        "canApply": can_apply,
+        "drawnBy": "the Veronica GNOME Shell extension",
     })
 }

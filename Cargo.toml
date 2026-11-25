@@ -25,6 +25,7 @@ members = [
     "extensions/fixture/backend",
     "extensions/focus-dim/backend",
     "extensions/herdr/backend",
+    "extensions/keystroke-highlight/backend",
     "extensions/quinjet/backend",
     "extensions/workspace/backend",
     "extensions/media/backend",
