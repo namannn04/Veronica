@@ -330,7 +330,8 @@
     "dbus": {
       "system": ["org.bluez"]
     },
-    "spawn": ["python3", "wpctl", "pw-dump"]
+    "spawn": ["python3", "wpctl", "pw-dump"],
+    "host": ["surfaces"]
   },
   "requires": {
     "capabilities": ["runningApplications"]
