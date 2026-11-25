@@ -149,7 +149,11 @@
   ],
   "permissions": {
     "dbus": {
-      "session": ["org.gnome.Shell.Screenshot", "org.freedesktop.portal.Desktop"]
+      "session": [
+        "org.gnome.Shell.Screenshot",
+        "org.freedesktop.portal.Desktop",
+        "io.github.namannn04.Veronica.Shell"
+      ]
     },
     "spawn": ["wl-copy", "xclip", "xsel"],
     "host": ["shortcuts"]
