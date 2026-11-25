@@ -300,65 +300,6 @@ fn restart_command(kind: &str, current_exe: Option<std::path::PathBuf>) -> Vec<S
     }
 }
 
-#[tauri::command]
-pub(crate) fn cleaner_categories() -> &'static [veronica_core::CleanerCategory] {
-    veronica_core::cleaner::CATEGORIES
-}
-
-#[tauri::command]
-pub(crate) async fn cleaner_scan(
-    categories: Vec<String>,
-) -> CommandResult<veronica_core::CleanerScan> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let home = veronica_core::paths::home_dir()
-            .ok_or_else(|| "cannot resolve the home directory".to_string())?;
-        let selected = if categories.is_empty() {
-            None
-        } else {
-            Some(categories)
-        };
-        Ok(veronica_core::cleaner::scan_caches(
-            &home,
-            selected.as_deref(),
-        ))
-    })
-    .await
-    .map_err(|error| format!("the scan could not run: {error}"))?
-}
-
-#[tauri::command]
-pub(crate) async fn cleaner_clean(
-    items: Vec<veronica_core::cleaner::Item>,
-) -> CommandResult<veronica_core::cleaner::CleanReport> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let home = veronica_core::paths::home_dir()
-            .ok_or_else(|| "cannot resolve the home directory".to_string())?;
-        let mut report = veronica_core::cleaner::CleanReport::default();
-        for item in items {
-            let target = std::path::Path::new(&item.path);
-            if !target.starts_with(&home) {
-                report
-                    .failed
-                    .push((item.path, "outside the home directory".to_string()));
-                continue;
-            }
-            let bytes = veronica_core::cleaner::directory_size(target);
-            match veronica_core::cleaner::trash(&home, target) {
-                Ok(_) => {
-                    report.bytes_reclaimed = report.bytes_reclaimed.saturating_add(bytes);
-                    report
-                        .trashed
-                        .push(veronica_core::cleaner::Item { bytes, ..item });
-                }
-                Err(error) => report.failed.push((item.path, format!("{error:#}"))),
-            }
-        }
-        Ok(report)
-    })
-    .await
-    .map_err(|error| format!("the clean could not run: {error}"))?
-}
-
 #[cfg(test)]
 mod tests {
     use super::newer_version;

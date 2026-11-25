@@ -4,7 +4,8 @@ use anyhow::{Context, Result};
 use serde_json::json;
 use veronica_core::cleaner::{self, Family};
 
-use crate::format::{self, Output};
+use veronica_sdk::cli::confirmation;
+use veronica_sdk::{format, Output};
 
 #[derive(clap::Subcommand)]
 pub(crate) enum CleanerCommand {
@@ -38,7 +39,7 @@ pub(crate) enum CleanerCommand {
 }
 
 fn home() -> Result<std::path::PathBuf> {
-    veronica_core::paths::home_dir().context("cannot resolve the home directory")
+    veronica_sdk::paths::home_dir().context("cannot resolve the home directory")
 }
 
 fn check_categories(categories: &[String], root: Option<&String>) -> Result<Option<Vec<String>>> {
@@ -81,7 +82,7 @@ fn scan(
     Ok(caches)
 }
 
-pub(crate) fn run(command: &CleanerCommand, output: Output, yes: bool) -> Result<()> {
+pub(crate) fn run(command: &CleanerCommand, output: Output<'_>, yes: bool) -> Result<()> {
     match command {
         CleanerCommand::Categories => output.emit(&cleaner::CATEGORIES, || {
             let rows: Vec<Vec<String>> = cleaner::CATEGORIES
@@ -115,7 +116,7 @@ pub(crate) fn run(command: &CleanerCommand, output: Output, yes: bool) -> Result
             let selected = check_categories(categories, root.as_ref())?;
             let found = scan(root.as_ref(), selected.as_ref())?;
             if !yes {
-                return Err(format::confirmation(
+                return Err(confirmation(
                     output,
                     &json!({ "wouldTrash": found.items, "totalBytes": found.total_bytes }),
                     || summary(&found, true),

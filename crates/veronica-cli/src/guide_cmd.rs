@@ -14,14 +14,11 @@ const HOST: &str = "host";
 const HOST_FLAGS: [&str; 3] = ["json", "yes", "verbose"];
 const WITHOUT_JSON: [&str; 2] = ["database mcp", "mcp serve"];
 const WITHOUT_MCP: [&str; 2] = ["database", "mcp"];
-const SELF_PREVIEW: [&str; 9] = [
-    "cleaner clean",
+const SELF_PREVIEW: [&str; 6] = [
     "extensions install",
     "extensions remove",
     "extensions setup",
     "extensions update",
-    "maintenance remove",
-    "maintenance update",
     "mcp install",
     "mcp uninstall",
 ];
@@ -30,10 +27,6 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("backup export", Effect::Write),
     ("backup import", Effect::Destructive),
     ("backup inspect", Effect::Read),
-    ("cleaner categories", Effect::Read),
-    ("cleaner clean", Effect::Destructive),
-    ("cleaner drives", Effect::Read),
-    ("cleaner scan", Effect::Read),
     ("config get", Effect::Read),
     ("config list", Effect::Read),
     ("config set", Effect::Write),
@@ -88,11 +81,6 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("machines remove", Effect::Destructive),
     ("machines stats", Effect::Read),
     ("machines wake", Effect::Write),
-    ("maintenance inventory", Effect::Read),
-    ("maintenance remove", Effect::Destructive),
-    ("maintenance sources", Effect::Read),
-    ("maintenance update", Effect::Destructive),
-    ("maintenance updates", Effect::Read),
     ("mcp install", Effect::Destructive),
     ("mcp serve", Effect::Read),
     ("mcp status", Effect::Read),
@@ -411,7 +399,7 @@ mod tests {
     #[test]
     fn destructive_host_commands_are_gated_unless_they_preview_themselves() {
         assert!(needs_confirmation("backup import"));
-        assert!(!needs_confirmation("cleaner clean"));
+        assert!(!needs_confirmation("extensions remove"));
         assert!(!needs_confirmation("backup inspect"));
         assert!(!needs_confirmation("nothing here"));
     }

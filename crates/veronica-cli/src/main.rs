@@ -1,14 +1,12 @@
 use std::fmt::Write as _;
 
 mod backup_cmd;
-mod cleaner_cmd;
 mod database_cmd;
 mod extensions_cmd;
 mod format;
 mod guide_cmd;
 mod invoke_cmd;
 mod machines_cmd;
-mod maintenance_cmd;
 mod mcp_cmd;
 mod power_cmd;
 mod presenter_cmd;
@@ -90,17 +88,6 @@ enum Command {
         about = "Export, inspect and restore Veronica's persistent data"
     )]
     Backup(backup_cmd::BackupCommand),
-    #[command(
-        subcommand,
-        about = "The disk cleaner: measure developer caches and build output, and move what you choose to the Trash"
-    )]
-    Cleaner(cleaner_cmd::CleanerCommand),
-    #[command(
-        subcommand,
-        alias = "pkg",
-        about = "App Maintenance: what is installed, what can be updated, and removing it with the consequences shown first"
-    )]
-    Maintenance(maintenance_cmd::MaintenanceCommand),
     #[command(
         subcommand,
         alias = "db",
@@ -271,8 +258,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
-        Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),
-        Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
     }
 }

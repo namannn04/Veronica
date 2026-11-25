@@ -37,7 +37,6 @@ describe("extension-aware navigation", () => {
       system: "system",
       services: "system",
       machines: "machines",
-      maintenance: "appMaintenance",
       database: "database",
     };
     for (const [route, extensionId] of Object.entries(expected)) {

@@ -40,10 +40,6 @@ import type {
   AudioStream,
   BackupSummary,
   BluetoothState,
-  CleanerCategory,
-  CleanerItem,
-  CleanerScan,
-  CleanReport,
   ContainerInfo,
   DatabaseConnection,
   DatabaseObject,
@@ -60,14 +56,9 @@ import type {
   Machine,
   MachineDirectory,
   MachineReport,
-  PackageInstalled,
-  PackageSource,
-  PackageUpdate,
-  PackageUpdateResult,
   PlannedShortcut,
   PowerStatus,
   PresenterView,
-  RemovalPlan,
   RunningProcess,
   ShellExtensionStatus,
   SystemSnapshot,
@@ -171,17 +162,6 @@ export const ipc = {
   databaseOperations: (limit: number) =>
     invoke<DatabaseOperation[]>("database_operations", { limit }),
 
-  packagesSources: () => invoke<PackageSource[]>("packages_sources"),
-  packagesUpdates: () => invoke<PackageUpdate[]>("packages_updates"),
-  packagesInventory: () => invoke<PackageInstalled[]>("packages_inventory"),
-  packagesUpdate: (source: string, names: string[]) =>
-    invoke<PackageUpdateResult>("packages_update", { source, names }),
-  packagesRemovalPlan: (packageName: string) =>
-    invoke<RemovalPlan>("packages_removal_plan", { package: packageName }),
-
-  cleanerCategories: () => invoke<CleanerCategory[]>("cleaner_categories"),
-  cleanerScan: (categories: string[]) => invoke<CleanerScan>("cleaner_scan", { categories }),
-  cleanerClean: (items: CleanerItem[]) => invoke<CleanReport>("cleaner_clean", { items }),
   toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
   toolsInstall: (tool: string) => invoke<ToolInstallOutcome>("tools_install", { tool }),
   microphoneState: () => invoke<VolumeState>("microphone_state"),

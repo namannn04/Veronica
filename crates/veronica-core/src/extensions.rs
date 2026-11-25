@@ -79,8 +79,8 @@ impl ExtensionEntry {
 
 use Capability::{
     DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression, MachineManagement,
-    MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
-    ScreenShareDetection, ShellIntegration, SystemMetrics,
+    MicrophoneControl, Notifications, PreventSleep, RunningApplications, ScreenShareDetection,
+    ShellIntegration, SystemMetrics,
 };
 use ExtensionGroup as G;
 
@@ -95,18 +95,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         defaults_key: "tabSystemEnabled",
         required_capabilities: &[RunningApplications],
         optional_capabilities: &[PreventSleep, InputSuppression],
-        required_tools: &[],
-    },
-    ExtensionEntry {
-        id: "appMaintenance",
-        title: "App Maintenance",
-        subtitle: "Packages, updates across apt, snap and flatpak, and review-first removal.",
-        icon: "package",
-        group: G::System,
-        featured: false,
-        defaults_key: "tabAppMaintenanceEnabled",
-        required_capabilities: &[PackageManagement],
-        optional_capabilities: &[Notifications],
         required_tools: &[],
     },
     ExtensionEntry {
@@ -257,6 +245,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         featured: true,
     },
     LegacyToggle {
+        id: "appMaintenance",
+        extension: "maintenance",
+        defaults_key: "tabAppMaintenanceEnabled",
+        featured: false,
+    },
+    LegacyToggle {
         id: "seoAudit",
         extension: "audit",
         defaults_key: "tabSEOAuditEnabled",
@@ -327,7 +321,6 @@ mod tests {
     fn the_catalogue_keeps_its_order() {
         let ported = [
             "system",
-            "appMaintenance",
             "machines",
             "database",
             "systemStats",

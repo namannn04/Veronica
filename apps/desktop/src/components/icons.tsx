@@ -24,6 +24,7 @@ import {
   Settings,
   Smile,
   Target,
+  Trash2,
   Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -57,6 +58,7 @@ export const AttentionIcon = icon(Target);
 export const SystemIcon = icon(Cpu);
 export const MachinesIcon = icon(Server);
 export const MaintenanceIcon = icon(Wrench);
+export const CleanerIcon = icon(Trash2);
 export const DatabaseIcon = icon(Database);
 export const ClipboardIcon = icon(ClipboardList);
 export const ColorIcon = icon(Palette);
@@ -85,6 +87,8 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   pipette: ColorIcon,
   smile: EmojiIcon,
   folder: ShelfIcon,
+  "trash-2": CleanerIcon,
+  wrench: MaintenanceIcon,
 };
 
 export function NamedIcon({ name }: { name?: string }) {

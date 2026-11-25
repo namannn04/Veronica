@@ -703,58 +703,6 @@ fn database_context(
 }
 
 #[tauri::command]
-pub(crate) async fn packages_sources() -> Vec<PackageSource> {
-    let mut sources = Vec::new();
-    for source in veronica_system::packages::Source::ALL {
-        sources.push(PackageSource {
-            available: veronica_system::packages::available(source),
-            needs_root: source.needs_root(),
-            source: source.title().to_string(),
-        });
-    }
-    sources
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct PackageSource {
-    pub source: String,
-    pub available: bool,
-    pub needs_root: bool,
-}
-
-#[tauri::command]
-pub(crate) async fn packages_updates() -> Vec<veronica_system::packages::Update> {
-    veronica_system::packages::updates().await
-}
-
-#[tauri::command]
-pub(crate) async fn packages_inventory() -> Vec<veronica_system::packages::Installed> {
-    veronica_system::packages::inventory().await
-}
-
-#[tauri::command]
-pub(crate) async fn packages_update(
-    source: String,
-    names: Vec<String>,
-) -> CommandResult<veronica_system::packages::UpdateResult> {
-    let source = veronica_system::packages::Source::parse(&source)
-        .ok_or_else(|| format!("unknown package source {source:?}"))?;
-    veronica_system::packages::apply_update(source, &names)
-        .await
-        .map_err(fail)
-}
-
-#[tauri::command]
-pub(crate) async fn packages_removal_plan(
-    package: String,
-) -> CommandResult<veronica_system::packages::RemovalPlan> {
-    veronica_system::packages::removal_plan(&package)
-        .await
-        .map_err(fail)
-}
-
-#[tauri::command]
 pub(crate) async fn tools_readiness() -> CommandResult<veronica_system::tools::Survey> {
     Ok(veronica_system::tools::survey().await)
 }
