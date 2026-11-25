@@ -1,10 +1,9 @@
-use crate::format::Output;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+
 use anyhow::{ensure, Result};
-use std::{
-    io::Read,
-    path::{Path, PathBuf},
-};
-use veronica_core::AppDirectories;
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::Output;
 use veronica_system::image_tools::{self, Source};
 
 #[derive(clap::Subcommand)]
@@ -30,8 +29,9 @@ fn read(path: &Path) -> Result<Vec<u8>> {
     );
     Ok(bytes)
 }
-pub(crate) fn run(dirs: &AppDirectories, command: &UtilityCommand, output: Output) -> Result<()> {
+pub(crate) fn run(command: &UtilityCommand, output: Output<'_>) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
+    let dirs = AppDirectories::current()?;
     let (source, format) = match command {
         UtilityCommand::Image { path, format } => {
             (image_tools::decode(&read(path)?)?, format.as_deref())

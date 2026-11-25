@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "id": "utility",
+  "version": "1.0",
+  "title": "Notch Tools",
+  "summary": "Image conversion and QR codes for the notch's tools panel.",
+  "category": "desk",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "commands": [
+    {
+      "name": "utility",
+      "about": "Local notch image conversion and QR generation",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "image",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "path",
+              "kind": "positional",
+              "type": "path",
+              "required": true
+            },
+            {
+              "name": "format",
+              "kind": "positional",
+              "type": "string",
+              "values": ["png", "jpg", "svg"]
+            }
+          ]
+        },
+        {
+          "name": "qr",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "text",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": ["org.freedesktop.DBus"]
+    }
+  }
+}
