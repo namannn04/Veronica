@@ -102,6 +102,12 @@ impl Output<'_> {
         self.capture.json
     }
 
+    pub fn write(self, text: &str) {
+        if !self.capture.json {
+            guard(&self.capture.text).push_str(text);
+        }
+    }
+
     pub fn emit<T: Serialize>(
         self,
         value: &T,

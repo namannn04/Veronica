@@ -39,7 +39,6 @@ describe("extension-aware navigation", () => {
       machines: "machines",
       maintenance: "appMaintenance",
       database: "database",
-      clipboard: "clipboard",
       companion: "companion",
     };
     for (const [route, extensionId] of Object.entries(expected)) {

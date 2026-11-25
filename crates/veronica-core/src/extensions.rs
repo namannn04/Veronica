@@ -78,10 +78,10 @@ impl ExtensionEntry {
 }
 
 use Capability::{
-    ClipboardHistory, CompanionService, DatabaseBroker, ExternalMediaControl, GlobalPaste,
-    GlobalShortcuts, InputSuppression, KeystrokeObservation, MachineManagement, MicrophoneControl,
-    Notifications, PackageManagement, PreventSleep, RunningApplications, ScreenShareDetection,
-    ShellIntegration, SystemMetrics, WindowDimming,
+    CompanionService, DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression,
+    KeystrokeObservation, MachineManagement, MicrophoneControl, Notifications, PackageManagement,
+    PreventSleep, RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics,
+    WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -195,18 +195,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_tools: &[],
     },
     ExtensionEntry {
-        id: "clipboard",
-        title: "Clipboard",
-        subtitle: "Clipboard history, searchable, with one-click copy back.",
-        icon: "clipboard-list",
-        group: G::Utilities,
-        featured: true,
-        defaults_key: "clipboardEnabled",
-        required_capabilities: &[ClipboardHistory],
-        optional_capabilities: &[GlobalPaste, GlobalShortcuts, ShellIntegration],
-        required_tools: &[],
-    },
-    ExtensionEntry {
         id: "keystrokeHighlight",
         title: "Keystroke Highlight",
         subtitle: "Show each key press on screen for polished demos.",
@@ -257,6 +245,12 @@ pub struct LegacyToggle {
 }
 
 pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
+    LegacyToggle {
+        id: "clipboard",
+        extension: "clipboard",
+        defaults_key: "clipboardEnabled",
+        featured: true,
+    },
     LegacyToggle {
         id: "attention",
         extension: "attention",
@@ -360,7 +354,6 @@ mod tests {
             "micMute",
             "lidAwake",
             "notchShelf",
-            "clipboard",
             "keystrokeHighlight",
             "focusDim",
             "presenter",

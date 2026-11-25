@@ -13,6 +13,9 @@ import {
   SkeletonText,
   Toolbar,
 } from "@veronica/ui";
+import { bytes, timeAgo } from "@veronica/ui/format";
+import { frameVisibility } from "@veronica/ui/frame";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import {
   AtSign,
   Check,
@@ -25,10 +28,8 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { bytes, timeAgo } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type { ClipRow } from "../lib/types";
+import { errorText, ipc } from "./api";
+import type { ClipRow } from "./types";
 import "./ClipboardPage.css";
 
 const TICK_MS = 3000;
@@ -50,21 +51,21 @@ export function ClipboardPage() {
       setRows(await ipc.clipboardList(query));
       setError(null);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setLoaded(true);
     }
   }, [query]);
 
-  useEffect(() => startVisiblePolling(load, TICK_MS), [load]);
+  useEffect(() => startVisiblePolling(load, TICK_MS, frameVisibility), [load]);
 
   const copy = async (row: ClipRow) => {
     try {
-      await navigator.clipboard.writeText(row.text);
+      await ipc.copy(row.text);
       setCopied(row.id);
       setTimeout(() => setCopied((current) => (current === row.id ? null : current)), 1200);
     } catch (reason) {
-      setError(`Cannot write to the clipboard: ${reason}`);
+      setError(`Cannot write to the clipboard: ${errorText(reason)}`);
     }
   };
 
@@ -73,7 +74,7 @@ export function ClipboardPage() {
       await ipc.clipboardRemove(id);
       await load();
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     }
   };
 
@@ -85,7 +86,7 @@ export function ClipboardPage() {
       }
       setClearRequest({ total, matching: rows.length, query });
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     }
   };
 
@@ -95,7 +96,7 @@ export function ClipboardPage() {
       await ipc.clipboardClear();
       await load();
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setClearing(false);
       setClearRequest(null);

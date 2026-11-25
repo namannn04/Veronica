@@ -2,7 +2,6 @@ use std::fmt::Write as _;
 
 mod backup_cmd;
 mod cleaner_cmd;
-mod clipboard_cmd;
 mod companion_cmd;
 mod database_cmd;
 mod extensions_cmd;
@@ -101,8 +100,6 @@ enum Command {
         about = "Export, inspect and restore Veronica's persistent data"
     )]
     Backup(backup_cmd::BackupCommand),
-    #[command(subcommand, alias = "clip", about = "The clipboard history")]
-    Clipboard(clipboard_cmd::ClipboardCommand),
     #[command(
         subcommand,
         about = "The disk cleaner: measure developer caches and build output, and move what you choose to the Trash"
@@ -310,7 +307,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
         Command::Companion(command) => companion_cmd::run(&directories, command, output),
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
-        Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output),
         Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),
         Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,

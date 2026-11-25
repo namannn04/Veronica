@@ -8,6 +8,7 @@ const EXTENSIONS: &str = "extensions";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Layout {
+    settings: PathBuf,
     data: PathBuf,
     state: PathBuf,
     cache: PathBuf,
@@ -21,11 +22,16 @@ impl Layout {
 
     pub fn new(directories: &AppDirectories) -> Self {
         Self {
+            settings: directories.settings_file(),
             data: directories.data.join(EXTENSIONS),
             state: directories.state.join(EXTENSIONS),
             cache: directories.cache.join(EXTENSIONS),
             runtime: directories.runtime.clone(),
         }
+    }
+
+    pub fn settings_file(&self) -> PathBuf {
+        self.settings.clone()
     }
 
     pub fn packages_dir(&self) -> PathBuf {

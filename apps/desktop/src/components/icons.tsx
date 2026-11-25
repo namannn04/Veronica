@@ -77,6 +77,7 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   music: MusicIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,
+  "clipboard-list": ClipboardIcon,
   pipette: ColorIcon,
   smile: EmojiIcon,
 };

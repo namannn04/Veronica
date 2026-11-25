@@ -257,16 +257,6 @@ export interface MachineReport {
   error: string | null;
 }
 
-export interface ClipRow {
-  id: number;
-  preview: string;
-  text: string;
-  lines: number;
-  bytes: number;
-  count: number;
-  lastSeen: string;
-}
-
 export type BlurCategory = "money" | "usage" | "agents" | "calendar" | "music";
 
 export interface ScreenShareState {
