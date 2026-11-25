@@ -29,6 +29,7 @@ members = [
     "extensions/quinjet/backend",
     "extensions/workspace/backend",
     "extensions/media/backend",
+    "extensions/shelf/backend",
     "extensions/usage/backend",
 ]
 

@@ -14,7 +14,6 @@ mod power_cmd;
 mod presenter_cmd;
 mod routes;
 mod services_cmd;
-mod shelf_cmd;
 mod surfaces_cmd;
 mod system_cmd;
 mod tools_cmd;
@@ -129,11 +128,6 @@ enum Command {
         about = "Presenter mode: blur sensitive figures on a shared screen"
     )]
     Presenter(presenter_cmd::PresenterCommand),
-    #[command(
-        subcommand,
-        about = "Owned file copies shared by the notch and native drop shelf"
-    )]
-    Shelf(shelf_cmd::ShelfCommand),
     #[command(
         about = "The command line programs Veronica's extensions need, and whether this computer has them"
     )]
@@ -273,7 +267,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
             .await
         }
         Command::Config(command) => config(&directories, command, output),
-        Command::Shelf(command) => shelf_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Utility(command) => utility_cmd::run(&directories, command, output),
         Command::Ports(command) => services_cmd::ports(command, output).await,
