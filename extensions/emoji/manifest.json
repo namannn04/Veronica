@@ -89,6 +89,7 @@
         {
           "name": "copy",
           "about": "Copy one emoji to the clipboard and record the pick",
+          "longAbout": "Copy one emoji to the clipboard and record the pick.\n\nThe argument is either the character itself or a search: the best match is what gets copied, which is what makes `vr emoji copy shrug` useful.",
           "effect": "write",
           "json": true,
           "args": [
