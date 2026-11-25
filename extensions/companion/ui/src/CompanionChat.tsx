@@ -16,8 +16,8 @@ import {
 } from "@veronica/ui";
 import { Download, MessageCircle, Send, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type ChatView, DEFAULT_MODEL, type ModelConfig } from "../lib/companionChat";
-import { ipc } from "../lib/ipc";
+import { errorText, ipc } from "./api";
+import { type ChatView, DEFAULT_MODEL, type ModelConfig } from "./companionChat";
 import "./CompanionChat.css";
 
 const CHAT_PLACEHOLDERS = [
@@ -55,7 +55,7 @@ export function CompanionChat() {
   const running = useRef(false);
   const bottom = useRef<HTMLDivElement>(null);
 
-  const fail = useCallback((e: unknown) => setNotice({ tone: "critical", text: String(e) }), []);
+  const fail = useCallback((e: unknown) => setNotice({ tone: "critical", text: errorText(e) }), []);
   const inform = (text: string, tone: Message["tone"] = "good") => setNotice({ tone, text });
 
   const refresh = async () => {

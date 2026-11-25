@@ -34,11 +34,6 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("cleaner clean", Effect::Destructive),
     ("cleaner drives", Effect::Read),
     ("cleaner scan", Effect::Read),
-    ("companion add", Effect::Write),
-    ("companion list", Effect::Read),
-    ("companion pin", Effect::Write),
-    ("companion remove", Effect::Destructive),
-    ("companion show", Effect::Read),
     ("config get", Effect::Read),
     ("config list", Effect::Read),
     ("config set", Effect::Write),
@@ -428,7 +423,7 @@ mod tests {
 
     #[test]
     fn destructive_host_commands_are_gated_unless_they_preview_themselves() {
-        assert!(needs_confirmation("companion remove"));
+        assert!(needs_confirmation("backup import"));
         assert!(!needs_confirmation("cleaner clean"));
         assert!(!needs_confirmation("backup inspect"));
         assert!(!needs_confirmation("nothing here"));

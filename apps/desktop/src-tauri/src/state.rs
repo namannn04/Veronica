@@ -1,14 +1,10 @@
-use std::path::PathBuf;
-use std::process::Child;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use anyhow::Result;
 use veronica_core::{AppDirectories, DesktopSession, Settings};
 use veronica_system::MetricsSampler;
 
 pub(crate) struct AppState {
-    pub chat: veronica_system::companion_ai::ChatRuntime,
     pub agents: veronica_system::agents::AgentManager,
     pub directories: AppDirectories,
     pub session: Mutex<DesktopSession>,
@@ -17,24 +13,14 @@ pub(crate) struct AppState {
     pub prevent_sleep: Mutex<Option<veronica_system::power::InhibitorLock>>,
     pub sampler: Mutex<MetricsSampler>,
     pub notifications: Mutex<Vec<veronica_system::Notification>>,
-    pub companion_recording: Mutex<Option<CompanionRecording>>,
     pub emoji: veronica_core::EmojiCatalog,
     pub extensions: Arc<crate::extensions::host::Host>,
-}
-
-pub(crate) struct CompanionRecording {
-    pub child: Child,
-    pub path: PathBuf,
-    pub started: Instant,
 }
 
 impl AppState {
     pub(crate) fn new(directories: AppDirectories, session: DesktopSession) -> Result<Self> {
         let settings = Settings::load(&directories.settings_file())?;
         Ok(Self {
-            chat: veronica_system::companion_ai::ChatRuntime::new(
-                directories.data.join("companion/chat"),
-            ),
             agents: veronica_system::agents::AgentManager::default(),
             emoji: veronica_core::EmojiCatalog::bundled(),
             extensions: Arc::new(crate::extensions::host::Host::new(&directories)),
@@ -45,7 +31,6 @@ impl AppState {
             prevent_sleep: Mutex::new(None),
             sampler: Mutex::new(MetricsSampler::new()),
             notifications: Mutex::new(Vec::new()),
-            companion_recording: Mutex::new(None),
         })
     }
 

@@ -2,7 +2,6 @@ use std::fmt::Write as _;
 
 mod backup_cmd;
 mod cleaner_cmd;
-mod companion_cmd;
 mod database_cmd;
 mod extensions_cmd;
 mod format;
@@ -143,8 +142,6 @@ enum Command {
         about = "Owned file copies shared by the notch and native drop shelf"
     )]
     Shelf(shelf_cmd::ShelfCommand),
-    #[command(subcommand, about = "Your private notes and voice-memo metadata")]
-    Companion(companion_cmd::CompanionCommand),
     #[command(
         about = "The command line programs Veronica's extensions need, and whether this computer has them"
     )]
@@ -293,7 +290,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
         Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
-        Command::Companion(command) => companion_cmd::run(&directories, command, output),
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),
         Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,

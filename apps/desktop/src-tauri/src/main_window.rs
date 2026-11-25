@@ -35,7 +35,6 @@ pub(crate) fn open(app: &tauri::AppHandle, url: Option<String>) -> Result<()> {
     }
 
     app.state::<crate::state::AppState>().agents.open();
-    app.state::<crate::state::AppState>().chat.open_window();
     let window = WebviewWindowBuilder::from_config(app, &config)
         .context("cannot prepare the main window")?
         .build()

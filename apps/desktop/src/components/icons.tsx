@@ -78,6 +78,7 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   gauge: UsageIcon,
   terminal: WorkspaceIcon,
   music: MusicIcon,
+  "notebook-pen": CompanionIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,
   "clipboard-list": ClipboardIcon,
