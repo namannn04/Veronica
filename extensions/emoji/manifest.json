@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "id": "emoji",
+  "version": "1.0",
+  "title": "Emoji",
+  "summary": "Search the emoji catalogue, copy what you pick and open the picker on a shortcut.",
+  "category": "utilities",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Emoji",
+        "entry": "index.html",
+        "icon": "smile",
+        "nav": {
+          "group": "Tools",
+          "order": 50
+        },
+        "hint": "Search and insert emoji",
+        "keywords": ["emoji", "symbol", "character", "insert"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "emoji",
+      "about": "Search the emoji catalogue and copy what you pick",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "list",
+          "about": "Search the catalogue. With no query, the whole catalogue in order",
+          "aliases": ["search"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "query",
+              "kind": "positional",
+              "type": "string",
+              "default": "",
+              "help": "What to look for: a name, a word in one, or a search term"
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 20
+            },
+            {
+              "name": "group",
+              "kind": "option",
+              "long": "group",
+              "type": "string",
+              "help": "Restrict to one group id, e.g. `flags`"
+            },
+            {
+              "name": "tone",
+              "kind": "option",
+              "long": "tone",
+              "type": "string",
+              "help": "Which skin tone to print. Defaults to the configured tone"
+            }
+          ]
+        },
+        {
+          "name": "groups",
+          "about": "Print the groups the catalogue is divided into",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "copy",
+          "about": "Copy one emoji to the clipboard and record the pick",
+          "longAbout": "Copy one emoji to the clipboard and record the pick.\n\nThe argument is either the character itself or a search: the best match is what gets copied, which is what makes `vr emoji copy shrug` useful.",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "query",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "tone",
+              "kind": "option",
+              "long": "tone",
+              "type": "string"
+            },
+            {
+              "name": "no_copy",
+              "kind": "flag",
+              "long": "no-copy",
+              "type": "boolean",
+              "help": "Record the pick without touching the clipboard"
+            }
+          ]
+        },
+        {
+          "name": "recents",
+          "about": "The emoji you reach for most, as the picker ranks them",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 20
+            }
+          ]
+        },
+        {
+          "name": "forget",
+          "about": "Forget one emoji's usage, or all of it with `--all`",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "character",
+              "kind": "positional",
+              "type": "string"
+            },
+            {
+              "name": "all",
+              "kind": "flag",
+              "long": "all",
+              "type": "boolean"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "shortcuts": [
+    {
+      "id": "open",
+      "title": "Emoji",
+      "default": "Ctrl+Alt+E",
+      "run": ["emoji", "recents"]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": ["io.github.namannn04.Veronica.Shell"]
+    },
+    "spawn": ["wl-copy", "xclip", "xsel"],
+    "host": ["shortcuts"]
+  }
+}

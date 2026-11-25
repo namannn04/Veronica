@@ -2,9 +2,9 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
 use veronica_core::emoji::{Catalog, SkinTone, UsageLedger};
-use veronica_core::{AppDirectories, Settings};
+use veronica_sdk::{format, Output};
 
-use crate::format::{self, Output};
+use crate::preferences::Preferences;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum EmojiCommand {
@@ -63,15 +63,12 @@ fn parse_tone(raw: &str) -> Result<SkinTone> {
     Ok(parsed)
 }
 
-pub(crate) async fn run(
-    directories: &AppDirectories,
-    settings: &Settings,
-    command: &EmojiCommand,
-    output: Output,
-) -> Result<()> {
+pub(crate) async fn run(command: &EmojiCommand, output: Output<'_>) -> Result<()> {
     let catalog = Catalog::bundled();
-    let path = directories.emoji_usage_file();
-    let configured = SkinTone::parse(settings.string("emojiSkinTone").unwrap_or("standard"));
+    let Preferences {
+        path,
+        tone: configured,
+    } = Preferences::load()?;
 
     match command {
         EmojiCommand::List {

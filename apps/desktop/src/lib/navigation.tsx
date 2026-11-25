@@ -6,7 +6,6 @@ import {
   ClipboardIcon,
   CompanionIcon,
   DatabaseIcon,
-  EmojiIcon,
   ExtensionsIcon,
   HerdrIcon,
   HomeIcon,
@@ -36,7 +35,6 @@ export type BuiltinRoute =
   | "database"
   | "attention"
   | "clipboard"
-  | "emoji"
   | "companion"
   | "library"
   | "settings"
@@ -169,15 +167,6 @@ export const NAV_GROUPS: NavGroup[] = [
         extensionId: "clipboard",
         hint: "What you have copied",
         keywords: "copy paste history snippets",
-      },
-
-      {
-        id: "emoji",
-        label: "Emoji",
-        icon: <EmojiIcon />,
-        extensionId: "emoji",
-        hint: "Search and insert emoji",
-        keywords: "emoji symbol character insert",
       },
       {
         id: "companion",

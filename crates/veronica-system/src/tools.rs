@@ -445,7 +445,19 @@ mod tests {
 
     #[test]
     fn an_extension_that_needs_no_tool_is_never_unmet() {
-        assert!(unmet(entry("emoji"), &[]).is_empty());
+        let toolless = veronica_core::extensions::ExtensionEntry {
+            id: "toolless",
+            title: "Toolless",
+            subtitle: "Needs nothing installed.",
+            icon: "smile",
+            group: veronica_core::extensions::ExtensionGroup::Utilities,
+            featured: false,
+            defaults_key: "toollessEnabled",
+            required_capabilities: &[],
+            optional_capabilities: &[],
+            required_tools: &[],
+        };
+        assert!(unmet(&toolless, &[]).is_empty());
     }
 
     #[tokio::test]

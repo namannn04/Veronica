@@ -15,10 +15,10 @@ import {
   Toolbar,
   Tooltip,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { SearchX, Smile } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ipc } from "../lib/ipc";
-import type { EmojiGroup, EmojiRow } from "../lib/types";
+import type { EmojiCopyResult, EmojiGroup, EmojiRow } from "./types";
 import "./EmojiPage.css";
 
 const SKIN_TONES: { key: string; title: string; sample: string }[] = [
@@ -50,7 +50,10 @@ const TAB_PLACEHOLDERS = [20, 52, 48, 44, 36, 40, 52, 48, 54, 34].map((width, po
   width,
 }));
 
+const TONE_KEY = "skinTone";
+
 export function EmojiPage() {
+  const client = useClient();
   const [groups, setGroups] = useState<EmojiGroup[] | null>(null);
   const [emoji, setEmoji] = useState<EmojiRow[] | null>(null);
   const [recents, setRecents] = useState<EmojiRow[] | null>(null);
@@ -61,30 +64,30 @@ export function EmojiPage() {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
-  const tone = typeof settings.emojiSkinTone === "string" ? settings.emojiSkinTone : "standard";
+  const tone = typeof settings[TONE_KEY] === "string" ? settings[TONE_KEY] : "standard";
 
   const loadRecents = useCallback(async () => {
     try {
-      setRecents(await ipc.emojiRecents(24));
+      setRecents(await client.backend.call<EmojiRow[]>("recents", { limit: 24 }));
     } catch {
       setRecents([]);
     }
-  }, []);
+  }, [client]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(attempt): reloads when the person retries after an error
   useEffect(() => {
-    void ipc
-      .emojiGroups()
+    void client.backend
+      .call<EmojiGroup[]>("groups")
       .then(setGroups)
       .catch((reason) => {
         setGroups([]);
         setError(String(reason));
       });
-    void ipc
-      .settingsAll()
-      .then(setSettings)
+    void client.settings
+      .get(TONE_KEY)
+      .then((value) => setSettings({ [TONE_KEY]: value }))
       .catch(() => {});
-  }, [attempt]);
+  }, [client, attempt]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(tone): the backend applies the stored skin tone to recents
   useEffect(() => {
@@ -97,8 +100,12 @@ export function EmojiPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies(attempt): searches again when the person retries after an error
   useEffect(() => {
     let live = true;
-    void ipc
-      .emojiSearch(query, activeGroup, activeGroup === null ? PAGE : WHOLE_GROUP)
+    void client.backend
+      .call<EmojiRow[]>("search", {
+        query,
+        group: activeGroup,
+        limit: activeGroup === null ? PAGE : WHOLE_GROUP,
+      })
       .then((rows) => {
         if (live) {
           setEmoji(rows);
@@ -113,12 +120,12 @@ export function EmojiPage() {
     return () => {
       live = false;
     };
-  }, [query, activeGroup, tone, attempt]);
+  }, [client, query, activeGroup, tone, attempt]);
 
   const setTone = async (value: string) => {
     try {
-      await ipc.settingsSet("emojiSkinTone", value);
-      setSettings((current) => ({ ...current, emojiSkinTone: value }));
+      await client.settings.set(TONE_KEY, value);
+      setSettings((current) => ({ ...current, [TONE_KEY]: value }));
       setError(null);
     } catch (reason) {
       setError(String(reason));
@@ -127,7 +134,9 @@ export function EmojiPage() {
 
   const pick = async (row: EmojiRow) => {
     try {
-      const result = await ipc.emojiCopy(row.character, false);
+      const result = await client.backend.call<EmojiCopyResult>("copy", {
+        character: row.character,
+      });
       setCopied(result.character);
       setError(null);
       window.setTimeout(

@@ -11,6 +11,8 @@ use crate::state::AppState;
 use crate::{commands, emoji_picker, main_window};
 
 pub(crate) const UPDATED: &str = "shortcuts-updated";
+const EMOJI: &str = "emoji";
+const EMOJI_PICKER: &str = "open";
 
 #[derive(Default)]
 pub(crate) struct Shortcuts {
@@ -124,11 +126,6 @@ fn built_in(app: &AppHandle, extension: &str) {
                 }
             });
         }
-        "emoji" => {
-            if let Err(error) = emoji_picker::show(app) {
-                tracing::warn!(target: "veronica", "cannot open the emoji picker: {error:#}");
-            }
-        }
         _ => {}
     }
 }
@@ -146,6 +143,12 @@ fn host(app: &AppHandle, id: &str) {
 }
 
 fn extension(app: &AppHandle, planned: Planned) {
+    if planned.declared.owner == EMOJI && planned.declared.id == EMOJI_PICKER {
+        if let Err(error) = emoji_picker::show(app) {
+            tracing::warn!(target: "veronica", "cannot open the emoji picker: {error:#}");
+        }
+        return;
+    }
     let host = std::sync::Arc::clone(&app.state::<AppState>().extensions);
     tauri::async_runtime::spawn(async move {
         let declared = planned.declared;
