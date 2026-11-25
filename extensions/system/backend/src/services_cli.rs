@@ -1,5 +1,5 @@
-use crate::format::Output;
 use anyhow::Result;
+use veronica_sdk::Output;
 use veronica_system::{docker, ports};
 
 #[derive(clap::Subcommand)]
@@ -47,7 +47,7 @@ impl ContainerAction {
         }
     }
 }
-pub(crate) async fn ports(command: &PortsCommand, output: Output) -> Result<()> {
+pub(crate) async fn ports(command: &PortsCommand, output: Output<'_>) -> Result<()> {
     match command {
         PortsCommand::List { port } => {
             let mut report = ports::snapshot().await?;
@@ -106,7 +106,7 @@ pub(crate) async fn ports(command: &PortsCommand, output: Output) -> Result<()> 
         }
     }
 }
-pub(crate) async fn docker(command: &DockerCommand, output: Output) -> Result<()> {
+pub(crate) async fn docker(command: &DockerCommand, output: Output<'_>) -> Result<()> {
     match command {
         DockerCommand::Status => {
             let report = docker::snapshot().await;

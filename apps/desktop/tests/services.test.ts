@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test";
-import { endpointLabel, matchesContainer, matchesPort } from "../src/lib/services";
-import type { DockerContainer, ListeningPort } from "../src/lib/types";
+import {
+  endpointLabel,
+  matchesContainer,
+  matchesPort,
+} from "../../../extensions/system/ui/src/services";
+import type { DockerContainer, ListeningPort } from "../../../extensions/system/ui/src/types";
 
 const port: ListeningPort = {
   address: "::1",

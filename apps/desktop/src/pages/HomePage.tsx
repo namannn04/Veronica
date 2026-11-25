@@ -9,22 +9,9 @@ import {
   Notice,
   Page,
   PageHeader,
-  ProgressBar,
   SearchField,
-  SkeletonText,
 } from "@veronica/ui";
-import {
-  ArrowUpRight,
-  Coffee,
-  Cpu,
-  EyeOff,
-  Globe2,
-  Keyboard,
-  LaptopMinimal,
-  Plus,
-  X,
-  Zap,
-} from "lucide-react";
+import { Coffee, EyeOff, Globe2, Keyboard, LaptopMinimal, Plus, X, Zap } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ExtensionCards } from "../components/ExtensionCards";
 import { NotificationList } from "../components/NotificationList";
@@ -32,17 +19,10 @@ import { WelcomeCard } from "../components/WelcomeCard";
 import { ipc, listenEvent } from "../lib/ipc";
 import type { ExtensionRoute } from "../lib/navigation";
 import { STARTERS_KEY, storedStarters } from "../lib/onboarding";
-import { startVisiblePolling } from "../lib/polling";
-import type { PresenterView, SystemSnapshot } from "../lib/types";
+import type { PresenterView } from "../lib/types";
 import "./HomePage.css";
 
-type HomeRoute = "system" | "library" | ExtensionRoute;
-type HomeData = {
-  system: SystemSnapshot | null;
-};
-
-const EMPTY: HomeData = { system: null };
-const LIVE_POLL_MS = 3_000;
+type HomeRoute = "library" | ExtensionRoute;
 const DEFAULT_ZONES = ["America/New_York", "America/Los_Angeles"];
 const ZONE_SUGGESTIONS = [
   "Europe/London",
@@ -99,8 +79,6 @@ function zonesFrom(value: unknown): string[] {
 
 export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => void }) {
   const [now, setNow] = useState(() => new Date());
-  const [data, setData] = useState<HomeData>(EMPTY);
-  const [loaded, setLoaded] = useState(false);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
   const [desktopReady, setDesktopReady] = useState(true);
   const [actionError, setActionError] = useState("");
@@ -116,46 +94,21 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
   }, []);
 
   const refresh = useCallback(async () => {
-    const requests = await Promise.allSettled([
-      ipc.systemSnapshot(),
-      ipc.settingsAll(),
-      ipc.presenterState(),
-    ] as const);
+    const requests = await Promise.allSettled([ipc.settingsAll(), ipc.presenterState()] as const);
     if (requests.every((result) => result.status === "rejected")) {
       setDesktopReady(false);
     }
-    setData({
-      system: requests[0].status === "fulfilled" ? requests[0].value : null,
-    });
+    if (requests[0].status === "fulfilled") {
+      setSettings(requests[0].value);
+    }
     if (requests[1].status === "fulfilled") {
-      setSettings(requests[1].value);
+      setPresenter(requests[1].value);
     }
-    if (requests[2].status === "fulfilled") {
-      setPresenter(requests[2].value);
-    }
-    setLoaded(true);
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
-
-  useEffect(() => {
-    let live = true;
-    const every = (ms: number, read: () => Promise<void>) =>
-      startVisiblePolling(read, ms, document, false);
-    const stopLive = every(LIVE_POLL_MS, async () => {
-      const system = await ipc.systemSnapshot().catch(() => null);
-      if (!live) {
-        return;
-      }
-      setData((current) => ({ ...current, system: system ?? current.system }));
-    });
-    return () => {
-      live = false;
-      stopLive();
-    };
-  }, []);
 
   useEffect(() => {
     const changed = listenEvent("settings-updated", () => {
@@ -220,10 +173,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       `${now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}, ${now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
     [now],
   );
-  const memoryPercent =
-    data.system && data.system.memory.totalBytes > 0
-      ? Math.round((data.system.memory.usedBytes / data.system.memory.totalBytes) * 100)
-      : null;
 
   return (
     <Page header={<PageHeader title={greeting(now.getHours())} subtitle={subtitle} />}>
@@ -296,36 +245,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
         </Widget>
 
         <NotificationList limit={4} className="home-card home-span-4" />
-
-        <Widget
-          className="home-span-2"
-          icon={<Cpu />}
-          title="This computer"
-          meta="Live"
-          actions={
-            <IconButton
-              size="small"
-              label="Open system"
-              icon={<ArrowUpRight />}
-              onClick={() => onNavigate("system")}
-            />
-          }
-        >
-          <div className="home-metrics home-metrics-stacked">
-            <Metric
-              label="CPU"
-              value={data.system ? `${Math.round(data.system.cpu.usagePercent)}%` : null}
-              loading={!loaded}
-              bar={data.system ? data.system.cpu.usagePercent / 100 : loaded ? undefined : 0}
-            />
-            <Metric
-              label="Memory"
-              value={memoryPercent === null ? null : `${memoryPercent}%`}
-              loading={!loaded}
-              bar={memoryPercent === null ? (loaded ? undefined : 0) : memoryPercent / 100}
-            />
-          </div>
-        </Widget>
       </div>
     </Page>
   );
@@ -365,36 +284,6 @@ function Widget({
 
 function Quiet({ children }: { children: ReactNode }) {
   return <p className="home-quiet">{children}</p>;
-}
-
-function Metric({
-  label,
-  value,
-  loading,
-  bar,
-}: {
-  label: string;
-  value: string | null;
-  loading: boolean;
-  bar?: number;
-}) {
-  return (
-    <div className="home-metric">
-      <span className="home-metric-label">{label}</span>
-      {loading ? (
-        <span className="home-metric-value">
-          <SkeletonText width={96} />
-        </span>
-      ) : value === null ? (
-        <span className="home-metric-missing">Not available</span>
-      ) : (
-        <strong className="home-metric-value ui-num ui-selectable">{value}</strong>
-      )}
-      {bar !== undefined && (
-        <ProgressBar value={bar} tone="neutral" size="thin" label={`${label} usage`} />
-      )}
-    </div>
-  );
 }
 
 function ActionTile({

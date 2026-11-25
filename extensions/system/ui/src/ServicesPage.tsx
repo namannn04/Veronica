@@ -14,18 +14,19 @@ import {
   type Tone,
   Toolbar,
 } from "@veronica/ui";
+import { frameVisibility } from "@veronica/ui/frame";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import { Container, Network, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import { endpointLabel, matchesContainer, matchesPort } from "../lib/services";
+import { errorText, ipc } from "./api";
+import { endpointLabel, matchesContainer, matchesPort } from "./services";
 import type {
   DockerContainer,
   DockerSnapshot,
   ListeningPort,
   PortOwner,
   PortsSnapshot,
-} from "../lib/types";
+} from "./types";
 import "./ServicesPage.css";
 
 const STROKE = 1.75;
@@ -102,7 +103,7 @@ export function ServicesPage() {
     } catch (error) {
       if (live.current) {
         setPorts(null);
-        setPortsError(String(error));
+        setPortsError(errorText(error));
       }
     } finally {
       portRead.current = false;
@@ -127,7 +128,7 @@ export function ServicesPage() {
     } catch (error) {
       if (live.current) {
         setDocker(null);
-        setDockerError(String(error));
+        setDockerError(errorText(error));
       }
     } finally {
       dockerRead.current = false;
@@ -139,16 +140,24 @@ export function ServicesPage() {
 
   useEffect(() => {
     live.current = true;
-    const stopPorts = startVisiblePolling(async () => {
-      if (!actionRunning.current) {
-        await loadPorts();
-      }
-    }, 5000);
-    const stopDocker = startVisiblePolling(async () => {
-      if (!actionRunning.current) {
-        await loadDocker();
-      }
-    }, 10000);
+    const stopPorts = startVisiblePolling(
+      async () => {
+        if (!actionRunning.current) {
+          await loadPorts();
+        }
+      },
+      5000,
+      frameVisibility,
+    );
+    const stopDocker = startVisiblePolling(
+      async () => {
+        if (!actionRunning.current) {
+          await loadDocker();
+        }
+      },
+      10000,
+      frameVisibility,
+    );
     return () => {
       live.current = false;
       stopPorts();
@@ -191,7 +200,7 @@ export function ServicesPage() {
       }
     } catch (error) {
       if (live.current) {
-        setActionError(String(error));
+        setActionError(errorText(error));
       }
     } finally {
       actionRunning.current = false;

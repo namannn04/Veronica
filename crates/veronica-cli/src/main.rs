@@ -10,9 +10,7 @@ mod mcp_cmd;
 mod power_cmd;
 mod presenter_cmd;
 mod routes;
-mod services_cmd;
 mod surfaces_cmd;
-mod system_cmd;
 mod tools_cmd;
 
 use anyhow::{Context, Result};
@@ -55,16 +53,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    #[command(
-        subcommand,
-        about = "Inspect local TCP/UDP ports and gracefully stop owned processes"
-    )]
-    Ports(services_cmd::PortsCommand),
-    #[command(
-        subcommand,
-        about = "Local Docker status, containers and published ports"
-    )]
-    Docker(services_cmd::DockerCommand),
     #[command(about = "Report the resolved environment, capabilities and extension state")]
     Diagnose,
     #[command(about = "The manual, for people and agents; with --json, every command as data")]
@@ -93,8 +81,6 @@ enum Command {
         about = "Explore databases and run guarded changes"
     )]
     Database(database_cmd::DatabaseCommand),
-    #[command(subcommand, about = "CPU, memory, storage and battery information")]
-    System(system_cmd::SystemCommand),
     #[command(
         subcommand,
         about = "Keep Awake and Lid Awake, open-ended or for a while"
@@ -245,9 +231,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         }
         Command::Config(command) => config(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
-        Command::Ports(command) => services_cmd::ports(command, output).await,
-        Command::Docker(command) => services_cmd::docker(command, output).await,
-        Command::System(command) => system_cmd::run(command, output).await,
         Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,

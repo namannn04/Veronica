@@ -96,65 +96,10 @@
   white-space: nowrap;
 }
 
-.home-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4) var(--space-3);
-}
-
-.home-metrics-stacked {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 @container main (max-width: 720px) {
   .home-card {
     min-height: 0;
   }
-}
-
-.home-metric {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.home-metric-label {
-  color: var(--text-3);
-  font-size: var(--text-callout);
-  font-weight: var(--weight-medium);
-}
-
-.home-metric-value {
-  color: var(--text-1);
-  font-size: var(--text-title-1);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.025em;
-  line-height: 1.15;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-metric-missing {
-  color: var(--text-3);
-  font-size: var(--text-body);
-  line-height: 26px;
-}
-
-.home-metrics-stacked .home-metric {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  row-gap: var(--space-1-5);
-}
-
-.home-metrics-stacked .home-metric-value {
-  font-size: var(--text-title-2);
-}
-
-.home-metrics-stacked .ui-progress {
-  grid-column: 1 / -1;
 }
 
 .home-actions {

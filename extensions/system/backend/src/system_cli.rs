@@ -4,7 +4,8 @@ use anyhow::Result;
 use clap::Subcommand;
 use veronica_system::audio::StreamDirection;
 
-use crate::format::{self, Output};
+use veronica_sdk::format;
+use veronica_sdk::Output;
 
 #[derive(Subcommand)]
 pub(crate) enum SystemCommand {
@@ -93,7 +94,7 @@ fn parse_level(raw: &str) -> Result<f32> {
     })
 }
 
-pub(crate) async fn run(command: &SystemCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &SystemCommand, output: Output<'_>) -> Result<()> {
     match command {
         SystemCommand::Snapshot => {
             let snapshot = veronica_system::MetricsSampler::new().sample();
@@ -246,7 +247,7 @@ pub(crate) async fn run(command: &SystemCommand, output: Output) -> Result<()> {
     }
 }
 
-async fn audio(command: &AudioCommand, output: Output) -> Result<()> {
+async fn audio(command: &AudioCommand, output: Output<'_>) -> Result<()> {
     match command {
         AudioCommand::List => {
             let streams = veronica_system::audio::streams().await?;
@@ -283,7 +284,7 @@ async fn audio(command: &AudioCommand, output: Output) -> Result<()> {
     }
 }
 
-async fn set_muted(id: Option<u32>, all: bool, muted: bool, output: Output) -> Result<()> {
+async fn set_muted(id: Option<u32>, all: bool, muted: bool, output: Output<'_>) -> Result<()> {
     match (id, all) {
         (Some(_), true) => {
             anyhow::bail!("pass either a stream id or --all, not both")
@@ -313,7 +314,7 @@ async fn set_muted(id: Option<u32>, all: bool, muted: bool, output: Output) -> R
     }
 }
 
-async fn report_one(id: u32, output: Output) -> Result<()> {
+async fn report_one(id: u32, output: Output<'_>) -> Result<()> {
     let stream = veronica_system::audio::streams()
         .await?
         .into_iter()

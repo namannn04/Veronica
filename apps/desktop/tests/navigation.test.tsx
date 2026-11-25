@@ -34,8 +34,6 @@ describe("extension-aware navigation", () => {
       Exclude<BuiltinRoute, "home" | "library" | "settings" | "about">,
       string
     > = {
-      system: "system",
-      services: "system",
       database: "database",
     };
     for (const [route, extensionId] of Object.entries(expected)) {

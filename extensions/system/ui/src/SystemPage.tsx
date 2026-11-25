@@ -28,19 +28,20 @@ import {
   Tabs,
   type Tone,
 } from "@veronica/ui";
+import { bytes, countdown } from "@veronica/ui/format";
+import { frameVisibility } from "@veronica/ui/frame";
 import { MeterStat, thresholdTone } from "@veronica/ui/MeterStat";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import { ArrowDown, ArrowUp, Bluetooth, Mic, MicOff, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { bytes, countdown } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
+import { errorText, ipc } from "./api";
 import type {
   AudioStream,
   BluetoothState,
   RunningProcess,
   SystemSnapshot,
   VolumeState,
-} from "../lib/types";
+} from "./types";
 import "./SystemPage.css";
 
 const TICK_MS = 2000;
@@ -92,14 +93,14 @@ export function SystemPage() {
         setSnapshot(system.value);
         setSnapshotError(null);
       } else {
-        setSnapshotError(String(system.reason));
+        setSnapshotError(errorText(system.reason));
       }
       if (apps.status === "fulfilled") {
         setProcesses(apps.value);
       }
       setProcessesRead(true);
     };
-    const stop = startVisiblePolling(tick, TICK_MS);
+    const stop = startVisiblePolling(tick, TICK_MS, frameVisibility);
     return () => {
       live = false;
       stop();
@@ -111,12 +112,6 @@ export function SystemPage() {
       .microphoneState()
       .then(setMic)
       .catch(() => setMic(null));
-    const toggled = listenEvent<VolumeState>("microphone-updated", (event) =>
-      setMic(event.payload),
-    );
-    return () => {
-      void toggled.then((unlisten) => unlisten());
-    };
   }, []);
 
   useEffect(() => {
@@ -134,17 +129,18 @@ export function SystemPage() {
         setMic(microphone.value);
       }
       setStreams(mixer.status === "fulfilled" ? mixer.value : []);
-      setMixerError(mixer.status === "rejected" ? String(mixer.reason) : null);
+      setMixerError(mixer.status === "rejected" ? errorText(mixer.reason) : null);
       if (radio.status === "fulfilled") {
         setBluetooth(radio.value);
       } else {
         setBluetooth(
-          (current) => current ?? { adapters: [], devices: [], unavailable: String(radio.reason) },
+          (current) =>
+            current ?? { adapters: [], devices: [], unavailable: errorText(radio.reason) },
         );
       }
       setDevicesRead(true);
     };
-    const stop = startVisiblePolling(tick, DEVICE_TICK_MS);
+    const stop = startVisiblePolling(tick, DEVICE_TICK_MS, frameVisibility);
     return () => {
       live = false;
       stop();
@@ -153,7 +149,7 @@ export function SystemPage() {
 
   const setStreamVolume = (id: number, volume: number) => {
     setStreams((current) => current.map((row) => (row.id === id ? { ...row, volume } : row)));
-    void ipc.audioStreamVolume(id, volume).catch((reason) => setError(String(reason)));
+    void ipc.audioStreamVolume(id, volume).catch((reason) => setError(errorText(reason)));
   };
 
   const toggleStreamMute = async (id: number) => {
@@ -162,7 +158,7 @@ export function SystemPage() {
       setStreams((current) => current.map((row) => (row.id === id ? { ...row, muted } : row)));
       setError(null);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     }
   };
 
@@ -171,7 +167,7 @@ export function SystemPage() {
       setMic(await ipc.microphoneToggle());
       setError(null);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     }
   };
 
@@ -207,7 +203,7 @@ export function SystemPage() {
       setProcesses((current) => current.filter((row) => row.pid !== process.pid));
       setError(null);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setQuitBusy(false);
       setQuitting(null);
