@@ -22,7 +22,6 @@ export type NavItem = {
   id: Route;
   label: string;
   icon: ReactNode;
-  extensionId?: string;
   hint: string;
   keywords: string;
   badge?: string | number;
@@ -168,33 +167,11 @@ export function routeFromSearch(search: string): Route {
   return isRoute(candidate) ? candidate : "home";
 }
 
-export function visibleNavGroups(enabledExtensions?: ReadonlySet<string>): NavGroup[] {
-  if (enabledExtensions === undefined) {
-    return NAV_GROUPS;
-  }
-  return NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter(
-      (item) => item.extensionId === undefined || enabledExtensions.has(item.extensionId),
-    ),
-  })).filter((group) => group.items.length > 0);
-}
-
-export function routeIsVisible(
-  route: Route,
-  enabledExtensions?: ReadonlySet<string>,
-  extensionPages?: readonly NavItem[],
-): boolean {
+export function routeIsVisible(route: Route, extensionPages?: readonly NavItem[]): boolean {
   if (parseExtensionRoute(route) !== null) {
     return extensionPages === undefined || extensionPages.some((page) => page.id === route);
   }
-  const item = NAV_ITEMS.find((candidate) => candidate.id === route);
-  return (
-    item !== undefined &&
-    (item.extensionId === undefined ||
-      enabledExtensions === undefined ||
-      enabledExtensions.has(item.extensionId))
-  );
+  return NAV_ITEMS.some((item) => item.id === route);
 }
 
 export function searchNav(query: string, items: NavItem[] = NAV_ITEMS): NavItem[] {

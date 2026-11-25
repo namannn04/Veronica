@@ -3,13 +3,13 @@ import { describe, expect, test } from "bun:test";
 import {
   extensionNavItems,
   mergeNavGroups,
+  NAV_GROUPS,
   NAV_ITEMS,
   paletteItems,
   parseExtensionRoute,
   routeFromSearch,
   routeIsVisible,
   searchNav,
-  visibleNavGroups,
 } from "../src/lib/navigation";
 import { isEmojiPickerSurface } from "../src/lib/surfaces";
 import type { ExtensionUiPage, InstalledExtension } from "../src/lib/types";
@@ -28,18 +28,9 @@ describe("extension-aware navigation", () => {
     expect(routeFromSearch("")).toBe("home");
   });
 
-  test("Veronica's own pages can never be hidden", () => {
-    const none = new Set<string>();
-    for (const route of ["home", "library", "settings", "about"] as const) {
-      expect(routeIsVisible(route, none)).toBe(true);
-    }
-  });
-
-  test("built-in pages stay visible whatever extensions are enabled", () => {
-    const none = new Set<string>();
-    expect(visibleNavGroups(none).flatMap((group) => group.items)).toEqual(NAV_ITEMS);
+  test("Veronica's own pages are always visible", () => {
     for (const item of NAV_ITEMS) {
-      expect(routeIsVisible(item.id, none)).toBe(true);
+      expect(routeIsVisible(item.id, [])).toBe(true);
     }
   });
 });
@@ -99,7 +90,7 @@ describe("extension pages in navigation", () => {
   });
 
   test("pages join their named group in order and new groups sit before Veronica", () => {
-    const groups = mergeNavGroups(visibleNavGroups(), extensionNavItems(rows));
+    const groups = mergeNavGroups(NAV_GROUPS, extensionNavItems(rows));
     const labels = groups.map((group) => group.label);
     expect(labels).toEqual(["Agents", "This computer", "Tools", "Listening", "Veronica"]);
     const tools = groups.find((group) => group.label === "Tools")?.items ?? [];
@@ -110,7 +101,7 @@ describe("extension pages in navigation", () => {
 
   test("the palette finds every extension page, including ones without a rail entry", () => {
     const pages = extensionNavItems(rows);
-    const items = paletteItems(mergeNavGroups(visibleNavGroups(), pages), pages);
+    const items = paletteItems(mergeNavGroups(NAV_GROUPS, pages), pages);
     expect(searchNav("note", items).map((item) => item.id)).toEqual([
       "ext:notes/main",
       "ext:notes/detail",
@@ -125,8 +116,8 @@ describe("extension pages in navigation", () => {
     expect(parseExtensionRoute("ext:notes/detail")).toEqual({ extension: "notes", page: "detail" });
     expect(parseExtensionRoute("ext:notes/../x")).toBeNull();
     const pages = extensionNavItems(rows);
-    expect(routeIsVisible("ext:notes/main", undefined, pages)).toBe(true);
-    expect(routeIsVisible("ext:off/main", undefined, pages)).toBe(false);
+    expect(routeIsVisible("ext:notes/main", pages)).toBe(true);
+    expect(routeIsVisible("ext:off/main", pages)).toBe(false);
     expect(routeIsVisible("ext:off/main")).toBe(true);
   });
 });

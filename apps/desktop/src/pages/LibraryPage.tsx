@@ -77,7 +77,6 @@ import {
   permissionSummary,
   watchJobs,
 } from "../lib/library";
-import { NAV_ITEMS } from "../lib/navigation";
 import { type InstallNotice, installNotice } from "../lib/toolInstall";
 import type {
   AutoUpdatePreferences,
@@ -473,12 +472,11 @@ export function LibraryPage({
 }
 
 function EntryIcon({ entry }: { entry: LibraryEntry }) {
-  const navIcon = NAV_ITEMS.find((item) => item.extensionId === entry.id)?.icon;
   const Icon = ICONS[entry.icon ?? ""] ?? Blocks;
   const enabled = entry.feature?.enabled ?? entry.installed?.enabled ?? false;
   return (
     <span className="library-icon" data-enabled={enabled || undefined}>
-      {navIcon ?? <Icon size={16} strokeWidth={1.75} />}
+      <Icon size={16} strokeWidth={1.75} />
     </span>
   );
 }

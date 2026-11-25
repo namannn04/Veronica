@@ -12,11 +12,11 @@ import {
   extensionRoute,
   isRoute,
   mergeNavGroups,
+  NAV_GROUPS,
   paletteItems,
   type Route,
   routeFromSearch,
   routeIsVisible,
-  visibleNavGroups,
 } from "./lib/navigation";
 import { needsOnboarding } from "./lib/onboarding";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
@@ -48,16 +48,6 @@ export function App() {
   const handledLaunch = useRef(0);
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
 
-  const enabledExtensions = useMemo(() => {
-    if (diagnostics === null) {
-      return undefined;
-    }
-    return new Set(
-      diagnostics.extensions
-        .filter((extension) => extension.enabled)
-        .map((extension) => extension.id),
-    );
-  }, [diagnostics]);
   const extensionPages = useMemo(() => {
     if (installed === undefined) {
       return undefined;
@@ -70,8 +60,8 @@ export function App() {
     });
   }, [installed, pageMarks]);
   const navGroups = useMemo(
-    () => mergeNavGroups(visibleNavGroups(enabledExtensions), extensionPages ?? []),
-    [enabledExtensions, extensionPages],
+    () => mergeNavGroups(NAV_GROUPS, extensionPages ?? []),
+    [extensionPages],
   );
   const navItems = useMemo(
     () => paletteItems(navGroups, extensionPages ?? []),
@@ -161,24 +151,22 @@ export function App() {
   }, [diagnostics, onboarding]);
 
   useEffect(() => {
-    if (!routeIsVisible(route, enabledExtensions, extensionPages)) {
+    if (!routeIsVisible(route, extensionPages)) {
       setRoute("home");
     }
-  }, [enabledExtensions, extensionPages, route]);
+  }, [extensionPages, route]);
   useEffect(() => {
     const resolved = listenEvent("session-resolved", () => void loadDiagnostics());
     const navigate = listenEvent<string>("navigate", (event) => {
       if (isRoute(event.payload)) {
-        navigateTo(
-          routeIsVisible(event.payload, enabledExtensions, extensionPages) ? event.payload : "home",
-        );
+        navigateTo(routeIsVisible(event.payload, extensionPages) ? event.payload : "home");
       }
     });
     return () => {
       void resolved.then((un) => un());
       void navigate.then((un) => un());
     };
-  }, [enabledExtensions, extensionPages, loadDiagnostics, navigateTo]);
+  }, [extensionPages, loadDiagnostics, navigateTo]);
 
   useEffect(() => {
     const updated = listenEvent("settings-updated", () => {
