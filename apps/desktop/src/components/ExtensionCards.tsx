@@ -1,9 +1,9 @@
+import { Button, Card, CardHeader, occurrenceKeys, ProgressBar } from "@veronica/ui";
 import { Blocks } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { type CardBody, type HomeCardView, homeCards, parseSurfaces } from "../lib/homeCards";
 import { invoke, isDesktopApp, listenEvent } from "../lib/ipc";
 import { type ExtensionRoute, extensionRoute } from "../lib/navigation";
-import { Button, Card, CardHeader, occurrenceKeys, ProgressBar } from "../ui";
 
 function Body({ body }: { body: CardBody }) {
   switch (body.kind) {
