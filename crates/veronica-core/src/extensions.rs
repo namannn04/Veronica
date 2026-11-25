@@ -79,9 +79,9 @@ impl ExtensionEntry {
 
 use Capability::{
     ClipboardHistory, CompanionService, DatabaseBroker, ExternalMediaControl, GlobalPaste,
-    GlobalShortcuts, InputSuppression, KeystrokeObservation, LocalTerminal, MachineManagement,
-    MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
-    ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection, WindowDimming,
+    GlobalShortcuts, InputSuppression, KeystrokeObservation, MachineManagement, MicrophoneControl,
+    Notifications, PackageManagement, PreventSleep, RunningApplications, ScreenShareDetection,
+    ShellIntegration, SystemMetrics, UsageCollection, WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -97,18 +97,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_capabilities: &[UsageCollection],
         optional_capabilities: &[Notifications],
         required_tools: &["claude", "codex"],
-    },
-    ExtensionEntry {
-        id: "quinjet",
-        title: "Quinjet",
-        subtitle: "Review pull requests and live workspace changes in a native terminal.",
-        icon: "git-branch",
-        group: G::Agent,
-        featured: true,
-        defaults_key: "tabQuinjetEnabled",
-        required_capabilities: &[LocalTerminal],
-        optional_capabilities: &[MachineManagement],
-        required_tools: &["quinjet"],
     },
     ExtensionEntry {
         id: "system",
@@ -294,6 +282,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         featured: true,
     },
     LegacyToggle {
+        id: "quinjet",
+        extension: "quinjet",
+        defaults_key: "tabQuinjetEnabled",
+        featured: true,
+    },
+    LegacyToggle {
         id: "seoAudit",
         extension: "audit",
         defaults_key: "tabSEOAuditEnabled",
@@ -368,7 +362,6 @@ mod tests {
     fn the_catalogue_keeps_its_order() {
         let ported = [
             "usage",
-            "quinjet",
             "system",
             "appMaintenance",
             "machines",
@@ -407,6 +400,7 @@ mod tests {
         assert_eq!(successor("audit"), Some("audit"));
         assert_eq!(successor("attention"), Some("attention"));
         assert_eq!(successor("herdr"), Some("herdr"));
+        assert_eq!(successor("quinjet"), Some("quinjet"));
         assert_eq!(successor("calendar"), Some("calendar"));
         assert_eq!(successor("music"), Some("media"));
         assert_eq!(successor("colorPicker"), Some("color"));

@@ -22,6 +22,7 @@ members = [
     "extensions/emoji/backend",
     "extensions/fixture/backend",
     "extensions/herdr/backend",
+    "extensions/quinjet/backend",
     "extensions/media/backend",
     "extensions/usage/backend",
 ]

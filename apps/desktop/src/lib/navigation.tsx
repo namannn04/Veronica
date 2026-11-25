@@ -12,7 +12,6 @@ import {
   MaintenanceIcon,
   NamedIcon,
   PortsIcon,
-  QuinjetIcon,
   SettingsIcon,
   SystemIcon,
   UsageIcon,
@@ -25,7 +24,6 @@ export type BuiltinRoute =
   | "home"
   | "usage"
   | "agents"
-  | "quinjet"
   | "system"
   | "services"
   | "workspace"
@@ -83,14 +81,6 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: <HerdrIcon />,
         hint: "Agent terminals and providers",
         keywords: "agents terminal claude codex providers sessions",
-      },
-      {
-        id: "quinjet",
-        label: "Quinjet",
-        icon: <QuinjetIcon />,
-        extensionId: "quinjet",
-        hint: "Review workspaces",
-        keywords: "review worktree git projects",
       },
     ],
   },

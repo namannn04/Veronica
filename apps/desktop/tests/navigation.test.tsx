@@ -34,7 +34,6 @@ describe("extension-aware navigation", () => {
       string
     > = {
       usage: "usage",
-      quinjet: "quinjet",
       system: "system",
       services: "system",
       machines: "machines",

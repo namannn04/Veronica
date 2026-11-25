@@ -1037,52 +1037,6 @@ mod tool_command_tests {
 }
 
 #[tauri::command]
-pub(crate) async fn quinjet_projects() -> CommandResult<QuinjetBoard> {
-    tauri::async_runtime::spawn_blocking(|| {
-        if !veronica_system::quinjet::installed() {
-            return Ok(QuinjetBoard {
-                installed: false,
-                projects: Vec::new(),
-            });
-        }
-        Ok(QuinjetBoard {
-            installed: true,
-            projects: veronica_system::quinjet::projects().map_err(fail)?,
-        })
-    })
-    .await
-    .map_err(|error| format!("cannot read Quinjet: {error}"))?
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct QuinjetBoard {
-    pub installed: bool,
-    pub projects: Vec<veronica_system::quinjet::Project>,
-}
-
-#[tauri::command]
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
-)]
-pub(crate) fn quinjet_open(state: State<'_, AppState>, worktree: String) -> CommandResult<()> {
-    let settings = state.settings_snapshot();
-    let appearance =
-        veronica_core::appearance::scheme(settings.string("appearance").unwrap_or("system"))
-            .name()
-            .map(str::to_string);
-    veronica_system::quinjet::open_terminal(
-        &worktree,
-        &veronica_system::quinjet::LaunchOptions {
-            theme: settings.string("quinjetTheme").map(str::to_string),
-            appearance,
-        },
-    )
-    .map_err(fail)
-}
-
-#[tauri::command]
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"

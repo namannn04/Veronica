@@ -32,7 +32,6 @@ import { LibraryPage } from "./pages/LibraryPage";
 import { MachinesPage } from "./pages/MachinesPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
 import { OnboardingPage } from "./pages/OnboardingPage";
-import { QuinjetPage } from "./pages/QuinjetPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SystemPage } from "./pages/SystemPage";
@@ -244,7 +243,6 @@ export function App() {
           {route === "home" && <HomePage onNavigate={navigateTo} />}
           {route === "usage" && <UsagePage />}
           {route === "agents" && <AgentsPage />}
-          {route === "quinjet" && <QuinjetPage />}
           {route === "services" && <ServicesPage />}
           {route === "workspace" && (
             <Suspense

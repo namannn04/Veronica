@@ -161,8 +161,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::cleaner_clean,
             commands::tools_readiness,
             commands::tools_install,
-            commands::quinjet_projects,
-            commands::quinjet_open,
             commands::microphone_state,
             commands::emoji_groups,
             commands::emoji_search,
