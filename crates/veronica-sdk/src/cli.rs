@@ -78,6 +78,13 @@ impl Capture {
                 let code = error
                     .downcast_ref::<Failure>()
                     .map_or(ExitCode::Failed, |failure| failure.code);
+                if code == ExitCode::ConfirmationRequired {
+                    return CliRunResult {
+                        exit_code: code,
+                        document,
+                        text: (!text.is_empty()).then_some(text),
+                    };
+                }
                 let message = format!("{error:#}");
                 if self.json {
                     document.get_or_insert_with(|| error_document(code, &message));
@@ -130,6 +137,17 @@ impl Output<'_> {
         }
         Ok(())
     }
+}
+
+pub fn confirmation<T: Serialize>(
+    output: Output<'_>,
+    preview: &T,
+    text: impl FnOnce() -> String,
+) -> anyhow::Error {
+    if let Err(error) = output.emit(preview, || format!("{}\n", text())) {
+        return error;
+    }
+    Failure::new(ExitCode::ConfirmationRequired, "confirmation required").into()
 }
 
 pub fn parse<P: Parser>(params: &CliRunParams) -> Result<P, CliRunResult> {
