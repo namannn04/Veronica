@@ -82,8 +82,8 @@ use Capability::{
     ExternalMediaControl, GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression,
     KeystrokeObservation, LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls,
     MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
-    ScreenColorSampling, ScreenShareDetection, ShellIntegration, SystemMetrics,
-    UsageCollection, WindowDimming,
+    ScreenColorSampling, ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection,
+    WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -432,7 +432,11 @@ mod tests {
     #[test]
     fn migrated_features_leave_the_built_in_catalogue() {
         for toggle in LEGACY_TOGGLES {
-            assert!(entry(toggle.id).is_none(), "{} is still built in", toggle.id);
+            assert!(
+                entry(toggle.id).is_none(),
+                "{} is still built in",
+                toggle.id
+            );
             assert!(
                 ENTRIES
                     .iter()

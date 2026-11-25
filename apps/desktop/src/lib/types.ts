@@ -77,6 +77,7 @@ export interface Diagnostics {
   };
   capabilities: { states: Record<string, CapabilityState> };
   extensions: ExtensionReport[];
+  legacyToggles: string[];
 }
 
 export interface LaunchAtLoginStatus {

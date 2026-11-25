@@ -163,7 +163,8 @@ export function App() {
       return;
     }
     void ipc.settingsAll().then(
-      (settings) => setOnboarding(needsOnboarding(settings, diagnostics.extensions)),
+      (settings) =>
+        setOnboarding(needsOnboarding(settings, diagnostics.extensions, diagnostics.legacyToggles)),
       () => setOnboarding(false),
     );
   }, [diagnostics, onboarding]);

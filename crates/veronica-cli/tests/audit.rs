@@ -96,7 +96,10 @@ fn the_audit_commands_come_from_the_installed_extension() {
     let home = Home::with_audit();
     let help = home.vr(&["audit", "--help"]);
     let text = String::from_utf8_lossy(&help.stdout);
-    assert!(text.contains("Site Audit: crawl a site's sitemap"), "{text}");
+    assert!(
+        text.contains("Site Audit: crawl a site's sitemap"),
+        "{text}"
+    );
     for leaf in ["site", "page", "sitemap"] {
         assert!(text.contains(leaf), "{text}");
     }

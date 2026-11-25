@@ -266,10 +266,10 @@ fn argument(arg: &Arg) -> clap::Arg {
         .value_name(arg.name.to_uppercase())
         .value_parser(parser(arg))
         .action(if arg.multiple {
-        ArgAction::Append
-    } else {
-        ArgAction::Set
-    });
+            ArgAction::Append
+        } else {
+            ArgAction::Set
+        });
     if arg.multiple && arg.kind == ArgKind::Positional {
         built = built.num_args(1..);
     }
