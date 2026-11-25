@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import {
   AboutIcon,
-  CompanionIcon,
   DatabaseIcon,
   ExtensionsIcon,
   HerdrIcon,
@@ -25,7 +24,6 @@ export type BuiltinRoute =
   | "machines"
   | "maintenance"
   | "database"
-  | "companion"
   | "library"
   | "settings"
   | "about";
@@ -118,16 +116,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Tools",
-    items: [
-      {
-        id: "companion",
-        label: "Companion",
-        icon: <CompanionIcon />,
-        extensionId: "companion",
-        hint: "Notes and voice memos",
-        keywords: "notes memo record voice scratchpad",
-      },
-    ],
+    items: [],
   },
   {
     label: "Veronica",

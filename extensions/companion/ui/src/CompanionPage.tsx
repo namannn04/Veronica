@@ -1,4 +1,3 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   Badge,
   BarList,
@@ -26,20 +25,24 @@ import {
   Tabs,
   TextArea,
 } from "@veronica/ui";
+import { countdown, stopwatch, timeAgo } from "@veronica/ui/format";
+import { frameVisibility } from "@veronica/ui/frame";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import { Activity, AudioLines, Mic, NotebookPen, Pin, Plus, Save, Trash2 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { countdown, stopwatch, timeAgo } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { AttentionOverview, CompanionItem } from "../lib/types";
+import { errorText, ipc, playableAudio } from "./api";
+import type { AttentionOverview, CompanionItem } from "./types";
 import "./CompanionPage.css";
 
 const CompanionChat = lazy(() =>
-  import("../components/CompanionChat").then((m) => ({ default: m.CompanionChat })),
+  import("./CompanionChat").then((m) => ({ default: m.CompanionChat })),
 );
 
 type View = "all" | "notes" | "voice" | "activity" | "chat";
 
 const ICON = { strokeWidth: 1.75 };
+const REFRESH_MS = 5_000;
+const PRESENCE_MS = 20_000;
 const VIEWS = [
   { id: "all", label: "Everything" },
   { id: "notes", label: "Notes" },
@@ -64,6 +67,14 @@ export function CompanionPage() {
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
   const [audio, setAudio] = useState("");
+  useEffect(
+    () => () => {
+      if (audio.startsWith("blob:")) {
+        URL.revokeObjectURL(audio);
+      }
+    },
+    [audio],
+  );
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [activity, setActivity] = useState<AttentionOverview | null | undefined>(undefined);
@@ -84,7 +95,7 @@ export function CompanionPage() {
   }, []);
 
   const loadFailed = useCallback((reason: unknown) => {
-    setError(String(reason));
+    setError(errorText(reason));
     setLoaded(true);
   }, []);
 
@@ -105,11 +116,24 @@ export function CompanionPage() {
         setElapsed(status.elapsedSeconds);
       })
       .catch(() => {});
-    const updated = listenEvent("companion-updated", () => void refresh(queryRef.current));
-    return () => {
-      void updated.then((unlisten) => unlisten());
-    };
   }, [refresh, loadFailed]);
+
+  useEffect(
+    () =>
+      startVisiblePolling(
+        () => refresh(queryRef.current).catch(() => {}),
+        REFRESH_MS,
+        frameVisibility,
+        false,
+      ),
+    [refresh],
+  );
+
+  useEffect(() => {
+    void ipc.chatPresence().catch(() => {});
+    const timer = window.setInterval(() => void ipc.chatPresence().catch(() => {}), PRESENCE_MS);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(query).catch(loadFailed), 180);
@@ -141,8 +165,9 @@ export function CompanionPage() {
     if (current?.kind === "voice") {
       void ipc
         .companionAudio(current.id)
-        .then((path) => setAudio(convertFileSrc(path)))
-        .catch((reason) => setError(String(reason)));
+        .then(playableAudio)
+        .then(setAudio)
+        .catch((reason) => setError(errorText(reason)));
     }
   }, [selectedId, selectedVersion]);
 
@@ -167,7 +192,7 @@ export function CompanionPage() {
       setSelectedId(item.id);
       setView("notes");
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
     }
@@ -183,7 +208,7 @@ export function CompanionPage() {
       await refresh(query);
       setSaved(true);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
     }
@@ -199,7 +224,7 @@ export function CompanionPage() {
       setSelectedId(null);
       await refresh(query);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
     }
@@ -213,7 +238,7 @@ export function CompanionPage() {
       setRecording(true);
       setView("voice");
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
     }
@@ -227,7 +252,7 @@ export function CompanionPage() {
       await refresh("");
       setSelectedId(item.id);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
       const status = await ipc.companionRecordingStatus().catch(() => null);
       if (status) {
         setRecording(status.recording);
@@ -244,7 +269,7 @@ export function CompanionPage() {
       setRecording(false);
       setElapsed(0);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
     }

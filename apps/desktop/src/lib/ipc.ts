@@ -37,7 +37,6 @@ function describe(reason: unknown): string {
 }
 
 import type {
-  AttentionOverview,
   AudioStream,
   BackupSummary,
   BluetoothState,
@@ -45,8 +44,6 @@ import type {
   CleanerItem,
   CleanerScan,
   CleanReport,
-  CompanionItem,
-  CompanionRecordingStatus,
   ContainerInfo,
   DatabaseConnection,
   DatabaseObject,
@@ -81,28 +78,6 @@ import type {
 } from "./types";
 
 export const ipc = {
-  chatJournal: (text: string) =>
-    invoke<import("./companionChat").ChatMessage>("chat_journal", { text }),
-  chatView: () => invoke<import("./companionChat").ChatView>("chat_view"),
-  chatConfigure: (config: import("./companionChat").ModelConfig, memory: string) =>
-    invoke<void>("chat_configure", { config, memory }),
-  chatEnable: (enabled: boolean) =>
-    invoke<import("./companionChat").ChatView>("chat_enable", { enabled }),
-  chatSend: (text: string, key: string, includeHistory: boolean, includeMemory: boolean) =>
-    invoke<import("./companionChat").ChatMessage>("chat_send", {
-      text,
-      key,
-      includeHistory,
-      includeMemory,
-    }),
-  chatPreview: (text: string, includeHistory: boolean, includeMemory: boolean) =>
-    invoke<unknown>("chat_preview", { text, includeHistory, includeMemory }),
-  chatModels: (config: import("./companionChat").ModelConfig) =>
-    invoke<string[]>("chat_models", { config }),
-  chatPull: (config: import("./companionChat").ModelConfig, confirmed: boolean) =>
-    invoke<void>("chat_pull", { config, confirmed }),
-  chatClear: (memory: boolean) => invoke<void>("chat_clear", { memory }),
-  chatExport: () => invoke<string>("chat_export"),
   agentTracking: (enabled: boolean, confirmed: boolean) =>
     invoke<void>("agent_tracking", { enabled, confirmed }),
   agentProfiles: () => invoke<import("./agents").AgentProfile[]>("agent_profiles"),
@@ -132,18 +107,6 @@ export const ipc = {
   backupInspect: (path: string) => invoke<BackupSummary>("backup_inspect", { path }),
   backupImport: (path: string, confirm: boolean) =>
     invoke<ImportReport>("backup_import", { path, confirm }),
-  companionList: (query = "") => invoke<CompanionItem[]>("companion_list", { query }),
-  companionNoteCreate: (title: string, body: string) =>
-    invoke<CompanionItem>("companion_note_create", { title, body }),
-  companionUpdate: (id: number, title: string, body: string, pinned: boolean) =>
-    invoke<CompanionItem>("companion_update", { id, title, body, pinned }),
-  companionRemove: (id: number) => invoke<void>("companion_remove", { id }),
-  companionRecordingStatus: () => invoke<CompanionRecordingStatus>("companion_recording_status"),
-  companionRecordStart: () => invoke<void>("companion_record_start"),
-  companionRecordStop: () => invoke<CompanionItem>("companion_record_stop"),
-  companionRecordCancel: () => invoke<void>("companion_record_cancel"),
-  companionAudio: (id: number) => invoke<string>("companion_audio", { id }),
-  attentionOverview: (days: number) => invoke<AttentionOverview>("attention_overview", { days }),
   shellAction: (action: "cleanKeys" | "pickColor" | "showClipboard") =>
     invoke<void>("shell_action", { action }),
 

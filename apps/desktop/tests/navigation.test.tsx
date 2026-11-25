@@ -39,7 +39,6 @@ describe("extension-aware navigation", () => {
       machines: "machines",
       maintenance: "appMaintenance",
       database: "database",
-      companion: "companion",
     };
     for (const [route, extensionId] of Object.entries(expected)) {
       expect(NAV_ITEMS.find((item) => item.id === route)?.extensionId).toBe(extensionId);
@@ -145,7 +144,6 @@ describe("extension pages in navigation", () => {
     expect(searchNav("note", items).map((item) => item.id)).toEqual([
       "ext:notes/main",
       "ext:notes/detail",
-      "companion",
     ]);
     expect(searchNav("radio", items).map((item) => item.id)).toEqual(["ext:radio/main"]);
     expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
