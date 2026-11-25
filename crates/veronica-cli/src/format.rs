@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use veronica_protocol::{canonical, ExitCode};
 
-pub(crate) use veronica_sdk::format::table;
+pub(crate) use veronica_sdk::format::{countdown, table};
 
 static DOCUMENT_WRITTEN: AtomicBool = AtomicBool::new(false);
 
@@ -111,24 +111,6 @@ pub(crate) fn tokens(value: u64) -> String {
     veronica_usage::cards::tokens(value)
 }
 
-pub(crate) fn countdown(seconds: i64) -> String {
-    if seconds <= 0 {
-        return "now".to_string();
-    }
-    let days = seconds / 86_400;
-    let hours = (seconds % 86_400) / 3_600;
-    let minutes = (seconds % 3_600) / 60;
-    if days > 0 {
-        format!("{days}d {hours}h")
-    } else if hours > 0 {
-        format!("{hours}h {minutes}m")
-    } else if minutes > 0 {
-        format!("{minutes}m")
-    } else {
-        format!("{seconds}s")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,15 +139,5 @@ mod tests {
         assert_eq!(tokens(999_999), "1.00M");
         assert_eq!(tokens(999_499), "999K");
         assert_eq!(tokens(999_999_999), "1.00B");
-    }
-
-    #[test]
-    fn countdown_picks_the_two_largest_useful_units() {
-        assert_eq!(countdown(0), "now");
-        assert_eq!(countdown(-5), "now");
-        assert_eq!(countdown(45), "45s");
-        assert_eq!(countdown(90), "1m");
-        assert_eq!(countdown(8_040), "2h 14m");
-        assert_eq!(countdown(444_000), "5d 3h");
     }
 }

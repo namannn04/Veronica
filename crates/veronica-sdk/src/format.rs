@@ -37,9 +37,37 @@ pub fn table(headers: &[&str], rows: &[Vec<String>]) -> String {
     out
 }
 
+pub fn countdown(seconds: i64) -> String {
+    if seconds <= 0 {
+        return "now".to_string();
+    }
+    let days = seconds / 86_400;
+    let hours = (seconds % 86_400) / 3_600;
+    let minutes = (seconds % 3_600) / 60;
+    if days > 0 {
+        format!("{days}d {hours}h")
+    } else if hours > 0 {
+        format!("{hours}h {minutes}m")
+    } else if minutes > 0 {
+        format!("{minutes}m")
+    } else {
+        format!("{seconds}s")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::table;
+    use super::{countdown, table};
+
+    #[test]
+    fn countdown_picks_the_two_largest_useful_units() {
+        assert_eq!(countdown(0), "now");
+        assert_eq!(countdown(-5), "now");
+        assert_eq!(countdown(45), "45s");
+        assert_eq!(countdown(90), "1m");
+        assert_eq!(countdown(8_040), "2h 14m");
+        assert_eq!(countdown(444_000), "5d 3h");
+    }
 
     #[test]
     fn table_aligns_columns_and_has_no_trailing_padding() {
