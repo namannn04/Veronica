@@ -296,7 +296,7 @@ fn tools_follow_the_command_tree() {
     assert!(wipe["description"]
         .as_str()
         .unwrap()
-        .contains("Usage: vr fixture wipe <ITEM>"));
+        .contains("Usage: vr fixture wipe <item>"));
 }
 
 #[test]

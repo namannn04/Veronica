@@ -3,15 +3,8 @@ mod rpc;
 
 use clap::{Parser, Subcommand};
 use serde_json::Value;
-use veronica_sdk::protocol::manifest::Effect;
 use veronica_sdk::protocol::rpc::{CliRunParams, CliRunResult, ErrorObject, RpcCallParams};
 use veronica_sdk::{Capture, Context, Extension};
-
-pub(crate) const EFFECTS: [(&str, Effect); 3] = [
-    ("audit site", Effect::Read),
-    ("audit page", Effect::Read),
-    ("audit sitemap", Effect::Read),
-];
 
 #[derive(Parser)]
 #[command(name = "vr", disable_help_subcommand = true)]
@@ -74,8 +67,15 @@ fn main() -> std::process::ExitCode {
 #[cfg(test)]
 mod tests {
     use clap::CommandFactory;
+    use veronica_sdk::protocol::manifest::Effect;
 
-    use super::{Program, EFFECTS};
+    use super::Program;
+
+    const EFFECTS: [(&str, Effect); 3] = [
+        ("audit site", Effect::Read),
+        ("audit page", Effect::Read),
+        ("audit sitemap", Effect::Read),
+    ];
 
     #[test]
     fn the_manifest_lists_every_command() {
