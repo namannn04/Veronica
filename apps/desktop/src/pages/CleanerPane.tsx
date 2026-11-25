@@ -1,8 +1,3 @@
-import { ScanSearch, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { bytes } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import type { CleanerCategory, CleanerScan } from "../lib/types";
 import {
   Button,
   Card,
@@ -13,7 +8,12 @@ import {
   Notice,
   Section,
   Toolbar,
-} from "../ui";
+} from "@veronica/ui";
+import { ScanSearch, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { bytes } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import type { CleanerCategory, CleanerScan } from "../lib/types";
 import "./CleanerPane.css";
 
 const STROKE = 1.75;

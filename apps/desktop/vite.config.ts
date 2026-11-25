@@ -9,7 +9,15 @@ export default defineConfig({
       "@veronica/extension-api": fileURLToPath(
         new URL("../../packages/extension-api/src/index.ts", import.meta.url),
       ),
+      "@veronica/ui": fileURLToPath(new URL("../../packages/ui/index.ts", import.meta.url)),
     },
+    dedupe: [
+      "react",
+      "react-dom",
+      "lucide-react",
+      "@fontsource-variable/inter",
+      "@fontsource-variable/jetbrains-mono",
+    ],
   },
   clearScreen: false,
   server: {

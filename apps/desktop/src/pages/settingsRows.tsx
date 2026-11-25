@@ -1,6 +1,5 @@
+import { FormRow, Select, Switch } from "@veronica/ui";
 import type { ReactNode } from "react";
-
-import { FormRow, Select, Switch } from "../ui";
 
 export function SwitchRow({
   label,

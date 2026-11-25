@@ -1,8 +1,3 @@
-import { Pencil, Play, Plus, Trash2, X } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import type { AgentProfile, AgentView } from "../lib/agents";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
 import {
   Badge,
   Button,
@@ -25,7 +20,12 @@ import {
   Spinner,
   StatusDot,
   TextField,
-} from "../ui";
+} from "@veronica/ui";
+import { Pencil, Play, Plus, Trash2, X } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import type { AgentProfile, AgentView } from "../lib/agents";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
 import "./AgentControls.css";
 
 const AgentTerminal = lazy(() =>

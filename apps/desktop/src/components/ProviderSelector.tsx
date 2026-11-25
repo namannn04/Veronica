@@ -1,5 +1,5 @@
+import { Segmented } from "@veronica/ui";
 import { LIMIT_PROVIDERS, type LimitProvider } from "../lib/preferences";
-import { Segmented } from "../ui";
 
 const OPTIONS = LIMIT_PROVIDERS.map((provider) => ({ value: provider, label: provider }));
 

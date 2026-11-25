@@ -1,9 +1,9 @@
+import { Badge, Button, List, ListRow, Table } from "@veronica/ui";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { Fragment, useState } from "react";
 import { money, timeAgo, tokens } from "../lib/format";
 import { ipc } from "../lib/ipc";
 import type { ProjectRollup } from "../lib/types";
-import { Badge, Button, List, ListRow, Table } from "../ui";
 import "./ProjectList.css";
 
 export function ProjectList({ projects }: { projects: ProjectRollup[] }) {

@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { IconButton, Kbd, Notice, SearchField, Skeleton } from "@veronica/ui";
 import {
   Apple,
   Car,
@@ -21,11 +22,9 @@ import {
   useRef,
   useState,
 } from "react";
-
 import { ipc } from "../lib/ipc";
 import { applyAppearance } from "../lib/preferences";
 import type { EmojiGroup, EmojiRow } from "../lib/types";
-import { IconButton, Kbd, Notice, SearchField, Skeleton } from "../ui";
 import "./EmojiPicker.css";
 
 const PAGE = 120;

@@ -1,8 +1,3 @@
-import { Check, Copy, Pipette, Trash } from "lucide-react";
-import { type CSSProperties, useCallback, useEffect, useState } from "react";
-import { timeAgo } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { CopyFormatOption, PickResult, SwatchRow } from "../lib/types";
 import {
   Button,
   Card,
@@ -23,7 +18,12 @@ import {
   Skeleton,
   SkeletonText,
   Tooltip,
-} from "../ui";
+} from "@veronica/ui";
+import { Check, Copy, Pipette, Trash } from "lucide-react";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
+import { timeAgo } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import type { CopyFormatOption, PickResult, SwatchRow } from "../lib/types";
 import "./ColorPickerPage.css";
 
 type Message = { tone: "neutral" | "good"; text: string };

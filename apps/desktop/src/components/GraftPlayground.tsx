@@ -1,8 +1,3 @@
-import { Check, Copy, PlugZap } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-import { ipc } from "../lib/ipc";
-import { type GraftDiscovery, methodArguments, methodResult } from "../lib/workspace";
 import {
   Badge,
   Button,
@@ -16,7 +11,11 @@ import {
   Select,
   TextArea,
   TextField,
-} from "../ui";
+} from "@veronica/ui";
+import { Check, Copy, PlugZap } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ipc } from "../lib/ipc";
+import { type GraftDiscovery, methodArguments, methodResult } from "../lib/workspace";
 
 const ICON = { strokeWidth: 1.75 };
 

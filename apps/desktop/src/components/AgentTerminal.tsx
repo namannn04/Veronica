@@ -3,8 +3,8 @@ import { type ITheme, Terminal } from "@xterm/xterm";
 import { useEffect, useRef, useState } from "react";
 import "@xterm/xterm/css/xterm.css";
 
+import { ConfirmDialog, Kbd, Notice } from "@veronica/ui";
 import { ipc } from "../lib/ipc";
-import { ConfirmDialog, Kbd, Notice } from "../ui";
 import "./AgentTerminal.css";
 
 const PASTE_LIMIT = 8192;

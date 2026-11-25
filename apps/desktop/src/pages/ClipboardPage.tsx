@@ -1,4 +1,19 @@
 import {
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  IconButton,
+  List,
+  ListRow,
+  ListSkeleton,
+  Notice,
+  Page,
+  PageHeader,
+  SearchField,
+  SkeletonText,
+  Toolbar,
+} from "@veronica/ui";
+import {
   AtSign,
   Check,
   ClipboardList,
@@ -14,21 +29,6 @@ import { bytes, timeAgo } from "../lib/format";
 import { ipc } from "../lib/ipc";
 import { startVisiblePolling } from "../lib/polling";
 import type { ClipRow } from "../lib/types";
-import {
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  IconButton,
-  List,
-  ListRow,
-  ListSkeleton,
-  Notice,
-  Page,
-  PageHeader,
-  SearchField,
-  SkeletonText,
-  Toolbar,
-} from "../ui";
 import "./ClipboardPage.css";
 
 const TICK_MS = 3000;

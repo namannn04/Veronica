@@ -1,7 +1,6 @@
+import { Kbd } from "@veronica/ui";
 import { useEffect, useRef, useState } from "react";
-
 import { type NavItem, type Route, searchNav } from "../lib/navigation";
-import { Kbd } from "../ui";
 import { SearchIcon } from "./icons";
 
 export function CommandPalette({

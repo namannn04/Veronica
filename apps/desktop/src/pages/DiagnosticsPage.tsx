@@ -1,4 +1,3 @@
-import type { CapabilityState, Diagnostics } from "../lib/types";
 import {
   Badge,
   FormGroup,
@@ -8,7 +7,8 @@ import {
   SkeletonText,
   Stack,
   type Tone,
-} from "../ui";
+} from "@veronica/ui";
+import type { CapabilityState, Diagnostics } from "../lib/types";
 
 const STATE_BADGES: Record<string, { tone: Tone; label: string }> = {
   available: { tone: "good", label: "Available" },

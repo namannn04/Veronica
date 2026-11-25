@@ -1,10 +1,4 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { Activity, AudioLines, Mic, NotebookPen, Pin, Plus, Save, Trash2 } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import { countdown, stopwatch, timeAgo } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { AttentionOverview, CompanionItem } from "../lib/types";
 import {
   Badge,
   BarList,
@@ -31,7 +25,12 @@ import {
   StatusDot,
   Tabs,
   TextArea,
-} from "../ui";
+} from "@veronica/ui";
+import { Activity, AudioLines, Mic, NotebookPen, Pin, Plus, Save, Trash2 } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { countdown, stopwatch, timeAgo } from "../lib/format";
+import { ipc, listenEvent } from "../lib/ipc";
+import type { AttentionOverview, CompanionItem } from "../lib/types";
 import "./CompanionPage.css";
 
 const CompanionChat = lazy(() =>

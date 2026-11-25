@@ -1,4 +1,5 @@
 import type { BackendState, Granted } from "@veronica/extension-api";
+import { Spinner } from "@veronica/ui";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { CommandPalette } from "./components/CommandPalette";
 import { ExtensionFrame } from "./extensions/ExtensionFrame";
@@ -43,7 +44,6 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { SystemPage } from "./pages/SystemPage";
 import { UsagePage } from "./pages/UsagePage";
 import { Sidebar } from "./shell/Sidebar";
-import { Spinner } from "./ui";
 import "./shell/Shell.css";
 import "./shell/Presenter.css";
 

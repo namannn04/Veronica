@@ -1,7 +1,3 @@
-import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
-
-import { ipc, listenEvent } from "../lib/ipc";
-import type { PlannedShortcut, ShortcutState } from "../lib/types";
 import {
   Badge,
   Button,
@@ -12,7 +8,10 @@ import {
   Notice,
   TextField,
   type Tone,
-} from "../ui";
+} from "@veronica/ui";
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
+import { ipc, listenEvent } from "../lib/ipc";
+import type { PlannedShortcut, ShortcutState } from "../lib/types";
 
 const OVERRIDES_KEY = "shortcutOverrides";
 

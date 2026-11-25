@@ -1,9 +1,8 @@
+import { Badge, Button, FormGroup, FormRow, Notice, Stack } from "@veronica/ui";
 import { Download, RefreshCw, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-
 import { ipc } from "../lib/ipc";
 import type { UpdateInfo } from "../lib/types";
-import { Badge, Button, FormGroup, FormRow, Notice, Stack } from "../ui";
 
 const INSTALL_COMMAND = "curl -fsSL https://veronica.namandadhich.in/install | bash";
 

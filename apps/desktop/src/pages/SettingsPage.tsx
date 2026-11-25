@@ -1,6 +1,19 @@
+import {
+  Badge,
+  Button,
+  FormGroup,
+  FormRow,
+  Notice,
+  Page,
+  PageHeader,
+  Segmented,
+  Select,
+  Stack,
+  Tabs,
+  type Tone,
+} from "@veronica/ui";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-
 import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
 import { countdown } from "../lib/format";
@@ -19,20 +32,6 @@ import type {
   PowerStatus,
   ShellExtensionStatus,
 } from "../lib/types";
-import {
-  Badge,
-  Button,
-  FormGroup,
-  FormRow,
-  Notice,
-  Page,
-  PageHeader,
-  Segmented,
-  Select,
-  Stack,
-  Tabs,
-  type Tone,
-} from "../ui";
 import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
 import { DiagnosticsPage } from "./DiagnosticsPage";

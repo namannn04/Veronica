@@ -1,24 +1,4 @@
 import {
-  ArrowUp,
-  ChevronRight,
-  File,
-  Folder,
-  Plus,
-  Power,
-  RefreshCw,
-  RotateCcw,
-  Server,
-  SquareTerminal,
-  X,
-  Zap,
-} from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { MeterStat } from "../components/MeterStat";
-import { bytes, countdown } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type { ContainerInfo, MachineDirectory, MachineReport } from "../lib/types";
-import {
   Button,
   Card,
   CardHeader,
@@ -44,7 +24,27 @@ import {
   TextField,
   type Tone,
   Toolbar,
-} from "../ui";
+} from "@veronica/ui";
+import {
+  ArrowUp,
+  ChevronRight,
+  File,
+  Folder,
+  Plus,
+  Power,
+  RefreshCw,
+  RotateCcw,
+  Server,
+  SquareTerminal,
+  X,
+  Zap,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { MeterStat } from "../components/MeterStat";
+import { bytes, countdown } from "../lib/format";
+import { ipc } from "../lib/ipc";
+import { startVisiblePolling } from "../lib/polling";
+import type { ContainerInfo, MachineDirectory, MachineReport } from "../lib/types";
 import "./MachinesPage.css";
 
 const TICK_MS = 5000;

@@ -4,7 +4,7 @@ import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import { EmojiPicker } from "./components/EmojiPicker";
 import { isEmojiPickerSurface, isFrameProbeSurface } from "./lib/surfaces";
-import "./ui";
+import "@veronica/ui";
 
 const FrameProbe = lazy(() =>
   import("./extensions/FrameProbe").then((module) => ({ default: module.FrameProbe })),
