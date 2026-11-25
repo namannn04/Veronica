@@ -106,7 +106,6 @@
           ]
         },
         "hidden": {
-          "default": false,
           "type": "boolean"
         },
         "json": {
