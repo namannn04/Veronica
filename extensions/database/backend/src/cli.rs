@@ -71,6 +71,11 @@ pub(crate) enum DatabaseCommand {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
+    #[command(
+        about = "Deprecated: runs `vr mcp`, which serves the read-only database tools",
+        long_about = "Deprecated: runs `vr mcp`, which serves the read-only database tools.\n\nAn agent learns which databases you have saved and what each can do, but never a host, a username or a credential. This command goes away in the next release."
+    )]
+    Mcp,
 }
 
 #[derive(clap::Subcommand)]
@@ -386,6 +391,9 @@ pub(crate) async fn run(
             output.emit(&page, || render_page(&page))
         }
 
+        DatabaseCommand::Mcp => {
+            anyhow::bail!("`vr database mcp` is served by vr itself; run `vr mcp`")
+        }
         DatabaseCommand::Operations { limit } => {
             let store = directories_store(directories)?;
             let history = store.operations(*limit)?;

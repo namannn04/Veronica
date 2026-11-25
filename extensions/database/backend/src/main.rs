@@ -88,7 +88,7 @@ mod tests {
 
     use super::Program;
 
-    const EFFECTS: [(&str, Effect); 17] = [
+    const EFFECTS: [(&str, Effect); 18] = [
         ("database connections list", Effect::Read),
         ("database connections get", Effect::Read),
         ("database connections add", Effect::Write),
@@ -106,6 +106,7 @@ mod tests {
         ("database mutations preview", Effect::Write),
         ("database mutations apply", Effect::Destructive),
         ("database operations", Effect::Read),
+        ("database mcp", Effect::Read),
     ];
 
     #[test]

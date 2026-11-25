@@ -133,6 +133,7 @@ fn main() {
                 .subcommand_name()
                 .and_then(|name| routes.route(name))
             {
+                Some(_) if deprecated_database_server(&matches) => serve_deprecated_database(json),
                 Some(route) => {
                     let yes = matches.get_flag("yes");
                     routes::dispatch(route, &matches, &arguments, json, yes)
@@ -143,6 +144,23 @@ fn main() {
         Err(error) => routes.reject(&error, &arguments),
     };
     std::process::exit(i32::from(code));
+}
+
+fn deprecated_database_server(matches: &ArgMatches) -> bool {
+    matches
+        .subcommand()
+        .is_some_and(|(name, root)| name == "database" && root.subcommand_name() == Some("mcp"))
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn serve_deprecated_database(json: bool) -> ExitCode {
+    eprintln!(
+        "vr: `vr database mcp` is deprecated and goes away in the next release; it now runs `vr mcp`, which serves the same read-only database tools"
+    );
+    match mcp_cmd::serve().await {
+        Ok(()) => ExitCode::Success,
+        Err(error) => format::fail(json, ExitCode::Failed, &format!("{error:#}")),
+    }
 }
 
 fn host(matches: &ArgMatches, json: bool, routes: &routes::Routes) -> ExitCode {

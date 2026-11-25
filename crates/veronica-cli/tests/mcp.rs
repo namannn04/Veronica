@@ -27,12 +27,19 @@ struct Home {
 
 impl Home {
     fn with_fixture() -> Self {
+        Self::with(&["fixture"])
+    }
+
+    fn with(ids: &[&str]) -> Self {
         let home = Self {
             root: tempfile::tempdir().unwrap(),
         };
-        Installer::new(home.layout(), HostIdentity::current())
-            .install_sideload(&common::extension_source(home.root.path(), "fixture"))
-            .unwrap();
+        let installer = Installer::new(home.layout(), HostIdentity::current());
+        for id in ids {
+            installer
+                .install_sideload(&common::extension_source(home.root.path(), id))
+                .unwrap();
+        }
         home
     }
 
@@ -510,7 +517,7 @@ fn switching_an_extension_announces_new_lists() {
 
 #[test]
 fn database_tools_are_folded_in_and_read_only() {
-    let home = Home::with_fixture();
+    let home = Home::with(&["fixture", "database"]);
     let mut session = home.serve(&["mcp"]);
     session.initialize("2025-11-25");
     let tools = session.tools();
@@ -539,7 +546,7 @@ fn database_tools_are_folded_in_and_read_only() {
 
 #[test]
 fn the_old_database_server_runs_the_new_one() {
-    let home = Home::with_fixture();
+    let home = Home::with(&["fixture", "database"]);
     let mut session = home.serve(&["database", "mcp"]);
     let reply = session.initialize("2024-11-05");
     assert_eq!(reply["result"]["protocolVersion"], "2024-11-05");

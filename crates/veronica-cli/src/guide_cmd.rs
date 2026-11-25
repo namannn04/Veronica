@@ -12,8 +12,8 @@ use crate::routes::Routes;
 
 const HOST: &str = "host";
 const HOST_FLAGS: [&str; 3] = ["json", "yes", "verbose"];
-const WITHOUT_JSON: [&str; 2] = ["database mcp", "mcp serve"];
-const WITHOUT_MCP: [&str; 2] = ["database", "mcp"];
+const WITHOUT_JSON: [&str; 1] = ["mcp serve"];
+const WITHOUT_MCP: [&str; 1] = ["mcp"];
 const SELF_PREVIEW: [&str; 6] = [
     "extensions install",
     "extensions remove",

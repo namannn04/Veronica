@@ -55,7 +55,10 @@
               "about": "Every saved connection. No credential is printed",
               "aliases": ["ls"],
               "effect": "read",
-              "json": true
+              "json": true,
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "get",
@@ -69,7 +72,10 @@
                   "type": "string",
                   "required": true
                 }
-              ]
+              ],
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "add",
@@ -135,7 +141,10 @@
                   "help": "Read a password from stdin"
                 }
               ],
-              "stdin": true
+              "stdin": true,
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "policy",
@@ -163,7 +172,10 @@
                   "type": "string",
                   "help": "local, development, testing, staging, production, other"
                 }
-              ]
+              ],
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "remove",
@@ -178,7 +190,10 @@
                   "type": "string",
                   "required": true
                 }
-              ]
+              ],
+              "mcp": {
+                "expose": false
+              }
             }
           ]
         },
@@ -194,7 +209,10 @@
               "type": "string",
               "required": true
             }
-          ]
+          ],
+          "mcp": {
+            "expose": false
+          }
         },
         {
           "name": "test",
@@ -208,7 +226,10 @@
               "type": "string",
               "required": true
             }
-          ]
+          ],
+          "mcp": {
+            "expose": false
+          }
         },
         {
           "name": "browse",
@@ -229,7 +250,10 @@
               "type": "string",
               "help": "A dotted path, e.g. `public` or `public.orders`. Omit for the top"
             }
-          ]
+          ],
+          "mcp": {
+            "expose": false
+          }
         },
         {
           "name": "read",
@@ -264,7 +288,10 @@
               "type": "integer",
               "default": 0
             }
-          ]
+          ],
+          "mcp": {
+            "expose": false
+          }
         },
         {
           "name": "query",
@@ -299,7 +326,10 @@
               "type": "integer",
               "default": 0
             }
-          ]
+          ],
+          "mcp": {
+            "expose": false
+          }
         },
         {
           "name": "saved-queries",
@@ -310,7 +340,10 @@
               "name": "list",
               "aliases": ["ls"],
               "effect": "read",
-              "json": true
+              "json": true,
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "save",
@@ -336,7 +369,10 @@
                   "type": "string"
                 }
               ],
-              "stdin": true
+              "stdin": true,
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "get",
@@ -350,7 +386,10 @@
                   "type": "string",
                   "required": true
                 }
-              ]
+              ],
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "remove",
@@ -364,7 +403,10 @@
                   "type": "string",
                   "required": true
                 }
-              ]
+              ],
+              "mcp": {
+                "expose": false
+              }
             }
           ]
         },
@@ -447,7 +489,10 @@
                   "type": "string",
                   "help": "Write the plan here so `apply` can read it back"
                 }
-              ]
+              ],
+              "mcp": {
+                "expose": false
+              }
             },
             {
               "name": "apply",
@@ -486,7 +531,10 @@
                   "help": "Exactly the text the preview asked for"
                 }
               ],
-              "stdin": true
+              "stdin": true,
+              "mcp": {
+                "expose": false
+              }
             }
           ]
         },
@@ -503,7 +551,20 @@
               "type": "integer",
               "default": 20
             }
-          ]
+          ],
+          "mcp": {
+            "expose": false
+          }
+        },
+        {
+          "name": "mcp",
+          "about": "Deprecated: runs `vr mcp`, which serves the read-only database tools",
+          "longAbout": "Deprecated: runs `vr mcp`, which serves the read-only database tools.\n\nAn agent learns which databases you have saved and what each can do, but never a host, a username or a credential. This command goes away in the next release.",
+          "effect": "read",
+          "json": true,
+          "mcp": {
+            "expose": false
+          }
         }
       ]
     }
@@ -517,11 +578,24 @@
       }
     ],
     "dbus": {
-      "session": ["org.freedesktop.secrets"]
-    }
+      "session": ["org.freedesktop.secrets"],
+      "system": []
+    },
+    "spawn": [],
+    "shell": [],
+    "host": []
   },
   "requires": {
+    "tools": [],
     "capabilities": ["databaseBroker"],
-    "optionalCapabilities": ["machineManagement"]
+    "optionalCapabilities": ["machineManagement"],
+    "systemPackages": []
+  },
+  "contracts": {
+    "provides": [],
+    "uses": []
+  },
+  "data": {
+    "migrate": []
   }
 }

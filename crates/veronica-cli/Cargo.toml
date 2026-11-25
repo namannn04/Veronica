@@ -14,7 +14,6 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 veronica-core = { workspace = true }
 veronica-system = { workspace = true }
 veronica-database = { workspace = true }
-uuid = { version = "1", features = ["v4"] }
 veronica-host = { path = "../veronica-host" }
 veronica-protocol = { workspace = true }
 veronica-sdk = { workspace = true }

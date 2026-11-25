@@ -6045,7 +6045,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "uuid",
  "veronica-core",
  "veronica-database",
  "veronica-host",
