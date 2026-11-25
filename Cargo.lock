@@ -6308,6 +6308,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-shelf"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "veronica-core",
+ "veronica-sdk",
+]
+
+[[package]]
 name = "veronica-ext-usage"
 version = "0.1.26"
 dependencies = [
