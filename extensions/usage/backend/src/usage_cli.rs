@@ -3,11 +3,12 @@ use std::fmt::Write as _;
 use anyhow::{Context, Result};
 use clap::Subcommand;
 use serde_json::json;
-use veronica_core::AppDirectories;
+use veronica_sdk::format::{self, countdown, money};
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::{HostClient, Output};
 use veronica_usage::aggregate::{self, DayRange, SourceSelection};
+use veronica_usage::cards::tokens;
 use veronica_usage::collector;
-
-use crate::format::{self, countdown, money, tokens, Output};
 
 #[derive(Subcommand)]
 pub(crate) enum UsageCommand {
@@ -131,7 +132,9 @@ fn range(days: Option<usize>) -> DayRange {
 pub(crate) async fn run(
     directories: &AppDirectories,
     command: &UsageCommand,
-    output: Output,
+    output: Output<'_>,
+    cwd: &std::path::Path,
+    host: &HostClient,
 ) -> Result<()> {
     match command {
         UsageCommand::Summary { days, sources } => {
@@ -329,7 +332,7 @@ pub(crate) async fn run(
                 settings: Option<&'a NotifySettings>,
             }
 
-            let stored = veronica_core::Settings::load(&directories.settings_file())?;
+            let stored = veronica_sdk::settings::Settings::load(&directories.settings_file())?;
             let notify = NotifySettings::from_settings(&stored);
             let now = chrono::Utc::now();
 
@@ -513,7 +516,8 @@ pub(crate) async fn run(
             let extension = if *svg { "svg" } else { "png" };
             let stamp = chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string();
 
-            let target = destination.as_deref().map(std::path::Path::new);
+            let target = destination.as_deref().map(|path| cwd.join(path));
+            let target = target.as_deref();
             let single_file = match target {
                 Some(path) if chosen.len() == 1 && !path.is_dir() => path.extension().is_some(),
                 _ => false,
@@ -537,10 +541,8 @@ pub(crate) async fn run(
                 let path = if single_file {
                     target.expect("single_file implies a target").to_path_buf()
                 } else {
-                    let directory = target.map_or_else(
-                        || std::path::PathBuf::from("."),
-                        std::path::Path::to_path_buf,
-                    );
+                    let directory =
+                        target.map_or_else(|| cwd.to_path_buf(), std::path::Path::to_path_buf);
                     directory.join(cards::file_name(*card, &stamp, extension))
                 };
 
@@ -574,7 +576,10 @@ pub(crate) async fn run(
             let script = directories.collector_script();
             collector::install_script(&script)?;
             let out_dir = directories.usage_dir();
-            let show = *progress && output == Output::Text;
+            let show = *progress && !output.is_json();
+            let say = |line: String| {
+                let _ = host.progress(Some(line), None);
+            };
 
             let outcome = collector::refresh(&script, &out_dir, &directories.cache, |event| {
                 if show {
@@ -583,12 +588,12 @@ pub(crate) async fn run(
                             name,
                             detail,
                             seconds,
-                        } => eprintln!("  {name:<14} {detail}  ({seconds:.2}s)"),
+                        } => say(format!("  {name:<14} {detail}  ({seconds:.2}s)")),
                         veronica_usage::CollectorEvent::Note { message } => {
-                            eprintln!("  … {message}");
+                            say(format!("  … {message}"));
                         }
                         veronica_usage::CollectorEvent::Error { message } => {
-                            eprintln!("  ! {message}");
+                            say(format!("  ! {message}"));
                         }
                         _ => {}
                     }

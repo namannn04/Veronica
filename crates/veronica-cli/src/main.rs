@@ -1,6 +1,5 @@
 use std::fmt::Write as _;
 
-mod alerts_cmd;
 mod attention_cmd;
 mod backup_cmd;
 mod cleaner_cmd;
@@ -28,7 +27,6 @@ mod shelf_cmd;
 mod surfaces_cmd;
 mod system_cmd;
 mod tools_cmd;
-mod usage_cmd;
 mod utility_cmd;
 mod workspace_cmd;
 
@@ -103,16 +101,6 @@ enum Command {
     },
     #[command(subcommand, about = "Read and write settings")]
     Config(ConfigCommand),
-    #[command(
-        subcommand,
-        about = "Agent usage: totals, limits, projects and collection"
-    )]
-    Usage(usage_cmd::UsageCommand),
-    #[command(
-        subcommand,
-        about = "Rate-limit alerts: the notifier's state, a delivery check and a reset"
-    )]
-    Alerts(alerts_cmd::AlertsCommand),
     #[command(
         subcommand,
         about = "Attention focus sessions and local attention history"
@@ -334,8 +322,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         }
         Command::Config(command) => config(&directories, command, output),
         Command::Shelf(command) => shelf_cmd::run(&directories, command, output),
-        Command::Usage(command) => usage_cmd::run(&directories, command, output).await,
-        Command::Alerts(command) => alerts_cmd::run(&directories, command, output).await,
         Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Workspace(command) => workspace_cmd::run(command, output).await,

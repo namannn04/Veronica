@@ -12,7 +12,6 @@ path = "src/main.rs"
 [dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "charset", "http2", "gzip"] }
 veronica-core = { workspace = true }
-veronica-usage = { workspace = true }
 veronica-system = { workspace = true }
 veronica-database = { workspace = true }
 uuid = { version = "1", features = ["v4"] }
@@ -32,6 +31,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
+veronica-usage = { workspace = true }
 serde_json = { workspace = true, features = ["float_roundtrip"] }
 tempfile = "3"
 veronica-pack = { path = "../veronica-pack" }
