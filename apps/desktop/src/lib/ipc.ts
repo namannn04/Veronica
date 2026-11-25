@@ -70,12 +70,9 @@ import type {
   ImportReport,
   InstalledExtension,
   LaunchAtLoginStatus,
-  LocalTrack,
   Machine,
   MachineDirectory,
   MachineReport,
-  MediaAction,
-  NowPlaying,
   PackageInstalled,
   PackageSource,
   PackageUpdate,
@@ -304,10 +301,6 @@ export const ipc = {
   emojiCopy: (character: string, insert: boolean) =>
     invoke<EmojiCopyResult>("emoji_copy", { character, insert }),
 
-  mediaNowPlaying: () => invoke<NowPlaying | null>("media_now_playing"),
-  mediaControl: (action: MediaAction) => invoke<void>("media_control", { action }),
-  musicLibrary: () => invoke<LocalTrack[]>("music_library"),
-
   notificationsList: () => invoke<DesktopNotification[]>("notifications_list"),
   notificationsDismiss: (id: number) => invoke<void>("notifications_dismiss", { id }),
   notificationsClear: () => invoke<void>("notifications_clear"),
@@ -316,4 +309,4 @@ export const ipc = {
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
 
-export type { Dashboard, Diagnostics, NowPlaying, SystemSnapshot, UsageView, VolumeState };
+export type { Dashboard, Diagnostics, SystemSnapshot, UsageView, VolumeState };

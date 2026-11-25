@@ -1,5 +1,4 @@
 mod alerts;
-mod art;
 mod commands;
 mod emoji_picker;
 mod extensions;
@@ -183,9 +182,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::audio_stream_toggle_mute,
             commands::bluetooth_state,
             commands::microphone_toggle,
-            commands::media_now_playing,
-            commands::media_control,
-            commands::music_library,
             commands::machines_probe,
             commands::machines_add,
             commands::machines_remove,

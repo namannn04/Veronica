@@ -41,7 +41,6 @@ describe("extension-aware navigation", () => {
       machines: "machines",
       maintenance: "appMaintenance",
       database: "database",
-      media: "music",
       attention: "attention",
       clipboard: "clipboard",
       color: "colorPicker",

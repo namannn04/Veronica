@@ -1,4 +1,3 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
 import {
   Badge,
   Button,
@@ -18,14 +17,9 @@ import {
 } from "@veronica/ui";
 import { AudioLines, Music, Radio } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-  TrackProgress,
-  Transport,
-  TransportControls,
-  useNowPlaying,
-} from "../components/NowPlaying";
-import { stopwatch } from "../lib/format";
-import { useLocalPlayer } from "../lib/localPlayer";
+import { stopwatch } from "./format";
+import { useFileUrl, useLocalPlayer } from "./localPlayer";
+import { TrackProgress, Transport, TransportControls, useNowPlaying } from "./NowPlaying";
 import "./MediaPage.css";
 
 type MediaTab = "library" | "players";
@@ -83,6 +77,7 @@ function LibraryView() {
     seek,
     loadLibrary,
   } = useLocalPlayer();
+  const artwork = useFileUrl(current?.artPath);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -134,10 +129,7 @@ function LibraryView() {
           <NowPlayingSkeleton />
         ) : (
           <>
-            <Artwork
-              src={current?.artPath ? convertFileSrc(current.artPath) : null}
-              label={current ? `${current.album} artwork` : ""}
-            />
+            <Artwork src={artwork} label={current ? `${current.album} artwork` : ""} />
             <div className="media-now-body">
               <div className="media-now-titles">
                 <p className="media-now-title">{current?.title ?? "Choose a track"}</p>

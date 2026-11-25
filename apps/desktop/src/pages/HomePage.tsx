@@ -24,7 +24,6 @@ import {
   Globe2,
   Keyboard,
   LaptopMinimal,
-  Music2,
   Plus,
   Sparkles,
   X,
@@ -42,24 +41,17 @@ import type { ExtensionRoute } from "../lib/navigation";
 import { STARTERS_KEY, storedStarters } from "../lib/onboarding";
 import { startVisiblePolling } from "../lib/polling";
 import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
-import type {
-  GaugeReport,
-  NowPlaying,
-  PresenterView,
-  SystemSnapshot,
-  UsageView,
-} from "../lib/types";
+import type { GaugeReport, PresenterView, SystemSnapshot, UsageView } from "../lib/types";
 import "./HomePage.css";
 
-type HomeRoute = "usage" | "media" | "system" | "library" | ExtensionRoute;
+type HomeRoute = "usage" | "system" | "library" | ExtensionRoute;
 type HomeData = {
   usage: UsageView | null;
   limits: GaugeReport | null;
   system: SystemSnapshot | null;
-  playing: NowPlaying | null;
 };
 
-const EMPTY: HomeData = { usage: null, limits: null, system: null, playing: null };
+const EMPTY: HomeData = { usage: null, limits: null, system: null };
 const LIVE_POLL_MS = 3_000;
 const LIMITS_POLL_MS = 5 * 60_000;
 const DEFAULT_ZONES = ["America/New_York", "America/Los_Angeles"];
@@ -139,7 +131,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       ipc.usageView(null, []),
       ipc.usageLimits(),
       ipc.systemSnapshot(),
-      ipc.mediaNowPlaying(),
       ipc.settingsAll(),
       ipc.presenterState(),
     ] as const);
@@ -150,13 +141,12 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       usage: requests[0].status === "fulfilled" ? requests[0].value : null,
       limits: requests[1].status === "fulfilled" ? requests[1].value : null,
       system: requests[2].status === "fulfilled" ? requests[2].value : null,
-      playing: requests[3].status === "fulfilled" ? requests[3].value : null,
     });
-    if (requests[4].status === "fulfilled") {
-      setSettings(requests[4].value);
+    if (requests[3].status === "fulfilled") {
+      setSettings(requests[3].value);
     }
-    if (requests[5].status === "fulfilled") {
-      setPresenter(requests[5].value);
+    if (requests[4].status === "fulfilled") {
+      setPresenter(requests[4].value);
     }
     setLoaded(true);
   }, []);
@@ -170,18 +160,11 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     const every = (ms: number, read: () => Promise<void>) =>
       startVisiblePolling(read, ms, document, false);
     const stopLive = every(LIVE_POLL_MS, async () => {
-      const [system, playing] = await Promise.allSettled([
-        ipc.systemSnapshot(),
-        ipc.mediaNowPlaying(),
-      ]);
+      const system = await ipc.systemSnapshot().catch(() => null);
       if (!live) {
         return;
       }
-      setData((current) => ({
-        ...current,
-        system: system.status === "fulfilled" ? system.value : current.system,
-        playing: playing.status === "fulfilled" ? playing.value : null,
-      }));
+      setData((current) => ({ ...current, system: system ?? current.system }));
     });
     const stopLimits = every(LIMITS_POLL_MS, async () => {
       const limits = await ipc.usageLimits().catch(() => null);
@@ -454,40 +437,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
           )}
         </Widget>
 
-        <Widget
-          className="home-span-2"
-          icon={<Music2 />}
-          title="Music"
-          bodyClassName="blur-music"
-          actions={
-            <IconButton
-              size="small"
-              label="Open music"
-              icon={<ArrowUpRight />}
-              onClick={() => onNavigate("media")}
-            />
-          }
-        >
-          {!loaded ? (
-            <div className="home-track" role="status" aria-label="Reading what is playing">
-              <Skeleton className="home-track-art" width={48} height={48} radius={8} />
-              <PrimaryLines loading />
-            </div>
-          ) : data.playing ? (
-            <div className="home-track">
-              <span className="home-track-art" aria-hidden="true">
-                {data.playing.artUrl ? <img src={data.playing.artUrl} alt="" /> : <Music2 />}
-              </span>
-              <PrimaryLines
-                title={data.playing.title || "Untitled"}
-                detail={data.playing.artist || data.playing.identity}
-              />
-            </div>
-          ) : (
-            <Quiet>Nothing is playing.</Quiet>
-          )}
-        </Widget>
-
         <NotificationList limit={4} className="home-card home-span-4" />
 
         <Widget
@@ -558,35 +507,6 @@ function Widget({
 
 function Quiet({ children }: { children: ReactNode }) {
   return <p className="home-quiet">{children}</p>;
-}
-
-function PrimaryLines({
-  title,
-  detail,
-  loading = false,
-}: {
-  title?: string;
-  detail?: string;
-  loading?: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="home-lines">
-        <span className="home-lines-title">
-          <SkeletonText width="70%" />
-        </span>
-        <span className="home-lines-detail">
-          <SkeletonText width="40%" />
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div className="home-lines">
-      <strong className="home-lines-title">{title}</strong>
-      {detail && <span className="home-lines-detail">{detail}</span>}
-    </div>
-  );
 }
 
 function Metric({

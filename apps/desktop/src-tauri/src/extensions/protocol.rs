@@ -246,7 +246,7 @@ fn content_security_policy(id: &str) -> String {
     format!(
         "default-src 'none'; script-src {origin}; style-src {origin} 'unsafe-inline'; \
          img-src {origin} data: blob:; media-src {origin} blob:; font-src {origin} data:; \
-         connect-src 'none'; form-action 'none'; base-uri 'none'"
+         connect-src {origin}; form-action 'none'; base-uri 'none'"
     )
 }
 
@@ -273,8 +273,11 @@ fn mime_type(file: &Path) -> &'static str {
         Some("ttf") => "font/ttf",
         Some("otf") => "font/otf",
         Some("mp3") => "audio/mpeg",
-        Some("ogg") => "audio/ogg",
+        Some("ogg" | "opus") => "audio/ogg",
         Some("wav") => "audio/wav",
+        Some("flac") => "audio/flac",
+        Some("m4a") => "audio/mp4",
+        Some("aac") => "audio/aac",
         Some("mp4") => "video/mp4",
         Some("webm") => "video/webm",
         _ => "application/octet-stream",
@@ -333,7 +336,7 @@ mod tests {
              img-src veronica-ext://hostile data: blob:; \
              media-src veronica-ext://hostile blob:; \
              font-src veronica-ext://hostile data:; \
-             connect-src 'none'; form-action 'none'; base-uri 'none'"
+             connect-src veronica-ext://hostile; form-action 'none'; base-uri 'none'"
         );
         assert_eq!(
             header_value(&response, header::ACCESS_CONTROL_ALLOW_ORIGIN),
@@ -502,9 +505,8 @@ mod tests {
         assert_eq!(served.status(), StatusCode::OK);
         assert_eq!(served.body().as_ref(), b"song");
         assert_eq!(header_value(&served, header::CONTENT_TYPE), "audio/mpeg");
-        assert!(
-            header_value(&served, header::CONTENT_SECURITY_POLICY).contains("connect-src 'none'")
-        );
+        assert!(header_value(&served, header::CONTENT_SECURITY_POLICY)
+            .contains("connect-src veronica-ext://probe;"));
         for token in [
             private.as_str(),
             foreign.as_str(),

@@ -1,12 +1,12 @@
 import type { BackendState, Granted } from "@veronica/extension-api";
 import { Spinner } from "@veronica/ui";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommandPalette } from "./components/CommandPalette";
 import { ExtensionFrame } from "./extensions/ExtensionFrame";
 import { InterfaceHost, type NavRequest } from "./extensions/InterfaceHost";
 import { useInstalledExtensions } from "./extensions/useInstalledExtensions";
 import { ipc, listenEvent } from "./lib/ipc";
-import { LocalPlayerProvider } from "./lib/localPlayer";
+import { frameKey, type LiveFrame, visitFrame } from "./lib/liveFrames";
 import {
   type ExtensionNavItem,
   extensionNavItems,
@@ -34,7 +34,6 @@ import { HomePage } from "./pages/HomePage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { MachinesPage } from "./pages/MachinesPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
-import { MediaPage } from "./pages/MediaPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { QuinjetPage } from "./pages/QuinjetPage";
 import { ServicesPage } from "./pages/ServicesPage";
@@ -62,6 +61,8 @@ export function App() {
     Partial<Record<Route, { badge?: string | number; title?: string }>>
   >({});
   const installed = useInstalledExtensions();
+  const [liveFrames, setLiveFrames] = useState<LiveFrame[]>([]);
+  const handledLaunch = useRef(0);
   const [onboarding, setOnboarding] = useState<boolean | null>(null);
 
   const enabledExtensions = useMemo(() => {
@@ -94,9 +95,17 @@ export function App() {
     [navGroups, extensionPages],
   );
   const currentPage = extensionPages?.find((page) => page.id === route);
-  const currentExtension = installed?.find(
-    (extension) => extension.id === currentPage?.frame.extension,
-  );
+  useEffect(() => {
+    if (currentPage === undefined) {
+      return;
+    }
+    const opened =
+      launch.route === currentPage.id && launch.serial !== handledLaunch.current
+        ? { serial: launch.serial, params: launch.params }
+        : null;
+    handledLaunch.current = launch.serial;
+    setLiveFrames((current) => visitFrame(current, currentPage.id, opened));
+  }, [currentPage, launch]);
   const extensionTitle = useCallback(
     (id: string) => installed?.find((extension) => extension.id === id)?.manifest?.title ?? id,
     [installed],
@@ -233,8 +242,8 @@ export function App() {
         onSearch={() => setPaletteOpen(true)}
       />
 
-      <LocalPlayerProvider>
-        <main className="shell-main" key={route}>
+      <main className="shell-main">
+        <Fragment key={route}>
           {route === "home" && <HomePage onNavigate={navigateTo} />}
           {route === "usage" && <UsagePage />}
           {route === "herdr" && <HerdrPage />}
@@ -255,7 +264,6 @@ export function App() {
           {route === "machines" && <MachinesPage />}
           {route === "maintenance" && <MaintenancePage />}
           {route === "database" && <DatabasePage />}
-          {route === "media" && <MediaPage />}
           {route === "attention" && <AttentionPage />}
           {route === "clipboard" && <ClipboardPage />}
           {route === "color" && <ColorPickerPage />}
@@ -266,17 +274,25 @@ export function App() {
           )}
           {route === "settings" && <SettingsPage diagnostics={diagnostics} />}
           {route === "about" && <AboutPage diagnostics={diagnostics} />}
-          {currentPage !== undefined && (
+        </Fragment>
+        {liveFrames.map((frame) => {
+          const page = extensionPages?.find((candidate) => candidate.id === frame.route);
+          if (page === undefined) {
+            return null;
+          }
+          const extension = installed?.find((item) => item.id === page.frame.extension);
+          return (
             <ExtensionPage
-              key={launch.serial}
-              page={currentPage}
-              params={launch.route === route ? launch.params : null}
-              granted={currentExtension?.manifest?.permissions}
-              state={currentExtension?.state}
+              key={frameKey(frame)}
+              page={page}
+              params={frame.params}
+              granted={extension?.manifest?.permissions}
+              state={extension?.state}
+              active={frame.route === route}
             />
-          )}
-        </main>
-      </LocalPlayerProvider>
+          );
+        })}
+      </main>
 
       <CommandPalette
         open={paletteOpen}
@@ -294,15 +310,22 @@ function ExtensionPage({
   params,
   granted,
   state,
+  active,
 }: {
   page: ExtensionNavItem;
   params: unknown;
   granted: Granted | undefined;
   state: BackendState | undefined;
+  active: boolean;
 }) {
+  const wrapper = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    wrapper.current?.toggleAttribute("inert", !active);
+  }, [active]);
   return (
-    <div className="shell-extension-page">
+    <div ref={wrapper} className="shell-extension-page" hidden={!active}>
       <ExtensionFrame
+        visible={active}
         extension={page.frame.extension}
         page={page.frame.page}
         entry={page.frame.entry}

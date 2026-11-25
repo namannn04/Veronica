@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "id": "media",
+  "version": "1.0",
+  "title": "Music",
+  "summary": "Controls every player through MPRIS: Spotify, a browser tab, VLC.",
+  "category": "media",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "suggestFor": [
+    {
+      "path": "~/Music"
+    }
+  ],
+  "activation": {
+    "mode": "background",
+    "idleStopSeconds": 0
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Music",
+        "entry": "index.html",
+        "icon": "music",
+        "nav": {
+          "group": "Tools",
+          "order": 10
+        },
+        "hint": "Local library and players",
+        "keywords": ["music", "player", "spotify", "mpris", "tracks", "audio", "playback"]
+      }
+    ]
+  },
+  "homeCards": [
+    {
+      "id": "now-playing",
+      "template": "nowPlaying",
+      "title": "Music",
+      "opens": "main",
+      "actions": [
+        {
+          "id": "previous",
+          "label": "Previous",
+          "run": ["media", "previous"]
+        },
+        {
+          "id": "toggle",
+          "label": "Play or pause",
+          "run": ["media", "toggle"]
+        },
+        {
+          "id": "next",
+          "label": "Next",
+          "run": ["media", "next"]
+        }
+      ]
+    }
+  ],
+  "notchActivities": [
+    {
+      "id": "now-playing",
+      "template": "nowPlaying",
+      "priority": 50,
+      "blurCategory": "music",
+      "actions": [
+        {
+          "id": "toggle",
+          "label": "Play or pause",
+          "run": ["media", "toggle"]
+        },
+        {
+          "id": "next",
+          "label": "Next",
+          "run": ["media", "next"]
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "name": "media",
+      "about": "Control whatever is playing, through MPRIS",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "status",
+          "about": "What is playing right now",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "players",
+          "about": "Every MPRIS player registered on the session bus",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "library",
+          "about": "The local music library under ~/Music, searchable",
+          "aliases": ["lib"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "query",
+              "kind": "positional",
+              "type": "string",
+              "default": "",
+              "help": "Match the title, artist or album"
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 40
+            }
+          ]
+        },
+        {
+          "name": "play",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "pause",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "toggle",
+          "about": "Play if paused, pause if playing",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "next",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "previous",
+          "aliases": ["prev"],
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "stop",
+          "effect": "write",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "filesystem": [
+      {
+        "path": "~/Music",
+        "access": "read"
+      }
+    ],
+    "dbus": {
+      "session": ["org.mpris.MediaPlayer2.*"]
+    },
+    "host": ["surfaces", "contracts"]
+  },
+  "requires": {
+    "capabilities": ["externalMediaControl"],
+    "optionalCapabilities": ["localMusicPlayback", "mediaControls"]
+  },
+  "contracts": {
+    "provides": [
+      {
+        "id": "media.nowPlaying@1",
+        "kind": "topic"
+      }
+    ]
+  }
+}

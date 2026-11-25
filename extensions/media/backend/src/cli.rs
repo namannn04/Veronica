@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use clap::Subcommand;
 use veronica_media::{mpris, Transport};
 
-use crate::format::{self, Output};
+use veronica_sdk::{format, Output};
 
 #[derive(Subcommand)]
 pub(crate) enum MediaCommand {
@@ -45,13 +45,13 @@ fn timeline(position_us: Option<i64>, length_us: Option<i64>) -> String {
     }
 }
 
-fn music_root() -> Result<std::path::PathBuf> {
-    let home = veronica_core::paths::home_dir()
+pub(crate) fn music_root() -> Result<std::path::PathBuf> {
+    let home = veronica_sdk::paths::home_dir()
         .ok_or_else(|| anyhow::anyhow!("cannot resolve the home directory"))?;
     Ok(home.join("Music"))
 }
 
-pub(crate) async fn run(command: &MediaCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &MediaCommand, output: Output<'_>) -> Result<()> {
     if let MediaCommand::Library { query, limit } = command {
         let root = music_root()?;
         if !root.is_dir() {

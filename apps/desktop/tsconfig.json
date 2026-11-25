@@ -18,6 +18,7 @@
     "paths": {
       "@veronica/extension-api": ["../../packages/extension-api/src/index.ts"],
       "@veronica/ui": ["../../packages/ui/index.ts"],
+      "@veronica/ui/*": ["../../packages/ui/*"],
       "*": ["./node_modules/@types/*", "./node_modules/*"]
     }
   },
