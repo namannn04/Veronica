@@ -16,6 +16,7 @@ members = [
     "crates/veronica-cli",
     "apps/desktop/src-tauri",
     "extensions/audit/backend",
+    "extensions/calendar/backend",
     "extensions/fixture/backend",
 ]
 

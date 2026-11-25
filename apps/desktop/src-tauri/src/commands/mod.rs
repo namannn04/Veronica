@@ -1,5 +1,4 @@
 mod attention;
-mod calendar;
 mod clipboard;
 mod color;
 mod emoji;
@@ -11,7 +10,6 @@ mod system;
 mod usage;
 
 pub(crate) use attention::*;
-pub(crate) use calendar::*;
 pub(crate) use clipboard::*;
 pub(crate) use color::*;
 pub(crate) use emoji::*;

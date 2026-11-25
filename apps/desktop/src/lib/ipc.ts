@@ -37,7 +37,6 @@ function describe(reason: unknown): string {
 }
 
 import type {
-  AgendaView,
   AlertsView,
   AttentionFocusSession,
   AttentionOverview,
@@ -305,10 +304,6 @@ export const ipc = {
   emojiCopy: (character: string, insert: boolean) =>
     invoke<EmojiCopyResult>("emoji_copy", { character, insert }),
 
-  calendarAgenda: (days: number, withLinks: boolean) =>
-    invoke<AgendaView>("calendar_agenda", { days, withLinks }),
-  calendarOpen: () => invoke<void>("calendar_open"),
-
   mediaNowPlaying: () => invoke<NowPlaying | null>("media_now_playing"),
   mediaControl: (action: MediaAction) => invoke<void>("media_control", { action }),
   musicLibrary: () => invoke<LocalTrack[]>("music_library"),
@@ -321,12 +316,4 @@ export const ipc = {
   openExternal: (target: string) => invoke<void>("open_external", { target }),
 };
 
-export type {
-  AgendaView,
-  Dashboard,
-  Diagnostics,
-  NowPlaying,
-  SystemSnapshot,
-  UsageView,
-  VolumeState,
-};
+export type { Dashboard, Diagnostics, NowPlaying, SystemSnapshot, UsageView, VolumeState };

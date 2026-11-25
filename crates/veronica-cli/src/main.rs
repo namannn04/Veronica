@@ -3,7 +3,6 @@ use std::fmt::Write as _;
 mod alerts_cmd;
 mod attention_cmd;
 mod backup_cmd;
-mod calendar_cmd;
 mod cleaner_cmd;
 mod clipboard_cmd;
 mod color_cmd;
@@ -157,8 +156,6 @@ enum Command {
         about = "The computers Veronica can reach"
     )]
     Machines(machines_cmd::MachineCommand),
-    #[command(subcommand, about = "Your agenda, from every configured calendar")]
-    Calendar(calendar_cmd::CalendarCommand),
     #[command(subcommand, about = "Control whatever is playing, through MPRIS")]
     Media(media_cmd::MediaCommand),
     #[command(subcommand, about = "CPU, memory, storage and battery information")]
@@ -360,7 +357,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
             let settings = Settings::load(&directories.settings_file())?;
             emoji_cmd::run(&directories, &settings, command, output).await
         }
-        Command::Calendar(command) => calendar_cmd::run(command, output).await,
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output),
         Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),

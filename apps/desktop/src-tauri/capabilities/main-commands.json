@@ -106,8 +106,6 @@
     "allow-media-now-playing",
     "allow-media-control",
     "allow-music-library",
-    "allow-calendar-agenda",
-    "allow-calendar-open",
     "allow-machines-probe",
     "allow-machines-add",
     "allow-machines-remove",

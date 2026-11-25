@@ -102,8 +102,6 @@ fn main() {
         "media_now_playing",
         "media_control",
         "music_library",
-        "calendar_agenda",
-        "calendar_open",
         "machines_probe",
         "machines_add",
         "machines_remove",

@@ -13,12 +13,11 @@ import {
   SkeletonText,
   Stack,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { CalendarCheck, CalendarDays, ExternalLink, RefreshCw, Video } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { eventSlot, untilLabel } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type { AgendaView, CalendarEvent } from "../lib/types";
+import { eventSlot, untilLabel } from "./format";
+import type { AgendaView, CalendarEvent } from "./types";
 import "./CalendarPage.css";
 
 const PAGE_DAYS = 14;
@@ -26,6 +25,7 @@ const RELOAD_MS = 60_000;
 const TICK_MS = 30_000;
 
 export function CalendarPage() {
+  const client = useClient();
   const [view, setView] = useState<AgendaView | null>(null);
   const [days, setDays] = useState(PAGE_DAYS);
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ export function CalendarPage() {
         setLoading(true);
       }
       try {
-        setView(await ipc.calendarAgenda(days, true));
+        setView(await client.backend.call<AgendaView>("agenda", { days, withLinks: true }));
         setError(null);
       } catch (reason) {
         setError(String(reason));
@@ -48,7 +48,7 @@ export function CalendarPage() {
         }
       }
     },
-    [days],
+    [client, days],
   );
 
   useEffect(() => {
@@ -56,19 +56,26 @@ export function CalendarPage() {
   }, [load]);
 
   useEffect(() => {
-    const stop = startVisiblePolling(() => load(true), RELOAD_MS, document, false);
+    const reload = window.setInterval(() => {
+      if (!document.hidden) {
+        void load(true);
+      }
+    }, RELOAD_MS);
     const tick = window.setInterval(() => {
       if (!document.hidden) {
         setTick((value) => value + 1);
       }
     }, TICK_MS);
     return () => {
-      stop();
+      window.clearInterval(reload);
       window.clearInterval(tick);
     };
   }, [load]);
 
-  const openCalendar = () => void ipc.calendarOpen().catch((reason) => setError(String(reason)));
+  const openCalendar = () =>
+    void client.backend.call("open").catch((reason) => setError(String(reason)));
+  const join = (url: string) =>
+    void client.ui.openExternal(url).catch((reason) => setError(String(reason)));
   const nextUp = view?.nextUp ?? null;
   const subtitle = nextUp
     ? `Next: ${nextUp.summary} ${untilLabel(nextUp.start)}`
@@ -134,7 +141,7 @@ export function CalendarPage() {
         </EmptyState>
       )}
 
-      {view?.happeningNow && <HappeningNow event={view.happeningNow} />}
+      {view?.happeningNow && <HappeningNow event={view.happeningNow} onJoin={join} />}
 
       {view?.days.some((day) => day.events.length > 0) && (
         <Stack className="cal-agenda blur-calendar">
@@ -151,6 +158,7 @@ export function CalendarPage() {
                     <EventRow
                       key={`${event.eventUid}-${event.start}`}
                       event={event}
+                      onJoin={join}
                       next={
                         nextUp !== null &&
                         nextUp.eventUid === event.eventUid &&
@@ -175,7 +183,7 @@ export function CalendarPage() {
   );
 }
 
-function HappeningNow({ event }: { event: CalendarEvent }) {
+function HappeningNow({ event, onJoin }: { event: CalendarEvent; onJoin: (url: string) => void }) {
   const joinUrl = event.joinUrl;
   return (
     <Card tone="accent" className="cal-now">
@@ -185,7 +193,7 @@ function HappeningNow({ event }: { event: CalendarEvent }) {
         <p className="cal-now-slot ui-num">{eventSlot(event.start, event.end, event.allDay)}</p>
       </div>
       {joinUrl && (
-        <Button variant="primary" icon={<Video />} onClick={() => void ipc.openExternal(joinUrl)}>
+        <Button variant="primary" icon={<Video />} onClick={() => onJoin(joinUrl)}>
           Join meeting
         </Button>
       )}
@@ -193,7 +201,15 @@ function HappeningNow({ event }: { event: CalendarEvent }) {
   );
 }
 
-function EventRow({ event, next }: { event: CalendarEvent; next: boolean }) {
+function EventRow({
+  event,
+  next,
+  onJoin,
+}: {
+  event: CalendarEvent;
+  next: boolean;
+  onJoin: (url: string) => void;
+}) {
   const start = new Date(event.start);
   const end = new Date(event.end);
   const time = event.allDay
@@ -217,12 +233,7 @@ function EventRow({ event, next }: { event: CalendarEvent; next: boolean }) {
       meta={next ? <Badge tone="accent">Up next</Badge> : undefined}
       trailing={
         joinUrl ? (
-          <Button
-            size="small"
-            icon={<Video />}
-            title={joinUrl}
-            onClick={() => void ipc.openExternal(joinUrl)}
-          >
+          <Button size="small" icon={<Video />} title={joinUrl} onClick={() => onJoin(joinUrl)}>
             Join
           </Button>
         ) : undefined

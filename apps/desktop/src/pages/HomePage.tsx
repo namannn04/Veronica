@@ -1,5 +1,4 @@
 import {
-  Badge,
   Button,
   Card,
   CardHeader,
@@ -18,7 +17,6 @@ import {
 import {
   Activity,
   ArrowUpRight,
-  CalendarDays,
   Coffee,
   Cpu,
   EyeOff,
@@ -45,7 +43,6 @@ import { STARTERS_KEY, storedStarters } from "../lib/onboarding";
 import { startVisiblePolling } from "../lib/polling";
 import { type LimitProvider, limitProviderOf, storedLimitProvider } from "../lib/preferences";
 import type {
-  AgendaView,
   GaugeReport,
   NowPlaying,
   PresenterView,
@@ -54,16 +51,15 @@ import type {
 } from "../lib/types";
 import "./HomePage.css";
 
-type HomeRoute = "usage" | "media" | "calendar" | "system" | "library" | ExtensionRoute;
+type HomeRoute = "usage" | "media" | "system" | "library" | ExtensionRoute;
 type HomeData = {
   usage: UsageView | null;
   limits: GaugeReport | null;
   system: SystemSnapshot | null;
-  agenda: AgendaView | null;
   playing: NowPlaying | null;
 };
 
-const EMPTY: HomeData = { usage: null, limits: null, system: null, agenda: null, playing: null };
+const EMPTY: HomeData = { usage: null, limits: null, system: null, playing: null };
 const LIVE_POLL_MS = 3_000;
 const LIMITS_POLL_MS = 5 * 60_000;
 const DEFAULT_ZONES = ["America/New_York", "America/Los_Angeles"];
@@ -143,7 +139,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       ipc.usageView(null, []),
       ipc.usageLimits(),
       ipc.systemSnapshot(),
-      ipc.calendarAgenda(2, false),
       ipc.mediaNowPlaying(),
       ipc.settingsAll(),
       ipc.presenterState(),
@@ -155,14 +150,13 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
       usage: requests[0].status === "fulfilled" ? requests[0].value : null,
       limits: requests[1].status === "fulfilled" ? requests[1].value : null,
       system: requests[2].status === "fulfilled" ? requests[2].value : null,
-      agenda: requests[3].status === "fulfilled" ? requests[3].value : null,
-      playing: requests[4].status === "fulfilled" ? requests[4].value : null,
+      playing: requests[3].status === "fulfilled" ? requests[3].value : null,
     });
-    if (requests[5].status === "fulfilled") {
-      setSettings(requests[5].value);
+    if (requests[4].status === "fulfilled") {
+      setSettings(requests[4].value);
     }
-    if (requests[6].status === "fulfilled") {
-      setPresenter(requests[6].value);
+    if (requests[5].status === "fulfilled") {
+      setPresenter(requests[5].value);
     }
     setLoaded(true);
   }, []);
@@ -262,8 +256,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
     }
   };
 
-  const nextEvent = data.agenda?.happeningNow ?? data.agenda?.nextUp ?? null;
-  const happeningNow = Boolean(data.agenda?.happeningNow);
   const totals = data.usage?.dashboard?.totals;
   const heatmap = data.usage?.dashboard?.heatmap ?? [];
   const selectedProvider = limitProviderOf(settings.limitsProvider);
@@ -394,47 +386,6 @@ export function HomePage({ onNavigate }: { onNavigate: (route: HomeRoute) => voi
               loading={!loaded}
             />
           </div>
-        </Widget>
-
-        <Widget
-          className="home-span-2"
-          icon={<CalendarDays />}
-          title="Meetings"
-          meta={
-            nextEvent ? (
-              happeningNow ? (
-                <Badge tone="accent" dot>
-                  Now
-                </Badge>
-              ) : (
-                "Next up"
-              )
-            ) : undefined
-          }
-          bodyClassName="blur-calendar"
-          actions={
-            <IconButton
-              size="small"
-              label="Open calendar"
-              icon={<ArrowUpRight />}
-              onClick={() => onNavigate("calendar")}
-            />
-          }
-        >
-          {!loaded ? (
-            <PrimaryLines loading />
-          ) : nextEvent ? (
-            <PrimaryLines
-              title={nextEvent.summary}
-              detail={new Date(nextEvent.start).toLocaleString([], {
-                weekday: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            />
-          ) : (
-            <Quiet>No meetings today.</Quiet>
-          )}
         </Widget>
 
         <Widget

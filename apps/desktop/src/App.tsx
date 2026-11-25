@@ -24,7 +24,6 @@ import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
 import { AttentionPage } from "./pages/AttentionPage";
-import { CalendarPage } from "./pages/CalendarPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
 import { ColorPickerPage } from "./pages/ColorPickerPage";
 import { CompanionPage } from "./pages/CompanionPage";
@@ -257,7 +256,6 @@ export function App() {
           {route === "maintenance" && <MaintenancePage />}
           {route === "database" && <DatabasePage />}
           {route === "media" && <MediaPage />}
-          {route === "calendar" && <CalendarPage />}
           {route === "attention" && <AttentionPage />}
           {route === "clipboard" && <ClipboardPage />}
           {route === "color" && <ColorPickerPage />}

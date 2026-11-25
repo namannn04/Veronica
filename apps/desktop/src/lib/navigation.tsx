@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   AboutIcon,
   AttentionIcon,
-  CalendarIcon,
   ClipboardIcon,
   ColorIcon,
   CompanionIcon,
@@ -38,7 +37,6 @@ export type BuiltinRoute =
   | "maintenance"
   | "database"
   | "media"
-  | "calendar"
   | "attention"
   | "clipboard"
   | "color"
@@ -176,14 +174,7 @@ export const NAV_GROUPS: NavGroup[] = [
         hint: "Local library and players",
         keywords: "music player spotify mpris tracks audio playback",
       },
-      {
-        id: "calendar",
-        label: "Calendar",
-        icon: <CalendarIcon />,
-        extensionId: "calendar",
-        hint: "Today and the days ahead",
-        keywords: "meetings events agenda schedule",
-      },
+
       {
         id: "clipboard",
         label: "Clipboard",

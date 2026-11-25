@@ -156,32 +156,6 @@ export function trackTimeline(positionUs: number | null, lengthUs: number | null
   return `${position} / ${trackClock(lengthUs)}`;
 }
 
-export function clockTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-}
-
-export function eventSlot(start: string, end: string, allDay: boolean): string {
-  if (allDay) {
-    return "All day";
-  }
-  return `${clockTime(start)} – ${clockTime(end)}`;
-}
-
-export function untilLabel(iso: string): string {
-  const seconds = Math.floor((new Date(iso).getTime() - Date.now()) / 1000);
-  if (Number.isNaN(seconds)) {
-    return "";
-  }
-  if (seconds <= 0) {
-    return "now";
-  }
-  return `in ${countdown(seconds)}`;
-}
-
 export function agoFromMillis(millis: number): string {
   const seconds = Math.floor((Date.now() - millis) / 1000);
   if (seconds < 45) {

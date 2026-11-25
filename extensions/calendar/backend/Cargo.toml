@@ -1,0 +1,20 @@
+[package]
+name = "veronica-ext-calendar"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+veronica-calendar = { workspace = true }
+veronica-sdk = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+zbus = { workspace = true }
+
+[lints]
+workspace = true

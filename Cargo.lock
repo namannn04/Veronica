@@ -6053,7 +6053,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
- "veronica-calendar",
  "veronica-core",
  "veronica-database",
  "veronica-host",
@@ -6126,7 +6125,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "veronica-calendar",
  "veronica-core",
  "veronica-database",
  "veronica-host",
@@ -6150,6 +6148,21 @@ dependencies = [
  "url",
  "veronica-audit",
  "veronica-sdk",
+]
+
+[[package]]
+name = "veronica-ext-calendar"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+ "tokio",
+ "veronica-calendar",
+ "veronica-sdk",
+ "zbus",
 ]
 
 [[package]]

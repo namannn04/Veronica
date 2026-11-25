@@ -4,8 +4,7 @@ use anyhow::{Context, Result};
 use chrono::Local;
 use clap::Subcommand;
 use veronica_calendar::{agenda, server};
-
-use crate::format::{self, Output};
+use veronica_sdk::{format, Output};
 
 #[derive(Subcommand)]
 pub(crate) enum CalendarCommand {
@@ -31,7 +30,7 @@ fn slot(event: &veronica_calendar::Event) -> String {
     )
 }
 
-pub(crate) async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &CalendarCommand, output: Output<'_>) -> Result<()> {
     let connection = zbus::Connection::session()
         .await
         .context("cannot reach the session bus; is this a desktop session?")?;
