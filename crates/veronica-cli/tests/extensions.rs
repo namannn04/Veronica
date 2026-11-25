@@ -435,7 +435,7 @@ fn verify_rehashes_installed_trees() {
         .as_str()
         .unwrap()
         .contains("bin/backend"));
-    assert_eq!(code(&home.vr(&["extensions", "verify", "herdr"])), 2);
+    assert_eq!(code(&home.vr(&["extensions", "verify", "presenter"])), 2);
 }
 
 #[test]
