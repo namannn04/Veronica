@@ -1,0 +1,19 @@
+[package]
+name = "veronica-ext-audit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+veronica-audit = { workspace = true }
+veronica-sdk = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "charset", "http2", "gzip"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+url = "2"
+
+[lints]
+workspace = true

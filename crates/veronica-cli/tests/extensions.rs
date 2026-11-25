@@ -35,7 +35,7 @@ impl Home {
     }
 
     fn source(&self) -> PathBuf {
-        common::fixture_source(self.root.path())
+        common::extension_source(self.root.path(), "fixture")
     }
 
     fn with_fixture() -> Self {
@@ -112,7 +112,7 @@ fn help_shows_the_extension_tree_without_starting_it() {
     }
     let leaf = home.vr(&["fixture", "fail", "--help"]);
     assert_eq!(code(&leaf), 0);
-    assert!(stdout(&leaf).contains("--code <code>"), "{}", stdout(&leaf));
+    assert!(stdout(&leaf).contains("--code <CODE>"), "{}", stdout(&leaf));
     assert!(!home.layout().log_file("fixture").exists());
 }
 

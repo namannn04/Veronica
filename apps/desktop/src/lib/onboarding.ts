@@ -29,11 +29,13 @@ export function chosenProfile(settings: Record<string, unknown>): Profile | null
 export function needsOnboarding(
   settings: Record<string, unknown>,
   features: readonly ExtensionReport[],
+  legacyToggles: readonly string[] = [],
 ): boolean {
   if (chosenProfile(settings) !== null) {
     return false;
   }
-  return !features.some((feature) => Object.hasOwn(settings, feature.defaultsKey));
+  const keys = [...features.map((feature) => feature.defaultsKey), ...legacyToggles];
+  return !keys.some((key) => Object.hasOwn(settings, key));
 }
 
 export function storedStarters(settings: Record<string, unknown>): string[] {

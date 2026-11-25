@@ -24,7 +24,6 @@ import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
 import { AttentionPage } from "./pages/AttentionPage";
-import { AuditPage } from "./pages/AuditPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
 import { ColorPickerPage } from "./pages/ColorPickerPage";
@@ -164,7 +163,8 @@ export function App() {
       return;
     }
     void ipc.settingsAll().then(
-      (settings) => setOnboarding(needsOnboarding(settings, diagnostics.extensions)),
+      (settings) =>
+        setOnboarding(needsOnboarding(settings, diagnostics.extensions, diagnostics.legacyToggles)),
       () => setOnboarding(false),
     );
   }, [diagnostics, onboarding]);
@@ -262,7 +262,6 @@ export function App() {
           {route === "clipboard" && <ClipboardPage />}
           {route === "color" && <ColorPickerPage />}
           {route === "emoji" && <EmojiPage />}
-          {route === "audit" && <AuditPage />}
           {route === "companion" && <CompanionPage />}
           {route === "library" && (
             <LibraryPage diagnostics={diagnostics} onChanged={loadDiagnostics} />

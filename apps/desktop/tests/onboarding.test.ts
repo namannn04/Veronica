@@ -89,6 +89,10 @@ describe("first run", () => {
     expect(needsOnboarding({ profile: "developer" }, features)).toBe(false);
     expect(needsOnboarding({ tabUsageEnabled: false }, features)).toBe(false);
     expect(needsOnboarding({ profile: "expert" }, features)).toBe(true);
+    expect(needsOnboarding({ tabSEOAuditEnabled: true }, features)).toBe(true);
+    expect(needsOnboarding({ tabSEOAuditEnabled: true }, features, ["tabSEOAuditEnabled"])).toBe(
+      false,
+    );
     expect(chosenProfile({ profile: "simple" })).toBe("simple");
     expect(chosenProfile({})).toBeNull();
   });

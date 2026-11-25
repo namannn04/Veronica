@@ -6,6 +6,7 @@
 node_modules/
 /apps/desktop/dist/
 /packages/*/dist/
+/extensions/*/ui/dist/
 
 # Build output
 /apps/desktop/src-tauri/gen/

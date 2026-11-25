@@ -154,11 +154,11 @@ pub(crate) async fn run(
         ExtensionCommand::Ls => list(&env).await,
         ExtensionCommand::Status => packages::status(&env),
         ExtensionCommand::Search { query } => packages::search(&env, query),
-        ExtensionCommand::Info { id } => info(&env, id).await,
+        ExtensionCommand::Info { id } => info(&env, current_id(id)).await,
         ExtensionCommand::Install { target } => packages::install(&env, target).await,
         ExtensionCommand::Update { id, .. } => packages::update(&env, id.as_deref()).await,
-        ExtensionCommand::Enable { id } => switch(&env, id, true).await,
-        ExtensionCommand::Disable { id } => switch(&env, id, false).await,
+        ExtensionCommand::Enable { id } => switch(&env, current_id(id), true).await,
+        ExtensionCommand::Disable { id } => switch(&env, current_id(id), false).await,
         ExtensionCommand::Remove { id, purge } => packages::remove(&env, id, *purge),
         ExtensionCommand::Setup { profile, dry_run } => {
             packages::setup(&env, *profile, *dry_run).await
@@ -312,6 +312,10 @@ pub(crate) fn provenance_label(provenance: Provenance) -> &'static str {
         Provenance::Cache => "cache",
         Provenance::Network => "network",
     }
+}
+
+fn current_id(id: &str) -> &str {
+    veronica_core::extensions::successor(id).unwrap_or(id)
 }
 
 async fn info(env: &Env, id: &str) -> Result<()> {

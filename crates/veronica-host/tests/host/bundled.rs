@@ -166,7 +166,8 @@ fn legacy_toggles_map_to_their_extension_ids() {
         json!({ "schema": 1, "extensions": [
             { "id": "color", "version": "1.0.1", "sha256": "00", "size": 1 },
             { "id": "media", "version": "1.0.1", "sha256": "00", "size": 1 },
-            { "id": "clipboard", "version": "1.0.1", "sha256": "00", "size": 1 }
+            { "id": "clipboard", "version": "1.0.1", "sha256": "00", "size": 1 },
+            { "id": "audit", "version": "1.0.1", "sha256": "00", "size": 1 }
         ] })
         .to_string(),
     )
@@ -179,6 +180,11 @@ fn legacy_toggles_map_to_their_extension_ids() {
     assert_eq!(
         bundled.wanted(&settings),
         BTreeSet::from(["color".to_string()])
+    );
+    settings.set("tabSEOAuditEnabled", json!(true));
+    assert_eq!(
+        bundled.wanted(&settings),
+        BTreeSet::from(["audit".to_string(), "color".to_string()])
     );
 }
 

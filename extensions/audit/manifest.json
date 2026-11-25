@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "id": "audit",
+  "version": "1.0",
+  "title": "Site Audit",
+  "summary": "Crawl a site's sitemap and check each page's metadata.",
+  "category": "utilities",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Site Audit",
+        "entry": "index.html",
+        "icon": "scan-search",
+        "nav": {
+          "group": "Tools",
+          "order": 60
+        },
+        "hint": "Crawl a site for problems",
+        "keywords": ["seo", "crawl", "website", "meta", "sitemap", "links"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "audit",
+      "about": "Site Audit: crawl a site's sitemap and check each page's metadata",
+      "aliases": ["seo"],
+      "json": true,
+      "subcommands": [
+        {
+          "name": "site",
+          "about": "Crawl a site and report every page's issues",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "site",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "A URL, a bare hostname, or a sitemap. `https://` is assumed"
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 50,
+              "help": "How many pages to fetch at most"
+            },
+            {
+              "name": "concurrency",
+              "kind": "option",
+              "long": "concurrency",
+              "type": "integer",
+              "default": 4,
+              "help": "How many pages to fetch at once. Kept low so an audit does not read as a load test against someone else's server"
+            },
+            {
+              "name": "severity",
+              "kind": "option",
+              "long": "severity",
+              "type": "string",
+              "help": "Only show pages that have at least one issue of this severity or worse: `error`, `warning` or `notice`"
+            }
+          ]
+        },
+        {
+          "name": "page",
+          "about": "Audit one page, without crawling anything",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "url",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "sitemap",
+          "about": "The pages a site's sitemap lists, without auditing them",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "site",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 100
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": ["*"]
+  },
+  "requires": {
+    "capabilities": ["siteAuditing"]
+  }
+}

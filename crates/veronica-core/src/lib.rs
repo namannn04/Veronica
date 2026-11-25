@@ -54,6 +54,7 @@ pub struct Diagnostics {
     pub directories: DirectoryReport,
     pub capabilities: Capabilities,
     pub extensions: Vec<ExtensionReport>,
+    pub legacy_toggles: Vec<&'static str>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -115,6 +116,10 @@ impl Diagnostics {
             },
             capabilities,
             extensions,
+            legacy_toggles: extensions::LEGACY_TOGGLES
+                .iter()
+                .map(|toggle| toggle.defaults_key)
+                .collect(),
         }
     }
 }

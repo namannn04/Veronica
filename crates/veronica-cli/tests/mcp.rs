@@ -31,7 +31,7 @@ impl Home {
             root: tempfile::tempdir().unwrap(),
         };
         Installer::new(home.layout(), HostIdentity::current())
-            .install_sideload(&common::fixture_source(home.root.path()))
+            .install_sideload(&common::extension_source(home.root.path(), "fixture"))
             .unwrap();
         home
     }

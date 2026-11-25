@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use veronica_core::extensions::ENTRIES;
+use veronica_core::extensions::{ENTRIES, LEGACY_TOGGLES};
 use veronica_core::fsutil::write_atomic;
 use veronica_core::packaging::Packaging;
 use veronica_core::settings::Settings;
@@ -26,9 +26,8 @@ pub const FLATPAK_DIR: &str = "/app/share/veronica/extensions";
 pub const PACKAGED_DIR: &str = "usr/share/veronica/extensions";
 pub const PROFILE_KEY: &str = "profile";
 
-const LEGACY_IDS: [(&str, &str); 4] = [
+const LEGACY_IDS: [(&str, &str); 3] = [
     ("music", "media"),
-    ("seoAudit", "audit"),
     ("appMaintenance", "maintenance"),
     ("colorPicker", "color"),
 ];
@@ -133,16 +132,25 @@ impl Bundled {
             .get(PROFILE_KEY)
             .cloned()
             .and_then(|value| serde_json::from_value(value).ok());
-        let legacy_user = ENTRIES
+        let switches: Vec<(&str, bool, &str)> = ENTRIES
             .iter()
-            .any(|entry| settings.get(entry.defaults_key).is_some());
-        let toggled: BTreeSet<&str> = ENTRIES
+            .map(|entry| (entry.defaults_key, entry.featured, extension_id(entry.id)))
+            .chain(
+                LEGACY_TOGGLES
+                    .iter()
+                    .map(|toggle| (toggle.defaults_key, toggle.featured, toggle.extension)),
+            )
+            .collect();
+        let legacy_user = switches
             .iter()
-            .filter(|entry| {
-                let explicit = settings.get(entry.defaults_key) == Some(&Value::Bool(true));
-                explicit || (legacy_user && settings.extension_enabled(entry))
+            .any(|(key, _, _)| settings.get(key).is_some());
+        let toggled: BTreeSet<&str> = switches
+            .iter()
+            .filter(|(key, featured, _)| {
+                let explicit = settings.get(key) == Some(&Value::Bool(true));
+                explicit || (legacy_user && settings.bool_or(key, *featured))
             })
-            .map(|entry| extension_id(entry.id))
+            .map(|(_, _, id)| *id)
             .collect();
         self.index
             .extensions

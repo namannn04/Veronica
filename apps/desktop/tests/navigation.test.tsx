@@ -47,7 +47,6 @@ describe("extension-aware navigation", () => {
       clipboard: "clipboard",
       color: "colorPicker",
       emoji: "emoji",
-      audit: "seoAudit",
       companion: "companion",
     };
     for (const [route, extensionId] of Object.entries(expected)) {

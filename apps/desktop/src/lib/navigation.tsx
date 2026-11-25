@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   AboutIcon,
   AttentionIcon,
-  AuditIcon,
   CalendarIcon,
   ClipboardIcon,
   ColorIcon,
@@ -16,6 +15,7 @@ import {
   MachinesIcon,
   MaintenanceIcon,
   MusicIcon,
+  NamedIcon,
   PortsIcon,
   QuinjetIcon,
   SettingsIcon,
@@ -43,7 +43,6 @@ export type BuiltinRoute =
   | "clipboard"
   | "color"
   | "emoji"
-  | "audit"
   | "companion"
   | "library"
   | "settings"
@@ -210,14 +209,6 @@ export const NAV_GROUPS: NavGroup[] = [
         keywords: "emoji symbol character insert",
       },
       {
-        id: "audit",
-        label: "Site Audit",
-        icon: <AuditIcon />,
-        extensionId: "seoAudit",
-        hint: "Crawl a site for problems",
-        keywords: "seo crawl website meta sitemap links",
-      },
-      {
         id: "companion",
         label: "Companion",
         icon: <CompanionIcon />,
@@ -290,7 +281,7 @@ export function extensionNavItems(installed: readonly InstalledExtension[]): Ext
       items.push({
         id,
         label: page.title,
-        icon: <ExtensionsIcon />,
+        icon: <NamedIcon name={page.icon} />,
         hint: page.hint ?? manifest.summary,
         keywords: [manifest.title, extension.id, ...(page.keywords ?? [])].join(" ").toLowerCase(),
         frame: { extension: extension.id, page: page.id, entry: page.entry },
