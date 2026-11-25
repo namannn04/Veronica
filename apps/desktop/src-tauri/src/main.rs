@@ -97,13 +97,10 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
-            commands::workspace_doctor,
             commands::chat_journal,
             commands::chat_view,commands::chat_configure,commands::chat_enable,commands::chat_send,commands::chat_preview,commands::chat_models,commands::chat_pull,commands::chat_clear,commands::chat_export,
             commands::agent_tracking,
             commands::agent_profiles, commands::agent_profiles_save, commands::agent_start, commands::agent_list, commands::agent_external, commands::agent_output, commands::agent_input, commands::agent_resize, commands::agent_stop,
-            commands::graft_discover,
-            commands::graft_call,
             commands::diagnostics,
             commands::capabilities,
             commands::settings_all,

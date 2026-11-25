@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "id": "workspace",
+  "version": "1.0",
+  "title": "Developer Workspace",
+  "summary": "Project Doctor and a playground for a local Graftcode Gateway.",
+  "category": "agents",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Developer Workspace",
+        "entry": "index.html",
+        "icon": "terminal",
+        "nav": {
+          "group": "This computer",
+          "order": 30
+        },
+        "hint": "Project Doctor and service playground",
+        "keywords": ["project", "doctor", "graftcode", "mcp", "playground", "developer", "ports"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "workspace",
+      "about": "On-demand, read-only developer project checks",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "graft",
+          "about": "Discover or explicitly call a local Graftcode Gateway",
+          "json": true,
+          "subcommands": [
+            {
+              "name": "discover",
+              "effect": "read",
+              "json": true,
+              "args": [
+                {
+                  "name": "endpoint",
+                  "kind": "option",
+                  "long": "endpoint",
+                  "type": "string",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "call",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "endpoint",
+                  "kind": "option",
+                  "long": "endpoint",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "name",
+                  "kind": "option",
+                  "long": "name",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "arguments",
+                  "kind": "option",
+                  "long": "arguments",
+                  "type": "string",
+                  "default": "{}"
+                },
+                {
+                  "name": "confirm",
+                  "kind": "flag",
+                  "long": "confirm",
+                  "type": "boolean"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "doctor",
+          "about": "Inspect a project without executing its code or reading .env files",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "root",
+              "kind": "option",
+              "long": "root",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "ports",
+              "kind": "option",
+              "long": "ports",
+              "type": "integer",
+              "multiple": true,
+              "help": "Expected IPv4 loopback TCP listeners (not application health checks)"
+            },
+            {
+              "name": "containers",
+              "kind": "option",
+              "long": "containers",
+              "type": "string",
+              "multiple": true,
+              "help": "Exact local Docker container names expected to be running"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": ["localhost", "127.0.0.1"],
+    "dbus": {
+      "session": ["org.freedesktop.DBus"]
+    },
+    "spawn": ["docker", "git"]
+  }
+}

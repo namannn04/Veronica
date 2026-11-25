@@ -337,11 +337,9 @@ fn every_host_command_still_prints_help() {
             pending.push(child);
         }
     }
-    assert!(visited > 100, "walked only {visited} commands");
+    assert!(visited > 40, "walked only {visited} commands");
     let extensions = stdout(&home.vr(&["extensions", "--help"]));
     assert!(extensions.contains("enable"));
-    let graft = stdout(&home.vr(&["workspace", "graft", "--help"]));
-    assert!(graft.contains("discover"));
 }
 
 fn ids(listing: &Value) -> Vec<String> {

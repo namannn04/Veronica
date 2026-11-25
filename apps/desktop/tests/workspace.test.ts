@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { methodArguments, methodResult } from "../src/lib/workspace";
+import { methodArguments, methodResult } from "../../../extensions/workspace/ui/src/workspace";
 
 test("method arguments must be a bounded JSON object, including multibyte input", () => {
   expect(methodArguments('{"port":3000}')).toEqual({ port: 3000 });

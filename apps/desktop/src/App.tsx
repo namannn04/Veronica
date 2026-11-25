@@ -1,6 +1,5 @@
 import type { BackendState, Granted } from "@veronica/extension-api";
-import { Spinner } from "@veronica/ui";
-import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommandPalette } from "./components/CommandPalette";
 import { ExtensionFrame } from "./extensions/ExtensionFrame";
 import { InterfaceHost, type NavRequest } from "./extensions/InterfaceHost";
@@ -37,10 +36,6 @@ import { SystemPage } from "./pages/SystemPage";
 import { Sidebar } from "./shell/Sidebar";
 import "./shell/Shell.css";
 import "./shell/Presenter.css";
-
-const WorkspacePage = lazy(() =>
-  import("./pages/WorkspacePage").then((module) => ({ default: module.WorkspacePage })),
-);
 
 export function App() {
   const [route, setRoute] = useState<Route>(() => routeFromSearch(window.location.search));
@@ -241,17 +236,6 @@ export function App() {
           {route === "home" && <HomePage onNavigate={navigateTo} />}
           {route === "agents" && <AgentsPage />}
           {route === "services" && <ServicesPage />}
-          {route === "workspace" && (
-            <Suspense
-              fallback={
-                <div className="shell-loading">
-                  <Spinner size={20} label="Opening Developer Workspace" />
-                </div>
-              }
-            >
-              <WorkspacePage />
-            </Suspense>
-          )}
           {route === "system" && <SystemPage />}
           {route === "machines" && <MachinesPage />}
           {route === "maintenance" && <MaintenancePage />}

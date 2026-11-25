@@ -1536,35 +1536,6 @@ mod wire_shape_tests {
 }
 
 #[tauri::command]
-pub(crate) async fn workspace_doctor(
-    request: veronica_system::workspace::DoctorRequest,
-) -> CommandResult<veronica_system::workspace::DoctorReport> {
-    veronica_system::workspace::doctor(request)
-        .await
-        .map_err(fail)
-}
-
-#[tauri::command]
-pub(crate) async fn graft_discover(
-    connection: veronica_system::graftcode::Connection,
-) -> CommandResult<veronica_system::graftcode::Discovery> {
-    veronica_system::graftcode::discover(connection)
-        .await
-        .map_err(fail)
-}
-#[tauri::command]
-pub(crate) async fn graft_call(
-    connection: veronica_system::graftcode::Connection,
-    name: String,
-    arguments: serde_json::Value,
-    confirmed: bool,
-) -> CommandResult<serde_json::Value> {
-    veronica_system::graftcode::call(connection, name, arguments, confirmed)
-        .await
-        .map_err(fail)
-}
-
-#[tauri::command]
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri commands receive State, AppHandle and deserialized arguments by value"
