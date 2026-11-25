@@ -20,6 +20,7 @@ members = [
     "extensions/calendar/backend",
     "extensions/clipboard/backend",
     "extensions/color/backend",
+    "extensions/companion/backend",
     "extensions/emoji/backend",
     "extensions/fixture/backend",
     "extensions/focus-dim/backend",

@@ -6,7 +6,8 @@ use serde_json::json;
 use veronica_core::companion::{CompanionKind, CompanionRepository};
 use veronica_core::AppDirectories;
 
-use crate::format::{self, Output};
+use veronica_sdk::format;
+use veronica_sdk::Output;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum CompanionCommand {
@@ -58,7 +59,8 @@ fn kind_label(kind: CompanionKind) -> &'static str {
 pub(crate) fn run(
     directories: &AppDirectories,
     command: &CompanionCommand,
-    output: Output,
+    stdin: Option<&str>,
+    output: Output<'_>,
 ) -> Result<()> {
     let repository = CompanionRepository::new(directories.companion_dir());
 
@@ -128,10 +130,9 @@ pub(crate) fn run(
             let text = if let Some(body) = body {
                 body.clone()
             } else {
-                let mut buffer = String::new();
-                std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)
-                    .context("cannot read the note body from stdin")?;
-                buffer
+                stdin
+                    .context("cannot read the note body from stdin")?
+                    .to_string()
             };
             let now = Utc::now();
             let item = repository.create_note(title, text.trim_end(), now)?;

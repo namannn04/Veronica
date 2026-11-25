@@ -6203,6 +6203,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-companion"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+ "tokio",
+ "veronica-core",
+ "veronica-sdk",
+ "veronica-system",
+]
+
+[[package]]
 name = "veronica-ext-emoji"
 version = "0.1.26"
 dependencies = [

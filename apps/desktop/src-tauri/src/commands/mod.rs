@@ -1,11 +1,9 @@
-mod attention;
 mod emoji;
 mod legacy;
 mod maintenance;
 mod shortcuts;
 mod system;
 
-pub(crate) use attention::*;
 pub(crate) use emoji::*;
 pub(crate) use legacy::*;
 pub(crate) use maintenance::*;

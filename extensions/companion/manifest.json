@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "id": "companion",
+  "version": "1.0",
+  "title": "Companion",
+  "summary": "Your notes and voice memos, remembered and searchable.",
+  "category": "agents",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "activation": {
+    "mode": "background",
+    "idleStopSeconds": 0
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Companion",
+        "entry": "index.html",
+        "icon": "notebook-pen",
+        "nav": {
+          "group": "Tools",
+          "order": 20
+        },
+        "hint": "Notes and voice memos",
+        "keywords": ["notes", "memo", "record", "voice", "scratchpad"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "companion",
+      "about": "Your private notes and voice-memo metadata",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "list",
+          "about": "Everything, newest first, optionally filtered",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "query",
+              "kind": "positional",
+              "type": "string",
+              "default": "",
+              "help": "Match the title or the body"
+            },
+            {
+              "name": "kind",
+              "kind": "option",
+              "long": "kind",
+              "type": "string",
+              "help": "Only notes, or only voice memos"
+            }
+          ]
+        },
+        {
+          "name": "show",
+          "about": "Print one item in full, for piping onward",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "add",
+          "about": "Write a note. The body is read from stdin when it is not given",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "title",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "body",
+              "kind": "positional",
+              "type": "string",
+              "help": "The note's text. Omit it to read stdin, so a file can be piped in"
+            },
+            {
+              "name": "pinned",
+              "kind": "flag",
+              "long": "pinned",
+              "type": "boolean"
+            }
+          ],
+          "stdin": true
+        },
+        {
+          "name": "pin",
+          "about": "Pin or unpin an item, so it sorts to the top",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "name": "off",
+              "kind": "flag",
+              "long": "off",
+              "type": "boolean",
+              "help": "Unpin instead"
+            }
+          ]
+        },
+        {
+          "name": "remove",
+          "about": "Delete an item, and its recording if it has one",
+          "aliases": ["rm"],
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": ["*"],
+    "filesystem": [
+      {
+        "path": "~/.local/share/veronica/companion",
+        "access": "readWrite"
+      },
+      {
+        "path": "~/.local/share/veronica/attention",
+        "access": "read"
+      }
+    ],
+    "spawn": ["pw-record", "kill", "nice", "python3", "ollama"]
+  },
+  "requires": {
+    "capabilities": ["companionService"]
+  }
+}

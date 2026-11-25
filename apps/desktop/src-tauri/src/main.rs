@@ -97,8 +97,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
                 .build(),
         )
         .invoke_handler(tauri::generate_handler![
-            commands::chat_journal,
-            commands::chat_view,commands::chat_configure,commands::chat_enable,commands::chat_send,commands::chat_preview,commands::chat_models,commands::chat_pull,commands::chat_clear,commands::chat_export,
             commands::agent_tracking,
             commands::agent_profiles, commands::agent_profiles_save, commands::agent_start, commands::agent_list, commands::agent_external, commands::agent_output, commands::agent_input, commands::agent_resize, commands::agent_stop,
             commands::diagnostics,
@@ -112,16 +110,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::backup_export,
             commands::backup_inspect,
             commands::backup_import,
-            commands::companion_list,
-            commands::companion_note_create,
-            commands::companion_update,
-            commands::companion_remove,
-            commands::companion_recording_status,
-            commands::companion_record_start,
-            commands::companion_record_stop,
-            commands::companion_record_cancel,
-            commands::companion_audio,
-            commands::attention_overview,
             commands::shell_action,
             commands::system_snapshot,
             commands::ports_snapshot,
@@ -207,19 +195,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-
-            let recordings =
-                veronica_core::CompanionRepository::new(directories.companion_dir()).recordings_dir();
-            if let Err(error) = std::fs::create_dir_all(&recordings)
-                .map_err(anyhow::Error::from)
-                .and_then(|()| {
-                    app.asset_protocol_scope()
-                        .allow_directory(&recordings, true)
-                        .map_err(anyhow::Error::from)
-                })
-            {
-                tracing::warn!("voice memos cannot be played in the app: {error:#}");
-            }
 
             app.manage(state);
             host.attach(std::sync::Arc::new(extensions::shell::AppShell::new(handle.clone())));
@@ -364,8 +339,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested {..} | WindowEvent::Destroyed) { window.app_handle().state::<AppState>().agents.stop_all();
-                window.app_handle().state::<AppState>().chat.close_window(); }
+            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested {..} | WindowEvent::Destroyed) { window.app_handle().state::<AppState>().agents.stop_all(); }
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
                     api.prevent_close();
@@ -380,7 +354,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             RunEvent::ExitRequested {
                 code: None, api, ..
             } => api.prevent_exit(),
-            RunEvent::Exit => { tauri::async_runtime::block_on(app.state::<AppState>().extensions.stop()); app.state::<AppState>().chat.close_window(); app.state::<AppState>().agents.stop_all(); commands::finish_companion_recording_on_exit(app); },
+            RunEvent::Exit => { tauri::async_runtime::block_on(app.state::<AppState>().extensions.stop()); app.state::<AppState>().agents.stop_all(); },
             _ => {}
         });
 

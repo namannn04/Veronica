@@ -78,9 +78,9 @@ impl ExtensionEntry {
 }
 
 use Capability::{
-    CompanionService, DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression,
-    KeystrokeObservation, MachineManagement, MicrophoneControl, Notifications, PackageManagement,
-    PreventSleep, RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics,
+    DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression, KeystrokeObservation,
+    MachineManagement, MicrophoneControl, Notifications, PackageManagement, PreventSleep,
+    RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics,
 };
 use ExtensionGroup as G;
 
@@ -131,18 +131,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         defaults_key: "tabDatabaseEnabled",
         required_capabilities: &[DatabaseBroker],
         optional_capabilities: &[MachineManagement],
-        required_tools: &[],
-    },
-    ExtensionEntry {
-        id: "companion",
-        title: "Companion",
-        subtitle: "Your notes, voice memos and activity, remembered and searchable.",
-        icon: "brain",
-        group: G::Agent,
-        featured: false,
-        defaults_key: "tabCompanionEnabled",
-        required_capabilities: &[CompanionService],
-        optional_capabilities: &[],
         required_tools: &[],
     },
     ExtensionEntry {
@@ -236,6 +224,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         id: "focusDim",
         extension: "focus-dim",
         defaults_key: "focusDimEnabled",
+        featured: false,
+    },
+    LegacyToggle {
+        id: "companion",
+        extension: "companion",
+        defaults_key: "tabCompanionEnabled",
         featured: false,
     },
     LegacyToggle {
@@ -342,7 +336,6 @@ mod tests {
             "appMaintenance",
             "machines",
             "database",
-            "companion",
             "systemStats",
             "micMute",
             "lidAwake",
