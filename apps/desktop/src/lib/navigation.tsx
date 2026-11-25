@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import {
   AboutIcon,
-  DatabaseIcon,
   ExtensionsIcon,
   HerdrIcon,
   HomeIcon,
@@ -12,7 +11,7 @@ import {
 import { frameSource } from "../extensions/bridge";
 import type { InstalledExtension } from "./types";
 
-export type BuiltinRoute = "home" | "agents" | "database" | "library" | "settings" | "about";
+export type BuiltinRoute = "home" | "agents" | "library" | "settings" | "about";
 
 export type ExtensionRoute = `ext:${string}/${string}`;
 export type Route = BuiltinRoute | ExtensionRoute;
@@ -56,16 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "This computer",
-    items: [
-      {
-        id: "database",
-        label: "Database",
-        icon: <DatabaseIcon />,
-        extensionId: "database",
-        hint: "Browse and query databases",
-        keywords: "sql postgres mysql sqlite redis query tables",
-      },
-    ],
+    items: [],
   },
   {
     label: "Tools",

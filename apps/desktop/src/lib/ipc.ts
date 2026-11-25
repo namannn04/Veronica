@@ -38,10 +38,6 @@ function describe(reason: unknown): string {
 
 import type {
   BackupSummary,
-  DatabaseConnection,
-  DatabaseObject,
-  DatabaseOperation,
-  DatabasePage,
   DesktopNotification,
   Diagnostics,
   EmojiCopyResult,
@@ -107,19 +103,6 @@ export const ipc = {
   updateCheck: () => invoke<UpdateInfo>("update_check"),
   updateInstall: (version: string) => invoke<string>("update_install", { version }),
   appRestart: () => invoke<void>("app_restart"),
-
-  databaseConnections: () => invoke<DatabaseConnection[]>("database_connections"),
-  databaseTest: (connection: string) => invoke<unknown>("database_test", { connection }),
-  databaseBrowse: (connection: string, path: string[]) =>
-    invoke<DatabaseObject[]>("database_browse", { connection, path }),
-  databaseQuery: (connection: string, statement: string, limit: number, offset: number) =>
-    invoke<DatabasePage>("database_query", { connection, statement, limit, offset }),
-  databaseRead: (connection: string, path: string[], limit: number, offset: number) =>
-    invoke<DatabasePage>("database_read", { connection, path, limit, offset }),
-  databaseCapabilities: (connection: string) =>
-    invoke<unknown>("database_capabilities", { connection }),
-  databaseOperations: (limit: number) =>
-    invoke<DatabaseOperation[]>("database_operations", { limit }),
 
   toolsReadiness: () => invoke<ToolSurvey>("tools_readiness"),
   toolsInstall: (tool: string) => invoke<ToolInstallOutcome>("tools_install", { tool }),

@@ -83,6 +83,7 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   "notebook-pen": CompanionIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,
+  database: DatabaseIcon,
   "clipboard-list": ClipboardIcon,
   cpu: SystemIcon,
   network: PortsIcon,

@@ -20,13 +20,13 @@ import {
 } from "@veronica/ui";
 import { ArrowUp, ChevronLeft, ChevronRight, Database, Play, Table2 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { ipc } from "../lib/ipc";
+import { errorText, ipc } from "./api";
 import type {
   DatabaseConnection,
   DatabaseObject,
   DatabaseOperation,
   DatabasePage as ResultPage,
-} from "../lib/types";
+} from "./types";
 import "./DatabasePage.css";
 
 const STROKE = 1.75;
@@ -79,7 +79,7 @@ export function DatabasePage() {
           setSelected((current) => current || all[0].id);
         }
       })
-      .catch((reason) => setConnectionsError(String(reason)));
+      .catch((reason) => setConnectionsError(errorText(reason)));
   }, []);
 
   useEffect(loadConnections, [loadConnections]);
@@ -92,7 +92,7 @@ export function DatabasePage() {
       setObjects(await ipc.databaseBrowse(connection, into));
       setPath(into);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
       setObjectsRead(true);
@@ -113,7 +113,7 @@ export function DatabasePage() {
     void ipc
       .databaseOperations(50)
       .then(setHistory)
-      .catch((reason) => setError(String(reason)));
+      .catch((reason) => setError(errorText(reason)));
   }, [tab]);
 
   const [source, setSource] = useState<PageSource | null>(null);
@@ -131,7 +131,7 @@ export function DatabasePage() {
       setSource(from);
       setOffset(at);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
     }
