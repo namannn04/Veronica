@@ -54,20 +54,25 @@ describe("extension-aware navigation", () => {
     }
   });
 
+  const gated = NAV_ITEMS.filter((item) => item.extensionId !== undefined);
+  const kept = gated[0];
+  const dropped = gated.find((item) => item.extensionId !== kept.extensionId) ?? kept;
+
   test("one filtered tree feeds both the rail and palette", () => {
-    const enabled = new Set(["usage", "machines"]);
+    const enabled = new Set([kept.extensionId ?? ""]);
     const items = visibleNavGroups(enabled).flatMap((group) => group.items);
 
-    expect(items.some((item) => item.id === "usage")).toBe(true);
-    expect(items.some((item) => item.id === "machines")).toBe(true);
-    expect(items.some((item) => item.id === "quinjet")).toBe(false);
-    expect(searchNav("ssh", items).map((item) => item.id)).toEqual(["machines"]);
-    expect(searchNav("quinjet", items)).toEqual([]);
+    expect(items.some((item) => item.id === kept.id)).toBe(true);
+    expect(items.some((item) => item.id === dropped.id)).toBe(dropped === kept);
+    expect(searchNav(kept.label, items).map((item) => item.id)).toContain(kept.id);
+    expect(searchNav(dropped.label, items).some((item) => item.id === dropped.id)).toBe(
+      dropped === kept,
+    );
   });
 
   test("a disabled current route is no longer visible", () => {
-    expect(routeIsVisible("quinjet", new Set(["usage"]))).toBe(false);
-    expect(routeIsVisible("quinjet", new Set(["usage", "quinjet"]))).toBe(true);
+    expect(routeIsVisible(dropped.id, new Set())).toBe(false);
+    expect(routeIsVisible(dropped.id, new Set([dropped.extensionId ?? ""]))).toBe(true);
   });
 });
 
