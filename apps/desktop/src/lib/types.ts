@@ -900,6 +900,7 @@ export interface CatalogOffer {
   latest: string;
   installed: string | null;
   available: string | null;
+  bundled: string | null;
 }
 
 export interface CatalogShelf {

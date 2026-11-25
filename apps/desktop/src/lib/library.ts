@@ -259,6 +259,13 @@ function updatable(origin: ExtensionOrigin): boolean {
   return origin === "catalog" || origin === "bundled";
 }
 
+export function bundledOffer(entry: LibraryEntry): string | null {
+  if (entry.installed !== undefined) {
+    return null;
+  }
+  return entry.offer?.bundled ?? null;
+}
+
 export function needsConfirmation(action: LibraryAction): boolean {
   return action === "remove";
 }

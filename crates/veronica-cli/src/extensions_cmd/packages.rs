@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::{Context as _, Result};
 use chrono::Utc;
 use serde::Serialize;
-use veronica_host::bundled::{install_preferred, Bundled};
+use veronica_host::bundled::{install_preferred, newest, Bundled, BundledListing};
 use veronica_host::catalog::CatalogStore;
 use veronica_host::fetch::HttpTransport;
 use veronica_host::host_api::HostServices;
@@ -711,16 +711,36 @@ struct SearchRow {
     latest: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     installed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bundled: Option<String>,
+}
+
+fn bundled_listings(catalog: &Catalog) -> Vec<BundledListing> {
+    bundled()
+        .map(|bundled| bundled.listings(catalog))
+        .unwrap_or_default()
 }
 
 pub(super) fn search(env: &Env, query: &str) -> Result<()> {
     let needle = query.to_lowercase();
     let registry = env.registry()?;
     let loaded = env.catalog()?;
+    let listings = bundled_listings(&loaded.catalog);
+    let packaged = |id: &str| {
+        listings
+            .iter()
+            .find(|listing| listing.entry.id == id)
+            .map(|listing| listing.version)
+    };
+    let only_bundled = listings
+        .iter()
+        .filter(|listing| listing.only_bundled)
+        .map(|listing| &listing.entry);
     let rows: Vec<SearchRow> = loaded
         .catalog
         .extensions
         .iter()
+        .chain(only_bundled)
         .filter(|listed| {
             [&listed.id, &listed.title, &listed.summary, &listed.category]
                 .iter()
@@ -732,10 +752,13 @@ pub(super) fn search(env: &Env, query: &str) -> Result<()> {
             summary: listed.summary.clone(),
             category: listed.category.clone(),
             labs: listed.labs,
-            latest: listed.latest.to_string(),
+            latest: newest(Some(listed.latest), packaged(&listed.id))
+                .unwrap_or(listed.latest)
+                .to_string(),
             installed: registry
                 .get(&listed.id)
                 .map(|entry| entry.version.to_string()),
+            bundled: packaged(&listed.id).map(|version| version.to_string()),
         })
         .collect();
     env.output.emit(&rows, || {
@@ -781,6 +804,8 @@ struct PackageInfo {
     installed: Option<InstalledInfo>,
     #[serde(skip_serializing_if = "Option::is_none")]
     latest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bundled: Option<String>,
     permissions: Permissions,
     requires: Requirements,
     commands: Vec<String>,
@@ -790,7 +815,13 @@ pub(super) fn info(env: &Env, registry: &Registry, id: &str) -> Result<()> {
     let installed = registry.get(id);
     let manifest = installed.map(|_| env.manifest(id)).transpose()?;
     let loaded = env.catalog()?;
-    let listed = loaded.catalog.extension(id);
+    let packaged = bundled_listings(&loaded.catalog)
+        .into_iter()
+        .find(|listing| listing.entry.id == id);
+    let listed = loaded
+        .catalog
+        .extension(id)
+        .or_else(|| packaged.as_ref().map(|listing| &listing.entry));
     let report = match (&manifest, listed) {
         (Some(manifest), _) => PackageInfo {
             id: id.to_string(),
@@ -800,6 +831,7 @@ pub(super) fn info(env: &Env, registry: &Registry, id: &str) -> Result<()> {
             labs: manifest.labs,
             installed: None,
             latest: None,
+            bundled: None,
             permissions: manifest.permissions.clone(),
             requires: manifest.requires.clone(),
             commands: manifest
@@ -816,6 +848,7 @@ pub(super) fn info(env: &Env, registry: &Registry, id: &str) -> Result<()> {
             labs: listed.labs,
             installed: None,
             latest: None,
+            bundled: None,
             permissions: listed.permissions.clone(),
             requires: listed.requires.clone(),
             commands: Vec::new(),
@@ -830,7 +863,15 @@ pub(super) fn info(env: &Env, registry: &Registry, id: &str) -> Result<()> {
             installed_at: entry.installed_at.clone(),
             previous: entry.previous.map(|version| version.to_string()),
         }),
-        latest: listed.map(|listed| listed.latest.to_string()),
+        latest: listed.map(|listed| {
+            newest(
+                Some(listed.latest),
+                packaged.as_ref().map(|listing| listing.version),
+            )
+            .unwrap_or(listed.latest)
+            .to_string()
+        }),
+        bundled: packaged.map(|listing| listing.version.to_string()),
         ..report
     };
     env.output.emit(&report, || render_info(&report))
@@ -858,6 +899,9 @@ fn render_info(report: &PackageInfo) -> String {
     }
     if let Some(latest) = &report.latest {
         line("latest", latest);
+    }
+    if let Some(bundled) = &report.bundled {
+        line("bundled", &format!("{bundled}, installs offline"));
     }
     if !report.requires.tools.is_empty() {
         line("needs tools", &report.requires.tools.join(", "));

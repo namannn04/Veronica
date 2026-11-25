@@ -1,6 +1,9 @@
+use std::collections::BTreeMap;
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Serialize;
+use veronica_host::bundled::{newest, Bundled};
 use veronica_host::catalog::{CatalogStore, LoadedCatalog, Provenance};
 use veronica_host::fetch::HttpTransport;
 use veronica_host::registry::Origin;
@@ -8,7 +11,7 @@ use veronica_host::supervisor::Status;
 use veronica_host::update::{plan, resolve, AutoUpdate, Decision, Trigger};
 use veronica_host::HostIdentity;
 use veronica_protocol::catalog::{CatalogExtension, CatalogProfile, Category};
-use veronica_protocol::Manifest;
+use veronica_protocol::{Manifest, PackageVersion};
 
 use super::host::Host;
 
@@ -84,6 +87,7 @@ pub(crate) struct Offer {
     pub entry: CatalogExtension,
     pub installed: Option<String>,
     pub available: Option<String>,
+    pub bundled: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -110,20 +114,40 @@ fn shelf(host: &Host, loaded: LoadedCatalog, query: &str, category: Option<&str>
     let registry = host.registry()?;
     let identity = HostIdentity::current();
     let catalog = loaded.catalog;
+    let listings = Bundled::current()
+        .ok()
+        .flatten()
+        .map(|bundled| bundled.listings(&catalog))
+        .unwrap_or_default();
+    let packaged: BTreeMap<&str, PackageVersion> = listings
+        .iter()
+        .map(|listing| (listing.entry.id.as_str(), listing.version))
+        .collect();
+    let only_bundled = listings
+        .iter()
+        .filter(|listing| listing.only_bundled)
+        .map(|listing| &listing.entry);
     let extensions = catalog
         .extensions
         .iter()
+        .chain(only_bundled)
         .filter(|entry| matches(entry, query, category))
         .map(|entry| {
             let installed = registry.get(&entry.id);
             let quarantined = installed
                 .map(|installed| installed.quarantined.clone())
                 .unwrap_or_default();
+            let bundled = packaged
+                .get(entry.id.as_str())
+                .copied()
+                .filter(|version| !quarantined.contains(version));
+            let published = resolve(&catalog, &entry.id, &identity, &quarantined)
+                .map(|(version, _)| version.version);
             Offer {
                 entry: entry.clone(),
                 installed: installed.map(|installed| installed.version.to_string()),
-                available: resolve(&catalog, &entry.id, &identity, &quarantined)
-                    .map(|(version, _)| version.version.to_string()),
+                available: newest(published, bundled).map(|version| version.to_string()),
+                bundled: bundled.map(|version| version.to_string()),
             }
         })
         .collect();

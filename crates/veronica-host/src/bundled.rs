@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, ensure, Context, Result};
@@ -11,8 +12,9 @@ use veronica_core::settings::Settings;
 use veronica_protocol::bundled::{
     BundledIndex, BundledPackage, BUNDLED_INDEX, BUNDLED_SCHEMA, NEVER_BUNDLED,
 };
-use veronica_protocol::catalog::Catalog;
-use veronica_protocol::manifest::Profile;
+use veronica_protocol::catalog::{Catalog, CatalogExtension};
+use veronica_protocol::manifest::{Manifest, Profile};
+use veronica_protocol::PackageVersion;
 
 use crate::archive::sha256_hex;
 use crate::fetch::Transport;
@@ -25,6 +27,9 @@ pub const DEB_DIR: &str = "/usr/share/veronica/extensions";
 pub const FLATPAK_DIR: &str = "/app/share/veronica/extensions";
 pub const PACKAGED_DIR: &str = "usr/share/veronica/extensions";
 pub const PROFILE_KEY: &str = "profile";
+
+const MANIFEST: &str = "manifest.json";
+const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
 
 const LEGACY_IDS: [(&str, &str); 3] = [
     ("music", "media"),
@@ -45,6 +50,53 @@ pub fn bundled_dir(environment: &LaunchEnvironment) -> Option<PathBuf> {
             .as_ref()
             .map(|root| root.join(PACKAGED_DIR)),
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BundledListing {
+    pub entry: CatalogExtension,
+    pub version: PackageVersion,
+    pub only_bundled: bool,
+}
+
+pub fn listing(manifest: &Manifest, version: PackageVersion) -> CatalogExtension {
+    CatalogExtension {
+        id: manifest.id.clone(),
+        title: manifest.title.clone(),
+        summary: manifest.summary.clone(),
+        category: manifest.category.clone(),
+        icon: manifest.icon.clone(),
+        labs: manifest.labs,
+        profiles: manifest.profiles.clone(),
+        suggest_for: manifest.suggest_for.clone(),
+        permissions: manifest.permissions.clone(),
+        requires: manifest.requires.clone(),
+        contracts: manifest.contracts.clone(),
+        latest: version,
+        versions: Vec::new(),
+    }
+}
+
+pub fn newest(
+    published: Option<PackageVersion>,
+    bundled: Option<PackageVersion>,
+) -> Option<PackageVersion> {
+    published.max(bundled)
+}
+
+fn packaged_manifest(bytes: &[u8]) -> Result<Manifest> {
+    let decoder = zstd::stream::read::Decoder::new(bytes)?;
+    let mut archive = tar::Archive::new(decoder);
+    for entry in archive.entries()? {
+        let entry = entry?;
+        if entry.path()? != Path::new(MANIFEST) {
+            continue;
+        }
+        let mut raw = String::new();
+        entry.take(MAX_MANIFEST_BYTES).read_to_string(&mut raw)?;
+        return Manifest::parse(&raw).context("the bundled manifest is invalid");
+    }
+    bail!("the bundled package has no {MANIFEST}")
 }
 
 pub fn extension_id(legacy: &str) -> &str {
@@ -120,6 +172,32 @@ impl Bundled {
             path.display()
         );
         Ok((package, bytes))
+    }
+
+    pub fn manifest(&self, id: &str) -> Result<Manifest> {
+        let (_, bytes) = self.verified(id)?;
+        packaged_manifest(bytes.as_slice()).with_context(|| format!("cannot read {id}"))
+    }
+
+    pub fn listings(&self, catalog: &Catalog) -> Vec<BundledListing> {
+        self.index
+            .extensions
+            .iter()
+            .filter_map(|package| {
+                let (entry, only_bundled) = match catalog.extension(&package.id) {
+                    Some(entry) => (entry.clone(), false),
+                    None => (
+                        listing(&self.manifest(&package.id).ok()?, package.version),
+                        true,
+                    ),
+                };
+                Some(BundledListing {
+                    entry,
+                    version: package.version,
+                    only_bundled,
+                })
+            })
+            .collect()
     }
 
     pub fn install(&self, installer: &Installer, id: &str) -> Result<InstalledExtension> {

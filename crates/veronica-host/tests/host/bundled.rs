@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{json, Value};
 use veronica_core::settings::Settings;
-use veronica_host::bundled::{bundled_dir, claim_due, install_preferred, Bundled};
+use veronica_host::bundled::{bundled_dir, claim_due, install_preferred, newest, Bundled};
 use veronica_host::catalog::CatalogStore;
 use veronica_host::launcher::LaunchEnvironment;
 use veronica_host::registry::Origin;
@@ -308,4 +308,50 @@ fn the_packaging_installs_the_bundle_where_the_host_looks() {
         format!("/{}", veronica_host::bundled::PACKAGED_DIR),
         veronica_host::bundled::DEB_DIR
     );
+}
+
+#[test]
+fn bundled_only_packages_are_listed_from_their_manifest_and_catalog_entries_win() {
+    let root = tempfile::tempdir().unwrap();
+    let repo = extension_repo();
+    let first = pack_release(repo.path(), "1.0.3");
+    let second = pack_release(repo.path(), "1.0.4");
+    let bundled = bundled_from(root.path(), &first.0);
+    let transport = FakeTransport::default();
+
+    let offline = Catalog {
+        extensions: Vec::new(),
+        ..live_catalog(&transport, std::slice::from_ref(&first))
+    };
+    let listed = bundled.listings(&offline);
+    assert_eq!(listed.len(), 1);
+    let only = &listed[0];
+    assert!(only.only_bundled);
+    assert_eq!(only.version, v("1.0.3"));
+    assert_eq!(
+        (
+            only.entry.id.as_str(),
+            only.entry.title.as_str(),
+            only.entry.category.as_str()
+        ),
+        ("probe", "Probe", "labs")
+    );
+    assert_eq!(only.entry.latest, v("1.0.3"));
+    assert!(only.entry.versions.is_empty());
+    assert_eq!(bundled.manifest("probe").unwrap().id, "probe");
+    assert!(bundled.manifest("absent").is_err());
+
+    let catalog = live_catalog(&transport, &[first, second]);
+    let listed = bundled.listings(&catalog);
+    assert!(!listed[0].only_bundled);
+    assert_eq!(listed[0].entry, catalog.extensions[0]);
+    assert_eq!(listed[0].version, v("1.0.3"));
+}
+
+#[test]
+fn the_newer_of_the_catalog_and_the_bundle_is_offered() {
+    assert_eq!(newest(Some(v("1.0.4")), Some(v("1.0.3"))), Some(v("1.0.4")));
+    assert_eq!(newest(Some(v("1.0.2")), Some(v("1.0.3"))), Some(v("1.0.3")));
+    assert_eq!(newest(None, Some(v("1.0.3"))), Some(v("1.0.3")));
+    assert_eq!(newest(None, None), None);
 }
