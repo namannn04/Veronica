@@ -21,7 +21,6 @@
     "asset://localhost/etc/hostname",
     "http://asset.localhost/etc/hostname",
     `${NEIGHBOUR}/secret.js`,
-    `${OWN}/app.js`,
     "http://127.0.0.1:9/",
   ];
 

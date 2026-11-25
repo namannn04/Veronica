@@ -1,3 +1,4 @@
+import type { Client } from "@veronica/extension-api";
 import { useClient } from "@veronica/ui/frame";
 import {
   createContext,
@@ -56,6 +57,14 @@ export function useFileUrl(path: string | null | undefined): string | null {
   return url;
 }
 
+async function playableSource(client: Client, path: string) {
+  const response = await fetch(await client.files.url(path));
+  if (!response.ok) {
+    throw new Error(`could not read ${path}`);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
 export function LocalPlayerProvider({ children }: { children: ReactNode }) {
   const client = useClient();
   const [element] = useState(() => new Audio());
@@ -93,9 +102,11 @@ export function LocalPlayerProvider({ children }: { children: ReactNode }) {
       }
       const element = audio.current;
       setIndex(next);
-      void client.files
-        .url(track.path)
+      void playableSource(client, track.path)
         .then((source) => {
+          if (element.src.startsWith("blob:")) {
+            URL.revokeObjectURL(element.src);
+          }
           element.src = source;
           return element.play();
         })
