@@ -159,6 +159,9 @@
     }
   ],
   "permissions": {
+    "dbus": {
+      "session": ["io.github.namannn04.Veronica.Shell"]
+    },
     "spawn": ["wl-copy", "xclip", "xsel"],
     "host": ["shortcuts"]
   }
