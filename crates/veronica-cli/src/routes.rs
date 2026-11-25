@@ -240,6 +240,9 @@ fn build(command: &Command) -> clap::Command {
     if let Some(long_about) = &command.long_about {
         built = built.long_about(long_about.clone());
     }
+    if command.hidden {
+        built = built.hide(true);
+    }
     if !command.is_leaf() {
         built = built
             .subcommand_required(true)

@@ -235,6 +235,7 @@ impl Walker<'_> {
             name,
             about: command.get_about().map(ToString::to_string),
             long_about: command.get_long_about().map(ToString::to_string),
+            hidden: command.is_hide_set(),
             aliases: command.get_all_aliases().map(str::to_string).collect(),
             effect,
             json,
