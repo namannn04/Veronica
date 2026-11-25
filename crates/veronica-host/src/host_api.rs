@@ -58,6 +58,12 @@ impl Frontend for Headless {
     fn notify(&self, _extension: &str, _params: NotifyParams) -> Result<(), ErrorObject> {
         Err(unavailable("notifications need the desktop app"))
     }
+
+    fn progress(&self, _extension: &str, params: ProgressParams) {
+        if let Some(message) = params.message {
+            eprintln!("{message}");
+        }
+    }
 }
 
 fn unavailable(message: &str) -> ErrorObject {
