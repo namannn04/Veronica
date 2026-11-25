@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use serde_json::json;
-use veronica_core::{AppDirectories, Settings};
 use veronica_machines::host::{self, Machine};
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::settings::Settings;
+use veronica_sdk::{format, Output};
 use veronica_system::quinjet::{self, LaunchOptions};
-
-use crate::format::{self, Output};
 
 const MACHINES_KEY: &str = "machines";
 
@@ -67,7 +67,7 @@ async fn discover(machine: &Machine, args: &[String]) -> Result<Vec<u8>> {
             "Quinjet is not installed, or is not on PATH or in ~/.local/bin. \
              Nothing else in Veronica needs it.",
         )?;
-        let output = tokio::process::Command::from(veronica_core::host::command(&executable))
+        let output = tokio::process::Command::from(veronica_sdk::spawn::command(&executable))
             .args(args)
             .output()
             .await
@@ -99,12 +99,8 @@ async fn discover(machine: &Machine, args: &[String]) -> Result<Vec<u8>> {
     Ok(output.into_bytes())
 }
 
-pub(crate) async fn run(
-    directories: &AppDirectories,
-    command: &QuinjetCommand,
-    output: Output,
-) -> Result<()> {
-    let settings = Settings::load(&directories.settings_file())?;
+pub(crate) async fn run(command: &QuinjetCommand, output: Output<'_>) -> Result<()> {
+    let settings = Settings::load(&AppDirectories::current()?.settings_file())?;
 
     match command {
         QuinjetCommand::Projects { machine } => {

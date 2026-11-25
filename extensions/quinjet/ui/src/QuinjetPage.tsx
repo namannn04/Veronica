@@ -10,15 +10,16 @@ import {
   PageHeader,
   Section,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { ChevronRight, FolderGit2, GitBranch, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { ipc } from "../lib/ipc";
-import type { QuinjetBoard, QuinjetProject, QuinjetWorktree } from "../lib/types";
+import type { QuinjetBoard, QuinjetProject, QuinjetWorktree } from "./types";
 import "./QuinjetPage.css";
 
 const ICON = { strokeWidth: 1.75 };
 
 export function QuinjetPage() {
+  const client = useClient();
   const [board, setBoard] = useState<QuinjetBoard | null>(null);
   const [expanded, setExpanded] = useState<Set<string> | null>(null);
   const [error, setError] = useState("");
@@ -28,13 +29,13 @@ export function QuinjetPage() {
     setBusy(true);
     setError("");
     try {
-      setBoard(await ipc.quinjetProjects());
+      setBoard(await client.backend.call<QuinjetBoard>("projects"));
     } catch (reason) {
       setError(String(reason));
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     void load();
@@ -43,7 +44,7 @@ export function QuinjetPage() {
   const open = async (worktree: QuinjetWorktree) => {
     setError("");
     try {
-      await ipc.quinjetOpen(worktree.path);
+      await client.backend.call("open", { worktree: worktree.path });
     } catch (reason) {
       setError(String(reason));
     }
