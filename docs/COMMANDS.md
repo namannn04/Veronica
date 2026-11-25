@@ -59,6 +59,9 @@ vr backup import <file> --yes  validate and restore an archive atomically
 vr extensions                every extension, where it came from, and what it can run
 vr extensions install <id>   preview an install; --yes downloads, verifies and installs
 vr extensions doctor         exec permission, backends, tools and the catalog
+vr guide                     the manual; --json lists every command with its effect
+vr invoke <id> <json>        call an extension backend method directly
+vr surfaces                  the Home cards and notch activities extensions publish
 vr mcp                       every command as an MCP tool, plus the read-only database tools
 vr mcp install --client all  register that server with every agent client found; --yes writes
 vr mcp status                which agent clients have it registered

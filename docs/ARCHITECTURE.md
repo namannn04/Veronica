@@ -26,6 +26,32 @@ platform layer against Linux services.
 | CLI                | Rust, shared crates                      | `vr` reaches the same operations as the UI, exactly as Edith's `ed` does                                                                   |
 | Usage collection   | Edith's `refresh-usage` script, verbatim | Identical numbers on both platforms, see below                                                                                             |
 
+## Extensions
+
+The desktop app is a small host. Each feature is an extension in
+`extensions/<id>/`: a `manifest.json` that declares its pages, commands,
+Home cards, notch activities, shortcuts and permissions, a backend program
+built with `veronica-sdk`, and an optional interface bundle.
+
+- **Interfaces** run in a sandboxed frame served from `veronica-ext://<id>/`
+  with a strict content security policy. They reach the host only through a
+  versioned bridge (`@veronica/extension-api`), and every call is checked
+  against the manifest's permissions.
+- **Backends** are separate processes speaking JSON-RPC over stdio. The host
+  starts them on demand or in the background, restarts them with backoff, and
+  stops a backend that keeps crashing. Destructive commands never run without
+  confirmation: the SDK refuses them and the host only confirms on `--yes`.
+- **Packages** are verified archives. Every desktop package ships the
+  extensions built from the same commit, so installs work offline; newer
+  versions come from a signed catalog of GitHub releases, verified against a
+  key compiled into the host, with rollback protection. A failed health check
+  after an update rolls back and quarantines that version.
+- **The command line** builds `vr`'s command tree from the installed
+  manifests, so `vr <extension> ...` routes to that extension's backend with
+  the same JSON, exit-code and confirmation rules as built-in commands.
+  `vr guide --json` lists every command, and `vr mcp` serves each one as an
+  MCP tool.
+
 ## Crate layout
 
 | Path                       | Responsibility                                                                                                                                                                                                                                        |
@@ -38,10 +64,16 @@ platform layer against Linux services.
 | `crates/veronica-machines` | The fleet: host model, the probe, and running it locally or over SSH.                                                                                                                                                                                 |
 | `crates/veronica-audit`    | Site Audit: sitemap discovery, page metadata, and Edith's eleven checks.                                                                                                                                                                              |
 | `crates/veronica-database` | The database client: connection definitions, the capability map, six adapters, the confirmation guard, the SQLite metadata store, and the read-only MCP server.                                                                                       |
+| `crates/veronica-protocol` | Extension manifest, catalog and package types, the host and backend JSON-RPC protocol, exit codes and canonical JSON.                                                                                                                                 |
+| `crates/veronica-sdk`      | What extension backends link: the stdio runtime, the host client, captured command output and manifest generation from clap.                                                                                                                          |
+| `crates/veronica-host`     | Installing, verifying, updating and removing extensions, the signed catalog client, bundled packages, the backend supervisor and router, permissions, surfaces and MCP client registration.                                                           |
+| `crates/veronica-pack`     | `vr-pack`, the release tool: validate, fingerprint, pack, bundle, build and sign the catalog.                                                                                                                                                         |
 | `crates/veronica-cli`      | The `vr` binary.                                                                                                                                                                                                                                      |
 | `apps/desktop`             | Tauri application: Rust commands plus the React interface.                                                                                                                                                                                            |
 | `resources/refresh-usage`  | The bundled usage collector.                                                                                                                                                                                                                          |
 | `extension/`               | GNOME Shell extension: Veronica's sections inside the real top bar and its clock dropdown, the top bar's CPU/memory readout, clipboard capture, Focus Dim's overlay, Keystroke Highlight and pasting in place: everything only the compositor can do. |
+| `extensions/`              | One directory per extension: manifest, guide, backend crate and interface.                                                                                                                                                                            |
+| `packages/`                | `@veronica/extension-api` for extension interfaces and `@veronica/ui`, the interface kit shared by the app and extensions.                                                                                                                            |
 | `packaging/`               | Debian package, AppImage, desktop entry and AppStream metadata.                                                                                                                                                                                       |
 
 ## The usage collector is shared, not reimplemented

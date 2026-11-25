@@ -9,9 +9,9 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0%20%2B%20attribution-blue.svg" alt="License: GPL-3.0 with attribution"></a>
 </p>
 
-A native desktop control center for Ubuntu. Agent usage, system tools, media,
-clipboard and GNOME integration in one app, with no account, no telemetry and
-no paid tier.
+A native desktop control center for Ubuntu. A small app plus a Library of
+extensions you choose: agent usage, system tools, media, clipboard and GNOME
+integration, with no account, no telemetry and no paid tier.
 
 Requires Ubuntu 24.04 or later on x86_64 with GNOME Shell 46 to 50. Screenshots
 and shortcuts are on the [website](https://veronica.namandadhich.in/).
@@ -53,6 +53,10 @@ sudo snap install --classic --dangerous ./Veronica_<version>_amd64.snap
 
 ## Features
 
+Each area below is an extension. The first launch asks how you use Veronica,
+Simple or Developer, and installs that starter set; add or remove the rest from
+the Library at any time.
+
 | Area               | What you get                                                                                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agent usage        | Local spend and token accounting for Claude, Codex, Cursor and Command Code, rate-limit rings with pace, a dashboard, an activity calendar and shareable cards |
@@ -69,6 +73,20 @@ Global shortcuts: `Ctrl+Alt+V` opens Veronica, `Ctrl+Alt+B` clipboard,
 `Ctrl+Alt+M` mic mute, `Ctrl+Alt+P` color picker, `Ctrl+Alt+E` emoji picker and
 `Ctrl+K` searches every page. Extensions can add their own, and Settings,
 Shortcuts lists every one with a way to change or turn it off.
+
+## Extensions
+
+Extensions are separate packages that Veronica installs, verifies and updates
+on its own. Every package ships inside the app, so the Library works offline,
+and newer versions come from a signed catalog. Only this repository publishes
+extensions; see [docs/EXTENSIONS.md](docs/EXTENSIONS.md).
+
+```bash
+vr extensions                 every extension and where it came from
+vr extensions install media   preview an install; --yes performs it
+vr extensions setup --profile developer --yes
+vr mcp install --client all --yes   let your coding agents call every vr command
+```
 
 ## Command line
 
