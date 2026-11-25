@@ -16,7 +16,6 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 veronica-core = { workspace = true }
 veronica-system = { workspace = true }
-veronica-database = { workspace = true }
 veronica-host = { path = "../../../crates/veronica-host" }
 veronica-protocol = { workspace = true }
 zbus = { workspace = true }

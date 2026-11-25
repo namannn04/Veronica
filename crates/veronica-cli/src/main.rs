@@ -1,7 +1,6 @@
 use std::fmt::Write as _;
 
 mod backup_cmd;
-mod database_cmd;
 mod extensions_cmd;
 mod format;
 mod guide_cmd;
@@ -75,12 +74,6 @@ enum Command {
         about = "Export, inspect and restore Veronica's persistent data"
     )]
     Backup(backup_cmd::BackupCommand),
-    #[command(
-        subcommand,
-        alias = "db",
-        about = "Explore databases and run guarded changes"
-    )]
-    Database(database_cmd::DatabaseCommand),
     #[command(
         subcommand,
         about = "Keep Awake and Lid Awake, open-ended or for a while"
@@ -233,7 +226,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
-        Command::Database(command) => database_cmd::run(&directories, command, output).await,
     }
 }
 
