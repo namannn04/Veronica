@@ -6,7 +6,6 @@ mod extensions_cmd;
 mod format;
 mod guide_cmd;
 mod invoke_cmd;
-mod machines_cmd;
 mod mcp_cmd;
 mod power_cmd;
 mod presenter_cmd;
@@ -94,12 +93,6 @@ enum Command {
         about = "Explore databases and run guarded changes"
     )]
     Database(database_cmd::DatabaseCommand),
-    #[command(
-        subcommand,
-        alias = "machine",
-        about = "The computers Veronica can reach"
-    )]
-    Machines(machines_cmd::MachineCommand),
     #[command(subcommand, about = "CPU, memory, storage and battery information")]
     System(system_cmd::SystemCommand),
     #[command(
@@ -257,7 +250,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::System(command) => system_cmd::run(command, output).await,
         Command::Power(command) => power_cmd::run(&directories, command, output),
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
-        Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
     }
 }

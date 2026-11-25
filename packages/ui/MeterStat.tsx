@@ -1,4 +1,5 @@
-import { ProgressBar, Stat, type Tone } from "@veronica/ui";
+import { ProgressBar, type Tone } from "./Feedback";
+import { Stat } from "./Stat";
 import "./MeterStat.css";
 
 export function thresholdTone(value: number, warnAt: number, criticalAt: number): Tone {

@@ -79,8 +79,8 @@ impl ExtensionEntry {
 
 use Capability::{
     DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression, MachineManagement,
-    MicrophoneControl, Notifications, PreventSleep, RunningApplications, ScreenShareDetection,
-    ShellIntegration, SystemMetrics,
+    MicrophoneControl, PreventSleep, RunningApplications, ScreenShareDetection, ShellIntegration,
+    SystemMetrics,
 };
 use ExtensionGroup as G;
 
@@ -96,18 +96,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_capabilities: &[RunningApplications],
         optional_capabilities: &[PreventSleep, InputSuppression],
         required_tools: &[],
-    },
-    ExtensionEntry {
-        id: "machines",
-        title: "Machines",
-        subtitle: "Your other computers over SSH: stats, files, Docker, and a terminal.",
-        icon: "server",
-        group: G::System,
-        featured: true,
-        defaults_key: "tabMachinesEnabled",
-        required_capabilities: &[MachineManagement],
-        optional_capabilities: &[Notifications],
-        required_tools: &["ssh"],
     },
     ExtensionEntry {
         id: "database",
@@ -221,6 +209,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         featured: true,
     },
     LegacyToggle {
+        id: "machines",
+        extension: "machines",
+        defaults_key: "tabMachinesEnabled",
+        featured: true,
+    },
+    LegacyToggle {
         id: "attention",
         extension: "attention",
         defaults_key: "tabAttentionEnabled",
@@ -321,7 +315,6 @@ mod tests {
     fn the_catalogue_keeps_its_order() {
         let ported = [
             "system",
-            "machines",
             "database",
             "systemStats",
             "micMute",

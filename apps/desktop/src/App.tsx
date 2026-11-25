@@ -26,7 +26,6 @@ import { AgentsPage } from "./pages/AgentsPage";
 import { DatabasePage } from "./pages/DatabasePage";
 import { HomePage } from "./pages/HomePage";
 import { LibraryPage } from "./pages/LibraryPage";
-import { MachinesPage } from "./pages/MachinesPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -235,7 +234,6 @@ export function App() {
           {route === "agents" && <AgentsPage />}
           {route === "services" && <ServicesPage />}
           {route === "system" && <SystemPage />}
-          {route === "machines" && <MachinesPage />}
           {route === "database" && <DatabasePage />}
           {route === "library" && (
             <LibraryPage diagnostics={diagnostics} onChanged={loadDiagnostics} />

@@ -40,7 +40,6 @@ import type {
   AudioStream,
   BackupSummary,
   BluetoothState,
-  ContainerInfo,
   DatabaseConnection,
   DatabaseObject,
   DatabaseOperation,
@@ -53,9 +52,6 @@ import type {
   ImportReport,
   InstalledExtension,
   LaunchAtLoginStatus,
-  Machine,
-  MachineDirectory,
-  MachineReport,
   PlannedShortcut,
   PowerStatus,
   PresenterView,
@@ -111,29 +107,6 @@ export const ipc = {
   extConfirmAnswer: (request: number, accepted: boolean) =>
     invoke<boolean>("ext_confirm_answer", { request, accepted }),
   presenterSet: (action: string) => invoke<void>("presenter_set", { action }),
-
-  machinesProbe: () => invoke<MachineReport[]>("machines_probe"),
-  machinesAdd: (target: string, name: string | null, port: number | null) =>
-    invoke<Machine>("machines_add", { target, name, port }),
-  machinesRemove: (id: string) => invoke<void>("machines_remove", { id }),
-  machinesDiscover: () => invoke<string[]>("machines_discover"),
-  machinesTerminal: (id: string) => invoke<void>("machines_terminal", { id }),
-  machinesFiles: (id: string, path: string | null = null) =>
-    invoke<MachineDirectory>("machines_files", { id, path }),
-  machinesFileDownload: (id: string, path: string) =>
-    invoke<string>("machines_file_download", { id, path }),
-  machinesContainers: (id: string) => invoke<ContainerInfo[]>("machines_containers", { id }),
-  machinesContainerAction: (
-    id: string,
-    engine: string,
-    container: string,
-    action: "start" | "stop" | "restart",
-  ) => invoke<void>("machines_container_action", { id, engine, container, action }),
-  machinesContainerLogs: (id: string, engine: string, container: string, lines = 200) =>
-    invoke<string>("machines_container_logs", { id, engine, container, lines }),
-  machinesPower: (id: string, action: "restart" | "shutdown") =>
-    invoke<void>("machines_power", { id, action }),
-  machinesWake: (id: string) => invoke<void>("machines_wake", { id }),
 
   portsSnapshot: () => invoke<import("./types").PortsSnapshot>("ports_snapshot"),
   portsStop: (request: { pid: number; startedAt: string; inode: string }) =>

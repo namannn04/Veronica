@@ -25,6 +25,10 @@ import {
   type Tone,
   Toolbar,
 } from "@veronica/ui";
+import { bytes, countdown } from "@veronica/ui/format";
+import { frameVisibility } from "@veronica/ui/frame";
+import { MeterStat } from "@veronica/ui/MeterStat";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import {
   ArrowUp,
   ChevronRight,
@@ -40,11 +44,8 @@ import {
   Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { MeterStat } from "../components/MeterStat";
-import { bytes, countdown } from "../lib/format";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type { ContainerInfo, MachineDirectory, MachineReport } from "../lib/types";
+import { errorText, ipc } from "./api";
+import type { ContainerInfo, MachineDirectory, MachineReport } from "./types";
 import "./MachinesPage.css";
 
 const TICK_MS = 5000;
@@ -91,7 +92,7 @@ export function MachinesPage() {
       setReports(await ipc.machinesProbe());
       setError(null);
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setLoading(false);
     }
@@ -106,7 +107,7 @@ export function MachinesPage() {
   }, []);
 
   useEffect(() => {
-    const stop = startVisiblePolling(load, TICK_MS);
+    const stop = startVisiblePolling(load, TICK_MS, frameVisibility);
     void loadDiscovered();
     return stop;
   }, [load, loadDiscovered]);
@@ -124,7 +125,7 @@ export function MachinesPage() {
       setAdding(false);
       await Promise.all([load(), loadDiscovered()]);
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setBusy(false);
     }
@@ -136,7 +137,7 @@ export function MachinesPage() {
       await ipc.machinesRemove(id);
       await Promise.all([load(), loadDiscovered()]);
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setBusy(false);
     }
@@ -394,7 +395,7 @@ function MachineDetail({
     try {
       setDirectory(await ipc.machinesFiles(machine.id, path));
     } catch (reason) {
-      setToolError(String(reason));
+      setToolError(errorText(reason));
     } finally {
       setToolBusy(false);
     }
@@ -406,7 +407,7 @@ function MachineDetail({
     try {
       setContainers(await ipc.machinesContainers(machine.id));
     } catch (reason) {
-      setToolError(String(reason));
+      setToolError(errorText(reason));
     } finally {
       setToolBusy(false);
     }
@@ -415,9 +416,9 @@ function MachineDetail({
     setToolBusy(true);
     setToolError("");
     try {
-      await ipc.openExternal(await ipc.machinesFileDownload(machine.id, path));
+      await ipc.machinesOpenFile(machine.id, path);
     } catch (reason) {
-      setToolError(String(reason));
+      setToolError(errorText(reason));
     } finally {
       setToolBusy(false);
     }
@@ -432,7 +433,7 @@ function MachineDetail({
         text: await ipc.machinesContainerLogs(machine.id, container.engine, container.id),
       });
     } catch (reason) {
-      setToolError(String(reason));
+      setToolError(errorText(reason));
     } finally {
       setToolBusy(false);
     }
@@ -446,7 +447,7 @@ function MachineDetail({
     try {
       await ipc.machinesPower(machine.id, power);
     } catch (reason) {
-      setToolError(String(reason));
+      setToolError(errorText(reason));
     } finally {
       setToolBusy(false);
       setPower(null);
@@ -460,7 +461,7 @@ function MachineDetail({
       await ipc.machinesWake(machine.id);
       setToolNote("Wake packet sent. Nothing confirms it: the machine is not answering yet.");
     } catch (reason) {
-      setToolError(String(reason));
+      setToolError(errorText(reason));
     } finally {
       setToolBusy(false);
     }
@@ -472,12 +473,12 @@ function MachineDetail({
       await ipc.machinesContainerAction(machine.id, container.engine, container.id, action);
       await loadContainers();
     } catch (reason) {
-      setToolError(String(reason));
+      setToolError(errorText(reason));
       setToolBusy(false);
     }
   };
   const openTerminal = () =>
-    void ipc.machinesTerminal(machine.id).catch((reason) => setToolError(String(reason)));
+    void ipc.machinesTerminal(machine.id).catch((reason) => setToolError(errorText(reason)));
 
   const chooseTool = (next: Tool) => {
     setToolError("");

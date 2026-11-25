@@ -6,7 +6,6 @@ import {
   ExtensionsIcon,
   HerdrIcon,
   HomeIcon,
-  MachinesIcon,
   NamedIcon,
   PortsIcon,
   SettingsIcon,
@@ -20,7 +19,6 @@ export type BuiltinRoute =
   | "agents"
   | "system"
   | "services"
-  | "machines"
   | "database"
   | "library"
   | "settings"
@@ -86,14 +84,6 @@ export const NAV_GROUPS: NavGroup[] = [
         keywords: "ports port localhost 3000 8080 server process stop docker containers daemon",
       },
 
-      {
-        id: "machines",
-        label: "Machines",
-        icon: <MachinesIcon />,
-        extensionId: "machines",
-        hint: "This computer and SSH hosts",
-        keywords: "ssh remote servers hosts docker containers wake",
-      },
       {
         id: "database",
         label: "Database",
