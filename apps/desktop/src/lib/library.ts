@@ -249,9 +249,7 @@ export function availableActions(
   if (row.previous !== null && row.origin === "catalog") {
     actions.push("rollback");
   }
-  if (row.origin !== "builtin") {
-    actions.push("remove");
-  }
+  actions.push("remove");
   return actions;
 }
 

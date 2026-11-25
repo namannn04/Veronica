@@ -270,19 +270,6 @@ pub fn successor(id: &str) -> Option<&'static str> {
         .map(|toggle| toggle.extension)
 }
 
-pub fn filter(query: &str, group: Option<ExtensionGroup>) -> Vec<&'static ExtensionEntry> {
-    let needle = query.trim().to_lowercase();
-    ENTRIES
-        .iter()
-        .filter(|entry| group.is_none_or(|g| entry.group == g))
-        .filter(|entry| {
-            needle.is_empty()
-                || entry.title.to_lowercase().contains(&needle)
-                || entry.subtitle.to_lowercase().contains(&needle)
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -377,32 +364,5 @@ mod tests {
                 "non-GNOME {kind:?}"
             );
         }
-    }
-
-    #[test]
-    fn filter_matches_subtitle_case_insensitively() {
-        let first = ENTRIES.first().unwrap();
-        let word = first
-            .subtitle
-            .split_whitespace()
-            .max_by_key(|word| word.len())
-            .unwrap()
-            .trim_matches(|character: char| !character.is_alphanumeric());
-        let needle = word.to_lowercase();
-        let hits = filter(&word.to_uppercase(), None);
-        assert!(hits.iter().any(|entry| entry.id == first.id));
-        assert!(hits.iter().all(|entry| {
-            entry.title.to_lowercase().contains(&needle)
-                || entry.subtitle.to_lowercase().contains(&needle)
-        }));
-    }
-
-    #[test]
-    fn empty_query_returns_the_whole_group() {
-        assert_eq!(
-            filter("", Some(G::Utilities)).len(),
-            ENTRIES.iter().filter(|e| e.group == G::Utilities).count()
-        );
-        assert_eq!(filter("   ", None).len(), ENTRIES.len());
     }
 }

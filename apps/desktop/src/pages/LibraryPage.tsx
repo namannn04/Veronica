@@ -77,7 +77,6 @@ import {
   permissionSummary,
   watchJobs,
 } from "../lib/library";
-import { NAV_ITEMS } from "../lib/navigation";
 import { type InstallNotice, installNotice } from "../lib/toolInstall";
 import type {
   AutoUpdatePreferences,
@@ -473,12 +472,11 @@ export function LibraryPage({
 }
 
 function EntryIcon({ entry }: { entry: LibraryEntry }) {
-  const navIcon = NAV_ITEMS.find((item) => item.extensionId === entry.id)?.icon;
   const Icon = ICONS[entry.icon ?? ""] ?? Blocks;
   const enabled = entry.feature?.enabled ?? entry.installed?.enabled ?? false;
   return (
     <span className="library-icon" data-enabled={enabled || undefined}>
-      {navIcon ?? <Icon size={16} strokeWidth={1.75} />}
+      <Icon size={16} strokeWidth={1.75} />
     </span>
   );
 }
@@ -490,8 +488,8 @@ function EntryBadges({ entry, unmet }: { entry: LibraryEntry; unmet: boolean }) 
       {row?.origin === "sideload" && <Badge tone="accent">Development</Badge>}
       {bundledOffer(entry) !== null && <Badge tone="accent">Bundled</Badge>}
       {row?.origin === "bundled" && <Badge>Bundled</Badge>}
-      {(entry.feature !== undefined || row?.origin === "builtin") && <Badge>Built in</Badge>}
-      {row !== undefined && row.origin !== "builtin" && <Badge>{row.version}</Badge>}
+      {entry.feature !== undefined && <Badge>Built in</Badge>}
+      {row !== undefined && <Badge>{row.version}</Badge>}
       {row?.update && <Badge tone="good">Update {row.update}</Badge>}
       {row?.state === "crashLooping" && <Badge tone="critical">Keeps crashing</Badge>}
       {entry.feature?.availability === "unavailable" && <Badge tone="critical">Unavailable</Badge>}
@@ -532,7 +530,6 @@ function LibraryRow({
   const permissions = permissionSummary(entry.permissions);
   const tools = entry.requires.tools ?? [];
   const missing = entry.feature?.missing ?? [];
-  const builtinRow = entry.installed?.origin === "builtin";
 
   let trailing: ReactNode;
   if (entry.feature !== undefined) {
@@ -542,16 +539,6 @@ function LibraryRow({
         checked={entry.feature.enabled}
         disabled={entry.feature.availability === "unavailable" || switching}
         onChange={onToggleFeature}
-      />
-    );
-  } else if (builtinRow && entry.installed !== undefined) {
-    const enabled = entry.installed.enabled;
-    trailing = (
-      <Switch
-        label={`${enabled ? "Disable" : "Enable"} ${entry.title}`}
-        checked={enabled}
-        disabled={working}
-        onChange={() => onAction(enabled ? "disable" : "enable")}
       />
     );
   } else if (actions.length > 0) {

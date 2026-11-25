@@ -176,11 +176,6 @@ describe("library actions", () => {
     expect(availableActions(find("emoji"), undefined)).toEqual([]);
     expect(availableActions(find("music"), job("running"))).toEqual([]);
     expect(availableActions(find("music"), job("failed"))).toContain("update");
-    const builtin = {
-      ...find("music"),
-      installed: row("system", { origin: "builtin", enabled: false }),
-    };
-    expect(availableActions(builtin, undefined)).toEqual(["enable"]);
     const running = {
       ...find("local"),
       installed: row("local", { origin: "sideload", state: "running" }),

@@ -69,33 +69,6 @@
   line-height: 1.5;
 }
 
-.home-lines {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.home-lines-title {
-  color: var(--text-1);
-  font-size: var(--text-title-3);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.home-lines-detail {
-  color: var(--text-3);
-  font-size: var(--text-callout);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 @container main (max-width: 720px) {
   .home-card {
     min-height: 0;
