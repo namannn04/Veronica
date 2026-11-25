@@ -7,32 +7,23 @@ import {
   Page,
   PageHeader,
   Segmented,
-  Select,
   Stack,
   Tabs,
   type Tone,
 } from "@veronica/ui";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ProviderSelector } from "../components/ProviderSelector";
 import { ThemePicker } from "../components/ThemePicker";
 import { countdown } from "../lib/format";
 import { invoke, ipc, isDesktopApp, listenEvent } from "../lib/ipc";
 import { chooseProfile, chosenProfile, type Profile, storedStarters } from "../lib/onboarding";
-import {
-  appearanceOf,
-  applyAppearance,
-  type LimitProvider,
-  limitProviderOf,
-  storedLimitProvider,
-} from "../lib/preferences";
+import { appearanceOf, applyAppearance } from "../lib/preferences";
 import type {
   Diagnostics,
   LaunchAtLoginStatus,
   PowerStatus,
   ShellExtensionStatus,
 } from "../lib/types";
-import { AlertsPane } from "./AlertsPane";
 import { BackupPane } from "./BackupPane";
 import { DiagnosticsPage } from "./DiagnosticsPage";
 import { PresenterPane } from "./PresenterPane";
@@ -43,7 +34,6 @@ import "./Settings.css";
 
 type Tab =
   | "general"
-  | "alerts"
   | "presenter"
   | "desktop"
   | "permissions"
@@ -53,8 +43,7 @@ type Tab =
   | "updates";
 
 const TABS: { id: Tab; label: string; subtitle: string }[] = [
-  { id: "general", label: "General", subtitle: "Appearance, usage collection, startup and power" },
-  { id: "alerts", label: "Alerts", subtitle: "Rate-limit alerts, pacing and reset reminders" },
+  { id: "general", label: "General", subtitle: "Appearance, startup and power" },
   {
     id: "presenter",
     label: "Presenter",
@@ -76,20 +65,7 @@ const TABS: { id: Tab; label: string; subtitle: string }[] = [
   { id: "updates", label: "Updates", subtitle: "Check for and install new versions" },
 ];
 
-const USAGE_REFRESH_CHOICES: [number, string][] = [
-  [5, "Every 5 minutes"],
-  [15, "Every 15 minutes"],
-  [30, "Every 30 minutes"],
-  [60, "Every hour"],
-  [0, "Only when I press Refresh"],
-];
-
 const SAVED_VISIBLE_MS = 1800;
-
-function usageRefreshMinutes(value: unknown): number {
-  const minutes = typeof value === "number" ? value : 15;
-  return USAGE_REFRESH_CHOICES.some(([choice]) => choice === minutes) ? minutes : 15;
-}
 
 type Feedback = { tone: "neutral" | "critical"; text: string; load?: boolean } | null;
 
@@ -317,41 +293,6 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
           </FormGroup>
 
           <FormGroup
-            title="Rate limits"
-            description="Which provider the app and the notch show by default."
-          >
-            <FormRow
-              label="Visible provider"
-              description="Switch it here, on the Usage page, or inside the notch."
-              control={
-                <ProviderSelector
-                  value={limitProviderOf(values.limitsProvider)}
-                  onChange={(provider: LimitProvider) =>
-                    void set("limitsProvider", storedLimitProvider(provider))
-                  }
-                />
-              }
-            />
-            <FormRow
-              label="Collect usage"
-              description="How often the app reads your agents' history for Home, Agent Usage and the notch."
-              control={
-                <Select
-                  aria-label="Collect usage"
-                  value={String(usageRefreshMinutes(values.usageRefreshMinutes))}
-                  onChange={(event) => void set("usageRefreshMinutes", Number(event.target.value))}
-                >
-                  {USAGE_REFRESH_CHOICES.map(([minutes, label]) => (
-                    <option key={minutes} value={minutes}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              }
-            />
-          </FormGroup>
-
-          <FormGroup
             title="Startup"
             description="Keep alerts, global shortcuts and tray actions available after a reboot."
           >
@@ -423,7 +364,6 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
         </Stack>
       )}
 
-      {tab === "alerts" && <AlertsPane />}
       {tab === "presenter" && <PresenterPane />}
 
       {tab === "desktop" && (

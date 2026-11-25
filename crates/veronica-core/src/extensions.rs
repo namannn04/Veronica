@@ -81,23 +81,11 @@ use Capability::{
     ClipboardHistory, CompanionService, DatabaseBroker, ExternalMediaControl, GlobalPaste,
     GlobalShortcuts, InputSuppression, KeystrokeObservation, MachineManagement, MicrophoneControl,
     Notifications, PackageManagement, PreventSleep, RunningApplications, ScreenShareDetection,
-    ShellIntegration, SystemMetrics, UsageCollection, WindowDimming,
+    ShellIntegration, SystemMetrics, WindowDimming,
 };
 use ExtensionGroup as G;
 
 pub const ENTRIES: &[ExtensionEntry] = &[
-    ExtensionEntry {
-        id: "usage",
-        title: "Agent Usage",
-        subtitle: "Claude and Codex limits, usage stats, and alerts.",
-        icon: "bar-chart-3",
-        group: G::Agent,
-        featured: true,
-        defaults_key: "tabUsageEnabled",
-        required_capabilities: &[UsageCollection],
-        optional_capabilities: &[Notifications],
-        required_tools: &["claude", "codex"],
-    },
     ExtensionEntry {
         id: "system",
         title: "System",
@@ -288,6 +276,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         featured: true,
     },
     LegacyToggle {
+        id: "usage",
+        extension: "usage",
+        defaults_key: "tabUsageEnabled",
+        featured: true,
+    },
+    LegacyToggle {
         id: "seoAudit",
         extension: "audit",
         defaults_key: "tabSEOAuditEnabled",
@@ -344,10 +338,6 @@ mod tests {
     use super::*;
     use crate::session::{DesktopSession, SessionKind};
 
-    fn caps(kind: SessionKind) -> Capabilities {
-        gnome_caps(kind, false)
-    }
-
     fn gnome_caps(kind: SessionKind, is_gnome: bool) -> Capabilities {
         Capabilities::resolve(&DesktopSession {
             kind,
@@ -361,7 +351,6 @@ mod tests {
     #[test]
     fn the_catalogue_keeps_its_order() {
         let ported = [
-            "usage",
             "system",
             "appMaintenance",
             "machines",
@@ -405,7 +394,8 @@ mod tests {
         assert_eq!(successor("music"), Some("media"));
         assert_eq!(successor("colorPicker"), Some("color"));
         assert_eq!(successor("emoji"), Some("emoji"));
-        assert_eq!(successor("usage"), None);
+        assert_eq!(successor("usage"), Some("usage"));
+        assert_eq!(successor("herdr"), None);
     }
 
     #[test]
@@ -419,15 +409,6 @@ mod tests {
             sorted.dedup();
             assert_eq!(sorted.len(), field.len(), "duplicate entry in {field:?}");
         }
-    }
-
-    #[test]
-    fn usage_is_available_on_wayland_because_it_only_reads_files() {
-        let entry = entry("usage").unwrap();
-        assert_eq!(
-            entry.availability(&caps(SessionKind::Wayland)),
-            ExtensionAvailability::Available
-        );
     }
 
     #[test]

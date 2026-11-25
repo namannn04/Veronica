@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 pub(crate) fn install(app: &AppHandle) -> Result<()> {
     let open = MenuItem::with_id(app, "open", "Open Veronica", true, None::<&str>)?;
@@ -21,7 +21,17 @@ pub(crate) fn install(app: &AppHandle) -> Result<()> {
             "refresh" => {
                 let handle = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(error) = crate::commands::usage_refresh(handle).await {
+                    let host =
+                        std::sync::Arc::clone(&handle.state::<crate::state::AppState>().extensions);
+                    let caller = veronica_protocol::rpc::Caller {
+                        kind: veronica_protocol::rpc::CallerKind::Host,
+                        extension: None,
+                    };
+                    if let Err(error) = host
+                        .router()
+                        .invoke("usage", "refresh", serde_json::Value::Null, caller)
+                        .await
+                    {
                         tracing::warn!("tray refresh failed: {error}");
                     }
                 });

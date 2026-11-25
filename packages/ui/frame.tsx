@@ -5,6 +5,14 @@ import { createRoot } from "react-dom/client";
 import type { VisibilitySource } from "./polling";
 
 const ClientContext = createContext<Client | null>(null);
+let connected: Client | null = null;
+
+export function frameClient(): Client {
+  if (connected === null) {
+    throw new Error("the frame is not connected to the host yet");
+  }
+  return connected;
+}
 
 class FrameVisibility extends EventTarget implements VisibilitySource {
   hidden = false;
@@ -48,6 +56,7 @@ export function mountFrame(render: () => ReactNode): void {
   }
   connect()
     .then((client) => {
+      connected = client;
       applyAppearance(client.context.appearance);
       applyPresenter(client.context.presenter);
       client.on("appearance.changed", applyAppearance);

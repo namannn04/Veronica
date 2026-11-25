@@ -527,7 +527,6 @@ pub(crate) fn backup_import(
     state.reload_persistent_data().map_err(fail)?;
     crate::shortcuts::sync(&app, &state.settings_snapshot());
     let _ = app.emit("settings-updated", "backup-import");
-    let _ = app.emit("usage-updated", "backup-import");
     Ok(report)
 }
 

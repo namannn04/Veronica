@@ -254,7 +254,7 @@ async fn alerts_test() -> anyhow::Result<String> {
     Ok("Sent. Check your notification list if no banner appeared.".to_string())
 }
 
-const OWNED_PREFIXES: [&str; 2] = ["notify", "limits"];
+const OWNED_PREFIXES: [&str; 3] = ["notify", "limits", "usageRefresh"];
 
 fn owned(key: &str) -> bool {
     OWNED_PREFIXES.iter().any(|prefix| key.starts_with(prefix))

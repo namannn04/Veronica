@@ -166,74 +166,10 @@
   spacing: 8px;
 }
 
-.veronica-glance-row {
-  spacing: 8px;
-}
-
 .veronica-card {
   border-radius: 14px;
   border: 1px solid transparent;
   padding: 12px;
-}
-
-.veronica-usage-card {
-  height: 12em;
-}
-
-.veronica-shelf-home .veronica-usage-card {
-  width: 154px;
-  height: 124px;
-}
-
-.veronica-usage-card {
-  spacing: 6px;
-}
-
-.veronica-usage-toolbar {
-  height: 20px;
-}
-
-.veronica-provider-switch {
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  transition-duration: 120ms;
-}
-
-.veronica-provider-label {
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.veronica-rings {
-  spacing: 20px;
-  x-align: center;
-}
-
-.veronica-ring-wrap {
-  spacing: 2px;
-}
-
-.veronica-ring-value {
-  font-size: 12px;
-  font-weight: 600;
-  font-feature-settings: "tnum";
-}
-
-.veronica-ring-caption {
-  font-size: 11px;
-}
-
-.veronica-ring-resets {
-  font-size: 11px;
-  font-feature-settings: "tnum";
-}
-
-.veronica-usage-spend {
-  font-size: 11px;
-  font-feature-settings: "tnum";
-  text-align: center;
 }
 
 .veronica-machine-line {
@@ -720,10 +656,6 @@
 .veronica-clipboard-delete {
   color: #c3c2b7;
 }
-.veronica-provider-switch {
-  background-color: rgba(244, 242, 239, 0.07);
-  color: #c3c2b7;
-}
 .veronica-meter {
   background-color: rgba(244, 242, 239, 0.05);
 }
@@ -738,9 +670,6 @@
 }
 .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-ring-track {
-  color: rgba(244, 242, 239, 0.12);
 }
 .veronica-camera-preview-button {
   background-color: #d97757;
@@ -758,14 +687,11 @@
 .veronica-file-open,
 .veronica-clipboard-copy,
 .veronica-action-label,
-.veronica-ring-value,
 .veronica-clip-row,
 .veronica-row-label,
 .veronica-row-value {
   color: #f4f2ef;
 }
-.veronica-ring-caption,
-.veronica-usage-spend,
 .veronica-camera-detail,
 .veronica-status-panel-detail,
 .veronica-utility-detail,
@@ -775,7 +701,6 @@
 .veronica-action-icon {
   color: #c3c2b7;
 }
-.veronica-ring-resets,
 .veronica-machine-line,
 .veronica-camera-icon,
 .veronica-status-panel-icon,
@@ -809,10 +734,6 @@
 .veronica-utility-button:active,
 .veronica-clipboard-delete:active,
 .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(244, 242, 239, 0.11);
-  color: #f4f2ef;
-}
-.veronica-provider-switch:hover {
   background-color: rgba(244, 242, 239, 0.11);
   color: #f4f2ef;
 }
@@ -854,7 +775,6 @@
 .veronica-utility-button:focus,
 .veronica-utility-entry:focus,
 .veronica-clipboard-delete:focus,
-.veronica-provider-switch:focus,
 .veronica-action-tile:focus,
 .veronica-camera-preview-button:focus {
   border-color: rgba(217, 119, 87, 0.75);
@@ -923,10 +843,6 @@
 .veronica-theme-midnight .veronica-clipboard-delete {
   color: #b9c8dc;
 }
-.veronica-theme-midnight .veronica-provider-switch {
-  background-color: rgba(242, 246, 252, 0.07);
-  color: #b9c8dc;
-}
 .veronica-theme-midnight .veronica-meter {
   background-color: rgba(242, 246, 252, 0.05);
 }
@@ -941,9 +857,6 @@
 }
 .veronica-theme-midnight .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-midnight .veronica-ring-track {
-  color: rgba(242, 246, 252, 0.12);
 }
 .veronica-theme-midnight .veronica-camera-preview-button {
   background-color: #78a8f0;
@@ -961,14 +874,11 @@
 .veronica-theme-midnight .veronica-file-open,
 .veronica-theme-midnight .veronica-clipboard-copy,
 .veronica-theme-midnight .veronica-action-label,
-.veronica-theme-midnight .veronica-ring-value,
 .veronica-theme-midnight .veronica-clip-row,
 .veronica-theme-midnight .veronica-row-label,
 .veronica-theme-midnight .veronica-row-value {
   color: #f2f6fc;
 }
-.veronica-theme-midnight .veronica-ring-caption,
-.veronica-theme-midnight .veronica-usage-spend,
 .veronica-theme-midnight .veronica-camera-detail,
 .veronica-theme-midnight .veronica-status-panel-detail,
 .veronica-theme-midnight .veronica-utility-detail,
@@ -978,7 +888,6 @@
 .veronica-theme-midnight .veronica-action-icon {
   color: #b9c8dc;
 }
-.veronica-theme-midnight .veronica-ring-resets,
 .veronica-theme-midnight .veronica-machine-line,
 .veronica-theme-midnight .veronica-camera-icon,
 .veronica-theme-midnight .veronica-status-panel-icon,
@@ -1012,10 +921,6 @@
 .veronica-theme-midnight .veronica-utility-button:active,
 .veronica-theme-midnight .veronica-clipboard-delete:active,
 .veronica-theme-midnight .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(242, 246, 252, 0.11);
-  color: #f2f6fc;
-}
-.veronica-theme-midnight .veronica-provider-switch:hover {
   background-color: rgba(242, 246, 252, 0.11);
   color: #f2f6fc;
 }
@@ -1057,7 +962,6 @@
 .veronica-theme-midnight .veronica-utility-button:focus,
 .veronica-theme-midnight .veronica-utility-entry:focus,
 .veronica-theme-midnight .veronica-clipboard-delete:focus,
-.veronica-theme-midnight .veronica-provider-switch:focus,
 .veronica-theme-midnight .veronica-action-tile:focus,
 .veronica-theme-midnight .veronica-camera-preview-button:focus {
   border-color: rgba(120, 168, 240, 0.75);
@@ -1126,10 +1030,6 @@
 .veronica-theme-aubergine .veronica-clipboard-delete {
   color: #d8bacd;
 }
-.veronica-theme-aubergine .veronica-provider-switch {
-  background-color: rgba(255, 244, 250, 0.07);
-  color: #d8bacd;
-}
 .veronica-theme-aubergine .veronica-meter {
   background-color: rgba(255, 244, 250, 0.05);
 }
@@ -1144,9 +1044,6 @@
 }
 .veronica-theme-aubergine .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-aubergine .veronica-ring-track {
-  color: rgba(255, 244, 250, 0.12);
 }
 .veronica-theme-aubergine .veronica-camera-preview-button {
   background-color: #e18abb;
@@ -1164,14 +1061,11 @@
 .veronica-theme-aubergine .veronica-file-open,
 .veronica-theme-aubergine .veronica-clipboard-copy,
 .veronica-theme-aubergine .veronica-action-label,
-.veronica-theme-aubergine .veronica-ring-value,
 .veronica-theme-aubergine .veronica-clip-row,
 .veronica-theme-aubergine .veronica-row-label,
 .veronica-theme-aubergine .veronica-row-value {
   color: #fff4fa;
 }
-.veronica-theme-aubergine .veronica-ring-caption,
-.veronica-theme-aubergine .veronica-usage-spend,
 .veronica-theme-aubergine .veronica-camera-detail,
 .veronica-theme-aubergine .veronica-status-panel-detail,
 .veronica-theme-aubergine .veronica-utility-detail,
@@ -1181,7 +1075,6 @@
 .veronica-theme-aubergine .veronica-action-icon {
   color: #d8bacd;
 }
-.veronica-theme-aubergine .veronica-ring-resets,
 .veronica-theme-aubergine .veronica-machine-line,
 .veronica-theme-aubergine .veronica-camera-icon,
 .veronica-theme-aubergine .veronica-status-panel-icon,
@@ -1215,10 +1108,6 @@
 .veronica-theme-aubergine .veronica-utility-button:active,
 .veronica-theme-aubergine .veronica-clipboard-delete:active,
 .veronica-theme-aubergine .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(255, 244, 250, 0.11);
-  color: #fff4fa;
-}
-.veronica-theme-aubergine .veronica-provider-switch:hover {
   background-color: rgba(255, 244, 250, 0.11);
   color: #fff4fa;
 }
@@ -1260,7 +1149,6 @@
 .veronica-theme-aubergine .veronica-utility-button:focus,
 .veronica-theme-aubergine .veronica-utility-entry:focus,
 .veronica-theme-aubergine .veronica-clipboard-delete:focus,
-.veronica-theme-aubergine .veronica-provider-switch:focus,
 .veronica-theme-aubergine .veronica-action-tile:focus,
 .veronica-theme-aubergine .veronica-camera-preview-button:focus {
   border-color: rgba(225, 138, 187, 0.75);
@@ -1329,10 +1217,6 @@
 .veronica-theme-forest .veronica-clipboard-delete {
   color: #b7d1c4;
 }
-.veronica-theme-forest .veronica-provider-switch {
-  background-color: rgba(239, 249, 244, 0.07);
-  color: #b7d1c4;
-}
 .veronica-theme-forest .veronica-meter {
   background-color: rgba(239, 249, 244, 0.05);
 }
@@ -1347,9 +1231,6 @@
 }
 .veronica-theme-forest .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-forest .veronica-ring-track {
-  color: rgba(239, 249, 244, 0.12);
 }
 .veronica-theme-forest .veronica-camera-preview-button {
   background-color: #79b894;
@@ -1367,14 +1248,11 @@
 .veronica-theme-forest .veronica-file-open,
 .veronica-theme-forest .veronica-clipboard-copy,
 .veronica-theme-forest .veronica-action-label,
-.veronica-theme-forest .veronica-ring-value,
 .veronica-theme-forest .veronica-clip-row,
 .veronica-theme-forest .veronica-row-label,
 .veronica-theme-forest .veronica-row-value {
   color: #eff9f4;
 }
-.veronica-theme-forest .veronica-ring-caption,
-.veronica-theme-forest .veronica-usage-spend,
 .veronica-theme-forest .veronica-camera-detail,
 .veronica-theme-forest .veronica-status-panel-detail,
 .veronica-theme-forest .veronica-utility-detail,
@@ -1384,7 +1262,6 @@
 .veronica-theme-forest .veronica-action-icon {
   color: #b7d1c4;
 }
-.veronica-theme-forest .veronica-ring-resets,
 .veronica-theme-forest .veronica-machine-line,
 .veronica-theme-forest .veronica-camera-icon,
 .veronica-theme-forest .veronica-status-panel-icon,
@@ -1418,10 +1295,6 @@
 .veronica-theme-forest .veronica-utility-button:active,
 .veronica-theme-forest .veronica-clipboard-delete:active,
 .veronica-theme-forest .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(239, 249, 244, 0.11);
-  color: #eff9f4;
-}
-.veronica-theme-forest .veronica-provider-switch:hover {
   background-color: rgba(239, 249, 244, 0.11);
   color: #eff9f4;
 }
@@ -1463,7 +1336,6 @@
 .veronica-theme-forest .veronica-utility-button:focus,
 .veronica-theme-forest .veronica-utility-entry:focus,
 .veronica-theme-forest .veronica-clipboard-delete:focus,
-.veronica-theme-forest .veronica-provider-switch:focus,
 .veronica-theme-forest .veronica-action-tile:focus,
 .veronica-theme-forest .veronica-camera-preview-button:focus {
   border-color: rgba(121, 184, 148, 0.75);
@@ -1532,10 +1404,6 @@
 .veronica-theme-nord .veronica-clipboard-delete {
   color: #d8dee9;
 }
-.veronica-theme-nord .veronica-provider-switch {
-  background-color: rgba(236, 239, 244, 0.07);
-  color: #d8dee9;
-}
 .veronica-theme-nord .veronica-meter {
   background-color: rgba(236, 239, 244, 0.05);
 }
@@ -1550,9 +1418,6 @@
 }
 .veronica-theme-nord .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-nord .veronica-ring-track {
-  color: rgba(236, 239, 244, 0.12);
 }
 .veronica-theme-nord .veronica-camera-preview-button {
   background-color: #88c0d0;
@@ -1570,14 +1435,11 @@
 .veronica-theme-nord .veronica-file-open,
 .veronica-theme-nord .veronica-clipboard-copy,
 .veronica-theme-nord .veronica-action-label,
-.veronica-theme-nord .veronica-ring-value,
 .veronica-theme-nord .veronica-clip-row,
 .veronica-theme-nord .veronica-row-label,
 .veronica-theme-nord .veronica-row-value {
   color: #eceff4;
 }
-.veronica-theme-nord .veronica-ring-caption,
-.veronica-theme-nord .veronica-usage-spend,
 .veronica-theme-nord .veronica-camera-detail,
 .veronica-theme-nord .veronica-status-panel-detail,
 .veronica-theme-nord .veronica-utility-detail,
@@ -1587,7 +1449,6 @@
 .veronica-theme-nord .veronica-action-icon {
   color: #d8dee9;
 }
-.veronica-theme-nord .veronica-ring-resets,
 .veronica-theme-nord .veronica-machine-line,
 .veronica-theme-nord .veronica-camera-icon,
 .veronica-theme-nord .veronica-status-panel-icon,
@@ -1621,10 +1482,6 @@
 .veronica-theme-nord .veronica-utility-button:active,
 .veronica-theme-nord .veronica-clipboard-delete:active,
 .veronica-theme-nord .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(236, 239, 244, 0.11);
-  color: #eceff4;
-}
-.veronica-theme-nord .veronica-provider-switch:hover {
   background-color: rgba(236, 239, 244, 0.11);
   color: #eceff4;
 }
@@ -1666,7 +1523,6 @@
 .veronica-theme-nord .veronica-utility-button:focus,
 .veronica-theme-nord .veronica-utility-entry:focus,
 .veronica-theme-nord .veronica-clipboard-delete:focus,
-.veronica-theme-nord .veronica-provider-switch:focus,
 .veronica-theme-nord .veronica-action-tile:focus,
 .veronica-theme-nord .veronica-camera-preview-button:focus {
   border-color: rgba(136, 192, 208, 0.75);
@@ -1735,10 +1591,6 @@
 .veronica-theme-ocean .veronica-clipboard-delete {
   color: #b0d6de;
 }
-.veronica-theme-ocean .veronica-provider-switch {
-  background-color: rgba(232, 251, 255, 0.07);
-  color: #b0d6de;
-}
 .veronica-theme-ocean .veronica-meter {
   background-color: rgba(232, 251, 255, 0.05);
 }
@@ -1753,9 +1605,6 @@
 }
 .veronica-theme-ocean .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-ocean .veronica-ring-track {
-  color: rgba(232, 251, 255, 0.12);
 }
 .veronica-theme-ocean .veronica-camera-preview-button {
   background-color: #45c2d6;
@@ -1773,14 +1622,11 @@
 .veronica-theme-ocean .veronica-file-open,
 .veronica-theme-ocean .veronica-clipboard-copy,
 .veronica-theme-ocean .veronica-action-label,
-.veronica-theme-ocean .veronica-ring-value,
 .veronica-theme-ocean .veronica-clip-row,
 .veronica-theme-ocean .veronica-row-label,
 .veronica-theme-ocean .veronica-row-value {
   color: #e8fbff;
 }
-.veronica-theme-ocean .veronica-ring-caption,
-.veronica-theme-ocean .veronica-usage-spend,
 .veronica-theme-ocean .veronica-camera-detail,
 .veronica-theme-ocean .veronica-status-panel-detail,
 .veronica-theme-ocean .veronica-utility-detail,
@@ -1790,7 +1636,6 @@
 .veronica-theme-ocean .veronica-action-icon {
   color: #b0d6de;
 }
-.veronica-theme-ocean .veronica-ring-resets,
 .veronica-theme-ocean .veronica-machine-line,
 .veronica-theme-ocean .veronica-camera-icon,
 .veronica-theme-ocean .veronica-status-panel-icon,
@@ -1824,10 +1669,6 @@
 .veronica-theme-ocean .veronica-utility-button:active,
 .veronica-theme-ocean .veronica-clipboard-delete:active,
 .veronica-theme-ocean .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(232, 251, 255, 0.11);
-  color: #e8fbff;
-}
-.veronica-theme-ocean .veronica-provider-switch:hover {
   background-color: rgba(232, 251, 255, 0.11);
   color: #e8fbff;
 }
@@ -1869,7 +1710,6 @@
 .veronica-theme-ocean .veronica-utility-button:focus,
 .veronica-theme-ocean .veronica-utility-entry:focus,
 .veronica-theme-ocean .veronica-clipboard-delete:focus,
-.veronica-theme-ocean .veronica-provider-switch:focus,
 .veronica-theme-ocean .veronica-action-tile:focus,
 .veronica-theme-ocean .veronica-camera-preview-button:focus {
   border-color: rgba(69, 194, 214, 0.75);
@@ -1938,10 +1778,6 @@
 .veronica-theme-ember .veronica-clipboard-delete {
   color: #dcc6ae;
 }
-.veronica-theme-ember .veronica-provider-switch {
-  background-color: rgba(253, 243, 232, 0.07);
-  color: #dcc6ae;
-}
 .veronica-theme-ember .veronica-meter {
   background-color: rgba(253, 243, 232, 0.05);
 }
@@ -1956,9 +1792,6 @@
 }
 .veronica-theme-ember .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-ember .veronica-ring-track {
-  color: rgba(253, 243, 232, 0.12);
 }
 .veronica-theme-ember .veronica-camera-preview-button {
   background-color: #e8974a;
@@ -1976,14 +1809,11 @@
 .veronica-theme-ember .veronica-file-open,
 .veronica-theme-ember .veronica-clipboard-copy,
 .veronica-theme-ember .veronica-action-label,
-.veronica-theme-ember .veronica-ring-value,
 .veronica-theme-ember .veronica-clip-row,
 .veronica-theme-ember .veronica-row-label,
 .veronica-theme-ember .veronica-row-value {
   color: #fdf3e8;
 }
-.veronica-theme-ember .veronica-ring-caption,
-.veronica-theme-ember .veronica-usage-spend,
 .veronica-theme-ember .veronica-camera-detail,
 .veronica-theme-ember .veronica-status-panel-detail,
 .veronica-theme-ember .veronica-utility-detail,
@@ -1993,7 +1823,6 @@
 .veronica-theme-ember .veronica-action-icon {
   color: #dcc6ae;
 }
-.veronica-theme-ember .veronica-ring-resets,
 .veronica-theme-ember .veronica-machine-line,
 .veronica-theme-ember .veronica-camera-icon,
 .veronica-theme-ember .veronica-status-panel-icon,
@@ -2027,10 +1856,6 @@
 .veronica-theme-ember .veronica-utility-button:active,
 .veronica-theme-ember .veronica-clipboard-delete:active,
 .veronica-theme-ember .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(253, 243, 232, 0.11);
-  color: #fdf3e8;
-}
-.veronica-theme-ember .veronica-provider-switch:hover {
   background-color: rgba(253, 243, 232, 0.11);
   color: #fdf3e8;
 }
@@ -2072,7 +1897,6 @@
 .veronica-theme-ember .veronica-utility-button:focus,
 .veronica-theme-ember .veronica-utility-entry:focus,
 .veronica-theme-ember .veronica-clipboard-delete:focus,
-.veronica-theme-ember .veronica-provider-switch:focus,
 .veronica-theme-ember .veronica-action-tile:focus,
 .veronica-theme-ember .veronica-camera-preview-button:focus {
   border-color: rgba(232, 151, 74, 0.75);
@@ -2141,10 +1965,6 @@
 .veronica-theme-carbon .veronica-clipboard-delete {
   color: #c9c9c9;
 }
-.veronica-theme-carbon .veronica-provider-switch {
-  background-color: rgba(255, 255, 255, 0.07);
-  color: #c9c9c9;
-}
 .veronica-theme-carbon .veronica-meter {
   background-color: rgba(255, 255, 255, 0.05);
 }
@@ -2159,9 +1979,6 @@
 }
 .veronica-theme-carbon .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-carbon .veronica-ring-track {
-  color: rgba(255, 255, 255, 0.12);
 }
 .veronica-theme-carbon .veronica-camera-preview-button {
   background-color: #ff8a5c;
@@ -2179,14 +1996,11 @@
 .veronica-theme-carbon .veronica-file-open,
 .veronica-theme-carbon .veronica-clipboard-copy,
 .veronica-theme-carbon .veronica-action-label,
-.veronica-theme-carbon .veronica-ring-value,
 .veronica-theme-carbon .veronica-clip-row,
 .veronica-theme-carbon .veronica-row-label,
 .veronica-theme-carbon .veronica-row-value {
   color: #ffffff;
 }
-.veronica-theme-carbon .veronica-ring-caption,
-.veronica-theme-carbon .veronica-usage-spend,
 .veronica-theme-carbon .veronica-camera-detail,
 .veronica-theme-carbon .veronica-status-panel-detail,
 .veronica-theme-carbon .veronica-utility-detail,
@@ -2196,7 +2010,6 @@
 .veronica-theme-carbon .veronica-action-icon {
   color: #c9c9c9;
 }
-.veronica-theme-carbon .veronica-ring-resets,
 .veronica-theme-carbon .veronica-machine-line,
 .veronica-theme-carbon .veronica-camera-icon,
 .veronica-theme-carbon .veronica-status-panel-icon,
@@ -2230,10 +2043,6 @@
 .veronica-theme-carbon .veronica-utility-button:active,
 .veronica-theme-carbon .veronica-clipboard-delete:active,
 .veronica-theme-carbon .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(255, 255, 255, 0.11);
-  color: #ffffff;
-}
-.veronica-theme-carbon .veronica-provider-switch:hover {
   background-color: rgba(255, 255, 255, 0.11);
   color: #ffffff;
 }
@@ -2275,7 +2084,6 @@
 .veronica-theme-carbon .veronica-utility-button:focus,
 .veronica-theme-carbon .veronica-utility-entry:focus,
 .veronica-theme-carbon .veronica-clipboard-delete:focus,
-.veronica-theme-carbon .veronica-provider-switch:focus,
 .veronica-theme-carbon .veronica-action-tile:focus,
 .veronica-theme-carbon .veronica-camera-preview-button:focus {
   border-color: rgba(255, 138, 92, 0.75);
@@ -2344,10 +2152,6 @@
 .veronica-theme-light .veronica-clipboard-delete {
   color: #52514e;
 }
-.veronica-theme-light .veronica-provider-switch {
-  background-color: rgba(11, 11, 11, 0.07);
-  color: #52514e;
-}
 .veronica-theme-light .veronica-meter {
   background-color: rgba(11, 11, 11, 0.05);
 }
@@ -2362,9 +2166,6 @@
 }
 .veronica-theme-light .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-light .veronica-ring-track {
-  color: rgba(11, 11, 11, 0.12);
 }
 .veronica-theme-light .veronica-camera-preview-button {
   background-color: #c25f3c;
@@ -2382,14 +2183,11 @@
 .veronica-theme-light .veronica-file-open,
 .veronica-theme-light .veronica-clipboard-copy,
 .veronica-theme-light .veronica-action-label,
-.veronica-theme-light .veronica-ring-value,
 .veronica-theme-light .veronica-clip-row,
 .veronica-theme-light .veronica-row-label,
 .veronica-theme-light .veronica-row-value {
   color: #0b0b0b;
 }
-.veronica-theme-light .veronica-ring-caption,
-.veronica-theme-light .veronica-usage-spend,
 .veronica-theme-light .veronica-camera-detail,
 .veronica-theme-light .veronica-status-panel-detail,
 .veronica-theme-light .veronica-utility-detail,
@@ -2399,7 +2197,6 @@
 .veronica-theme-light .veronica-action-icon {
   color: #52514e;
 }
-.veronica-theme-light .veronica-ring-resets,
 .veronica-theme-light .veronica-machine-line,
 .veronica-theme-light .veronica-camera-icon,
 .veronica-theme-light .veronica-status-panel-icon,
@@ -2433,10 +2230,6 @@
 .veronica-theme-light .veronica-utility-button:active,
 .veronica-theme-light .veronica-clipboard-delete:active,
 .veronica-theme-light .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(11, 11, 11, 0.11);
-  color: #0b0b0b;
-}
-.veronica-theme-light .veronica-provider-switch:hover {
   background-color: rgba(11, 11, 11, 0.11);
   color: #0b0b0b;
 }
@@ -2478,7 +2271,6 @@
 .veronica-theme-light .veronica-utility-button:focus,
 .veronica-theme-light .veronica-utility-entry:focus,
 .veronica-theme-light .veronica-clipboard-delete:focus,
-.veronica-theme-light .veronica-provider-switch:focus,
 .veronica-theme-light .veronica-action-tile:focus,
 .veronica-theme-light .veronica-camera-preview-button:focus {
   border-color: rgba(194, 95, 60, 0.75);
@@ -2547,10 +2339,6 @@
 .veronica-theme-sandstone .veronica-clipboard-delete {
   color: #5f5044;
 }
-.veronica-theme-sandstone .veronica-provider-switch {
-  background-color: rgba(43, 33, 24, 0.07);
-  color: #5f5044;
-}
 .veronica-theme-sandstone .veronica-meter {
   background-color: rgba(43, 33, 24, 0.05);
 }
@@ -2565,9 +2353,6 @@
 }
 .veronica-theme-sandstone .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-sandstone .veronica-ring-track {
-  color: rgba(43, 33, 24, 0.12);
 }
 .veronica-theme-sandstone .veronica-camera-preview-button {
   background-color: #b1552e;
@@ -2585,14 +2370,11 @@
 .veronica-theme-sandstone .veronica-file-open,
 .veronica-theme-sandstone .veronica-clipboard-copy,
 .veronica-theme-sandstone .veronica-action-label,
-.veronica-theme-sandstone .veronica-ring-value,
 .veronica-theme-sandstone .veronica-clip-row,
 .veronica-theme-sandstone .veronica-row-label,
 .veronica-theme-sandstone .veronica-row-value {
   color: #2b2118;
 }
-.veronica-theme-sandstone .veronica-ring-caption,
-.veronica-theme-sandstone .veronica-usage-spend,
 .veronica-theme-sandstone .veronica-camera-detail,
 .veronica-theme-sandstone .veronica-status-panel-detail,
 .veronica-theme-sandstone .veronica-utility-detail,
@@ -2602,7 +2384,6 @@
 .veronica-theme-sandstone .veronica-action-icon {
   color: #5f5044;
 }
-.veronica-theme-sandstone .veronica-ring-resets,
 .veronica-theme-sandstone .veronica-machine-line,
 .veronica-theme-sandstone .veronica-camera-icon,
 .veronica-theme-sandstone .veronica-status-panel-icon,
@@ -2636,10 +2417,6 @@
 .veronica-theme-sandstone .veronica-utility-button:active,
 .veronica-theme-sandstone .veronica-clipboard-delete:active,
 .veronica-theme-sandstone .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(43, 33, 24, 0.11);
-  color: #2b2118;
-}
-.veronica-theme-sandstone .veronica-provider-switch:hover {
   background-color: rgba(43, 33, 24, 0.11);
   color: #2b2118;
 }
@@ -2681,7 +2458,6 @@
 .veronica-theme-sandstone .veronica-utility-button:focus,
 .veronica-theme-sandstone .veronica-utility-entry:focus,
 .veronica-theme-sandstone .veronica-clipboard-delete:focus,
-.veronica-theme-sandstone .veronica-provider-switch:focus,
 .veronica-theme-sandstone .veronica-action-tile:focus,
 .veronica-theme-sandstone .veronica-camera-preview-button:focus {
   border-color: rgba(177, 85, 46, 0.75);
@@ -2750,10 +2526,6 @@
 .veronica-theme-mist .veronica-clipboard-delete {
   color: #4a5666;
 }
-.veronica-theme-mist .veronica-provider-switch {
-  background-color: rgba(16, 22, 31, 0.07);
-  color: #4a5666;
-}
 .veronica-theme-mist .veronica-meter {
   background-color: rgba(16, 22, 31, 0.05);
 }
@@ -2768,9 +2540,6 @@
 }
 .veronica-theme-mist .veronica-meter-fill.critical {
   background-color: #d03b3b;
-}
-.veronica-theme-mist .veronica-ring-track {
-  color: rgba(16, 22, 31, 0.12);
 }
 .veronica-theme-mist .veronica-camera-preview-button {
   background-color: #2f6fd0;
@@ -2788,14 +2557,11 @@
 .veronica-theme-mist .veronica-file-open,
 .veronica-theme-mist .veronica-clipboard-copy,
 .veronica-theme-mist .veronica-action-label,
-.veronica-theme-mist .veronica-ring-value,
 .veronica-theme-mist .veronica-clip-row,
 .veronica-theme-mist .veronica-row-label,
 .veronica-theme-mist .veronica-row-value {
   color: #10161f;
 }
-.veronica-theme-mist .veronica-ring-caption,
-.veronica-theme-mist .veronica-usage-spend,
 .veronica-theme-mist .veronica-camera-detail,
 .veronica-theme-mist .veronica-status-panel-detail,
 .veronica-theme-mist .veronica-utility-detail,
@@ -2805,7 +2571,6 @@
 .veronica-theme-mist .veronica-action-icon {
   color: #4a5666;
 }
-.veronica-theme-mist .veronica-ring-resets,
 .veronica-theme-mist .veronica-machine-line,
 .veronica-theme-mist .veronica-camera-icon,
 .veronica-theme-mist .veronica-status-panel-icon,
@@ -2839,10 +2604,6 @@
 .veronica-theme-mist .veronica-utility-button:active,
 .veronica-theme-mist .veronica-clipboard-delete:active,
 .veronica-theme-mist .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(16, 22, 31, 0.11);
-  color: #10161f;
-}
-.veronica-theme-mist .veronica-provider-switch:hover {
   background-color: rgba(16, 22, 31, 0.11);
   color: #10161f;
 }
@@ -2884,7 +2645,6 @@
 .veronica-theme-mist .veronica-utility-button:focus,
 .veronica-theme-mist .veronica-utility-entry:focus,
 .veronica-theme-mist .veronica-clipboard-delete:focus,
-.veronica-theme-mist .veronica-provider-switch:focus,
 .veronica-theme-mist .veronica-action-tile:focus,
 .veronica-theme-mist .veronica-camera-preview-button:focus {
   border-color: rgba(47, 111, 208, 0.75);
@@ -2953,10 +2713,6 @@
 .veronica-theme-paper .veronica-clipboard-delete {
   color: #262626;
 }
-.veronica-theme-paper .veronica-provider-switch {
-  background-color: rgba(0, 0, 0, 0.07);
-  color: #262626;
-}
 .veronica-theme-paper .veronica-meter {
   background-color: rgba(0, 0, 0, 0.05);
 }
@@ -2971,9 +2727,6 @@
 }
 .veronica-theme-paper .veronica-meter-fill.critical {
   background-color: #a10f0f;
-}
-.veronica-theme-paper .veronica-ring-track {
-  color: rgba(0, 0, 0, 0.12);
 }
 .veronica-theme-paper .veronica-camera-preview-button {
   background-color: #9a3412;
@@ -2991,14 +2744,11 @@
 .veronica-theme-paper .veronica-file-open,
 .veronica-theme-paper .veronica-clipboard-copy,
 .veronica-theme-paper .veronica-action-label,
-.veronica-theme-paper .veronica-ring-value,
 .veronica-theme-paper .veronica-clip-row,
 .veronica-theme-paper .veronica-row-label,
 .veronica-theme-paper .veronica-row-value {
   color: #000000;
 }
-.veronica-theme-paper .veronica-ring-caption,
-.veronica-theme-paper .veronica-usage-spend,
 .veronica-theme-paper .veronica-camera-detail,
 .veronica-theme-paper .veronica-status-panel-detail,
 .veronica-theme-paper .veronica-utility-detail,
@@ -3008,7 +2758,6 @@
 .veronica-theme-paper .veronica-action-icon {
   color: #262626;
 }
-.veronica-theme-paper .veronica-ring-resets,
 .veronica-theme-paper .veronica-machine-line,
 .veronica-theme-paper .veronica-camera-icon,
 .veronica-theme-paper .veronica-status-panel-icon,
@@ -3042,10 +2791,6 @@
 .veronica-theme-paper .veronica-utility-button:active,
 .veronica-theme-paper .veronica-clipboard-delete:active,
 .veronica-theme-paper .veronica-utility-button.veronica-utility-secondary:active {
-  background-color: rgba(0, 0, 0, 0.11);
-  color: #000000;
-}
-.veronica-theme-paper .veronica-provider-switch:hover {
   background-color: rgba(0, 0, 0, 0.11);
   color: #000000;
 }
@@ -3087,7 +2832,6 @@
 .veronica-theme-paper .veronica-utility-button:focus,
 .veronica-theme-paper .veronica-utility-entry:focus,
 .veronica-theme-paper .veronica-clipboard-delete:focus,
-.veronica-theme-paper .veronica-provider-switch:focus,
 .veronica-theme-paper .veronica-action-tile:focus,
 .veronica-theme-paper .veronica-camera-preview-button:focus {
   border-color: rgba(154, 52, 18, 0.75);

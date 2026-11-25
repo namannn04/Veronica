@@ -6,7 +6,6 @@ use std::time::Instant;
 use anyhow::Result;
 use veronica_core::{AppDirectories, DesktopSession, Settings};
 use veronica_system::MetricsSampler;
-use veronica_usage::UsageDocument;
 
 pub(crate) struct AppState {
     pub chat: veronica_system::companion_ai::ChatRuntime,
@@ -16,9 +15,7 @@ pub(crate) struct AppState {
     pub settings: Mutex<Settings>,
     pub lid_awake: Mutex<Option<veronica_system::power::InhibitorLock>>,
     pub prevent_sleep: Mutex<Option<veronica_system::power::InhibitorLock>>,
-    pub usage: Mutex<Option<UsageDocument>>,
     pub sampler: Mutex<MetricsSampler>,
-    pub refreshing: tokio::sync::watch::Sender<bool>,
     pub notifications: Mutex<Vec<veronica_system::Notification>>,
     pub companion_recording: Mutex<Option<CompanionRecording>>,
     pub emoji: veronica_core::EmojiCatalog,
@@ -34,14 +31,6 @@ pub(crate) struct CompanionRecording {
 impl AppState {
     pub(crate) fn new(directories: AppDirectories, session: DesktopSession) -> Result<Self> {
         let settings = Settings::load(&directories.settings_file())?;
-        let usage = match veronica_usage::collector::read_document(&directories.usage_file()) {
-            Ok(document) => document,
-            Err(error) => {
-                tracing::warn!("ignoring unreadable usage document: {error:#}");
-                None
-            }
-        };
-
         Ok(Self {
             chat: veronica_system::companion_ai::ChatRuntime::new(
                 directories.data.join("companion/chat"),
@@ -54,9 +43,7 @@ impl AppState {
             settings: Mutex::new(settings),
             lid_awake: Mutex::new(None),
             prevent_sleep: Mutex::new(None),
-            usage: Mutex::new(usage),
             sampler: Mutex::new(MetricsSampler::new()),
-            refreshing: tokio::sync::watch::Sender::new(false),
             notifications: Mutex::new(Vec::new()),
             companion_recording: Mutex::new(None),
         })
@@ -109,8 +96,6 @@ impl AppState {
     pub(crate) fn reload_persistent_data(&self) -> Result<()> {
         let settings = Settings::load(&self.directories.settings_file())?;
         *self.settings.lock().expect("settings lock") = settings;
-        let usage = veronica_usage::collector::read_document(&self.directories.usage_file())?;
-        *self.usage.lock().expect("usage lock") = usage;
         Ok(())
     }
 }

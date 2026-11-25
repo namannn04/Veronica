@@ -134,17 +134,6 @@ export function applyAppearance(value: unknown) {
   document.startViewTransition(() => setThemeAttribute(appearance));
 }
 
-export const LIMIT_PROVIDERS = ["Claude", "Codex"] as const;
-export type LimitProvider = (typeof LIMIT_PROVIDERS)[number];
-
-export function limitProviderOf(value: unknown): LimitProvider {
-  return typeof value === "string" && value.toLowerCase() === "codex" ? "Codex" : "Claude";
-}
-
-export function storedLimitProvider(provider: LimitProvider) {
-  return provider.toLowerCase();
-}
-
 export const BLUR_CATEGORIES = [
   { id: "money", css: "blur-money", label: "Spend" },
   { id: "usage", css: "blur-usage", label: "Tokens and charts" },

@@ -10,9 +10,9 @@ import {
   type Tone,
 } from "@veronica/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { AlertsView, PacingZone, UsageLevel, WatchedWindow } from "../lib/types";
+import { errorText, ipc, listenEvent } from "./api";
 import { ChoiceRow, SwitchRow } from "./settingsRows";
+import type { AlertsView, PacingZone, UsageLevel, WatchedWindow } from "./types";
 
 const SESSION_OFFSETS = [
   { value: 5, label: "5 minutes before" },
@@ -68,7 +68,7 @@ export function AlertsPane() {
       setView(await ipc.alertsView());
       setError(null);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     }
   }, []);
 
@@ -100,7 +100,7 @@ export function AlertsPane() {
       await load();
       setError(null);
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     } finally {
       setBusy(false);
     }
@@ -110,7 +110,7 @@ export function AlertsPane() {
     try {
       showFeedback("test", await ipc.alertsTest());
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     }
   };
 
@@ -120,7 +120,7 @@ export function AlertsPane() {
       showFeedback("forget", "Levels forgotten. The next check starts from where you are now.");
       await load();
     } catch (reason) {
-      setError(String(reason));
+      setError(errorText(reason));
     }
   };
 

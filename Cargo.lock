@@ -6128,7 +6128,6 @@ dependencies = [
  "veronica-machines",
  "veronica-protocol",
  "veronica-system",
- "veronica-usage",
  "zbus",
 ]
 

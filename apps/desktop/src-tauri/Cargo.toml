@@ -15,7 +15,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 veronica-core = { workspace = true }
-veronica-usage = { workspace = true }
 veronica-system = { workspace = true }
 veronica-database = { workspace = true }
 veronica-machines = { workspace = true }

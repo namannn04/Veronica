@@ -411,30 +411,8 @@ mod tests {
         }
     }
 
-    fn entry(id: &str) -> &'static veronica_core::extensions::ExtensionEntry {
-        veronica_core::extensions::ENTRIES
-            .iter()
-            .find(|entry| entry.id == id)
-            .unwrap()
-    }
-
     fn ids(tools: Vec<&'static ToolSpec>) -> Vec<&'static str> {
         tools.into_iter().map(|tool| tool.id).collect()
-    }
-
-    #[test]
-    fn agent_usage_is_satisfied_by_either_provider() {
-        let reports = vec![report("claude", true), report("codex", false)];
-        assert!(unmet(entry("usage"), &reports).is_empty());
-    }
-
-    #[test]
-    fn agent_usage_with_no_provider_names_both() {
-        let reports = vec![report("claude", false), report("codex", false)];
-        assert_eq!(
-            ids(unmet(entry("usage"), &reports)),
-            vec!["claude", "codex"]
-        );
     }
 
     #[test]

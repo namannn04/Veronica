@@ -35,7 +35,6 @@ import { OnboardingPage } from "./pages/OnboardingPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SystemPage } from "./pages/SystemPage";
-import { UsagePage } from "./pages/UsagePage";
 import { Sidebar } from "./shell/Sidebar";
 import "./shell/Shell.css";
 import "./shell/Presenter.css";
@@ -241,7 +240,6 @@ export function App() {
       <main className="shell-main">
         <Fragment key={route}>
           {route === "home" && <HomePage onNavigate={navigateTo} />}
-          {route === "usage" && <UsagePage />}
           {route === "agents" && <AgentsPage />}
           {route === "services" && <ServicesPage />}
           {route === "workspace" && (

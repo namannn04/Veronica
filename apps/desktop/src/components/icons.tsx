@@ -1,5 +1,6 @@
 import {
   AppWindow,
+  BellRing,
   Blocks,
   CalendarDays,
   ClipboardList,
@@ -45,6 +46,7 @@ function icon(Glyph: LucideIcon) {
 
 export const HomeIcon = icon(House);
 export const UsageIcon = icon(Gauge);
+export const AlertsIcon = icon(BellRing);
 export const HerdrIcon = icon(PanelsTopLeft);
 export const QuinjetIcon = icon(Plane);
 export const WorkspaceIcon = icon(AppWindow);
@@ -70,6 +72,8 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   hourglass: AttentionIcon,
   "columns-3": HerdrIcon,
   "git-branch": QuinjetIcon,
+  bell: AlertsIcon,
+  gauge: UsageIcon,
   music: MusicIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,

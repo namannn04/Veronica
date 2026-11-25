@@ -1,9 +1,8 @@
 import { Table } from "@veronica/ui";
-import type { ColorScale } from "@veronica/ui/charts";
+import type { ColorScale, NamedAmount } from "@veronica/ui/charts";
+import { modelLabel, money, tokens } from "@veronica/ui/format";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import { modelLabel, money, tokens } from "../lib/format";
-import type { NamedAmount } from "../lib/types";
 import "@veronica/ui/charts.css";
 import "./ModelTable.css";
 

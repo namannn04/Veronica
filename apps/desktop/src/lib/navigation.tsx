@@ -14,7 +14,6 @@ import {
   PortsIcon,
   SettingsIcon,
   SystemIcon,
-  UsageIcon,
   WorkspaceIcon,
 } from "../components/icons";
 import { frameSource } from "../extensions/bridge";
@@ -22,7 +21,6 @@ import type { InstalledExtension } from "./types";
 
 export type BuiltinRoute =
   | "home"
-  | "usage"
   | "agents"
   | "system"
   | "services"
@@ -66,14 +64,6 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: <HomeIcon />,
         hint: "The dashboard",
         keywords: "dashboard start overview clocks",
-      },
-      {
-        id: "usage",
-        label: "Agent Usage",
-        icon: <UsageIcon />,
-        extensionId: "usage",
-        hint: "Spend, tokens and rate limits",
-        keywords: "claude codex cursor cost spend tokens limits rings",
       },
       {
         id: "agents",
