@@ -242,6 +242,8 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             extensions::commands::ext_auto_update_set,
             extensions::commands::ext_onboarding_detect,
             commands::shortcuts_list,
+            extensions::commands::ext_surfaces,
+            extensions::commands::ext_surface_action,
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -261,6 +263,7 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
 
             app.manage(state);
             host.attach(std::sync::Arc::new(extensions::shell::AppShell::new(handle.clone())));
+            extensions::topics::watch(&handle);
             let settings_file = directories.settings_file();
             tauri::async_runtime::spawn(async move {
                 host.start().await;

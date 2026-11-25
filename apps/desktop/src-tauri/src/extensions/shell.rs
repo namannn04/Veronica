@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
+use veronica_host::surfaces::Surface;
 use veronica_protocol::rpc::{error_code, ErrorObject, NotifyParams};
 use veronica_system::notify;
 
@@ -72,6 +73,26 @@ impl Shell for AppShell {
         veronica_core::host::spawn_detached(veronica_core::host::command("xdg-open").arg(url))
             .map(drop)
             .map_err(|error| format!("cannot open {url}: {error}"))
+    }
+
+    fn push_surfaces(&self, surfaces: Vec<Surface>) {
+        let Ok(body) = serde_json::to_string(&surfaces) else {
+            return;
+        };
+        tauri::async_runtime::spawn(async move {
+            let Ok(connection) = zbus::Connection::session().await else {
+                return;
+            };
+            let _ = connection
+                .call_method(
+                    Some("io.github.namannn04.Veronica.Shell"),
+                    "/io/github/namannn04/Veronica/Shell",
+                    Some("io.github.namannn04.Veronica.ShellActions"),
+                    "SetSurfaces",
+                    &(body,),
+                )
+                .await;
+        });
     }
 
     fn copy(&self, text: String) -> Pending<Result<(), String>> {

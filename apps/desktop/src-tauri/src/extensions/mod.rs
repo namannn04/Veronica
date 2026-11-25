@@ -1,5 +1,6 @@
 pub(crate) mod bridge;
 pub(crate) mod commands;
+pub(crate) mod contracts;
 pub(crate) mod files;
 pub(crate) mod host;
 pub(crate) mod jobs;
@@ -11,4 +12,5 @@ pub(crate) mod shell;
 pub(crate) mod storage;
 #[cfg(test)]
 mod tests;
+pub(crate) mod topics;
 pub(crate) mod updates;

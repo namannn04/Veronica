@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use rustix::process::{kill_process_group, Pid, Signal};
 use serde::Deserialize;
+use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStdout, Command};
 use tokio::sync::{mpsc, oneshot, watch};
@@ -598,6 +599,25 @@ async fn read_line(
     }
 }
 
+fn reply(
+    outgoing: &mpsc::WeakUnboundedSender<String>,
+    id: RequestId,
+    outcome: Result<Value, ErrorObject>,
+) {
+    let message = Message::Response(match outcome {
+        Ok(value) => Response {
+            jsonrpc: JsonRpcVersion,
+            id: Some(id),
+            outcome: Outcome::Result(value),
+        },
+        Err(error) => Response::failure(Some(id), error),
+    });
+    let line = message.to_line().unwrap_or_default();
+    if let Some(outgoing) = outgoing.upgrade() {
+        let _ = outgoing.send(line);
+    }
+}
+
 async fn read_loop(
     stdout: ChildStdout,
     outgoing: mpsc::WeakUnboundedSender<String>,
@@ -628,20 +648,18 @@ async fn read_loop(
                     let _ = waiter.send(response.outcome);
                 }
             }
+            Message::Request(request) if HostServices::answers_later(&request) => {
+                let services = Arc::clone(&services);
+                let grant = grant.clone();
+                let outgoing = outgoing.clone();
+                tokio::spawn(async move {
+                    let outcome = services.handle_later(&grant, &request).await;
+                    reply(&outgoing, request.id, outcome);
+                });
+            }
             Message::Request(request) => {
                 let outcome = services.handle(&grant, &request);
-                let reply = Message::Response(match outcome {
-                    Ok(value) => Response {
-                        jsonrpc: JsonRpcVersion,
-                        id: Some(request.id),
-                        outcome: Outcome::Result(value),
-                    },
-                    Err(error) => Response::failure(Some(request.id), error),
-                });
-                let line = reply.to_line().unwrap_or_default();
-                if let Some(outgoing) = outgoing.upgrade() {
-                    let _ = outgoing.send(line);
-                }
+                reply(&outgoing, request.id, outcome);
             }
             Message::Notification(notification) => services.notification(&grant, &notification),
         }

@@ -28,6 +28,7 @@ mod quinjet_cmd;
 mod routes;
 mod services_cmd;
 mod shelf_cmd;
+mod surfaces_cmd;
 mod system_cmd;
 mod tools_cmd;
 mod usage_cmd;
@@ -95,6 +96,8 @@ enum Command {
         #[arg(value_enum)]
         topic: Option<guide_cmd::Topic>,
     },
+    #[command(about = "List the Home cards and notch activities extensions are showing")]
+    Surfaces,
     #[command(about = "Call one method on an installed extension's backend")]
     Invoke {
         id: String,
@@ -333,6 +336,7 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
             .await
         }
         Command::Invoke { id, request } => invoke_cmd::run(id, request, output).await,
+        Command::Surfaces => surfaces_cmd::run(&directories, output),
         Command::Tools { command } => {
             tools_cmd::run(
                 command.as_ref().unwrap_or(&tools_cmd::ToolCommand::Ls),

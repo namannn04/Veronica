@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use serde_json::Value;
 use tauri::State;
+use veronica_host::Confirmation;
+use veronica_protocol::ExitCode;
 
 use super::bridge::{dispatch, Failure};
 use super::host::Host;
@@ -194,4 +196,41 @@ pub(crate) async fn ext_onboarding_detect() -> CommandResult<Detection> {
     tauri::async_runtime::spawn_blocking(|| detect(&Environment::current()))
         .await
         .map_err(fail)
+}
+
+#[tauri::command]
+pub(crate) async fn ext_surfaces(
+    state: State<'_, AppState>,
+) -> CommandResult<Vec<veronica_host::surfaces::Surface>> {
+    Ok(state.extensions.all_surfaces())
+}
+
+#[tauri::command]
+pub(crate) async fn ext_surface_action(
+    state: State<'_, AppState>,
+    extension: String,
+    surface: String,
+    action: String,
+) -> CommandResult<Value> {
+    let host = host(&state);
+    let run = host
+        .surfaces(&extension)
+        .into_iter()
+        .filter(|item| item.id == surface)
+        .flat_map(|item| item.actions)
+        .find(|item| item.id == action)
+        .map(|item| item.run)
+        .ok_or_else(|| format!("{extension} has no action {action} on {surface}"))?;
+    let result = host
+        .router()
+        .run_cli(&extension, run, true, Confirmation::from_yes_flag(false))
+        .await;
+    if result.exit_code == ExitCode::Success {
+        Ok(result.document.unwrap_or(Value::Null))
+    } else {
+        Err(result
+            .text
+            .or_else(|| result.document.map(|document| document.to_string()))
+            .unwrap_or_else(|| format!("{action} did not finish")))
+    }
 }

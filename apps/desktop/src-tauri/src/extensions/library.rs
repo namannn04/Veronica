@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Serialize;
-use serde_json::Value;
 use veronica_host::catalog::{CatalogStore, LoadedCatalog, Provenance};
 use veronica_host::fetch::HttpTransport;
 use veronica_host::registry::Origin;
@@ -26,7 +25,7 @@ pub(crate) struct Row {
     pub pid: Option<u32>,
     pub update: Option<String>,
     pub open_pages: Vec<String>,
-    pub surfaces: std::collections::BTreeMap<String, Value>,
+    pub surfaces: Vec<veronica_host::surfaces::Surface>,
     pub manifest: Option<Manifest>,
 }
 

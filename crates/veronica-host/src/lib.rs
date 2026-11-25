@@ -2,6 +2,7 @@ pub mod archive;
 pub mod bundled;
 pub mod catalog;
 pub mod connection;
+pub mod contracts;
 pub mod fetch;
 pub mod host_api;
 pub mod install;
@@ -14,6 +15,7 @@ pub mod registry;
 pub mod router;
 pub mod shortcuts;
 pub mod supervisor;
+pub mod surfaces;
 pub mod trust;
 pub mod update;
 

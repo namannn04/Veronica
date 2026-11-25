@@ -161,6 +161,8 @@
     "allow-ext-auto-update",
     "allow-ext-auto-update-set",
     "allow-ext-onboarding-detect",
-    "allow-shortcuts-list"
+    "allow-shortcuts-list",
+    "allow-ext-surfaces",
+    "allow-ext-surface-action"
   ]
 }

@@ -3,21 +3,24 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError, Weak};
 use std::time::Duration;
 
 use serde_json::{json, Value};
 use tokio::sync::oneshot;
 use veronica_core::AppDirectories;
 use veronica_host::connection::BackendError;
+use veronica_host::contracts::{consumers, topic};
 use veronica_host::host_api::{Frontend, HostServices};
 use veronica_host::registry::{InstalledExtension, Registry};
+use veronica_host::surfaces::Surface;
 use veronica_host::{HostIdentity, Installer, Layout, Router, Supervisor};
 use veronica_protocol::rpc::{
-    error_code, ErrorObject, NotifyParams, ProgressParams, SurfaceUpdateParams, TopicParams,
+    error_code, ErrorObject, HostTopic, NotifyParams, ProgressParams, TopicParams,
 };
-use veronica_protocol::Manifest;
+use veronica_protocol::{ContractId, Manifest};
 
+use super::contracts::{enabled_manifests, HostTopics, Routing};
 use super::files::FileTokens;
 use super::jobs::Jobs;
 use super::storage::Storage;
@@ -38,9 +41,10 @@ pub(crate) trait Shell: Send + Sync {
     fn open_external(&self, url: &str) -> Result<(), String>;
 
     fn copy(&self, text: String) -> Pending<Result<(), String>>;
+
+    fn push_surfaces(&self, _surfaces: Vec<Surface>) {}
 }
 
-type Surfaces = BTreeMap<String, BTreeMap<String, Value>>;
 type Topics = BTreeMap<String, BTreeMap<String, BTreeSet<String>>>;
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -50,7 +54,8 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 #[derive(Default)]
 struct Desk {
     shell: OnceLock<Arc<dyn Shell>>,
-    surfaces: Mutex<Surfaces>,
+    services: OnceLock<Weak<HostServices>>,
+    supervisor: OnceLock<Supervisor>,
     topics: Mutex<Topics>,
 }
 
@@ -66,6 +71,58 @@ impl Desk {
             ErrorObject::new(error_code::UNAVAILABLE, "the desktop is still starting")
         })
     }
+
+    fn push_surfaces(&self, extension: &str) {
+        self.emit(SURFACE, json!({ "extension": extension }));
+        let services = self.services.get().and_then(Weak::upgrade);
+        if let (Some(shell), Some(services)) = (self.shell.get(), services) {
+            shell.push_surfaces(services.surfaces().list());
+        }
+    }
+
+    fn deliver(&self, contract: &ContractId, payload: &Value) {
+        let topic = topic(contract);
+        let listeners: Vec<(String, Vec<String>)> = lock(&self.topics)
+            .iter()
+            .map(|(extension, pages)| {
+                let pages = pages
+                    .iter()
+                    .filter(|(_, topics)| topics.contains(&topic))
+                    .map(|(page, _)| page.clone())
+                    .collect::<Vec<_>>();
+                (extension.clone(), pages)
+            })
+            .filter(|(_, pages)| !pages.is_empty())
+            .collect();
+        for (extension, pages) in listeners {
+            self.emit(
+                EVENT,
+                json!({ "extension": extension, "pages": pages, "topic": topic, "payload": payload }),
+            );
+        }
+        let (Some(supervisor), Some(services)) = (
+            self.supervisor.get().cloned(),
+            self.services.get().and_then(Weak::upgrade),
+        ) else {
+            return;
+        };
+        let manifests = enabled_manifests(services.layout());
+        let readers = consumers(&manifests, contract);
+        if readers.is_empty() {
+            return;
+        }
+        let params = TopicParams {
+            topic,
+            payload: payload.clone(),
+        };
+        tauri::async_runtime::spawn(async move {
+            for reader in readers {
+                if let Some(connection) = supervisor.running(&reader).await {
+                    let _ = connection.notify::<HostTopic>(&params);
+                }
+            }
+        });
+    }
 }
 
 impl Frontend for Desk {
@@ -73,16 +130,16 @@ impl Frontend for Desk {
         self.shell()?.notify(extension, params)
     }
 
-    fn surface(&self, extension: &str, params: SurfaceUpdateParams) -> Result<(), ErrorObject> {
-        lock(&self.surfaces)
-            .entry(extension.to_string())
-            .or_default()
-            .insert(params.surface.clone(), params.state);
-        self.emit(
-            SURFACE,
-            json!({ "extension": extension, "surface": params.surface }),
-        );
-        Ok(())
+    fn accepts_surfaces(&self) -> bool {
+        self.shell.get().is_some()
+    }
+
+    fn surfaces_changed(&self, extension: &str) {
+        self.push_surfaces(extension);
+    }
+
+    fn contract_published(&self, _extension: &str, contract: &ContractId, payload: &Value) {
+        self.deliver(contract, payload);
     }
 
     fn event(&self, extension: &str, params: TopicParams) {
@@ -129,6 +186,8 @@ pub(crate) struct Host {
     storage: Mutex<()>,
     confirmations: Mutex<HashMap<u64, oneshot::Sender<bool>>>,
     next_confirmation: AtomicU64,
+    topic_cache: Arc<HostTopics>,
+    routing: Routing,
 }
 
 impl Host {
@@ -137,13 +196,22 @@ impl Host {
         let frontend: Arc<dyn Frontend> = Arc::clone(&desk) as Arc<dyn Frontend>;
         let layout = Layout::new(directories);
         let jobs = Jobs::load(layout.jobs_file());
-        let services =
-            HostServices::new(layout, directories.settings_file()).with_frontend(frontend);
-        let supervisor = Supervisor::new(Arc::new(services));
+        let services = Arc::new(
+            HostServices::new(layout.clone(), directories.settings_file()).with_frontend(frontend),
+        );
+        let supervisor = Supervisor::new(Arc::clone(&services));
+        let router = Router::supervised(supervisor.clone());
+        let topic_cache = Arc::new(HostTopics::default());
+        let routing = Routing::new(layout, router.clone(), Arc::clone(&topic_cache));
+        services.set_contract_router(Arc::new(routing.clone()));
+        let _ = desk.services.set(Arc::downgrade(&services));
+        let _ = desk.supervisor.set(supervisor.clone());
         Self {
             desk,
-            router: Router::supervised(supervisor.clone()),
+            router,
             supervisor,
+            topic_cache,
+            routing,
             files: Arc::default(),
             jobs,
             home: veronica_core::paths::home_dir().unwrap_or_default(),
@@ -276,16 +344,29 @@ impl Host {
         }
     }
 
-    pub(crate) fn surfaces(&self, extension: &str) -> BTreeMap<String, Value> {
-        lock(&self.desk.surfaces)
-            .get(extension)
-            .cloned()
-            .unwrap_or_default()
+    pub(crate) fn surfaces(&self, extension: &str) -> Vec<Surface> {
+        self.services().surfaces().for_extension(extension)
+    }
+
+    pub(crate) fn all_surfaces(&self) -> Vec<Surface> {
+        self.services().surfaces().list()
+    }
+
+    pub(crate) fn routing(&self) -> &Routing {
+        &self.routing
+    }
+
+    pub(crate) fn publish_host_topic(&self, contract: &ContractId, payload: &Value) {
+        if self.topic_cache.set(contract, payload) {
+            self.desk.deliver(contract, payload);
+        }
     }
 
     pub(crate) fn forget(&self, extension: &str) {
         self.files.revoke(extension);
-        lock(&self.desk.surfaces).remove(extension);
+        if self.services().surfaces().remove_extension(extension) {
+            self.desk.push_surfaces(extension);
+        }
     }
 
     pub(crate) async fn confirm(&self, mut payload: Value, patience: Duration) -> Option<bool> {
