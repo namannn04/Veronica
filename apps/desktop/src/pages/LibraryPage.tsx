@@ -65,6 +65,7 @@ import {
   ALL,
   availableActions,
   buildEntries,
+  bundledOffer,
   groupLibrary,
   isActive,
   type LibraryAction,
@@ -487,6 +488,7 @@ function EntryBadges({ entry, unmet }: { entry: LibraryEntry; unmet: boolean }) 
   return (
     <>
       {row?.origin === "sideload" && <Badge tone="accent">Development</Badge>}
+      {bundledOffer(entry) !== null && <Badge tone="accent">Bundled</Badge>}
       {row?.origin === "bundled" && <Badge>Bundled</Badge>}
       {(entry.feature !== undefined || row?.origin === "builtin") && <Badge>Built in</Badge>}
       {row !== undefined && row.origin !== "builtin" && <Badge>{row.version}</Badge>}
@@ -591,6 +593,11 @@ function LibraryRow({
           <span>{entry.summary}</span>
           {entry.installed === undefined && permissions.length > 0 && (
             <span className="library-note">Will be allowed to: {permissions.join(", ")}.</span>
+          )}
+          {bundledOffer(entry) !== null && (
+            <span className="library-note">
+              Installs offline from the copy bundled with Veronica.
+            </span>
           )}
           {entry.installed === undefined && tools.length > 0 && (
             <span className="library-note">Needs {tools.join(", ")} on this computer.</span>

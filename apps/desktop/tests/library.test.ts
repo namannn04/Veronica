@@ -4,6 +4,7 @@ import {
   ALL,
   availableActions,
   buildEntries,
+  bundledOffer,
   groupLibrary,
   LABS,
   type Listen,
@@ -33,6 +34,7 @@ function offer(id: string, category: string, extra: Partial<CatalogOffer> = {}):
     latest: "1.0.0",
     installed: null,
     available: "1.0.0",
+    bundled: null,
     ...extra,
   };
 }
@@ -273,5 +275,33 @@ describe("job progress", () => {
     stop();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(unlistened).toBe(true);
+  });
+});
+
+describe("bundled extensions", () => {
+  const offline: CatalogShelf = {
+    ...shelf,
+    extensions: [
+      offer("music", "media", { installed: "1.0.0", bundled: "1.0.0" }),
+      offer("lamp", "desk", { bundled: "0.3.0", available: "0.3.0", latest: "0.3.0" }),
+    ],
+  };
+  const listed = buildEntries([], [row("music")], offline);
+  const lamp = listed.find((entry) => entry.id === "lamp");
+
+  test("a bundled-only extension is listed, grouped and installable", () => {
+    const groups = groupLibrary(listed, libraryCategories(offline, listed), "", ALL);
+    expect(groups.map((group) => [group.id, group.entries.map((entry) => entry.id)])).toEqual([
+      ["media", ["music"]],
+      ["desk", ["lamp"]],
+    ]);
+    expect(groups[1].title).toBe("Desk");
+    expect(lamp && availableActions(lamp, undefined)).toEqual(["install"]);
+  });
+
+  test("the Bundled badge shows only until the extension is installed", () => {
+    expect(lamp && bundledOffer(lamp)).toBe("0.3.0");
+    expect(bundledOffer(listed.find((entry) => entry.id === "music") ?? listed[0])).toBeNull();
+    expect(bundledOffer(entries.find((entry) => entry.id === "radio") ?? entries[0])).toBeNull();
   });
 });

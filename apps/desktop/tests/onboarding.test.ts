@@ -28,6 +28,7 @@ function offer(id: string, available: string | null = "1.0.0"): CatalogOffer {
     requires: {},
     latest: "1.0.0",
     installed: null,
+    bundled: null,
     available,
   };
 }
