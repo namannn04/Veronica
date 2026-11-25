@@ -333,17 +333,29 @@ fn leaf<'a, 'm>(
     (command, matches)
 }
 
+fn given(matches: &ArgMatches, arg: &Arg) -> bool {
+    matches.value_source(&arg.name) == Some(clap::parser::ValueSource::CommandLine)
+}
+
 fn wants_stdin(command: &Command, matches: &ArgMatches) -> bool {
+    if !command.stdin {
+        return false;
+    }
+    let asks_for_stdin = command.args.iter().any(|arg| match arg.kind {
+        ArgKind::Flag => arg.name.ends_with("stdin") && given(matches, arg),
+        ArgKind::Option => matches
+            .get_raw(&arg.name)
+            .is_some_and(|mut values| values.any(|value| value == "-")),
+        ArgKind::Positional => false,
+    });
     let mut positionals = command
         .args
         .iter()
         .filter(|arg| arg.kind == ArgKind::Positional)
         .peekable();
-    let all_given = positionals.peek().is_some()
-        && positionals.all(|arg| {
-            matches.value_source(&arg.name) == Some(clap::parser::ValueSource::CommandLine)
-        });
-    command.stdin && !all_given
+    let every_positional_given =
+        positionals.peek().is_some() && positionals.all(|arg| given(matches, arg));
+    asks_for_stdin || !every_positional_given
 }
 
 fn failure(code: ExitCode, message: &str, json: bool) -> CliRunResult {

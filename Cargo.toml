@@ -21,6 +21,7 @@ members = [
     "extensions/clipboard/backend",
     "extensions/color/backend",
     "extensions/companion/backend",
+    "extensions/database/backend",
     "extensions/emoji/backend",
     "extensions/fixture/backend",
     "extensions/focus-dim/backend",

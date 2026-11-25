@@ -1,0 +1,601 @@
+{
+  "schema": 1,
+  "id": "database",
+  "version": "1.0",
+  "title": "Database",
+  "summary": "Explore databases and run guarded production mutations.",
+  "category": "system",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Database",
+        "entry": "index.html",
+        "icon": "database",
+        "nav": {
+          "group": "This computer",
+          "order": 60
+        },
+        "hint": "Browse and query databases",
+        "keywords": ["sql", "postgres", "mysql", "sqlite", "redis", "query", "tables"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "database",
+      "about": "Explore databases and run guarded changes",
+      "aliases": ["db"],
+      "json": true,
+      "subcommands": [
+        {
+          "name": "connections",
+          "about": "Saved connections",
+          "aliases": ["conn"],
+          "json": true,
+          "subcommands": [
+            {
+              "name": "list",
+              "about": "Every saved connection. No credential is printed",
+              "aliases": ["ls"],
+              "effect": "read",
+              "json": true,
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "get",
+              "about": "One connection in full",
+              "effect": "read",
+              "json": true,
+              "args": [
+                {
+                  "name": "connection",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "add",
+              "about": "Save a connection",
+              "longAbout": "Save a connection.\n\nThe password is read from stdin, never from an argument, so it does not land in your shell history or in the process list.",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "name",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true,
+                  "help": "What to call it"
+                },
+                {
+                  "name": "product",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true,
+                  "help": "postgresql, mysql, mariadb, sqlite, redis, valkey"
+                },
+                {
+                  "name": "target",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true,
+                  "help": "`host:port`, or a path for SQLite"
+                },
+                {
+                  "name": "username",
+                  "kind": "option",
+                  "long": "username",
+                  "type": "string"
+                },
+                {
+                  "name": "database",
+                  "kind": "option",
+                  "long": "database",
+                  "type": "string",
+                  "help": "The database, schema or logical database to default to"
+                },
+                {
+                  "name": "environment",
+                  "kind": "option",
+                  "long": "environment",
+                  "type": "string",
+                  "default": "local",
+                  "help": "local, development, testing, staging, production, other"
+                },
+                {
+                  "name": "read_only",
+                  "kind": "flag",
+                  "long": "read-only",
+                  "type": "boolean",
+                  "help": "Refuse every change on this connection"
+                },
+                {
+                  "name": "password_stdin",
+                  "kind": "flag",
+                  "long": "password-stdin",
+                  "type": "boolean",
+                  "help": "Read a password from stdin"
+                }
+              ],
+              "stdin": true,
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "policy",
+              "about": "Change a connection's safety policy",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "connection",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "read_only",
+                  "kind": "option",
+                  "long": "read-only",
+                  "type": "boolean",
+                  "help": "Refuse every change on this connection"
+                },
+                {
+                  "name": "environment",
+                  "kind": "option",
+                  "long": "environment",
+                  "type": "string",
+                  "help": "local, development, testing, staging, production, other"
+                }
+              ],
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "remove",
+              "about": "Forget a connection, its saved queries and its password",
+              "aliases": ["rm"],
+              "effect": "destructive",
+              "json": true,
+              "args": [
+                {
+                  "name": "connection",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "mcp": {
+                "expose": false
+              }
+            }
+          ]
+        },
+        {
+          "name": "capabilities",
+          "about": "What this server can be asked to do",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "connection",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "mcp": {
+            "expose": false
+          }
+        },
+        {
+          "name": "test",
+          "about": "Reach the server and report what it turned out to be. Reads only",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "connection",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "mcp": {
+            "expose": false
+          }
+        },
+        {
+          "name": "browse",
+          "about": "List what is inside a database: schemas, tables, columns, keys",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "connection",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "path",
+              "kind": "positional",
+              "type": "string",
+              "help": "A dotted path, e.g. `public` or `public.orders`. Omit for the top"
+            }
+          ],
+          "mcp": {
+            "expose": false
+          }
+        },
+        {
+          "name": "read",
+          "about": "Read a bounded page of one object's records",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "connection",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "path",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "A dotted path to a table, collection or key"
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 50
+            },
+            {
+              "name": "offset",
+              "kind": "option",
+              "long": "offset",
+              "type": "integer",
+              "default": 0
+            }
+          ],
+          "mcp": {
+            "expose": false
+          }
+        },
+        {
+          "name": "query",
+          "about": "Run one statement that reads. A write is refused",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "connection",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "statement",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "The statement. For Redis, a key pattern"
+            },
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 50
+            },
+            {
+              "name": "offset",
+              "kind": "option",
+              "long": "offset",
+              "type": "integer",
+              "default": 0
+            }
+          ],
+          "mcp": {
+            "expose": false
+          }
+        },
+        {
+          "name": "saved-queries",
+          "about": "Queries you kept",
+          "json": true,
+          "subcommands": [
+            {
+              "name": "list",
+              "aliases": ["ls"],
+              "effect": "read",
+              "json": true,
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "save",
+              "about": "Keep a query. The text is read from stdin when not given",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "name",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "text",
+                  "kind": "positional",
+                  "type": "string"
+                },
+                {
+                  "name": "connection",
+                  "kind": "option",
+                  "long": "connection",
+                  "type": "string"
+                }
+              ],
+              "stdin": true,
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "get",
+              "about": "Print one saved query's text",
+              "effect": "read",
+              "json": true,
+              "args": [
+                {
+                  "name": "id",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "remove",
+              "aliases": ["rm"],
+              "effect": "destructive",
+              "json": true,
+              "args": [
+                {
+                  "name": "id",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                }
+              ],
+              "mcp": {
+                "expose": false
+              }
+            }
+          ]
+        },
+        {
+          "name": "mutations",
+          "about": "Change data, previewed first",
+          "json": true,
+          "subcommands": [
+            {
+              "name": "preview",
+              "about": "Describe a change without making it, and issue a token",
+              "longAbout": "Describe a change without making it, and issue a token.\n\nPrints the plan, what it would affect, the warnings it earns, and the exact text you have to type back. Nothing is sent to the server.",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "connection",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "sql",
+                  "kind": "option",
+                  "long": "sql",
+                  "type": "string",
+                  "help": "The statement, with `?1`, `$1` or `?` placeholders for every value"
+                },
+                {
+                  "name": "command",
+                  "kind": "option",
+                  "long": "command",
+                  "type": "string",
+                  "help": "A Redis command from the allowed list"
+                },
+                {
+                  "name": "params",
+                  "kind": "option",
+                  "long": "param",
+                  "type": "string",
+                  "multiple": true,
+                  "help": "One value, as JSON. Repeat, in order"
+                },
+                {
+                  "name": "action",
+                  "kind": "option",
+                  "long": "action",
+                  "type": "string",
+                  "default": "update",
+                  "help": "insert, update, updateMany, delete, deleteMany, truncate, dropObject"
+                },
+                {
+                  "name": "target",
+                  "kind": "option",
+                  "long": "target",
+                  "type": "string",
+                  "required": true,
+                  "help": "The object this touches, e.g. `public.orders`"
+                },
+                {
+                  "name": "scope",
+                  "kind": "option",
+                  "long": "scope",
+                  "type": "string",
+                  "default": "singleRecord",
+                  "help": "singleRecord, selectedRecords, predicate, entireObject"
+                },
+                {
+                  "name": "lifetime",
+                  "kind": "option",
+                  "long": "lifetime",
+                  "type": "integer",
+                  "default": 120,
+                  "help": "How long the token is good for"
+                },
+                {
+                  "name": "save_plan",
+                  "kind": "option",
+                  "long": "save-plan",
+                  "type": "string",
+                  "help": "Write the plan here so `apply` can read it back"
+                }
+              ],
+              "mcp": {
+                "expose": false
+              }
+            },
+            {
+              "name": "apply",
+              "about": "Make a previewed change",
+              "effect": "destructive",
+              "json": true,
+              "args": [
+                {
+                  "name": "connection",
+                  "kind": "positional",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "plan",
+                  "kind": "option",
+                  "long": "plan",
+                  "type": "string",
+                  "required": true,
+                  "help": "The plan `preview --save-plan` wrote. `-` reads stdin"
+                },
+                {
+                  "name": "token",
+                  "kind": "option",
+                  "long": "token",
+                  "type": "string",
+                  "required": true,
+                  "help": "The token from the preview"
+                },
+                {
+                  "name": "confirm",
+                  "kind": "option",
+                  "long": "confirm",
+                  "type": "string",
+                  "required": true,
+                  "help": "Exactly the text the preview asked for"
+                }
+              ],
+              "stdin": true,
+              "mcp": {
+                "expose": false
+              }
+            }
+          ]
+        },
+        {
+          "name": "operations",
+          "about": "What Veronica has done, newest first",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 20
+            }
+          ],
+          "mcp": {
+            "expose": false
+          }
+        },
+        {
+          "name": "mcp",
+          "about": "Deprecated: runs `vr mcp`, which serves the read-only database tools",
+          "longAbout": "Deprecated: runs `vr mcp`, which serves the read-only database tools.\n\nAn agent learns which databases you have saved and what each can do, but never a host, a username or a credential. This command goes away in the next release.",
+          "effect": "read",
+          "json": true,
+          "mcp": {
+            "expose": false
+          }
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": ["*"],
+    "filesystem": [
+      {
+        "path": "~",
+        "access": "readWrite"
+      }
+    ],
+    "dbus": {
+      "session": ["org.freedesktop.secrets"],
+      "system": []
+    },
+    "spawn": [],
+    "shell": [],
+    "host": []
+  },
+  "requires": {
+    "tools": [],
+    "capabilities": ["databaseBroker"],
+    "optionalCapabilities": ["machineManagement"],
+    "systemPackages": []
+  },
+  "contracts": {
+    "provides": [],
+    "uses": []
+  },
+  "data": {
+    "migrate": []
+  }
+}

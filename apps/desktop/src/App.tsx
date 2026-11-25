@@ -23,7 +23,6 @@ import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
 import { AgentsPage } from "./pages/AgentsPage";
-import { DatabasePage } from "./pages/DatabasePage";
 import { HomePage } from "./pages/HomePage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
@@ -230,7 +229,6 @@ export function App() {
         <Fragment key={route}>
           {route === "home" && <HomePage onNavigate={navigateTo} />}
           {route === "agents" && <AgentsPage />}
-          {route === "database" && <DatabasePage />}
           {route === "library" && (
             <LibraryPage diagnostics={diagnostics} onChanged={loadDiagnostics} />
           )}

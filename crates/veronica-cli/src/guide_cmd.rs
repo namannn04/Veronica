@@ -12,8 +12,8 @@ use crate::routes::Routes;
 
 const HOST: &str = "host";
 const HOST_FLAGS: [&str; 3] = ["json", "yes", "verbose"];
-const WITHOUT_JSON: [&str; 2] = ["database mcp", "mcp serve"];
-const WITHOUT_MCP: [&str; 2] = ["database", "mcp"];
+const WITHOUT_JSON: [&str; 1] = ["mcp serve"];
+const WITHOUT_MCP: [&str; 1] = ["mcp"];
 const SELF_PREVIEW: [&str; 6] = [
     "extensions install",
     "extensions remove",
@@ -31,24 +31,6 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("config list", Effect::Read),
     ("config set", Effect::Write),
     ("config unset", Effect::Write),
-    ("database browse", Effect::Read),
-    ("database capabilities", Effect::Read),
-    ("database connections add", Effect::Write),
-    ("database connections get", Effect::Read),
-    ("database connections list", Effect::Read),
-    ("database connections policy", Effect::Write),
-    ("database connections remove", Effect::Destructive),
-    ("database mcp", Effect::Read),
-    ("database mutations apply", Effect::Destructive),
-    ("database mutations preview", Effect::Write),
-    ("database operations", Effect::Read),
-    ("database query", Effect::Read),
-    ("database read", Effect::Read),
-    ("database saved-queries get", Effect::Read),
-    ("database saved-queries list", Effect::Read),
-    ("database saved-queries remove", Effect::Destructive),
-    ("database saved-queries save", Effect::Write),
-    ("database test", Effect::Read),
     ("diagnose", Effect::Read),
     ("extensions auto-update exclude", Effect::Write),
     ("extensions auto-update hours", Effect::Write),

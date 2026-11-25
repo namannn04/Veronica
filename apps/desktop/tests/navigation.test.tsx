@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  type BuiltinRoute,
   extensionNavItems,
   mergeNavGroups,
   NAV_ITEMS,
@@ -29,18 +28,6 @@ describe("extension-aware navigation", () => {
     expect(routeFromSearch("")).toBe("home");
   });
 
-  test("every feature page points at its catalogue extension", () => {
-    const expected: Record<
-      Exclude<BuiltinRoute, "home" | "library" | "settings" | "about">,
-      string
-    > = {
-      database: "database",
-    };
-    for (const [route, extensionId] of Object.entries(expected)) {
-      expect(NAV_ITEMS.find((item) => item.id === route)?.extensionId).toBe(extensionId);
-    }
-  });
-
   test("Veronica's own pages can never be hidden", () => {
     const none = new Set<string>();
     for (const route of ["home", "library", "settings", "about"] as const) {
@@ -48,25 +35,12 @@ describe("extension-aware navigation", () => {
     }
   });
 
-  const gated = NAV_ITEMS.filter((item) => item.extensionId !== undefined);
-  const kept = gated[0];
-  const dropped = gated.find((item) => item.extensionId !== kept.extensionId) ?? kept;
-
-  test("one filtered tree feeds both the rail and palette", () => {
-    const enabled = new Set([kept.extensionId ?? ""]);
-    const items = visibleNavGroups(enabled).flatMap((group) => group.items);
-
-    expect(items.some((item) => item.id === kept.id)).toBe(true);
-    expect(items.some((item) => item.id === dropped.id)).toBe(dropped === kept);
-    expect(searchNav(kept.label, items).map((item) => item.id)).toContain(kept.id);
-    expect(searchNav(dropped.label, items).some((item) => item.id === dropped.id)).toBe(
-      dropped === kept,
-    );
-  });
-
-  test("a disabled current route is no longer visible", () => {
-    expect(routeIsVisible(dropped.id, new Set())).toBe(false);
-    expect(routeIsVisible(dropped.id, new Set([dropped.extensionId ?? ""]))).toBe(true);
+  test("built-in pages stay visible whatever extensions are enabled", () => {
+    const none = new Set<string>();
+    expect(visibleNavGroups(none).flatMap((group) => group.items)).toEqual(NAV_ITEMS);
+    for (const item of NAV_ITEMS) {
+      expect(routeIsVisible(item.id, none)).toBe(true);
+    }
   });
 });
 

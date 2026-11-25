@@ -78,24 +78,12 @@ impl ExtensionEntry {
 }
 
 use Capability::{
-    DatabaseBroker, ExternalMediaControl, GlobalShortcuts, MachineManagement, MicrophoneControl,
-    PreventSleep, ScreenShareDetection, ShellIntegration, SystemMetrics,
+    ExternalMediaControl, GlobalShortcuts, MicrophoneControl, PreventSleep, ScreenShareDetection,
+    ShellIntegration, SystemMetrics,
 };
 use ExtensionGroup as G;
 
 pub const ENTRIES: &[ExtensionEntry] = &[
-    ExtensionEntry {
-        id: "database",
-        title: "Database",
-        subtitle: "Explore databases and run guarded production mutations.",
-        icon: "database",
-        group: G::System,
-        featured: false,
-        defaults_key: "tabDatabaseEnabled",
-        required_capabilities: &[DatabaseBroker],
-        optional_capabilities: &[MachineManagement],
-        required_tools: &[],
-    },
     ExtensionEntry {
         id: "systemStats",
         title: "CPU & Memory in the top bar",
@@ -171,6 +159,12 @@ pub struct LegacyToggle {
 }
 
 pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
+    LegacyToggle {
+        id: "database",
+        extension: "database",
+        defaults_key: "tabDatabaseEnabled",
+        featured: false,
+    },
     LegacyToggle {
         id: "focusDim",
         extension: "focus-dim",
@@ -307,7 +301,6 @@ mod tests {
     #[test]
     fn the_catalogue_keeps_its_order() {
         let ported = [
-            "database",
             "systemStats",
             "micMute",
             "lidAwake",

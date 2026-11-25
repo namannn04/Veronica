@@ -6045,7 +6045,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "uuid",
  "veronica-core",
  "veronica-database",
  "veronica-host",
@@ -6115,7 +6114,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "veronica-core",
- "veronica-database",
  "veronica-host",
  "veronica-protocol",
  "veronica-system",
@@ -6206,6 +6204,21 @@ dependencies = [
  "veronica-core",
  "veronica-sdk",
  "veronica-system",
+]
+
+[[package]]
+name = "veronica-ext-database"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "serde",
+ "serde_json",
+ "uuid",
+ "veronica-core",
+ "veronica-database",
+ "veronica-sdk",
 ]
 
 [[package]]

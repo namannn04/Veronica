@@ -22,7 +22,8 @@ use veronica_database::session::Session;
 use veronica_database::store::{MetadataStore, SavedQuery};
 use veronica_database::value::Value;
 
-use crate::format::{self, Output};
+use veronica_sdk::format;
+use veronica_sdk::Output;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum DatabaseCommand {
@@ -235,24 +236,25 @@ fn render_page(page: &veronica_database::paging::Page) -> String {
     )
 }
 
-fn read_stdin() -> Result<String> {
-    use std::io::Read;
-    let mut buffer = String::new();
-    std::io::stdin()
-        .read_to_string(&mut buffer)
-        .context("cannot read from stdin")?;
+fn read_stdin(stdin: Option<&str>) -> Result<String> {
+    let buffer = stdin.context("cannot read from stdin")?;
     Ok(buffer.trim_end_matches(['\n', '\r']).to_string())
 }
 
 pub(crate) async fn run(
     directories: &AppDirectories,
     command: &DatabaseCommand,
-    output: Output,
+    stdin: Option<&str>,
+    output: Output<'_>,
 ) -> Result<()> {
     match command {
-        DatabaseCommand::Connections(command) => connections(directories, command, output).await,
-        DatabaseCommand::SavedQueries(command) => saved_queries(directories, command, output),
-        DatabaseCommand::Mutations(command) => mutations(directories, command, output).await,
+        DatabaseCommand::Connections(command) => {
+            connections(directories, command, stdin, output).await
+        }
+        DatabaseCommand::SavedQueries(command) => {
+            saved_queries(directories, command, stdin, output)
+        }
+        DatabaseCommand::Mutations(command) => mutations(directories, command, stdin, output).await,
 
         DatabaseCommand::Capabilities { connection } => {
             let store = directories_store(directories)?;
@@ -390,12 +392,8 @@ pub(crate) async fn run(
         }
 
         DatabaseCommand::Mcp => {
-            eprintln!(
-                "vr: `vr database mcp` is deprecated and goes away in the next release; it now runs `vr mcp`, which serves the same read-only database tools"
-            );
-            crate::mcp_cmd::serve().await
+            anyhow::bail!("`vr database mcp` is served by vr itself; run `vr mcp`")
         }
-
         DatabaseCommand::Operations { limit } => {
             let store = directories_store(directories)?;
             let history = store.operations(*limit)?;
@@ -431,7 +429,8 @@ pub(crate) async fn run(
 async fn connections(
     directories: &AppDirectories,
     command: &ConnectionCommand,
-    output: Output,
+    stdin: Option<&str>,
+    output: Output<'_>,
 ) -> Result<()> {
     let store = directories_store(directories)?;
 
@@ -566,7 +565,7 @@ async fn connections(
             let secrets = secret_store(directories);
             let identifier = Uuid::new_v4();
             if *password_stdin {
-                let password = read_stdin()?;
+                let password = read_stdin(stdin)?;
                 if password.is_empty() {
                     anyhow::bail!("no password on stdin");
                 }
@@ -706,7 +705,8 @@ async fn connections(
 fn saved_queries(
     directories: &AppDirectories,
     command: &SavedQueryCommand,
-    output: Output,
+    stdin: Option<&str>,
+    output: Output<'_>,
 ) -> Result<()> {
     let store = directories_store(directories)?;
     match command {
@@ -736,7 +736,7 @@ fn saved_queries(
         } => {
             let text = match text {
                 Some(text) => text.clone(),
-                None => read_stdin()?,
+                None => read_stdin(stdin)?,
             };
             if text.trim().is_empty() {
                 anyhow::bail!("no query text");
@@ -851,7 +851,8 @@ fn build_plan(
 async fn mutations(
     directories: &AppDirectories,
     command: &MutationCommand,
-    output: Output,
+    stdin: Option<&str>,
+    output: Output<'_>,
 ) -> Result<()> {
     let mut store = directories_store(directories)?;
     let secrets = secret_store(directories);
@@ -940,7 +941,7 @@ async fn mutations(
         } => {
             let definition = store.resolve(connection)?;
             let text = if plan == "-" {
-                read_stdin()?
+                read_stdin(stdin)?
             } else {
                 std::fs::read_to_string(plan).with_context(|| format!("cannot read {plan}"))?
             };
