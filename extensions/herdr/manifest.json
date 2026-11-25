@@ -115,6 +115,7 @@
     "host": ["clipboard:write"]
   },
   "requires": {
+    "tools": ["herdr"],
     "capabilities": ["herdrSessions"]
   }
 }
