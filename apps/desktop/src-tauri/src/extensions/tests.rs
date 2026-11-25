@@ -151,12 +151,16 @@ impl Env {
     }
 
     async fn finish(&self, action: Action) -> Job {
+        let announced = self.shell.events(CHANGED).len();
         let id = submit(&self.host, action).id;
         tokio::time::timeout(PATIENCE, async {
             loop {
                 let job = self.host.jobs().list().into_iter().find(|job| job.id == id);
                 match job {
-                    Some(job) if matches!(job.phase, Phase::Succeeded | Phase::Failed) => {
+                    Some(job)
+                        if matches!(job.phase, Phase::Succeeded | Phase::Failed)
+                            && self.shell.events(CHANGED).len() > announced =>
+                    {
                         return job
                     }
                     _ => tokio::time::sleep(Duration::from_millis(20)).await,
