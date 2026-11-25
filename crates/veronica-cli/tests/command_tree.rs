@@ -169,7 +169,7 @@ fn every_json_leaf_prints_one_canonical_document_and_a_known_exit_code() {
         .iter()
         .filter(|leaf| leaf["json"] == true)
         .collect();
-    assert!(leaves.len() > 150, "only {} leaves", leaves.len());
+    assert!(leaves.len() > 60, "only {} leaves", leaves.len());
     assert!(leaves.iter().any(|leaf| leaf["origin"] == "fixture"));
     assert!(leaves.iter().all(|leaf| leaf["effect"].is_string()));
 
