@@ -6270,6 +6270,8 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "tokio",
+ "tracing",
  "veronica-sdk",
  "veronica-system",
  "veronica-usage",

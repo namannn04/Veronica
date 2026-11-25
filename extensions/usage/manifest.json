@@ -22,12 +22,84 @@
     }
   ],
   "activation": {
-    "mode": "onDemand",
-    "idleStopSeconds": 120
+    "mode": "background",
+    "idleStopSeconds": 0
   },
   "backend": {
     "entry": "bin/backend"
   },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Agent Usage",
+        "entry": "index.html",
+        "icon": "gauge",
+        "nav": {
+          "group": "Agents",
+          "order": 10
+        },
+        "hint": "Spend, tokens and rate limits",
+        "keywords": ["claude", "codex", "cursor", "cost", "spend", "tokens", "limits", "rings"]
+      },
+      {
+        "id": "alerts",
+        "title": "Usage Alerts",
+        "entry": "index.html",
+        "icon": "bell",
+        "nav": {
+          "group": "Agents",
+          "order": 11
+        },
+        "hint": "Rate-limit notifications",
+        "keywords": ["alerts", "notifications", "limits", "pacing", "reminders"]
+      }
+    ]
+  },
+  "homeCards": [
+    {
+      "id": "activity",
+      "template": "heatmap",
+      "title": "Activity",
+      "opens": "main",
+      "blurCategory": "money"
+    },
+    {
+      "id": "spend",
+      "template": "stat",
+      "title": "Agent usage",
+      "opens": "main",
+      "blurCategory": "money"
+    },
+    {
+      "id": "limits",
+      "template": "ring",
+      "title": "Rate limits",
+      "opens": "main",
+      "blurCategory": "agents",
+      "actions": [
+        {
+          "id": "claude",
+          "label": "Claude",
+          "run": ["usage", "provider", "claude"]
+        },
+        {
+          "id": "codex",
+          "label": "Codex",
+          "run": ["usage", "provider", "codex"]
+        }
+      ]
+    }
+  ],
+  "notchActivities": [
+    {
+      "id": "limits",
+      "template": "ring",
+      "priority": 40,
+      "blurCategory": "usage"
+    }
+  ],
   "commands": [
     {
       "name": "usage",
@@ -220,6 +292,21 @@
           ]
         },
         {
+          "name": "provider",
+          "about": "Choose whose rate limits the Home card and the notch show",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "provider",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "values": ["claude", "codex"]
+            }
+          ]
+        },
+        {
           "name": "refresh",
           "about": "Run the collector and rewrite usage.json",
           "effect": "write",
@@ -283,7 +370,8 @@
     "dbus": {
       "session": ["org.freedesktop.Notifications"]
     },
-    "spawn": ["bash", "bun", "npx", "curl", "jq", "perl", "sqlite3", "unzip", "md5sum"]
+    "spawn": ["bash", "bun", "npx", "curl", "jq", "perl", "sqlite3", "unzip", "md5sum"],
+    "host": ["surfaces", "openExternal"]
   },
   "requires": {
     "tools": ["claude", "codex"],

@@ -1,11 +1,14 @@
 use std::time::Duration;
 
-use tauri::{AppHandle, Emitter, Manager};
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::settings::Settings;
+use veronica_sdk::Context;
 use veronica_system::notify::{self, Timeout, Urgency};
 use veronica_usage::alerts::{self, LimitAlert, NotifierState, NotifySettings};
 use veronica_usage::limits::LimitWindow;
 
-use crate::state::AppState;
+pub(crate) const POSTED: &str = "alerts.posted";
+pub(crate) const LIMITS: &str = "usage.limits";
 
 pub(crate) const DEFAULT_POLL_SECS: u64 = 60;
 pub(crate) const MIN_POLL_SECS: u64 = 30;
@@ -13,7 +16,7 @@ pub(crate) const MAX_POLL_SECS: u64 = 900;
 
 const IDLE_CHECK_SECS: u64 = 10;
 
-pub(crate) fn poll_interval(settings: &veronica_core::Settings) -> Duration {
+pub(crate) fn poll_interval(settings: &Settings) -> Duration {
     let seconds = settings
         .get("notifyPollSeconds")
         .and_then(serde_json::Value::as_u64)
@@ -22,51 +25,41 @@ pub(crate) fn poll_interval(settings: &veronica_core::Settings) -> Duration {
     Duration::from_secs(seconds)
 }
 
-pub(crate) async fn run(app: AppHandle) {
+pub(crate) async fn run(context: Context, directories: AppDirectories) {
     let connection = match zbus::Connection::session().await {
         Ok(connection) => connection,
         Err(error) => {
-            tracing::info!(target: "veronica", "alerts are unavailable without a session bus: {error}");
+            tracing::info!("alerts are unavailable without a session bus: {error}");
             return;
         }
     };
+    let state_path = directories.alerts_state_file();
 
     loop {
-        let (settings, state_path) = {
-            let state = app.state::<AppState>();
-            (
-                state.settings_snapshot(),
-                state.directories.alerts_state_file(),
-            )
-        };
+        let settings = Settings::load(&directories.settings_file()).unwrap_or_default();
         let notify_settings = NotifySettings::from_settings(&settings);
-        let usage_enabled = veronica_core::extensions::entry("usage")
-            .is_some_and(|entry| settings.extension_enabled(entry));
 
-        if !notify_settings.master || !usage_enabled {
+        if !notify_settings.master {
             let mut state = NotifierState::load(&state_path);
             if state.has_tracking() {
                 state.reset_tracking();
                 if let Err(error) = state.save(&state_path) {
-                    tracing::warn!(target: "veronica", "cannot clear alert state: {error:#}");
+                    tracing::warn!("cannot clear alert state: {error:#}");
                 } else {
-                    tracing::info!(
-                        target: "veronica",
-                        "alerts are off; forgot the tracked levels"
-                    );
+                    tracing::info!("alerts are off; forgot the tracked levels");
                 }
             }
             tokio::time::sleep(Duration::from_secs(IDLE_CHECK_SECS)).await;
             continue;
         }
 
-        tick(&app, &connection, &notify_settings, &state_path).await;
+        tick(&context, &connection, &notify_settings, &state_path).await;
         tokio::time::sleep(poll_interval(&settings)).await;
     }
 }
 
 async fn tick(
-    app: &AppHandle,
+    context: &Context,
     connection: &zbus::Connection,
     settings: &NotifySettings,
     state_path: &std::path::Path,
@@ -93,7 +86,7 @@ async fn tick(
                 now,
             ));
             state.token_expired_at = None;
-            publish(app, limits.session, limits.week);
+            publish(context, limits.session, limits.week);
         }
         Ok(None) => {}
         Err(error) => {
@@ -103,7 +96,7 @@ async fn tick(
                     alerts_to_post.push(alert);
                 }
             } else {
-                tracing::debug!(target: "veronica", "alert poll could not read limits: {message}");
+                tracing::debug!("alert poll could not read limits: {message}");
             }
         }
     }
@@ -117,24 +110,27 @@ async fn tick(
         match notify::post(connection, &notification).await {
             Ok(id) => state.record_banner(&alert.id, id),
             Err(error) => {
-                tracing::warn!(target: "veronica", "cannot post {}: {error:#}", alert.id);
+                tracing::warn!("cannot post {}: {error:#}", alert.id);
             }
         }
     }
 
     if state != before {
         if let Err(error) = state.save(state_path) {
-            tracing::warn!(target: "veronica", "cannot persist alert state: {error:#}");
+            tracing::warn!("cannot persist alert state: {error:#}");
         }
     }
     if !alerts_to_post.is_empty() {
-        let _ = app.emit("alerts-posted", &alerts_to_post);
+        let _ = context.host().emit(
+            POSTED,
+            serde_json::to_value(&alerts_to_post).unwrap_or_default(),
+        );
     }
 }
 
-fn publish(app: &AppHandle, session: Option<LimitWindow>, week: Option<LimitWindow>) {
-    let _ = app.emit(
-        "limits-updated",
+fn publish(context: &Context, session: Option<LimitWindow>, week: Option<LimitWindow>) {
+    let _ = context.host().emit(
+        LIMITS,
         serde_json::json!({
             "session": session.map(window_json),
             "week": week.map(window_json),
@@ -196,7 +192,7 @@ mod tests {
 
     #[test]
     fn the_poll_interval_is_clamped_to_something_sane() {
-        let mut settings = veronica_core::Settings::default();
+        let mut settings = Settings::default();
         assert_eq!(poll_interval(&settings).as_secs(), DEFAULT_POLL_SECS);
 
         settings.set("notifyPollSeconds", serde_json::json!(1));
