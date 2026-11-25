@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "id": "calendar",
+  "version": "1.0",
+  "title": "Calendar",
+  "summary": "Today and the days ahead, from every calendar GNOME knows about.",
+  "category": "media",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple"],
+  "activation": {
+    "mode": "background",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Calendar",
+        "entry": "index.html",
+        "icon": "calendar",
+        "nav": {
+          "group": "Tools",
+          "order": 20
+        },
+        "hint": "Today and the days ahead",
+        "keywords": ["meetings", "events", "agenda", "schedule"]
+      }
+    ]
+  },
+  "homeCards": [
+    {
+      "id": "agenda",
+      "template": "list",
+      "title": "Coming up",
+      "opens": "main"
+    }
+  ],
+  "notchActivities": [
+    {
+      "id": "agenda",
+      "template": "list",
+      "priority": 20,
+      "blurCategory": "calendar"
+    }
+  ],
+  "commands": [
+    {
+      "name": "calendar",
+      "about": "Your agenda, from every configured calendar",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "list",
+          "about": "The agenda, grouped by day",
+          "aliases": ["agenda"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer",
+              "default": 7,
+              "help": "How many days ahead to include"
+            },
+            {
+              "name": "all",
+              "kind": "flag",
+              "long": "all",
+              "type": "boolean",
+              "help": "Include events that have already finished today"
+            }
+          ]
+        },
+        {
+          "name": "next",
+          "about": "The next event that has not started yet",
+          "effect": "read",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": ["org.gnome.Shell.CalendarServer", "org.gnome.evolution.dataserver.*"]
+    },
+    "spawn": ["gtk-launch"],
+    "host": ["surfaces", "openExternal"]
+  },
+  "requires": {
+    "capabilities": ["calendarEvents"]
+  }
+}

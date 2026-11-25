@@ -4,8 +4,7 @@ use anyhow::{Context, Result};
 use chrono::Local;
 use clap::Subcommand;
 use veronica_calendar::{agenda, server};
-
-use crate::format::{self, Output};
+use veronica_sdk::{format, Output};
 
 #[derive(Subcommand)]
 pub(crate) enum CalendarCommand {
