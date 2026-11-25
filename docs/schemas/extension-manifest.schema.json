@@ -252,6 +252,9 @@
           },
           "type": "array"
         },
+        "blurCategory": {
+          "type": ["string", "null"]
+        },
         "id": {
           "type": "string"
         },
@@ -560,7 +563,7 @@
       "type": "object"
     },
     "SurfaceTemplate": {
-      "enum": ["ring", "meter", "stat", "text", "list", "nowPlaying", "actions"],
+      "enum": ["ring", "meter", "stat", "text", "list", "nowPlaying", "actions", "heatmap"],
       "type": "string"
     },
     "Target": {

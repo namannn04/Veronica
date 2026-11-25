@@ -1,9 +1,38 @@
-import { Badge } from "@veronica/ui";
 import { type MouseEvent, type ReactNode, useLayoutEffect, useMemo, useState } from "react";
-import { dayLabel, dayLabelLong, hourLabel, money, moneyCompact, tokens } from "../lib/format";
-import type { DayPoint, HeatmapCell, HourPoint, NamedAmount } from "../lib/types";
-import { TipRow, TipTitle, useTooltip } from "./Tooltip";
+import { TipRow, TipTitle, useTooltip } from "./ChartTooltip";
+import { Badge } from "./Feedback";
+import { dayLabel, dayLabelLong, hourLabel, money, moneyCompact, tokens } from "./format";
 import "./charts.css";
+
+export interface DayPoint {
+  period: string;
+  cost: number;
+  tokens: number;
+}
+
+export interface NamedAmount {
+  name: string;
+  label: string;
+  cost: number;
+  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+}
+
+export interface HourPoint {
+  hour: number;
+  cost: number;
+  tokens: number;
+}
+
+export interface HeatmapCell {
+  period: string;
+  cost: number;
+  tokens: number;
+  level: number;
+}
 
 export function seriesColor(index: number): string {
   const slot = Math.min(index, 7) + 1;

@@ -1,4 +1,5 @@
 import { Button, Card, CardHeader, occurrenceKeys, ProgressBar } from "@veronica/ui";
+import { SpendCalendar } from "@veronica/ui/charts";
 import { Blocks } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { type CardBody, type HomeCardView, homeCards, parseSurfaces } from "../lib/homeCards";
@@ -47,6 +48,12 @@ function Body({ body }: { body: CardBody }) {
           {body.detail && <span className="ext-card-caption now-artist">{body.detail}</span>}
           <span className="ext-card-label">{body.playing ? "Playing" : "Paused"}</span>
         </div>
+      );
+    case "heatmap":
+      return body.cells.length > 0 ? (
+        <SpendCalendar cells={body.cells} />
+      ) : (
+        <p className="ext-card-text">{body.caption ?? "No activity yet."}</p>
       );
     default:
       return body.caption ? <p className="ext-card-text">{body.caption}</p> : null;
@@ -99,7 +106,12 @@ export function ExtensionCards({ onOpen }: { onOpen: (route: ExtensionRoute) => 
         <Card
           key={card.key}
           as="section"
-          className={["home-card", "home-span-2", "ext-card", card.blurClass]
+          className={[
+            "home-card",
+            card.body.kind === "heatmap" ? "home-span-4" : "home-span-2",
+            "ext-card",
+            card.blurClass,
+          ]
             .filter(Boolean)
             .join(" ")}
         >

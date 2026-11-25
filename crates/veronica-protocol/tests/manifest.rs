@@ -458,3 +458,18 @@ fn minimal_manifest_uses_defaults() {
     assert!(manifest.commands.is_empty());
     assert!(manifest.permissions.host.is_empty());
 }
+
+#[test]
+fn heatmaps_belong_on_home_and_never_in_the_notch() {
+    let mut value = media();
+    value["homeCards"][0]["template"] = json!("heatmap");
+    assert_eq!(
+        parse(&value).unwrap().home_cards[0].template,
+        SurfaceTemplate::Heatmap
+    );
+    value["notchActivities"][0]["template"] = json!("heatmap");
+    assert_eq!(
+        invalid(&value),
+        ValidationError::NotchHeatmap("now-playing".to_string())
+    );
+}

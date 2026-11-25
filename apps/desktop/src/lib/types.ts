@@ -1,3 +1,7 @@
+import type { DayPoint, HeatmapCell, HourPoint, NamedAmount } from "@veronica/ui/charts";
+
+export type { DayPoint, HeatmapCell, HourPoint, NamedAmount };
+
 import type { BackendState, Granted } from "@veronica/extension-api";
 
 export type CapabilityState =
@@ -98,36 +102,6 @@ export interface Totals {
   outputTokens: number;
   cacheCreationTokens: number;
   cacheReadTokens: number;
-}
-
-export interface DayPoint {
-  period: string;
-  cost: number;
-  tokens: number;
-}
-
-export interface NamedAmount {
-  name: string;
-  label: string;
-  cost: number;
-  tokens: number;
-  inputTokens: number;
-  outputTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-}
-
-export interface HourPoint {
-  hour: number;
-  cost: number;
-  tokens: number;
-}
-
-export interface HeatmapCell {
-  period: string;
-  cost: number;
-  tokens: number;
-  level: number;
 }
 
 export interface ChatEntry {

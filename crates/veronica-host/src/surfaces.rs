@@ -10,6 +10,8 @@ use veronica_protocol::manifest::{Manifest, SurfaceAction, SurfaceTemplate};
 
 pub const MAX_STATE_BYTES: usize = 16 * 1024;
 pub const MAX_LIST_ITEMS: usize = 20;
+pub const MAX_HEATMAP_CELLS: usize = 400;
+const MAX_HEAT_LEVEL: u64 = 4;
 const MAX_TEXT_CHARS: usize = 400;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -62,6 +64,7 @@ pub fn template_name(template: SurfaceTemplate) -> &'static str {
         SurfaceTemplate::List => "list",
         SurfaceTemplate::NowPlaying => "nowPlaying",
         SurfaceTemplate::Actions => "actions",
+        SurfaceTemplate::Heatmap => "heatmap",
     }
 }
 
@@ -103,6 +106,50 @@ fn list(state: &Value) -> Result<(), String> {
     Ok(())
 }
 
+fn is_day(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 10
+        && bytes.iter().enumerate().all(|(index, byte)| match index {
+            4 | 7 => *byte == b'-',
+            _ => byte.is_ascii_digit(),
+        })
+}
+
+fn heatmap(state: &Value) -> Result<(), String> {
+    let cells = state
+        .get("cells")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "cells must be a list".to_string())?;
+    if cells.len() > MAX_HEATMAP_CELLS {
+        return Err(format!("cells holds more than {MAX_HEATMAP_CELLS} days"));
+    }
+    for cell in cells {
+        if !cell
+            .get("period")
+            .and_then(Value::as_str)
+            .is_some_and(is_day)
+        {
+            return Err("each cell needs a period written as YYYY-MM-DD".into());
+        }
+        if cell
+            .get("level")
+            .and_then(Value::as_u64)
+            .is_none_or(|level| level > MAX_HEAT_LEVEL)
+        {
+            return Err(format!(
+                "each cell needs a level from 0 to {MAX_HEAT_LEVEL}"
+            ));
+        }
+        for key in ["cost", "tokens"] {
+            match cell.get(key) {
+                None | Some(Value::Number(_)) => {}
+                _ => return Err(format!("{key} must be a number")),
+            }
+        }
+    }
+    text(state, "caption", false)
+}
+
 pub fn check_state(template: SurfaceTemplate, state: &Value) -> Result<(), String> {
     if !state.is_object() {
         return Err("the state must be an object".into());
@@ -131,6 +178,7 @@ pub fn check_state(template: SurfaceTemplate, state: &Value) -> Result<(), Strin
             flag(state, "playing")
         }
         SurfaceTemplate::Actions => text(state, "caption", false),
+        SurfaceTemplate::Heatmap => heatmap(state),
     }
 }
 
@@ -147,7 +195,7 @@ pub fn declared(manifest: &Manifest, surface: &str, state: &Value) -> Vec<Surfac
             title: Some(card.title.clone()),
             opens: card.opens.clone(),
             priority: 0,
-            blur_category: None,
+            blur_category: card.blur_category.clone(),
             actions: card.actions.clone(),
             state: state.clone(),
         });
@@ -344,6 +392,10 @@ mod tests {
                 json!({ "title": "Song", "playing": true }),
             ),
             (SurfaceTemplate::Actions, json!({})),
+            (
+                SurfaceTemplate::Heatmap,
+                json!({ "cells": [{ "period": "2026-11-24", "level": 3, "cost": 4.2, "tokens": 900 }] }),
+            ),
         ];
         for (template, state) in good {
             assert_eq!(check_state(template, &state), Ok(()), "{state}");
@@ -362,6 +414,14 @@ mod tests {
                 json!({ "title": "Song", "playing": "yes" }),
             ),
             (SurfaceTemplate::Actions, json!("not an object")),
+            (
+                SurfaceTemplate::Heatmap,
+                json!({ "cells": [{ "period": "today", "level": 1 }] }),
+            ),
+            (
+                SurfaceTemplate::Heatmap,
+                json!({ "cells": [{ "period": "2026-11-24", "level": 9 }] }),
+            ),
         ];
         for (template, state) in bad {
             assert!(check_state(template, &state).is_err(), "{state}");

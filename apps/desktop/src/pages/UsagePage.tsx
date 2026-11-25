@@ -16,9 +16,9 @@ import {
   StatSkeleton,
   Toolbar,
 } from "@veronica/ui";
+import { colorScale, DayBars, HourBars, RankedBars, SpendCalendar } from "@veronica/ui/charts";
 import { BarChart3, RefreshCw, Share2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { colorScale, DayBars, HourBars, RankedBars, SpendCalendar } from "../components/charts";
 import { LimitRings } from "../components/LimitRings";
 import { ModelTable } from "../components/ModelTable";
 import { ProjectList } from "../components/ProjectList";

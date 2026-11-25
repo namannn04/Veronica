@@ -170,6 +170,7 @@ pub enum SurfaceTemplate {
     List,
     NowPlaying,
     Actions,
+    Heatmap,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -191,6 +192,8 @@ pub struct HomeCard {
     pub source: Option<ContractId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub opens: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blur_category: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub actions: Vec<SurfaceAction>,
 }

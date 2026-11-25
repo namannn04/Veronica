@@ -97,3 +97,31 @@ describe("home cards from extension surfaces", () => {
     ]);
   });
 });
+
+test("a heatmap card keeps well formed days and drops the rest", () => {
+  const [card] = homeCards([
+    {
+      extension: "usage",
+      id: "activity",
+      placement: "home",
+      template: "heatmap",
+      priority: 0,
+      actions: [],
+      state: {
+        cells: [
+          { period: "2026-11-23", level: 2, cost: 1.5, tokens: 300 },
+          { period: "2026-11-24", level: 4 },
+          { level: 1 },
+        ],
+      },
+    },
+  ]);
+  expect(card.body).toEqual({
+    kind: "heatmap",
+    cells: [
+      { period: "2026-11-23", level: 2, cost: 1.5, tokens: 300 },
+      { period: "2026-11-24", level: 4, cost: 0, tokens: 0 },
+    ],
+    caption: null,
+  });
+});

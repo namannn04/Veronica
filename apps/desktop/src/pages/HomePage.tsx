@@ -14,6 +14,7 @@ import {
   Skeleton,
   SkeletonText,
 } from "@veronica/ui";
+import { ringStatus, SpendCalendar } from "@veronica/ui/charts";
 import {
   Activity,
   ArrowUpRight,
@@ -30,7 +31,6 @@ import {
   Zap,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { ringStatus, SpendCalendar } from "../components/charts";
 import { ExtensionCards } from "../components/ExtensionCards";
 import { NotificationList } from "../components/NotificationList";
 import { ProviderSelector } from "../components/ProviderSelector";
