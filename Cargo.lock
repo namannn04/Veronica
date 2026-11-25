@@ -6057,7 +6057,6 @@ dependencies = [
  "veronica-database",
  "veronica-host",
  "veronica-machines",
- "veronica-media",
  "veronica-pack",
  "veronica-protocol",
  "veronica-sdk",
@@ -6111,7 +6110,6 @@ name = "veronica-desktop"
 version = "0.1.26"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
  "cairo-rs",
  "chrono",
  "gtk",
@@ -6129,7 +6127,6 @@ dependencies = [
  "veronica-database",
  "veronica-host",
  "veronica-machines",
- "veronica-media",
  "veronica-protocol",
  "veronica-system",
  "veronica-usage",
@@ -6175,6 +6172,22 @@ dependencies = [
  "serde_json",
  "tokio",
  "veronica-sdk",
+]
+
+[[package]]
+name = "veronica-ext-media"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "clap",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "veronica-media",
+ "veronica-sdk",
+ "zbus",
 ]
 
 [[package]]

@@ -19,7 +19,6 @@ mod keystroke_cmd;
 mod machines_cmd;
 mod maintenance_cmd;
 mod mcp_cmd;
-mod media_cmd;
 mod power_cmd;
 mod presenter_cmd;
 mod quinjet_cmd;
@@ -156,8 +155,6 @@ enum Command {
         about = "The computers Veronica can reach"
     )]
     Machines(machines_cmd::MachineCommand),
-    #[command(subcommand, about = "Control whatever is playing, through MPRIS")]
-    Media(media_cmd::MediaCommand),
     #[command(subcommand, about = "CPU, memory, storage and battery information")]
     System(system_cmd::SystemCommand),
     #[command(
@@ -341,7 +338,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Alerts(command) => alerts_cmd::run(&directories, command, output).await,
         Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
-        Command::Media(command) => media_cmd::run(command, output).await,
         Command::Workspace(command) => workspace_cmd::run(command, output).await,
         Command::Utility(command) => utility_cmd::run(&directories, command, output),
         Command::Ports(command) => services_cmd::ports(command, output).await,

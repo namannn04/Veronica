@@ -80,9 +80,9 @@ impl ExtensionEntry {
 use Capability::{
     ClipboardHistory, CompanionService, DatabaseBroker, EmojiInsertion, ExternalMediaControl,
     GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation,
-    LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls, MicrophoneControl,
-    Notifications, PackageManagement, PreventSleep, RunningApplications, ScreenColorSampling,
-    ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection, WindowDimming,
+    LocalTerminal, MachineManagement, MicrophoneControl, Notifications, PackageManagement,
+    PreventSleep, RunningApplications, ScreenColorSampling, ScreenShareDetection, ShellIntegration,
+    SystemMetrics, UsageCollection, WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -232,18 +232,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_tools: &[],
     },
     ExtensionEntry {
-        id: "music",
-        title: "Music",
-        subtitle: "Controls every player through MPRIS: Spotify, a browser tab, VLC.",
-        icon: "music",
-        group: G::Media,
-        featured: false,
-        defaults_key: "tabMusicEnabled",
-        required_capabilities: &[ExternalMediaControl],
-        optional_capabilities: &[LocalMusicPlayback, MediaControls],
-        required_tools: &[],
-    },
-    ExtensionEntry {
         id: "notchShelf",
         title: "Top bar",
         subtitle: "Agent usage and machine load inside the top bar's own clock dropdown.",
@@ -354,6 +342,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         defaults_key: "tabCalendarEnabled",
         featured: false,
     },
+    LegacyToggle {
+        id: "music",
+        extension: "media",
+        defaults_key: "tabMusicEnabled",
+        featured: false,
+    },
 ];
 
 pub fn successor(id: &str) -> Option<&'static str> {
@@ -410,7 +404,6 @@ mod tests {
             "systemStats",
             "micMute",
             "lidAwake",
-            "music",
             "notchShelf",
             "clipboard",
             "keystrokeHighlight",
@@ -442,6 +435,7 @@ mod tests {
         assert_eq!(successor("seoAudit"), Some("audit"));
         assert_eq!(successor("audit"), Some("audit"));
         assert_eq!(successor("calendar"), Some("calendar"));
+        assert_eq!(successor("music"), Some("media"));
         assert_eq!(successor("usage"), None);
     }
 
@@ -484,15 +478,6 @@ mod tests {
                 "non-GNOME {kind:?}"
             );
         }
-    }
-
-    #[test]
-    fn music_is_available_with_mpris_and_local_playback() {
-        let entry = entry("music").unwrap();
-        assert_eq!(
-            entry.availability(&caps(SessionKind::Wayland)),
-            ExtensionAvailability::Available
-        );
     }
 
     #[test]

@@ -17,7 +17,6 @@ tauri-build = { version = "2", features = [] }
 veronica-core = { workspace = true }
 veronica-usage = { workspace = true }
 veronica-system = { workspace = true }
-veronica-media = { workspace = true }
 veronica-database = { workspace = true }
 veronica-machines = { workspace = true }
 veronica-host = { path = "../../../crates/veronica-host" }
@@ -33,7 +32,6 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 chrono = { workspace = true }
-base64 = "0.22"
 tempfile = "3"
 thiserror = { workspace = true }
 
