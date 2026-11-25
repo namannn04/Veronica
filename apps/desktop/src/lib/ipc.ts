@@ -118,16 +118,6 @@ export const ipc = {
   agentResize: (id: string, cols: number, rows: number) =>
     invoke<void>("agent_resize", { id, cols, rows }),
   agentStop: (id: string) => invoke<void>("agent_stop", { id }),
-  graftDiscover: (connection: import("./workspace").GraftConnection) =>
-    invoke<import("./workspace").GraftDiscovery>("graft_discover", { connection }),
-  graftCall: (
-    connection: import("./workspace").GraftConnection,
-    name: string,
-    argumentsValue: Record<string, unknown>,
-    confirmed: boolean,
-  ) => invoke<unknown>("graft_call", { connection, name, arguments: argumentsValue, confirmed }),
-  workspaceDoctor: (request: { root: string; ports: number[]; containers: string[] }) =>
-    invoke<import("./workspace").DoctorReport>("workspace_doctor", { request }),
   diagnostics: () => invoke<Diagnostics>("diagnostics"),
 
   settingsAll: () => invoke<Record<string, unknown>>("settings_all"),

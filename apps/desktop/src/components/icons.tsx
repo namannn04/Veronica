@@ -74,6 +74,7 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   "git-branch": QuinjetIcon,
   bell: AlertsIcon,
   gauge: UsageIcon,
+  terminal: WorkspaceIcon,
   music: MusicIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,

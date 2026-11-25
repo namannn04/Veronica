@@ -1,6 +1,5 @@
 fn main() {
     let commands = tauri_build::AppManifest::new().commands(&[
-        "workspace_doctor",
         "chat_journal",
         "chat_view",
         "chat_configure",
@@ -21,8 +20,6 @@ fn main() {
         "agent_input",
         "agent_resize",
         "agent_stop",
-        "graft_discover",
-        "graft_call",
         "diagnostics",
         "capabilities",
         "settings_all",

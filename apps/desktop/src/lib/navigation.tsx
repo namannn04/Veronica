@@ -13,7 +13,6 @@ import {
   PortsIcon,
   SettingsIcon,
   SystemIcon,
-  WorkspaceIcon,
 } from "../components/icons";
 import { frameSource } from "../extensions/bridge";
 import type { InstalledExtension } from "./types";
@@ -23,7 +22,6 @@ export type BuiltinRoute =
   | "agents"
   | "system"
   | "services"
-  | "workspace"
   | "machines"
   | "maintenance"
   | "database"
@@ -91,13 +89,7 @@ export const NAV_GROUPS: NavGroup[] = [
         hint: "Listening ports and local containers",
         keywords: "ports port localhost 3000 8080 server process stop docker containers daemon",
       },
-      {
-        id: "workspace",
-        label: "Developer Workspace",
-        icon: <WorkspaceIcon />,
-        hint: "Project Doctor and service playground",
-        keywords: "project doctor graftcode mcp playground developer ports",
-      },
+
       {
         id: "machines",
         label: "Machines",

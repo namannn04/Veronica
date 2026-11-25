@@ -4,7 +4,6 @@
   "description": "Every application command, granted to the main window alone.",
   "windows": ["main"],
   "permissions": [
-    "allow-workspace-doctor",
     "allow-chat-journal",
     "allow-chat-view",
     "allow-chat-configure",
@@ -25,8 +24,6 @@
     "allow-agent-input",
     "allow-agent-resize",
     "allow-agent-stop",
-    "allow-graft-discover",
-    "allow-graft-call",
     "allow-diagnostics",
     "allow-capabilities",
     "allow-settings-all",
