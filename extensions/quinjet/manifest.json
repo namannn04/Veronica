@@ -1,0 +1,163 @@
+{
+  "schema": 1,
+  "id": "quinjet",
+  "version": "1.0",
+  "title": "Quinjet",
+  "summary": "Discover review workspaces and open a worktree in Quinjet.",
+  "category": "agents",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "suggestFor": [
+    {
+      "tool": "quinjet"
+    }
+  ],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Quinjet",
+        "entry": "index.html",
+        "icon": "git-branch",
+        "nav": {
+          "group": "Agents",
+          "order": 30
+        },
+        "hint": "Review workspaces",
+        "keywords": ["review", "worktree", "git", "projects"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "quinjet",
+      "about": "Quinjet: discover and open review workspaces",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "projects",
+          "about": "Recent projects and their worktrees",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "machine",
+              "kind": "option",
+              "long": "machine",
+              "type": "string",
+              "default": "local",
+              "help": "Which machine to look on. Defaults to this computer"
+            }
+          ]
+        },
+        {
+          "name": "worktrees",
+          "about": "Every worktree of one project",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "path",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "A project path, or a path inside one"
+            },
+            {
+              "name": "machine",
+              "kind": "option",
+              "long": "machine",
+              "type": "string",
+              "default": "local"
+            }
+          ]
+        },
+        {
+          "name": "open",
+          "about": "Print the command that opens a worktree, without running it",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "path",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "A worktree, or a project, whose current worktree is chosen"
+            },
+            {
+              "name": "theme",
+              "kind": "option",
+              "long": "theme",
+              "type": "string"
+            },
+            {
+              "name": "appearance",
+              "kind": "option",
+              "long": "appearance",
+              "type": "string",
+              "help": "light or dark"
+            },
+            {
+              "name": "machine",
+              "kind": "option",
+              "long": "machine",
+              "type": "string",
+              "default": "local"
+            }
+          ]
+        },
+        {
+          "name": "launch",
+          "about": "Open a worktree in the installed terminal",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "path",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "theme",
+              "kind": "option",
+              "long": "theme",
+              "type": "string"
+            },
+            {
+              "name": "appearance",
+              "kind": "option",
+              "long": "appearance",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": ["org.freedesktop.DBus"]
+    },
+    "spawn": ["quinjet", "ssh", "kgx", "gnome-terminal", "x-terminal-emulator"]
+  },
+  "requires": {
+    "tools": ["quinjet"],
+    "capabilities": ["localTerminal"]
+  }
+}

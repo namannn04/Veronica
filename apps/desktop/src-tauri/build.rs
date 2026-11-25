@@ -78,8 +78,6 @@ fn main() {
         "cleaner_clean",
         "tools_readiness",
         "tools_install",
-        "quinjet_projects",
-        "quinjet_open",
         "microphone_state",
         "emoji_groups",
         "emoji_search",

@@ -16,7 +16,6 @@ mod maintenance_cmd;
 mod mcp_cmd;
 mod power_cmd;
 mod presenter_cmd;
-mod quinjet_cmd;
 mod routes;
 mod services_cmd;
 mod shelf_cmd;
@@ -121,8 +120,6 @@ enum Command {
         about = "Explore databases and run guarded changes"
     )]
     Database(database_cmd::DatabaseCommand),
-    #[command(subcommand, about = "Quinjet: discover and open review workspaces")]
-    Quinjet(quinjet_cmd::QuinjetCommand),
     #[command(
         subcommand,
         alias = "machine",
@@ -317,7 +314,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Cleaner(command) => cleaner_cmd::run(command, output, cli.yes),
         Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
-        Command::Quinjet(command) => quinjet_cmd::run(&directories, command, output).await,
     }
 }
 
