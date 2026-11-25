@@ -331,7 +331,7 @@ fn failure(code: ExitCode, message: &str, json: bool) -> CliRunResult {
     CliRunResult {
         exit_code: code,
         document: json.then(|| format::error_document(code, message)),
-        text: (!json).then(|| format!("error: {message}\n")),
+        text: (!json).then(|| format!("vr: {message}\n")),
     }
 }
 
@@ -419,6 +419,11 @@ fn emit(result: CliRunResult, json: bool) -> ExitCode {
             }
         });
         format::document(&document);
+        if !shown {
+            if let Some(message) = document["error"]["message"].as_str() {
+                eprintln!("vr: {message}");
+            }
+        }
     } else {
         if let Some(document) = &result.document {
             format::document(document);
@@ -428,6 +433,9 @@ fn emit(result: CliRunResult, json: bool) -> ExitCode {
             Some(text) => eprint!("{text}"),
             None => {}
         }
+    }
+    if code == ExitCode::ConfirmationRequired {
+        eprintln!("vr: confirmation required");
     }
     code
 }

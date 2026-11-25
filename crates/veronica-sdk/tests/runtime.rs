@@ -265,18 +265,18 @@ async fn destructive_leaves_run_only_when_confirmed() {
         .await;
     assert_eq!(refused["result"]["exitCode"], json!(5));
     assert_eq!(
-        refused["result"]["document"]["confirmationRequired"],
-        json!(true)
+        refused["result"]["document"],
+        json!({ "command": "echo erase", "effect": "destructive" })
     );
 
     let text = backend
         .request(2, "cli.run", cli(&["echo", "erase", "notes"], false))
         .await;
     assert_eq!(text["result"]["exitCode"], json!(5));
-    assert!(text["result"]["text"]
-        .as_str()
-        .unwrap()
-        .contains("confirmation"));
+    assert_eq!(
+        text["result"]["text"],
+        json!("`vr echo erase` removes or replaces data.\n\n")
+    );
 
     let erased = backend
         .request(3, "cli.run", confirmed(&["echo", "erase", "notes"], true))

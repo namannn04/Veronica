@@ -22,7 +22,7 @@ use veronica_protocol::rpc::{
 use veronica_protocol::ExitCode;
 
 use crate::dirs::Dirs;
-use crate::gate::{confirmation_required, Gate};
+use crate::gate::{confirmation_required, destructive_preview, Gate};
 use crate::host_client::{HostClient, Outgoing};
 
 const READ_BUFFER_BYTES: usize = 64 * 1024;
@@ -85,10 +85,15 @@ pub trait Extension: Send + Sync + 'static {
 
     fn cli_preview(
         &self,
-        _context: Context,
+        context: Context,
         params: CliRunParams,
     ) -> impl Future<Output = Result<CliRunResult, ErrorObject>> + Send {
-        async move { Ok(confirmation_required(&params)) }
+        async move {
+            Ok(context.gate.path(&params.argv).map_or_else(
+                || confirmation_required(&params),
+                |path| destructive_preview(&path, params.json),
+            ))
+        }
     }
 
     fn rpc_call(

@@ -212,6 +212,6 @@ fn failures_carry_their_exit_code_and_an_error_document() {
     let capture = Capture::new(false);
     let result = capture.finish(Err(anyhow::anyhow!("broke")));
     assert_eq!(result.exit_code, ExitCode::Failed);
-    assert_eq!(result.text.as_deref(), Some("error: broke\n"));
+    assert_eq!(result.text.as_deref(), Some("vr: broke\n"));
     assert_eq!(result.document, None::<Value>);
 }
