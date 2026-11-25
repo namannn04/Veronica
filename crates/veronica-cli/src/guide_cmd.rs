@@ -27,14 +27,6 @@ const SELF_PREVIEW: [&str; 9] = [
 ];
 
 pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
-    ("attention configure", Effect::Write),
-    ("attention focus start", Effect::Write),
-    ("attention focus status", Effect::Read),
-    ("attention focus stop", Effect::Write),
-    ("attention history", Effect::Read),
-    ("attention record", Effect::Write),
-    ("attention status", Effect::Read),
-    ("attention summary", Effect::Read),
     ("backup export", Effect::Write),
     ("backup import", Effect::Destructive),
     ("backup inspect", Effect::Read),

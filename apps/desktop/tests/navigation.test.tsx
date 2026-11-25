@@ -41,7 +41,6 @@ describe("extension-aware navigation", () => {
       machines: "machines",
       maintenance: "appMaintenance",
       database: "database",
-      attention: "attention",
       clipboard: "clipboard",
       companion: "companion",
     };

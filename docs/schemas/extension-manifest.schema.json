@@ -105,6 +105,9 @@
             }
           ]
         },
+        "hidden": {
+          "type": "boolean"
+        },
         "json": {
           "default": false,
           "type": "boolean"

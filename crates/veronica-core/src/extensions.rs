@@ -88,18 +88,6 @@ use ExtensionGroup as G;
 
 pub const ENTRIES: &[ExtensionEntry] = &[
     ExtensionEntry {
-        id: "attention",
-        title: "Attention",
-        subtitle: "Understand where your time goes and protect focused work!",
-        icon: "hourglass",
-        group: G::Utilities,
-        featured: true,
-        defaults_key: "tabAttentionEnabled",
-        required_capabilities: &[RunningApplications],
-        optional_capabilities: &[ShellIntegration],
-        required_tools: &[],
-    },
-    ExtensionEntry {
         id: "usage",
         title: "Agent Usage",
         subtitle: "Claude and Codex limits, usage stats, and alerts.",
@@ -307,6 +295,12 @@ pub struct LegacyToggle {
 
 pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
     LegacyToggle {
+        id: "attention",
+        extension: "attention",
+        defaults_key: "tabAttentionEnabled",
+        featured: true,
+    },
+    LegacyToggle {
         id: "seoAudit",
         extension: "audit",
         defaults_key: "tabSEOAuditEnabled",
@@ -380,7 +374,6 @@ mod tests {
     #[test]
     fn the_catalogue_keeps_its_order() {
         let ported = [
-            "attention",
             "usage",
             "herdr",
             "quinjet",
@@ -420,6 +413,7 @@ mod tests {
         }
         assert_eq!(successor("seoAudit"), Some("audit"));
         assert_eq!(successor("audit"), Some("audit"));
+        assert_eq!(successor("attention"), Some("attention"));
         assert_eq!(successor("calendar"), Some("calendar"));
         assert_eq!(successor("music"), Some("media"));
         assert_eq!(successor("colorPicker"), Some("color"));

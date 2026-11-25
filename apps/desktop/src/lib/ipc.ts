@@ -38,10 +38,7 @@ function describe(reason: unknown): string {
 
 import type {
   AlertsView,
-  AttentionFocusSession,
   AttentionOverview,
-  AttentionSettings,
-  AttentionStatus,
   AudioStream,
   BackupSummary,
   BluetoothState,
@@ -175,15 +172,7 @@ export const ipc = {
   companionRecordStop: () => invoke<CompanionItem>("companion_record_stop"),
   companionRecordCancel: () => invoke<void>("companion_record_cancel"),
   companionAudio: (id: number) => invoke<string>("companion_audio", { id }),
-  attentionStatus: () => invoke<AttentionStatus>("attention_status"),
-  attentionStart: (name: string, durationSeconds: number) =>
-    invoke<AttentionFocusSession>("attention_start", { name, durationSeconds }),
-  attentionStop: () => invoke<AttentionFocusSession>("attention_stop"),
-  attentionHistory: () => invoke<AttentionFocusSession[]>("attention_history"),
   attentionOverview: (days: number) => invoke<AttentionOverview>("attention_overview", { days }),
-  attentionSettings: () => invoke<AttentionSettings>("attention_settings"),
-  attentionSettingsSave: (settings: AttentionSettings) =>
-    invoke<void>("attention_settings_save", { settings }),
   shellAction: (action: "cleanKeys" | "pickColor" | "showClipboard") =>
     invoke<void>("shell_action", { action }),
 

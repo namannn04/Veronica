@@ -1,6 +1,5 @@
 use std::fmt::Write as _;
 
-mod attention_cmd;
 mod backup_cmd;
 mod cleaner_cmd;
 mod clipboard_cmd;
@@ -99,11 +98,6 @@ enum Command {
     },
     #[command(subcommand, about = "Read and write settings")]
     Config(ConfigCommand),
-    #[command(
-        subcommand,
-        about = "Attention focus sessions and local attention history"
-    )]
-    Attention(attention_cmd::AttentionCommand),
     #[command(
         subcommand,
         about = "Export, inspect and restore Veronica's persistent data"
@@ -310,7 +304,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         }
         Command::Config(command) => config(&directories, command, output),
         Command::Shelf(command) => shelf_cmd::run(&directories, command, output),
-        Command::Attention(command) => attention_cmd::run(&directories, command, output),
         Command::Backup(command) => backup_cmd::run(&directories, command, output),
         Command::Workspace(command) => workspace_cmd::run(command, output).await,
         Command::Utility(command) => utility_cmd::run(&directories, command, output),
