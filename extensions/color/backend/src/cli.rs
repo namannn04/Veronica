@@ -1,12 +1,10 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde_json::json;
-use veronica_core::swatches::{
-    formatting, srgb_to_display_p3, ColorProfile, CopyFormat, SwatchHistory, DEFAULT_HISTORY_SIZE,
-};
-use veronica_core::{AppDirectories, Settings};
+use veronica_core::swatches::{formatting, srgb_to_display_p3, ColorProfile, CopyFormat};
+use veronica_sdk::{format, Output};
 
-use crate::format::{self, Output};
+use crate::preferences::Preferences;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum ColorCommand {
@@ -48,24 +46,14 @@ fn parse_format(raw: &str) -> Result<CopyFormat, String> {
     Ok(parsed)
 }
 
-pub(crate) async fn run(
-    directories: &AppDirectories,
-    settings: &Settings,
-    command: &ColorCommand,
-    output: Output,
-) -> Result<()> {
-    let path = directories.swatches_file();
-    let mut history = SwatchHistory::load(&path)?;
-    let configured = CopyFormat::parse(settings.string("colorPickerCopyFormat").unwrap_or("hex"));
-    let profile = ColorProfile::parse(settings.string("colorPickerProfile").unwrap_or("srgb"));
-    let limit = SwatchHistory::clamp_limit(
-        settings
-            .get("colorPickerHistorySize")
-            .and_then(serde_json::Value::as_u64)
-            .map_or(DEFAULT_HISTORY_SIZE, |size| {
-                usize::try_from(size).unwrap_or(usize::MAX)
-            }),
-    );
+pub(crate) async fn run(command: &ColorCommand, output: Output<'_>) -> Result<()> {
+    let Preferences {
+        path,
+        format: configured,
+        profile,
+        limit,
+    } = Preferences::load()?;
+    let mut history = Preferences::history(&path)?;
 
     match command {
         ColorCommand::Pick { format, no_copy } => {

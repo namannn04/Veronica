@@ -1,6 +1,5 @@
 mod attention;
 mod clipboard;
-mod color;
 mod emoji;
 mod legacy;
 mod maintenance;
@@ -10,7 +9,6 @@ mod usage;
 
 pub(crate) use attention::*;
 pub(crate) use clipboard::*;
-pub(crate) use color::*;
 pub(crate) use emoji::*;
 pub(crate) use legacy::*;
 pub(crate) use maintenance::*;

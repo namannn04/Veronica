@@ -5,7 +5,6 @@ mod attention_cmd;
 mod backup_cmd;
 mod cleaner_cmd;
 mod clipboard_cmd;
-mod color_cmd;
 mod companion_cmd;
 mod database_cmd;
 mod emoji_cmd;
@@ -144,11 +143,6 @@ enum Command {
     Database(database_cmd::DatabaseCommand),
     #[command(subcommand, about = "Quinjet: discover and open review workspaces")]
     Quinjet(quinjet_cmd::QuinjetCommand),
-    #[command(
-        subcommand,
-        about = "Sample a colour from the screen and keep a swatch history"
-    )]
-    Color(color_cmd::ColorCommand),
     #[command(
         subcommand,
         alias = "machine",
@@ -359,10 +353,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Maintenance(command) => maintenance_cmd::run(command, output, cli.yes).await,
         Command::Database(command) => database_cmd::run(&directories, command, output).await,
         Command::Quinjet(command) => quinjet_cmd::run(&directories, command, output).await,
-        Command::Color(command) => {
-            let settings = Settings::load(&directories.settings_file())?;
-            color_cmd::run(&directories, &settings, command, output).await
-        }
     }
 }
 

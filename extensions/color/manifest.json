@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "id": "color",
+  "version": "1.0",
+  "title": "Color Picker",
+  "summary": "Sample a colour from the screen and keep a swatch history.",
+  "category": "utilities",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Color Picker",
+        "entry": "index.html",
+        "icon": "pipette",
+        "nav": {
+          "group": "Tools",
+          "order": 40
+        },
+        "hint": "Sample and keep colours",
+        "keywords": ["colour", "eyedropper", "hex", "rgb", "swatch", "pick"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "color",
+      "about": "Sample a colour from the screen and keep a swatch history",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "pick",
+          "about": "Open the screen colour sampler and record what is picked",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "format",
+              "kind": "option",
+              "long": "format",
+              "type": "string",
+              "help": "Which representation to copy. Defaults to the configured format"
+            },
+            {
+              "name": "no_copy",
+              "kind": "flag",
+              "long": "no-copy",
+              "type": "boolean",
+              "help": "Record the colour without putting it on the clipboard"
+            }
+          ]
+        },
+        {
+          "name": "list",
+          "about": "Print the swatch history, newest first",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 20
+            }
+          ]
+        },
+        {
+          "name": "copy",
+          "about": "Copy one swatch back to the clipboard",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            },
+            {
+              "name": "format",
+              "kind": "option",
+              "long": "format",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "show",
+          "about": "Print one swatch in every format, for piping onward",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "remove",
+          "about": "Forget one swatch",
+          "aliases": ["rm"],
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "integer",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "clear",
+          "about": "Forget every swatch",
+          "effect": "destructive",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "shortcuts": [
+    {
+      "id": "pick",
+      "title": "Pick color",
+      "default": "Ctrl+Alt+P",
+      "run": ["color", "pick"]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": [
+        "org.gnome.Shell.Screenshot",
+        "org.freedesktop.portal.Desktop",
+        "io.github.namannn04.Veronica.Shell"
+      ]
+    },
+    "spawn": ["wl-copy", "xclip", "xsel"],
+    "host": ["shortcuts"]
+  },
+  "requires": {
+    "capabilities": ["screenColorSampling"]
+  }
+}

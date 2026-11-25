@@ -70,6 +70,7 @@ const NAMED_ICONS: Record<string, (props: LucideProps) => ReactNode> = {
   music: MusicIcon,
   "scan-search": AuditIcon,
   calendar: CalendarIcon,
+  pipette: ColorIcon,
 };
 
 export function NamedIcon({ name }: { name?: string }) {

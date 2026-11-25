@@ -83,7 +83,6 @@ pub fn builtin_shortcuts(extension: &str) -> Vec<Declared> {
     let (id, title, default) = match extension {
         "clipboard" => ("open", "Clipboard", "Ctrl+Alt+B"),
         "micMute" => ("toggle", "Microphone mute", "Ctrl+Alt+M"),
-        "colorPicker" => ("pick", "Pick color", "Ctrl+Alt+P"),
         "emoji" => ("open", "Emoji", "Ctrl+Alt+E"),
         _ => return Vec::new(),
     };
@@ -455,7 +454,7 @@ mod tests {
 
     #[test]
     fn built_in_features_keep_their_bindings() {
-        let bindings: Vec<_> = ["clipboard", "micMute", "colorPicker", "emoji", "media"]
+        let bindings: Vec<_> = ["clipboard", "micMute", "color", "emoji", "media"]
             .into_iter()
             .flat_map(builtin_shortcuts)
             .map(|declared| (declared.owner, declared.default.unwrap()))
@@ -465,7 +464,6 @@ mod tests {
             [
                 ("clipboard".to_string(), "Ctrl+Alt+B".to_string()),
                 ("micMute".to_string(), "Ctrl+Alt+M".to_string()),
-                ("colorPicker".to_string(), "Ctrl+Alt+P".to_string()),
                 ("emoji".to_string(), "Ctrl+Alt+E".to_string()),
             ]
         );

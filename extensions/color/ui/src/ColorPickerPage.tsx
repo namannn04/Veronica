@@ -19,11 +19,11 @@ import {
   SkeletonText,
   Tooltip,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { Check, Copy, Pipette, Trash } from "lucide-react";
 import { type CSSProperties, useCallback, useEffect, useState } from "react";
-import { timeAgo } from "../lib/format";
-import { ipc, listenEvent } from "../lib/ipc";
-import type { CopyFormatOption, PickResult, SwatchRow } from "../lib/types";
+import { timeAgo } from "./format";
+import type { CopyFormatOption, CopyResult, PickResult, SwatchRow } from "./types";
 import "./ColorPickerPage.css";
 
 type Message = { tone: "neutral" | "good"; text: string };
@@ -33,7 +33,11 @@ const PROFILES = [
   { value: "displayP3", label: "Display P3" },
 ] as const;
 
+const FORMAT_KEY = "copyFormat";
+const PROFILE_KEY = "profile";
+
 export function ColorPickerPage() {
+  const client = useClient();
   const [swatches, setSwatches] = useState<SwatchRow[]>([]);
   const [formatOptions, setFormats] = useState<CopyFormatOption[] | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
@@ -49,7 +53,7 @@ export function ColorPickerPage() {
 
   const load = useCallback(async () => {
     try {
-      setSwatches(await ipc.colorSwatches());
+      setSwatches(await client.backend.call<SwatchRow[]>("swatches"));
       setError(null);
       setLoadFailed(false);
     } catch (reason) {
@@ -58,44 +62,38 @@ export function ColorPickerPage() {
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     void load();
-    void ipc
-      .colorFormats()
+    void client.backend
+      .call<CopyFormatOption[]>("formats")
       .then(setFormats)
       .catch(() => setFormats([]));
-    void ipc
-      .settingsAll()
-      .then(setSettings)
+    void Promise.all([client.settings.get(FORMAT_KEY), client.settings.get(PROFILE_KEY)])
+      .then(([format, profile]) => setSettings({ [FORMAT_KEY]: format, [PROFILE_KEY]: profile }))
       .catch(() => {});
-  }, [load]);
+  }, [client, load]);
 
-  useEffect(() => {
-    const updated = listenEvent("swatches-updated", () => void load());
-    const changed = listenEvent("settings-updated", () => {
-      void ipc
-        .settingsAll()
-        .then(setSettings)
-        .catch(() => {});
-    });
-    return () => {
-      void updated.then((un) => un());
-      void changed.then((un) => un());
-    };
-  }, [load]);
+  useEffect(
+    () =>
+      client.on("visibility.changed", ({ visible }) => {
+        if (visible) {
+          void load();
+        }
+      }),
+    [client, load],
+  );
 
   const formats = formatOptions ?? [];
-  const format =
-    typeof settings.colorPickerCopyFormat === "string" ? settings.colorPickerCopyFormat : "hex";
-  const profile = settings.colorPickerProfile === "displayP3" ? "displayP3" : "srgb";
+  const format = typeof settings[FORMAT_KEY] === "string" ? settings[FORMAT_KEY] : "hex";
+  const profile = settings[PROFILE_KEY] === "displayP3" ? "displayP3" : "srgb";
   const selected = swatches.find((swatch) => swatch.id === selectedId) ?? swatches[0];
 
   const set = async (key: string, value: unknown) => {
     setSettings((current) => ({ ...current, [key]: value }));
     try {
-      await ipc.settingsSet(key, value);
+      await client.settings.set(key, value);
     } catch (reason) {
       setError(String(reason));
     }
@@ -106,7 +104,7 @@ export function ColorPickerPage() {
     setError(null);
     setMessage(null);
     try {
-      const result: PickResult = await ipc.colorPick();
+      const result = await client.backend.call<PickResult>("pick", {}, { timeoutMs: 120_000 });
       await load();
       setSelectedId(result.swatch.id);
       setMessage(
@@ -131,7 +129,10 @@ export function ColorPickerPage() {
 
   const copy = async (swatch: SwatchRow, which?: string) => {
     try {
-      const result = await ipc.colorCopy(swatch.id, which ?? null);
+      const result = await client.backend.call<CopyResult>("copy", {
+        id: swatch.id,
+        format: which ?? null,
+      });
       const key = `${swatch.id}:${which ?? ""}`;
       setCopied(key);
       setMessage({ tone: "good", text: `${result.value} copied via ${result.copiedVia}` });
@@ -144,7 +145,7 @@ export function ColorPickerPage() {
 
   const forget = async (id: number) => {
     try {
-      await ipc.colorForget(id);
+      await client.backend.call("forget", { id });
       if (selectedId === id) {
         setSelectedId(null);
       }
@@ -157,7 +158,7 @@ export function ColorPickerPage() {
   const clear = async () => {
     setClearing(true);
     try {
-      await ipc.colorClear();
+      await client.backend.call("clear");
       setSelectedId(null);
       await load();
     } catch (reason) {
@@ -336,7 +337,7 @@ export function ColorPickerPage() {
             control={
               <Select
                 value={format}
-                onChange={(event) => void set("colorPickerCopyFormat", event.target.value)}
+                onChange={(event) => void set(FORMAT_KEY, event.target.value)}
                 aria-label="Copy format"
               >
                 {formats.map((option) => (
@@ -354,7 +355,7 @@ export function ColorPickerPage() {
               <Segmented
                 options={PROFILES}
                 value={profile}
-                onChange={(value) => void set("colorPickerProfile", value)}
+                onChange={(value) => void set(PROFILE_KEY, value)}
                 label="Color profile"
               />
             }

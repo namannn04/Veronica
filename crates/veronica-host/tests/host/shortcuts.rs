@@ -112,12 +112,6 @@ fn built_in_features_keep_todays_default_bindings() {
     settings.set("emojiEnabled", Value::Bool(true));
     assert_eq!(
         enabled(&settings),
-        [
-            "Ctrl+Alt+V",
-            "Ctrl+Alt+K",
-            "Ctrl+Alt+P",
-            "Ctrl+Alt+E",
-            "Ctrl+Alt+M"
-        ]
+        ["Ctrl+Alt+V", "Ctrl+Alt+K", "Ctrl+Alt+E", "Ctrl+Alt+M"]
     );
 }

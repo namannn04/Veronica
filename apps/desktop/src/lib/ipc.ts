@@ -53,8 +53,6 @@ import type {
   CompanionItem,
   CompanionRecordingStatus,
   ContainerInfo,
-  CopyFormatOption,
-  CopyResult,
   Dashboard,
   DatabaseConnection,
   DatabaseObject,
@@ -77,7 +75,6 @@ import type {
   PackageSource,
   PackageUpdate,
   PackageUpdateResult,
-  PickResult,
   PlannedShortcut,
   PowerStatus,
   PresenterView,
@@ -85,7 +82,6 @@ import type {
   RemovalPlan,
   RunningProcess,
   ShellExtensionStatus,
-  SwatchRow,
   SystemSnapshot,
   ToolInstallOutcome,
   ToolSurvey,
@@ -209,14 +205,6 @@ export const ipc = {
   alertsView: () => invoke<AlertsView>("alerts_view"),
   alertsTest: () => invoke<string>("alerts_test"),
   alertsReset: () => invoke<void>("alerts_reset"),
-
-  colorFormats: () => invoke<CopyFormatOption[]>("color_formats"),
-  colorSwatches: () => invoke<SwatchRow[]>("color_swatches"),
-  colorPick: () => invoke<PickResult>("color_pick"),
-  colorCopy: (id: number, format: string | null) =>
-    invoke<CopyResult>("color_copy", { id, format }),
-  colorForget: (id: number) => invoke<void>("color_forget", { id }),
-  colorClear: () => invoke<void>("color_clear"),
 
   machinesProbe: () => invoke<MachineReport[]>("machines_probe"),
   machinesAdd: (target: string, name: string | null, port: number | null) =>

@@ -124,7 +124,6 @@ fn built_in(app: &AppHandle, extension: &str) {
                 }
             });
         }
-        "colorPicker" => shell_method("PickColor"),
         "emoji" => {
             if let Err(error) = emoji_picker::show(app) {
                 tracing::warn!(target: "veronica", "cannot open the emoji picker: {error:#}");
