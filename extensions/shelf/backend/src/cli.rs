@@ -1,8 +1,11 @@
-use crate::format::Output;
+use std::path::PathBuf;
+
 use anyhow::Result;
 use serde_json::json;
-use std::path::PathBuf;
-use veronica_core::{file_shelf::FileShelf, AppDirectories, Settings};
+use veronica_core::file_shelf::FileShelf;
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::settings::Settings;
+use veronica_sdk::Output;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum ShelfCommand {
@@ -17,11 +20,8 @@ pub(crate) enum ShelfCommand {
     Clear,
 }
 
-pub(crate) fn run(
-    directories: &AppDirectories,
-    command: &ShelfCommand,
-    output: Output,
-) -> Result<()> {
+pub(crate) fn open() -> Result<FileShelf> {
+    let directories = AppDirectories::current()?;
     let shelf = FileShelf::new(directories.data.join("file-shelf"));
     let settings = Settings::load(&directories.settings_file())?;
     let legacy: Vec<PathBuf> = settings
@@ -35,8 +35,13 @@ pub(crate) fn run(
         })
         .unwrap_or_default();
     if let Err(error) = shelf.import_legacy(&legacy) {
-        tracing::warn!("some legacy shelf entries could not be imported: {error:#}");
+        eprintln!("some legacy shelf entries could not be imported: {error:#}");
     }
+    Ok(shelf)
+}
+
+pub(crate) fn run(command: &ShelfCommand, output: Output<'_>) -> Result<()> {
+    let shelf = open()?;
     match command {
         ShelfCommand::List => {}
         ShelfCommand::Add { paths } => {

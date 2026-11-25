@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "id": "shelf",
+  "version": "1.0",
+  "title": "File Shelf",
+  "summary": "Owned file copies shared by the notch and the native drop shelf.",
+  "category": "desk",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["simple", "developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "File Shelf",
+        "entry": "index.html",
+        "icon": "folder",
+        "nav": {
+          "group": "Desk",
+          "order": 30
+        },
+        "hint": "Files you keep at hand",
+        "keywords": ["files", "shelf", "drop", "drag", "copies"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "shelf",
+      "about": "Owned file copies shared by the notch and native drop shelf",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "list",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "add",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "paths",
+              "kind": "positional",
+              "type": "path",
+              "required": true,
+              "multiple": true
+            }
+          ]
+        },
+        {
+          "name": "remove",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "clear",
+          "effect": "destructive",
+          "json": true
+        }
+      ]
+    }
+  ],
+  "permissions": {}
+}
