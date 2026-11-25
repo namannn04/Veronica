@@ -30,7 +30,7 @@ fn slot(event: &veronica_calendar::Event) -> String {
     )
 }
 
-pub(crate) async fn run(command: &CalendarCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &CalendarCommand, output: Output<'_>) -> Result<()> {
     let connection = zbus::Connection::session()
         .await
         .context("cannot reach the session bus; is this a desktop session?")?;
