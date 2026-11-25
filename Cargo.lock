@@ -6337,6 +6337,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "veronica-ext-utility"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde_json",
+ "uuid",
+ "veronica-sdk",
+ "veronica-system",
+]
+
+[[package]]
 name = "veronica-ext-workspace"
 version = "0.1.26"
 dependencies = [
