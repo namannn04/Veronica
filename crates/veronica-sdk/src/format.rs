@@ -1,3 +1,7 @@
+pub fn money(value: f64) -> String {
+    format!("${value:.2}")
+}
+
 pub fn table(headers: &[&str], rows: &[Vec<String>]) -> String {
     if rows.is_empty() {
         return String::new();
@@ -57,7 +61,7 @@ pub fn countdown(seconds: i64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{countdown, table};
+    use super::{countdown, money, table};
 
     #[test]
     fn countdown_picks_the_two_largest_useful_units() {
@@ -90,5 +94,12 @@ mod tests {
     #[test]
     fn an_empty_table_renders_nothing_rather_than_a_bare_header() {
         assert_eq!(table(&["name"], &[]), "");
+    }
+
+    #[test]
+    fn money_always_has_two_decimals() {
+        assert_eq!(money(179.7819), "$179.78");
+        assert_eq!(money(0.0), "$0.00");
+        assert_eq!(money(5.0), "$5.00");
     }
 }

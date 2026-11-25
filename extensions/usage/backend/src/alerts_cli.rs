@@ -2,11 +2,10 @@ use std::fmt::Write as _;
 
 use anyhow::Result;
 use serde_json::json;
-use veronica_core::AppDirectories;
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::Output;
 use veronica_system::notify::{self, Notification, Urgency};
 use veronica_usage::alerts::NotifierState;
-
-use crate::format::Output;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum AlertsCommand {
@@ -27,7 +26,7 @@ pub(crate) enum AlertsCommand {
 pub(crate) async fn run(
     directories: &AppDirectories,
     command: &AlertsCommand,
-    output: Output,
+    output: Output<'_>,
 ) -> Result<()> {
     let path = directories.alerts_state_file();
 

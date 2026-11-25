@@ -20,6 +20,7 @@ members = [
     "extensions/color/backend",
     "extensions/fixture/backend",
     "extensions/media/backend",
+    "extensions/usage/backend",
 ]
 
 [workspace.package]
