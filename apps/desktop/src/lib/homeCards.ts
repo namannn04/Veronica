@@ -1,3 +1,5 @@
+import type { HeatmapCell } from "@veronica/ui/charts";
+
 export const SURFACE_TEMPLATES = [
   "ring",
   "meter",
@@ -6,6 +8,7 @@ export const SURFACE_TEMPLATES = [
   "list",
   "nowPlaying",
   "actions",
+  "heatmap",
 ] as const;
 
 export type SurfaceTemplate = (typeof SURFACE_TEMPLATES)[number];
@@ -35,7 +38,8 @@ export type CardBody =
   | { kind: "text"; text: string }
   | { kind: "list"; items: { title: string; detail: string | null }[] }
   | { kind: "nowPlaying"; title: string; detail: string; playing: boolean }
-  | { kind: "actions"; caption: string | null };
+  | { kind: "actions"; caption: string | null }
+  | { kind: "heatmap"; cells: HeatmapCell[]; caption: string | null };
 
 export interface HomeCardView {
   key: string;
@@ -120,6 +124,24 @@ function body(surface: Surface): CardBody {
         title: text(state.title),
         detail: [text(state.artist), text(state.album)].filter(Boolean).join(" · "),
         playing: state.playing === true,
+      };
+    case "heatmap":
+      return {
+        kind: "heatmap",
+        cells: (Array.isArray(state.cells) ? state.cells : []).flatMap((item) => {
+          const cell = (item ?? {}) as Record<string, unknown>;
+          return typeof cell.period === "string" && typeof cell.level === "number"
+            ? [
+                {
+                  period: cell.period,
+                  level: cell.level,
+                  cost: typeof cell.cost === "number" ? cell.cost : 0,
+                  tokens: typeof cell.tokens === "number" ? cell.tokens : 0,
+                },
+              ]
+            : [];
+        }),
+        caption: text(state.caption) || null,
       };
     default:
       return { kind: "actions", caption: text(state.caption) || null };

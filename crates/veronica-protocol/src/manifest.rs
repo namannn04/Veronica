@@ -170,6 +170,7 @@ pub enum SurfaceTemplate {
     List,
     NowPlaying,
     Actions,
+    Heatmap,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

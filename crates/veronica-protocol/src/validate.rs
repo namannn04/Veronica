@@ -1,6 +1,8 @@
 use std::collections::BTreeSet;
 
-use crate::manifest::{ArgKind, Command, Manifest, SurfaceAction, MANIFEST_SCHEMA};
+use crate::manifest::{
+    ArgKind, Command, Manifest, SurfaceAction, SurfaceTemplate, MANIFEST_SCHEMA,
+};
 
 pub const RESERVED_ROOTS: [&str; 11] = [
     "extensions",
@@ -57,6 +59,8 @@ pub enum ValidationError {
     EmptyRun(String),
     #[error("home card {card:?} opens unknown page {page:?}")]
     UnknownPage { card: String, page: String },
+    #[error("notch activity {0:?} cannot use the heatmap template")]
+    NotchHeatmap(String),
     #[error("provided contract {contract} must live in the {id:?} namespace")]
     ForeignContract { contract: String, id: String },
 }
@@ -206,6 +210,9 @@ impl Manifest {
             validate_actions(&format!("home card {}", card.id), &card.actions)?;
         }
         for activity in &self.notch_activities {
+            if activity.template == SurfaceTemplate::Heatmap {
+                return Err(ValidationError::NotchHeatmap(activity.id.clone()));
+            }
             validate_actions(
                 &format!("notch activity {}", activity.id),
                 &activity.actions,
