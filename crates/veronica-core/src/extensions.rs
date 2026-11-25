@@ -466,11 +466,19 @@ mod tests {
 
     #[test]
     fn filter_matches_subtitle_case_insensitively() {
-        let hits = filter("SSH", None);
-        assert!(hits.iter().any(|entry| entry.id == "machines"));
+        let first = ENTRIES.first().unwrap();
+        let word = first
+            .subtitle
+            .split_whitespace()
+            .max_by_key(|word| word.len())
+            .unwrap()
+            .trim_matches(|character: char| !character.is_alphanumeric());
+        let needle = word.to_lowercase();
+        let hits = filter(&word.to_uppercase(), None);
+        assert!(hits.iter().any(|entry| entry.id == first.id));
         assert!(hits.iter().all(|entry| {
-            entry.title.to_lowercase().contains("ssh")
-                || entry.subtitle.to_lowercase().contains("ssh")
+            entry.title.to_lowercase().contains(&needle)
+                || entry.subtitle.to_lowercase().contains(&needle)
         }));
     }
 
