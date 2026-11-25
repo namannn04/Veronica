@@ -6049,7 +6049,6 @@ dependencies = [
  "veronica-core",
  "veronica-database",
  "veronica-host",
- "veronica-machines",
  "veronica-pack",
  "veronica-protocol",
  "veronica-sdk",
@@ -6118,7 +6117,6 @@ dependencies = [
  "veronica-core",
  "veronica-database",
  "veronica-host",
- "veronica-machines",
  "veronica-protocol",
  "veronica-system",
  "zbus",
@@ -6274,6 +6272,18 @@ dependencies = [
  "veronica-core",
  "veronica-sdk",
  "veronica-system",
+]
+
+[[package]]
+name = "veronica-ext-machines"
+version = "0.1.26"
+dependencies = [
+ "anyhow",
+ "clap",
+ "serde",
+ "serde_json",
+ "veronica-machines",
+ "veronica-sdk",
 ]
 
 [[package]]

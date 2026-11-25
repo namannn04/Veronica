@@ -113,6 +113,10 @@ mod tests {
 
     #[test]
     fn a_tool_names_the_extension_that_wanted_it() {
-        assert!(wanted_by("ssh").contains(&"Machines"));
+        for entry in veronica_core::extensions::ENTRIES {
+            for tool in entry.required_tools {
+                assert!(wanted_by(tool).contains(&entry.title), "{tool}");
+            }
+        }
     }
 }

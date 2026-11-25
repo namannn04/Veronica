@@ -1,0 +1,290 @@
+{
+  "schema": 1,
+  "id": "machines",
+  "version": "1.0",
+  "title": "Machines",
+  "summary": "Your other computers over SSH: stats, files, Docker, and a terminal.",
+  "category": "system",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "suggestFor": [
+    {
+      "path": "~/.ssh/config"
+    }
+  ],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Machines",
+        "entry": "index.html",
+        "icon": "server",
+        "nav": {
+          "group": "This computer",
+          "order": 40
+        },
+        "hint": "This computer and SSH hosts",
+        "keywords": ["ssh", "remote", "servers", "hosts", "docker", "containers", "wake"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "machines",
+      "about": "The computers Veronica can reach",
+      "aliases": ["machine"],
+      "json": true,
+      "subcommands": [
+        {
+          "name": "list",
+          "about": "List the fleet and whether each machine answers",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "offline",
+              "kind": "flag",
+              "long": "offline",
+              "type": "boolean",
+              "help": "Skip probing and just show what is configured"
+            }
+          ]
+        },
+        {
+          "name": "add",
+          "about": "Add a machine reached over SSH",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "target",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "The ssh target: a config alias, or user@host"
+            },
+            {
+              "name": "name",
+              "kind": "option",
+              "long": "name",
+              "type": "string",
+              "help": "What to call it; defaults to the target"
+            },
+            {
+              "name": "port",
+              "kind": "option",
+              "long": "port",
+              "type": "integer"
+            },
+            {
+              "name": "mac",
+              "kind": "option",
+              "long": "mac",
+              "type": "string",
+              "help": "The MAC address to wake this machine at, e.g. aa:bb:cc:dd:ee:ff. Only needed for `vr machines wake`"
+            }
+          ]
+        },
+        {
+          "name": "remove",
+          "about": "Remove a machine",
+          "aliases": ["rm"],
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "stats",
+          "about": "Show one machine's vital signs",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "default": "local",
+              "help": "Machine id; defaults to this computer"
+            }
+          ]
+        },
+        {
+          "name": "discover",
+          "about": "Host aliases found in ~/.ssh/config that are not yet added",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "containers",
+          "about": "The containers on a machine, from Docker or Podman",
+          "aliases": ["ps"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "default": "local"
+            }
+          ]
+        },
+        {
+          "name": "logs",
+          "about": "A container's recent output",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "container",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "The container's id or name, from `vr machines containers`"
+            },
+            {
+              "name": "engine",
+              "kind": "option",
+              "long": "engine",
+              "type": "string",
+              "default": "docker"
+            },
+            {
+              "name": "lines",
+              "kind": "option",
+              "long": "lines",
+              "type": "integer",
+              "default": 200
+            }
+          ]
+        },
+        {
+          "name": "container",
+          "about": "Start, stop or restart a container",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "container",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "action",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "start, stop or restart"
+            },
+            {
+              "name": "engine",
+              "kind": "option",
+              "long": "engine",
+              "type": "string",
+              "default": "docker"
+            }
+          ]
+        },
+        {
+          "name": "power",
+          "about": "Restart or shut down a machine",
+          "longAbout": "Restart or shut down a machine.\n\nRefused for this computer, and never escalated: the account Veronica connects as has to be permitted to do it already.",
+          "effect": "destructive",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "action",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "restart or shutdown"
+            }
+          ]
+        },
+        {
+          "name": "wake",
+          "about": "Send a Wake-on-LAN packet to a machine that is powered off",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "id",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": ["*"],
+    "filesystem": [
+      {
+        "path": "~/.ssh",
+        "access": "read"
+      },
+      {
+        "path": "~/Downloads",
+        "access": "readWrite"
+      }
+    ],
+    "spawn": [
+      "ssh",
+      "scp",
+      "docker",
+      "podman",
+      "xdg-open",
+      "x-terminal-emulator",
+      "gnome-terminal",
+      "ptyxis"
+    ]
+  },
+  "requires": {
+    "tools": ["ssh"],
+    "capabilities": ["machineManagement"],
+    "optionalCapabilities": ["notifications"]
+  }
+}

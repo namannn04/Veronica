@@ -2,13 +2,15 @@ use std::fmt::Write as _;
 
 use anyhow::{Context, Result};
 use serde_json::json;
-use veronica_core::{AppDirectories, Settings};
 use veronica_machines::host::{self, Reach};
 use veronica_machines::{Machine, DEFAULT_TIMEOUT};
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::settings::Settings;
 
-use crate::format::{self, countdown, Output};
+use veronica_sdk::format::{self, countdown};
+use veronica_sdk::Output;
 
-const MACHINES_KEY: &str = "machines";
+pub(crate) const MACHINES_KEY: &str = "machines";
 
 #[derive(clap::Subcommand)]
 pub(crate) enum MachineCommand {
@@ -130,7 +132,7 @@ fn bytes(value: u64) -> String {
 pub(crate) async fn run(
     directories: &AppDirectories,
     command: &MachineCommand,
-    output: Output,
+    output: Output<'_>,
 ) -> Result<()> {
     let path = directories.settings_file();
     let mut settings = Settings::load(&path)?;
@@ -438,7 +440,7 @@ pub(crate) async fn run(
 
         MachineCommand::Discover => {
             let configured = load_machines(&settings);
-            let config = veronica_core::paths::home_dir()
+            let config = veronica_sdk::paths::home_dir()
                 .map(|home| home.join(".ssh/config"))
                 .unwrap_or_default();
             let found = host::ssh_config_hosts(&config);

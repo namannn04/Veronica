@@ -28,9 +28,9 @@ import {
   Tabs,
   type Tone,
 } from "@veronica/ui";
+import { MeterStat, thresholdTone } from "@veronica/ui/MeterStat";
 import { ArrowDown, ArrowUp, Bluetooth, Mic, MicOff, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MeterStat, thresholdTone } from "../components/MeterStat";
 import { bytes, countdown } from "../lib/format";
 import { ipc, listenEvent } from "../lib/ipc";
 import { startVisiblePolling } from "../lib/polling";
