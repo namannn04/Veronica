@@ -23,10 +23,10 @@ import { needsOnboarding } from "./lib/onboarding";
 import { applyAppearance, applyPresenter } from "./lib/preferences";
 import type { Diagnostics } from "./lib/types";
 import { AboutPage } from "./pages/AboutPage";
+import { AgentsPage } from "./pages/AgentsPage";
 import { ClipboardPage } from "./pages/ClipboardPage";
 import { CompanionPage } from "./pages/CompanionPage";
 import { DatabasePage } from "./pages/DatabasePage";
-import { HerdrPage } from "./pages/HerdrPage";
 import { HomePage } from "./pages/HomePage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { MachinesPage } from "./pages/MachinesPage";
@@ -243,7 +243,7 @@ export function App() {
         <Fragment key={route}>
           {route === "home" && <HomePage onNavigate={navigateTo} />}
           {route === "usage" && <UsagePage />}
-          {route === "herdr" && <HerdrPage />}
+          {route === "agents" && <AgentsPage />}
           {route === "quinjet" && <QuinjetPage />}
           {route === "services" && <ServicesPage />}
           {route === "workspace" && (

@@ -34,7 +34,6 @@ describe("extension-aware navigation", () => {
       string
     > = {
       usage: "usage",
-      herdr: "herdr",
       quinjet: "quinjet",
       system: "system",
       services: "system",
@@ -62,14 +61,14 @@ describe("extension-aware navigation", () => {
 
     expect(items.some((item) => item.id === "usage")).toBe(true);
     expect(items.some((item) => item.id === "machines")).toBe(true);
-    expect(items.some((item) => item.id === "herdr")).toBe(false);
+    expect(items.some((item) => item.id === "quinjet")).toBe(false);
     expect(searchNav("ssh", items).map((item) => item.id)).toEqual(["machines"]);
-    expect(searchNav("herdr", items)).toEqual([]);
+    expect(searchNav("quinjet", items)).toEqual([]);
   });
 
   test("a disabled current route is no longer visible", () => {
-    expect(routeIsVisible("herdr", new Set(["usage"]))).toBe(false);
-    expect(routeIsVisible("herdr", new Set(["usage", "herdr"]))).toBe(true);
+    expect(routeIsVisible("quinjet", new Set(["usage"]))).toBe(false);
+    expect(routeIsVisible("quinjet", new Set(["usage", "quinjet"]))).toBe(true);
   });
 });
 

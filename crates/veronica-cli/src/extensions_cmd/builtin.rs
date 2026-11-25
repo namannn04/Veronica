@@ -215,7 +215,7 @@ mod tests {
     fn enable_and_disable_write_the_catalogues_shared_key() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("settings.json");
-        let entry = veronica_core::extensions::entry("herdr").unwrap();
+        let entry = veronica_core::extensions::entry("presenter").unwrap();
 
         write_switch(&path, entry, true).unwrap();
         assert!(Settings::load(&path).unwrap().extension_enabled(entry));

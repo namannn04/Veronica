@@ -79,10 +79,9 @@ impl ExtensionEntry {
 
 use Capability::{
     ClipboardHistory, CompanionService, DatabaseBroker, ExternalMediaControl, GlobalPaste,
-    GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation, LocalTerminal,
-    MachineManagement, MicrophoneControl, Notifications, PackageManagement, PreventSleep,
-    RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection,
-    WindowDimming,
+    GlobalShortcuts, InputSuppression, KeystrokeObservation, LocalTerminal, MachineManagement,
+    MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
+    ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection, WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -98,18 +97,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_capabilities: &[UsageCollection],
         optional_capabilities: &[Notifications],
         required_tools: &["claude", "codex"],
-    },
-    ExtensionEntry {
-        id: "herdr",
-        title: "Herdr",
-        subtitle: "Live Herdr sessions on this computer and your SSH machines.",
-        icon: "columns-3",
-        group: G::Agent,
-        featured: true,
-        defaults_key: "tabHerdrEnabled",
-        required_capabilities: &[HerdrSessions],
-        optional_capabilities: &[],
-        required_tools: &["herdr"],
     },
     ExtensionEntry {
         id: "quinjet",
@@ -301,6 +288,12 @@ pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
         featured: true,
     },
     LegacyToggle {
+        id: "herdr",
+        extension: "herdr",
+        defaults_key: "tabHerdrEnabled",
+        featured: true,
+    },
+    LegacyToggle {
         id: "seoAudit",
         extension: "audit",
         defaults_key: "tabSEOAuditEnabled",
@@ -375,7 +368,6 @@ mod tests {
     fn the_catalogue_keeps_its_order() {
         let ported = [
             "usage",
-            "herdr",
             "quinjet",
             "system",
             "appMaintenance",
@@ -414,6 +406,7 @@ mod tests {
         assert_eq!(successor("seoAudit"), Some("audit"));
         assert_eq!(successor("audit"), Some("audit"));
         assert_eq!(successor("attention"), Some("attention"));
+        assert_eq!(successor("herdr"), Some("herdr"));
         assert_eq!(successor("calendar"), Some("calendar"));
         assert_eq!(successor("music"), Some("media"));
         assert_eq!(successor("colorPicker"), Some("color"));

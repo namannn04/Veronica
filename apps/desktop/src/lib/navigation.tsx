@@ -24,7 +24,7 @@ import type { InstalledExtension } from "./types";
 export type BuiltinRoute =
   | "home"
   | "usage"
-  | "herdr"
+  | "agents"
   | "quinjet"
   | "system"
   | "services"
@@ -78,12 +78,11 @@ export const NAV_GROUPS: NavGroup[] = [
         keywords: "claude codex cursor cost spend tokens limits rings",
       },
       {
-        id: "herdr",
-        label: "Agents & Herdr",
+        id: "agents",
+        label: "Agents",
         icon: <HerdrIcon />,
-        extensionId: "herdr",
-        hint: "Agent sessions and panes",
-        keywords: "sessions panes tmux",
+        hint: "Agent terminals and providers",
+        keywords: "agents terminal claude codex providers sessions",
       },
       {
         id: "quinjet",

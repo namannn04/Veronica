@@ -9,7 +9,6 @@ mod extensions_cmd;
 mod focus_dim_cmd;
 mod format;
 mod guide_cmd;
-mod herdr_cmd;
 mod invoke_cmd;
 mod keystroke_cmd;
 mod machines_cmd;
@@ -155,8 +154,6 @@ enum Command {
         about = "Keystroke Highlight: show each key press on screen for demos"
     )]
     Keystroke(keystroke_cmd::KeystrokeCommand),
-    #[command(subcommand, about = "The live Herdr agent board")]
-    Herdr(herdr_cmd::HerdrCommand),
     #[command(
         subcommand,
         about = "Owned file copies shared by the notch and native drop shelf"
@@ -314,7 +311,6 @@ async fn run(cli: &Cli, routes: &routes::Routes) -> Result<()> {
         Command::Presenter(command) => presenter_cmd::run(&directories, command, output).await,
         Command::FocusDim(command) => focus_dim_cmd::run(&directories, command, output).await,
         Command::Keystroke(command) => keystroke_cmd::run(&directories, command, output).await,
-        Command::Herdr(command) => herdr_cmd::run(command, output).await,
         Command::Companion(command) => companion_cmd::run(&directories, command, output),
         Command::Machines(command) => machines_cmd::run(&directories, command, output).await,
         Command::Clipboard(command) => clipboard_cmd::run(&directories, command, output),
