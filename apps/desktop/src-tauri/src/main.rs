@@ -186,8 +186,6 @@ fn run(background: bool, shelf: bool, tools: bool, services: bool) -> Result<()>
             commands::media_now_playing,
             commands::media_control,
             commands::music_library,
-            commands::calendar_agenda,
-            commands::calendar_open,
             commands::machines_probe,
             commands::machines_add,
             commands::machines_remove,

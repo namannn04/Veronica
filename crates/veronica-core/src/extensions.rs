@@ -78,12 +78,11 @@ impl ExtensionEntry {
 }
 
 use Capability::{
-    CalendarEvents, ClipboardHistory, CompanionService, DatabaseBroker, EmojiInsertion,
-    ExternalMediaControl, GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression,
-    KeystrokeObservation, LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls,
-    MicrophoneControl, Notifications, PackageManagement, PreventSleep, RunningApplications,
-    ScreenColorSampling, ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection,
-    WindowDimming,
+    ClipboardHistory, CompanionService, DatabaseBroker, EmojiInsertion, ExternalMediaControl,
+    GlobalPaste, GlobalShortcuts, HerdrSessions, InputSuppression, KeystrokeObservation,
+    LocalMusicPlayback, LocalTerminal, MachineManagement, MediaControls, MicrophoneControl,
+    Notifications, PackageManagement, PreventSleep, RunningApplications, ScreenColorSampling,
+    ScreenShareDetection, ShellIntegration, SystemMetrics, UsageCollection, WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -245,18 +244,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_tools: &[],
     },
     ExtensionEntry {
-        id: "calendar",
-        title: "Calendar",
-        subtitle: "Shows your schedule in the panel and the app.",
-        icon: "calendar",
-        group: G::Media,
-        featured: false,
-        defaults_key: "tabCalendarEnabled",
-        required_capabilities: &[CalendarEvents],
-        optional_capabilities: &[],
-        required_tools: &[],
-    },
-    ExtensionEntry {
         id: "notchShelf",
         title: "Top bar",
         subtitle: "Agent usage and machine load inside the top bar's own clock dropdown.",
@@ -354,12 +341,20 @@ pub struct LegacyToggle {
     pub featured: bool,
 }
 
-pub const LEGACY_TOGGLES: &[LegacyToggle] = &[LegacyToggle {
-    id: "seoAudit",
-    extension: "audit",
-    defaults_key: "tabSEOAuditEnabled",
-    featured: false,
-}];
+pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
+    LegacyToggle {
+        id: "seoAudit",
+        extension: "audit",
+        defaults_key: "tabSEOAuditEnabled",
+        featured: false,
+    },
+    LegacyToggle {
+        id: "calendar",
+        extension: "calendar",
+        defaults_key: "tabCalendarEnabled",
+        featured: false,
+    },
+];
 
 pub fn successor(id: &str) -> Option<&'static str> {
     LEGACY_TOGGLES
@@ -416,7 +411,6 @@ mod tests {
             "micMute",
             "lidAwake",
             "music",
-            "calendar",
             "notchShelf",
             "clipboard",
             "keystrokeHighlight",
@@ -447,6 +441,7 @@ mod tests {
         }
         assert_eq!(successor("seoAudit"), Some("audit"));
         assert_eq!(successor("audit"), Some("audit"));
+        assert_eq!(successor("calendar"), Some("calendar"));
         assert_eq!(successor("usage"), None);
     }
 

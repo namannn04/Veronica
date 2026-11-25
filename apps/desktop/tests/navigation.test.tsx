@@ -42,7 +42,6 @@ describe("extension-aware navigation", () => {
       maintenance: "appMaintenance",
       database: "database",
       media: "music",
-      calendar: "calendar",
       attention: "attention",
       clipboard: "clipboard",
       color: "colorPicker",

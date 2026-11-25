@@ -94,6 +94,9 @@ describe("first run", () => {
     expect(needsOnboarding({ tabSEOAuditEnabled: true }, features, ["tabSEOAuditEnabled"])).toBe(
       false,
     );
+    expect(needsOnboarding({ tabCalendarEnabled: false }, features, ["tabCalendarEnabled"])).toBe(
+      false,
+    );
     expect(chosenProfile({ profile: "simple" })).toBe("simple");
     expect(chosenProfile({})).toBeNull();
   });

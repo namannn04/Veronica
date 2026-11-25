@@ -41,8 +41,6 @@ pub(crate) const HOST_EFFECTS: &[(&str, Effect)] = &[
     ("backup export", Effect::Write),
     ("backup import", Effect::Destructive),
     ("backup inspect", Effect::Read),
-    ("calendar list", Effect::Read),
-    ("calendar next", Effect::Read),
     ("cleaner categories", Effect::Read),
     ("cleaner clean", Effect::Destructive),
     ("cleaner drives", Effect::Read),
