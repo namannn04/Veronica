@@ -1,6 +1,5 @@
 use anyhow::Result;
-
-use crate::format::{self, Output};
+use veronica_sdk::{format, Output};
 
 const LANES: [&str; 5] = ["blocked", "working", "unknown", "done", "idle"];
 
@@ -31,7 +30,7 @@ pub(crate) enum HerdrCommand {
     },
 }
 
-pub(crate) async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
+pub(crate) async fn run(command: &HerdrCommand, output: Output<'_>) -> Result<()> {
     let board = veronica_system::herdr::board().await?;
     if !board.installed {
         anyhow::bail!(
@@ -40,7 +39,7 @@ pub(crate) async fn run(command: &HerdrCommand, output: Output) -> Result<()> {
         );
     }
     if let Some(reason) = &board.error {
-        tracing::warn!("herdr: {reason}");
+        eprintln!("herdr: {reason}");
     }
 
     match command {

@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "id": "herdr",
+  "version": "1.0",
+  "title": "Herdr",
+  "summary": "Live Herdr sessions and agents, with their terminals inside Veronica.",
+  "category": "agents",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "suggestFor": [
+    {
+      "tool": "herdr"
+    }
+  ],
+  "activation": {
+    "mode": "background"
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Herdr",
+        "entry": "index.html",
+        "icon": "columns-3",
+        "nav": {
+          "group": "Agents",
+          "order": 20
+        },
+        "hint": "Agent sessions and panes",
+        "keywords": ["sessions", "panes", "tmux", "agents"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "herdr",
+      "about": "The live Herdr agent board",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "board",
+          "about": "The board: every agent, grouped into lanes by state",
+          "aliases": ["ls"],
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "session",
+              "kind": "option",
+              "long": "session",
+              "type": "string",
+              "help": "Only agents in this session"
+            },
+            {
+              "name": "kind",
+              "kind": "option",
+              "long": "kind",
+              "type": "string",
+              "help": "Only agents of this kind, e.g. `claude`"
+            },
+            {
+              "name": "status",
+              "kind": "option",
+              "long": "status",
+              "type": "string",
+              "help": "Only agents in this lane"
+            }
+          ]
+        },
+        {
+          "name": "sessions",
+          "about": "The persistent sessions Herdr knows about",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "attach",
+          "about": "Print the command that attaches to a session or agent",
+          "longAbout": "Print the command that attaches to a session or agent.\n\nPrinted rather than run, so it works over SSH and can be piped into whatever terminal you actually want it in.",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "session",
+              "kind": "positional",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "pane_id",
+              "kind": "positional",
+              "type": "string",
+              "help": "A pane id, to attach to one agent rather than the session"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": ["org.freedesktop.DBus"]
+    },
+    "spawn": ["herdr", "kgx", "gnome-terminal", "x-terminal-emulator"],
+    "host": ["clipboard:write"]
+  },
+  "requires": {
+    "capabilities": ["herdrSessions"]
+  }
+}

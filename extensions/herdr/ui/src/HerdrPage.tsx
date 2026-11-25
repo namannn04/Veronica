@@ -17,21 +17,17 @@ import {
   Select,
   Skeleton,
   SkeletonText,
-  Spinner,
   StatusDot,
   type Tone,
   Toolbar,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
+import { startVisiblePolling } from "@veronica/ui/polling";
 import { Copy, ExternalLink, MonitorPlay, RefreshCw, SquareTerminal } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { ipc } from "../lib/ipc";
-import { startVisiblePolling } from "../lib/polling";
-import type { HerdrAgent, HerdrBoard, HerdrSession } from "../lib/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { HerdrTerminal } from "./HerdrTerminal";
+import type { AttachedTerminal, HerdrAgent, HerdrBoard, HerdrSession } from "./types";
 import "./HerdrPage.css";
-
-const AgentControls = lazy(() =>
-  import("../components/AgentControls").then((m) => ({ default: m.AgentControls })),
-);
 
 const STATUSES: HerdrAgent["status"][] = ["blocked", "working", "unknown", "done", "idle"];
 const STATUS_LABEL: Record<HerdrAgent["status"], string> = {
@@ -51,7 +47,8 @@ const STATUS_TONE: Record<HerdrAgent["status"], Tone> = {
 const ICON = { strokeWidth: 1.75 };
 
 export function HerdrPage() {
-  const [terminalFocus, setTerminalFocus] = useState<string>();
+  const client = useClient();
+  const [terminals, setTerminals] = useState<AttachedTerminal[]>([]);
   const [board, setBoard] = useState<HerdrBoard | null>(null);
   const [error, setError] = useState("");
   const [session, setSession] = useState("all");
@@ -63,12 +60,12 @@ export function HerdrPage() {
 
   const load = useCallback(async () => {
     try {
-      setBoard(await ipc.herdrBoard());
+      setBoard(await client.backend.call<HerdrBoard>("board"));
       setError("");
     } catch (reason) {
       setError(String(reason));
     }
-  }, []);
+  }, [client]);
 
   useEffect(() => startVisiblePolling(load, 2000), [load]);
 
@@ -94,7 +91,9 @@ export function HerdrPage() {
   const selectedAgent = board?.agents.find((agent) => agent.id === selected) ?? null;
 
   const open = (name: string, pane?: string) => {
-    void ipc.herdrOpen(name, pane).catch((reason) => setError(String(reason)));
+    void client.backend
+      .call("open", { session: name, paneId: pane ?? null })
+      .catch((reason) => setError(String(reason)));
   };
 
   const toggleKind = (kind: string) =>
@@ -104,7 +103,7 @@ export function HerdrPage() {
 
   const copyAttach = async (agent: HerdrAgent) => {
     try {
-      await navigator.clipboard.writeText(agent.attachCommand);
+      await client.clipboard.writeText(agent.attachCommand);
       setCopied(agent.id);
       window.setTimeout(() => setCopied((id) => (id === agent.id ? null : id)), 1_200);
     } catch (reason) {
@@ -115,9 +114,9 @@ export function HerdrPage() {
   const attachInApp = (agent: HerdrAgent) => {
     setAttachTarget(null);
     setSelected(null);
-    void ipc
-      .agentHerdrAttach(agent.session, agent.paneId, true)
-      .then((view) => setTerminalFocus(view.id))
+    void client.backend
+      .call<AttachedTerminal>("attach", { session: agent.session, pane: agent.paneId })
+      .then((view) => setTerminals((current) => [...current, view]))
       .catch((reason) => setError(String(reason)));
   };
 
@@ -128,7 +127,7 @@ export function HerdrPage() {
       className="herdr-page"
       header={
         <PageHeader
-          title="Agents & Herdr"
+          title="Herdr"
           subtitle="Live coding-agent sessions across persistent terminal workspaces"
           actions={
             <>
@@ -303,15 +302,17 @@ export function HerdrPage() {
         </Section>
       )}
 
-      <Suspense
-        fallback={
-          <div className="herdr-loading">
-            <Spinner label="Opening agent terminals" />
-          </div>
-        }
-      >
-        <AgentControls requestedId={terminalFocus} />
-      </Suspense>
+      {terminals.map((terminal) => (
+        <HerdrTerminal
+          key={terminal.id}
+          client={client}
+          id={terminal.id}
+          title={terminal.name}
+          onClose={() =>
+            setTerminals((current) => current.filter((item) => item.id !== terminal.id))
+          }
+        />
+      ))}
 
       <Dialog
         open={selectedAgent !== null}
