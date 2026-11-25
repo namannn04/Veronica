@@ -195,12 +195,6 @@
   background: var(--bg-content);
 }
 
-.shell-loading {
-  display: grid;
-  place-items: center;
-  height: 100%;
-}
-
 .palette-scrim {
   position: fixed;
   inset: 0;
@@ -314,7 +308,7 @@
   text-align: center;
 }
 
-.shell-main > :not(.ui-page):not(.shell-loading):not(.shell-extension-page) {
+.shell-main > :not(.ui-page):not(.shell-extension-page) {
   padding: 22px 26px 40px;
 }
 
