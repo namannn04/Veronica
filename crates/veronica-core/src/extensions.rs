@@ -395,7 +395,7 @@ mod tests {
         assert_eq!(successor("colorPicker"), Some("color"));
         assert_eq!(successor("emoji"), Some("emoji"));
         assert_eq!(successor("usage"), Some("usage"));
-        assert_eq!(successor("herdr"), None);
+        assert_eq!(successor("database"), None);
     }
 
     #[test]
