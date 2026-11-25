@@ -11,6 +11,7 @@ import { KeystrokeHighlight } from './keystrokeHighlight.js';
 import { findCli } from './lib.js';
 import { PanelReplacement } from './panelReplacement.js';
 import { SettingsWatcher } from './settings.js';
+import { pullSurfaces, setSurfaces } from './surfaces.js';
 import { StandaloneStats } from './systemStats.js';
 
 export default class VeronicaExtension extends Extension {
@@ -77,8 +78,10 @@ export default class VeronicaExtension extends Extension {
                 }
             },
             writeClipboard: text => this._clipboard?.write(text, false),
+            setSurfaces: surfaces => setSurfaces(surfaces),
         });
         this._actionBridge.enable();
+        pullSurfaces(this._cancellable).catch(() => {});
         console.debug(`veronica: compact Edith notch enabled; vr at "${findCli() || 'not found'}"`);
     }
 

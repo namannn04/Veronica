@@ -77,6 +77,8 @@
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/panelReplacement.js": "../../../extension/panelReplacement.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/presenterGate.js": "../../../extension/presenterGate.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/sections.js": "../../../extension/sections.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/surfaces.js": "../../../extension/surfaces.js",
+          "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/surfaceModel.js": "../../../extension/surfaceModel.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/nowPlaying.js": "../../../extension/nowPlaying.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchClock.js": "../../../extension/notchClock.js",
           "/usr/share/gnome-shell/extensions/veronica@namannn04.github.io/notchAnimation.js": "../../../extension/notchAnimation.js",

@@ -17,6 +17,9 @@ const XML = `
     </method>
     <method name="PasteInPlace"/>
     <method name="PasteEmoji"/>
+    <method name="SetSurfaces">
+      <arg type="s" direction="in" name="surfaces"/>
+    </method>
   </interface>
 </node>`;
 
@@ -36,6 +39,7 @@ export class ActionBridge {
             WriteClipboard: text => this._actions?.writeClipboard?.(text),
             PasteInPlace: () => this._pasteInPlace(),
             PasteEmojiAsync: (_args, invocation) => this._pasteEmoji(invocation),
+            SetSurfaces: surfaces => this._actions?.setSurfaces?.(surfaces),
         });
     }
 
