@@ -82,7 +82,7 @@ impl Capture {
                 if self.json {
                     document.get_or_insert_with(|| error_document(code, &message));
                 } else {
-                    text.push_str("error: ");
+                    text.push_str("vr: ");
                     text.push_str(&message);
                     text.push('\n');
                 }

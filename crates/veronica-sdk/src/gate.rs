@@ -45,7 +45,12 @@ fn long_name(arg: &Arg) -> &str {
 }
 
 pub(crate) fn leaf<'a>(roots: &'a [Command], argv: &[String]) -> Option<&'a Command> {
+    walk(roots, argv).and_then(|path| path.last().copied())
+}
+
+fn walk<'a>(roots: &'a [Command], argv: &[String]) -> Option<Vec<&'a Command>> {
     let mut children = roots;
+    let mut path: Vec<&Command> = Vec::new();
     let mut current: Option<&Command> = None;
     let mut options: Vec<&Arg> = Vec::new();
     let mut tokens = argv.iter();
@@ -76,12 +81,35 @@ pub(crate) fn leaf<'a>(roots: &'a [Command], argv: &[String]) -> Option<&'a Comm
         };
         options.extend(next.args.iter().filter(|arg| arg.kind == ArgKind::Option));
         current = Some(next);
+        path.push(next);
         children = &next.subcommands;
         if next.is_leaf() {
             break;
         }
     }
-    current.filter(|command| command.is_leaf())
+    current.filter(|command| command.is_leaf()).map(|_| path)
+}
+
+impl Gate {
+    pub(crate) fn path(&self, argv: &[String]) -> Option<String> {
+        match self {
+            Self::Unreadable => None,
+            Self::Manifest(roots) => walk(roots, argv).map(|path| {
+                path.iter()
+                    .map(|command| command.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }),
+        }
+    }
+}
+
+pub(crate) fn destructive_preview(path: &str, json: bool) -> CliRunResult {
+    CliRunResult {
+        exit_code: ExitCode::ConfirmationRequired,
+        document: json.then(|| json!({ "command": path, "effect": "destructive" })),
+        text: (!json).then(|| format!("`vr {path}` removes or replaces data.\n\n")),
+    }
 }
 
 pub(crate) fn confirmation_required(params: &CliRunParams) -> CliRunResult {
