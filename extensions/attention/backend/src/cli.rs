@@ -1,8 +1,11 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
-use veronica_core::{AppDirectories, AttentionPrivacy, AttentionRepository, Settings};
+use veronica_core::{AttentionPrivacy, AttentionRepository};
+use veronica_sdk::format::{countdown, table};
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::Output;
 
-use crate::format::{countdown, table, Output};
+use crate::shared::mirror;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum AttentionCommand {
@@ -54,17 +57,14 @@ pub(crate) enum FocusCommand {
         #[arg(long, default_value = "Focus")]
         name: String,
         #[arg(long = "for", default_value = "45m", value_parser = parse_duration)]
-        duration_seconds: i64,
+        duration_seconds: Seconds,
     },
     #[command(about = "Finish the active session and preserve it in history")]
     Stop,
 }
 
-pub(crate) fn run(
-    directories: &AppDirectories,
-    command: &AttentionCommand,
-    output: Output,
-) -> Result<()> {
+pub(crate) fn run(command: &AttentionCommand, output: Output<'_>) -> Result<()> {
+    let directories = AppDirectories::current()?;
     let repository = AttentionRepository::new(directories.attention_dir());
     let now = Utc::now();
     match command {
@@ -99,7 +99,7 @@ pub(crate) fn run(
         }
         AttentionCommand::Focus(FocusCommand::Start {
             name,
-            duration_seconds,
+            duration_seconds: Seconds(duration_seconds),
         }) => {
             let session = repository.start_focus(name, *duration_seconds, now)?;
             output.emit(&session, || {
@@ -175,24 +175,7 @@ pub(crate) fn run(
                 settings.idle_threshold_seconds = *seconds;
             }
             repository.save_settings(&settings)?;
-            let mut shared = Settings::load(&directories.settings_file())?;
-            shared.set(
-                "attentionTrackingEnabled",
-                serde_json::json!(settings.enabled),
-            );
-            shared.set(
-                "attentionPrivacy",
-                serde_json::json!(if settings.privacy == AttentionPrivacy::Detailed {
-                    "detailed"
-                } else {
-                    "applications"
-                }),
-            );
-            shared.set(
-                "attentionIdleSeconds",
-                serde_json::json!(settings.idle_threshold_seconds),
-            );
-            shared.save(&directories.settings_file())?;
+            mirror(&directories.settings_file(), &settings)?;
             output.emit(&settings, || {
                 format!(
                     "Attention tracking {} · {:?} privacy · idle after {}",
@@ -226,7 +209,10 @@ fn signed_remaining(seconds: i64) -> String {
     }
 }
 
-fn parse_duration(raw: &str) -> Result<i64, String> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Seconds(pub i64);
+
+fn parse_duration(raw: &str) -> Result<Seconds, String> {
     let raw = raw.trim();
     let split = raw
         .find(|character: char| !character.is_ascii_digit())
@@ -243,6 +229,7 @@ fn parse_duration(raw: &str) -> Result<i64, String> {
     };
     value
         .checked_mul(multiplier)
+        .map(Seconds)
         .context("duration is too large")
         .map_err(|error| error.to_string())
 }
@@ -252,10 +239,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn durations_match_ediths_cli_shape() {
-        assert_eq!(parse_duration("45m").unwrap(), 2700);
-        assert_eq!(parse_duration("2h").unwrap(), 7200);
-        assert_eq!(parse_duration("90s").unwrap(), 90);
+    fn durations_accept_seconds_minutes_and_hours() {
+        assert_eq!(parse_duration("45m").unwrap(), Seconds(2700));
+        assert_eq!(parse_duration("2h").unwrap(), Seconds(7200));
+        assert_eq!(parse_duration("90s").unwrap(), Seconds(90));
         assert!(parse_duration("45").is_err());
         assert!(parse_duration("soon").is_err());
     }

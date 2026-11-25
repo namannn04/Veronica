@@ -27,15 +27,15 @@ import {
   Tabs,
   TextField,
 } from "@veronica/ui";
+import { useClient } from "@veronica/ui/frame";
 import { Activity, CircleStop, History, Play, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { ipc } from "../lib/ipc";
 import type {
   AttentionFocusSession,
   AttentionOverview,
   AttentionSettings,
   AttentionStatus,
-} from "../lib/types";
+} from "./types";
 import "./AttentionPage.css";
 
 type View = "overview" | "timeline" | "focus" | "settings";
@@ -81,6 +81,7 @@ const message = (error: unknown) =>
   (error instanceof Error ? error.message : String(error)).replace(/^Error:\s*/, "");
 
 export function AttentionPage() {
+  const client = useClient();
   const [view, setView] = useState<View>("overview");
   const [days, setDays] = useState(1);
   const [status, setStatus] = useState<AttentionStatus | null>(null);
@@ -100,10 +101,10 @@ export function AttentionPage() {
   const refresh = useCallback(async () => {
     try {
       const [s, o, c, h] = await Promise.all([
-        ipc.attentionStatus(),
-        ipc.attentionOverview(days),
-        ipc.attentionSettings(),
-        ipc.attentionHistory(),
+        client.backend.call<AttentionStatus>("status"),
+        client.backend.call<AttentionOverview>("overview", { days }),
+        client.backend.call<AttentionSettings>("settings"),
+        client.backend.call<AttentionFocusSession[]>("history"),
       ]);
       setStatus(s);
       setOverview(o);
@@ -115,7 +116,7 @@ export function AttentionPage() {
     } finally {
       setLoaded(true);
     }
-  }, [days]);
+  }, [client, days]);
 
   useEffect(() => {
     void refresh();
@@ -130,7 +131,7 @@ export function AttentionPage() {
     setSettings(next);
     setSaving(true);
     try {
-      await ipc.attentionSettingsSave(next);
+      await client.backend.call("saveSettings", { settings: next });
       setError("");
       await refresh();
     } catch (e) {
@@ -147,7 +148,7 @@ export function AttentionPage() {
   const start = async () => {
     setToggling(true);
     try {
-      await ipc.attentionStart(name, minutes * 60);
+      await client.backend.call("start", { name, durationSeconds: minutes * 60 });
       await refresh();
     } catch (e) {
       setError(message(e));
@@ -158,7 +159,7 @@ export function AttentionPage() {
   const stop = async () => {
     setToggling(true);
     try {
-      await ipc.attentionStop();
+      await client.backend.call("stop");
       await refresh();
     } catch (e) {
       setError(message(e));

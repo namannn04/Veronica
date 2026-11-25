@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "id": "attention",
+  "version": "1.0",
+  "title": "Attention",
+  "summary": "Understand where your time goes and protect focused work.",
+  "category": "agents",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "profiles": ["developer"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Attention",
+        "entry": "index.html",
+        "icon": "hourglass",
+        "nav": {
+          "group": "Agents",
+          "order": 40
+        },
+        "hint": "Focus sessions",
+        "keywords": ["focus", "pomodoro", "timer", "deep", "work"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "attention",
+      "about": "Attention focus sessions and local attention history",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "status",
+          "about": "Show the active timer and completed focus total",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "focus",
+          "about": "Start, stop or inspect a focus session",
+          "json": true,
+          "subcommands": [
+            {
+              "name": "status",
+              "about": "Show the current focus session",
+              "effect": "read",
+              "json": true
+            },
+            {
+              "name": "start",
+              "about": "Start a timer such as `--for 45m` or `--for 2h`",
+              "effect": "write",
+              "json": true,
+              "args": [
+                {
+                  "name": "name",
+                  "kind": "option",
+                  "long": "name",
+                  "type": "string",
+                  "default": "Focus"
+                },
+                {
+                  "name": "duration_seconds",
+                  "kind": "option",
+                  "long": "for",
+                  "type": "string",
+                  "default": "45m"
+                }
+              ]
+            },
+            {
+              "name": "stop",
+              "about": "Finish the active session and preserve it in history",
+              "effect": "write",
+              "json": true
+            }
+          ]
+        },
+        {
+          "name": "history",
+          "about": "List completed focus sessions, newest first",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "limit",
+              "kind": "option",
+              "long": "limit",
+              "type": "integer",
+              "default": 20
+            }
+          ]
+        },
+        {
+          "name": "summary",
+          "about": "Summarise application activity for recent days",
+          "effect": "read",
+          "json": true,
+          "args": [
+            {
+              "name": "days",
+              "kind": "option",
+              "long": "days",
+              "type": "integer",
+              "default": 1
+            }
+          ]
+        },
+        {
+          "name": "configure",
+          "about": "Enable/disable tracking and choose its privacy level",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "enabled",
+              "kind": "option",
+              "long": "enabled",
+              "type": "boolean"
+            },
+            {
+              "name": "privacy",
+              "kind": "option",
+              "long": "privacy",
+              "type": "string",
+              "values": ["applications", "detailed"]
+            },
+            {
+              "name": "idle_seconds",
+              "kind": "option",
+              "long": "idle-seconds",
+              "type": "integer"
+            }
+          ]
+        },
+        {
+          "name": "record",
+          "about": "Record one compositor pulse. Used by Veronica's GNOME extension",
+          "hidden": true,
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "application",
+              "kind": "option",
+              "long": "application",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "title",
+              "kind": "option",
+              "long": "title",
+              "type": "string"
+            },
+            {
+              "name": "idle",
+              "kind": "flag",
+              "long": "idle",
+              "type": "boolean"
+            },
+            {
+              "name": "seconds",
+              "kind": "option",
+              "long": "seconds",
+              "type": "integer",
+              "default": 10
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {},
+  "requires": {
+    "capabilities": ["runningApplications"]
+  }
+}
