@@ -5,9 +5,9 @@ use serde_json::json;
 use veronica_core::focus_dim::{
     clamp_animation_secs, clamp_intensity, DisplayMode, FocusDimSettings, MAX_INTENSITY,
 };
-use veronica_core::{AppDirectories, Settings};
-
-use crate::format::Output;
+use veronica_sdk::paths::AppDirectories;
+use veronica_sdk::settings::Settings;
+use veronica_sdk::Output;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum FocusDimCommand {
@@ -31,12 +31,8 @@ pub(crate) enum FocusDimCommand {
     },
 }
 
-pub(crate) async fn run(
-    directories: &AppDirectories,
-    command: &FocusDimCommand,
-    output: Output,
-) -> Result<()> {
-    let path = directories.settings_file();
+pub(crate) async fn run(command: &FocusDimCommand, output: Output<'_>) -> Result<()> {
+    let path = AppDirectories::current()?.settings_file();
     let mut settings = Settings::load(&path)?;
 
     let write = match command {
@@ -66,17 +62,8 @@ pub(crate) async fn run(
     }
 
     let resolved = FocusDimSettings::read(&settings);
-    let session = veronica_system::detect_session().await;
-    let can_apply = session.is_gnome;
-
-    let document = json!({
-        "enabled": resolved.enabled,
-        "intensityPercent": resolved.intensity_percent(),
-        "fadeSeconds": resolved.animation_secs,
-        "mode": resolved.mode.key(),
-        "canApply": can_apply,
-        "drawnBy": "the Veronica GNOME Shell extension",
-    });
+    let can_apply = veronica_system::detect_session().await.is_gnome;
+    let document = report(&resolved, can_apply);
 
     output.emit(&document, || {
         let mut out = String::new();
@@ -101,5 +88,16 @@ pub(crate) async fn run(
             );
         }
         out.trim_end().to_string()
+    })
+}
+
+pub(crate) fn report(resolved: &FocusDimSettings, can_apply: bool) -> serde_json::Value {
+    json!({
+        "enabled": resolved.enabled,
+        "intensityPercent": resolved.intensity_percent(),
+        "fadeSeconds": resolved.animation_secs,
+        "mode": resolved.mode.key(),
+        "canApply": can_apply,
+        "drawnBy": "the Veronica GNOME Shell extension",
     })
 }

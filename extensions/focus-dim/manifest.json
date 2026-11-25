@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "id": "focus-dim",
+  "version": "1.0",
+  "title": "Focus Dim",
+  "summary": "Dims everything behind the window you are working in.",
+  "category": "desk",
+  "guide": "guide.md",
+  "engines": {
+    "host": ">=0.1.0",
+    "hostApi": 1,
+    "backendProtocol": 1
+  },
+  "targets": ["linux-x86_64"],
+  "activation": {
+    "mode": "onDemand",
+    "idleStopSeconds": 120
+  },
+  "backend": {
+    "entry": "bin/backend"
+  },
+  "ui": {
+    "root": "ui",
+    "pages": [
+      {
+        "id": "main",
+        "title": "Focus Dim",
+        "entry": "index.html",
+        "icon": "contrast",
+        "nav": {
+          "group": "Desk",
+          "order": 10
+        },
+        "hint": "Dim behind the focused window",
+        "keywords": ["dim", "focus", "overlay", "darken", "window"]
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "focus-dim",
+      "about": "Focus Dim: darken everything behind the window you are working in",
+      "json": true,
+      "subcommands": [
+        {
+          "name": "status",
+          "about": "Report the current settings and whether the shell can apply them",
+          "effect": "read",
+          "json": true
+        },
+        {
+          "name": "on",
+          "about": "Turn dimming on",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "off",
+          "about": "Turn dimming off",
+          "effect": "write",
+          "json": true
+        },
+        {
+          "name": "intensity",
+          "about": "How dark to go, 0 to 90 percent",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "percent",
+              "kind": "positional",
+              "type": "number",
+              "required": true,
+              "help": "A percentage. Values outside the range are clamped, not rejected"
+            }
+          ]
+        },
+        {
+          "name": "fade",
+          "about": "How long the fade takes, in seconds",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "seconds",
+              "kind": "positional",
+              "type": "number",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "mode",
+          "about": "What to do with displays other than the focused one",
+          "effect": "write",
+          "json": true,
+          "args": [
+            {
+              "name": "mode",
+              "kind": "positional",
+              "type": "string",
+              "required": true,
+              "help": "perScreenFront or dimUnfocused"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "dbus": {
+      "session": ["org.freedesktop.DBus"]
+    },
+    "shell": ["focusDim"]
+  },
+  "requires": {
+    "capabilities": ["windowDimming"]
+  }
+}

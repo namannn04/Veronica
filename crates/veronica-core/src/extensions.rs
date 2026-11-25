@@ -81,7 +81,6 @@ use Capability::{
     CompanionService, DatabaseBroker, ExternalMediaControl, GlobalShortcuts, InputSuppression,
     KeystrokeObservation, MachineManagement, MicrophoneControl, Notifications, PackageManagement,
     PreventSleep, RunningApplications, ScreenShareDetection, ShellIntegration, SystemMetrics,
-    WindowDimming,
 };
 use ExtensionGroup as G;
 
@@ -207,18 +206,6 @@ pub const ENTRIES: &[ExtensionEntry] = &[
         required_tools: &[],
     },
     ExtensionEntry {
-        id: "focusDim",
-        title: "Focus Dim",
-        subtitle: "Dims everything behind the window you are working in.",
-        icon: "contrast",
-        group: G::Utilities,
-        featured: false,
-        defaults_key: "focusDimEnabled",
-        required_capabilities: &[WindowDimming],
-        optional_capabilities: &[],
-        required_tools: &[],
-    },
-    ExtensionEntry {
         id: "presenter",
         title: "Presenter",
         subtitle: "Blurs sensitive numbers while sharing your screen.",
@@ -245,6 +232,12 @@ pub struct LegacyToggle {
 }
 
 pub const LEGACY_TOGGLES: &[LegacyToggle] = &[
+    LegacyToggle {
+        id: "focusDim",
+        extension: "focus-dim",
+        defaults_key: "focusDimEnabled",
+        featured: false,
+    },
     LegacyToggle {
         id: "clipboard",
         extension: "clipboard",
@@ -355,7 +348,6 @@ mod tests {
             "lidAwake",
             "notchShelf",
             "keystrokeHighlight",
-            "focusDim",
             "presenter",
         ];
         let ids: Vec<&str> = ENTRIES.iter().map(|entry| entry.id).collect();
@@ -380,6 +372,7 @@ mod tests {
         }
         assert_eq!(successor("seoAudit"), Some("audit"));
         assert_eq!(successor("audit"), Some("audit"));
+        assert_eq!(successor("focusDim"), Some("focus-dim"));
         assert_eq!(successor("attention"), Some("attention"));
         assert_eq!(successor("herdr"), Some("herdr"));
         assert_eq!(successor("quinjet"), Some("quinjet"));
@@ -406,7 +399,18 @@ mod tests {
 
     #[test]
     fn focus_dim_follows_the_shell_rather_than_the_display_protocol() {
-        let entry = entry("focusDim").unwrap();
+        let entry = ExtensionEntry {
+            id: "dimmer",
+            title: "Dimmer",
+            subtitle: "Needs window dimming.",
+            icon: "contrast",
+            group: G::Utilities,
+            featured: false,
+            defaults_key: "dimmerEnabled",
+            required_capabilities: &[Capability::WindowDimming],
+            optional_capabilities: &[],
+            required_tools: &[],
+        };
         for kind in [SessionKind::Wayland, SessionKind::X11] {
             assert_eq!(
                 entry.availability(&gnome_caps(kind, true)),

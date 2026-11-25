@@ -52,7 +52,7 @@ const TABS: { id: Tab; label: string; subtitle: string }[] = [
   {
     id: "desktop",
     label: "Desktop",
-    subtitle: "Focus dim, keystroke highlight, emoji and color picking",
+    subtitle: "Keystroke highlight, emoji and color picking",
   },
   {
     id: "permissions",
@@ -369,52 +369,6 @@ export function SettingsPage({ diagnostics }: { diagnostics: Diagnostics | null 
       {tab === "desktop" && (
         <Stack>
           <FormGroup
-            title="Focus dim"
-            description="Darkens everything behind the window you are working in. Drawn by the GNOME Shell extension, since only the compositor can place a dim behind another app's window."
-          >
-            <SwitchRow
-              label="Dim behind the focused window"
-              description={
-                gnome
-                  ? "Takes effect immediately."
-                  : "This desktop is not GNOME, so nothing draws the overlay."
-              }
-              checked={Boolean(values.focusDimEnabled)}
-              onChange={(value) => void set("focusDimEnabled", value)}
-            />
-            <ChoiceRow
-              label="Intensity"
-              description="How dark to go. Capped below opaque, so the desktop never disappears."
-              value={Math.round(Number(values.focusDimIntensity ?? 0.45) * 100)}
-              options={[15, 30, 45, 60, 75, 90].map((percent) => ({
-                value: percent,
-                label: `${percent}%`,
-              }))}
-              format={(percent) => `${percent}%`}
-              onChange={(percent) => void set("focusDimIntensity", percent / 100)}
-            />
-            <ChoiceRow
-              label="Fade"
-              description="How long the change takes as focus moves."
-              value={Number(values.focusDimAnimationDuration ?? 0.25)}
-              options={[
-                { value: 0.05, label: "Instant" },
-                { value: 0.15, label: "Quick" },
-                { value: 0.25, label: "Normal" },
-                { value: 0.5, label: "Slow" },
-              ]}
-              format={(seconds) => `${seconds}s`}
-              onChange={(seconds) => void set("focusDimAnimationDuration", seconds)}
-            />
-            <ModeRow
-              label="Other displays"
-              choices={DISPLAY_MODES}
-              value={String(values.focusDimOtherDisplaysMode ?? "perScreenFront")}
-              onChange={(mode) => void set("focusDimOtherDisplaysMode", mode)}
-            />
-          </FormGroup>
-
-          <FormGroup
             title="Keystroke highlight"
             description="Shows a keycap for every key press, for demos and recordings. The GNOME Shell extension reads and draws them, never consumes a press, and records nothing while the lock screen or a password prompt is up."
           >
@@ -570,19 +524,6 @@ function ShellExtensionRow({
 }
 
 type ModeChoice = { id: string; label: string; detail: string };
-
-const DISPLAY_MODES: ModeChoice[] = [
-  {
-    id: "perScreenFront",
-    label: "Per display",
-    detail: "Each display keeps its own front window bright.",
-  },
-  {
-    id: "dimUnfocused",
-    label: "Focused only",
-    detail: "Every display but the focused window dims.",
-  },
-];
 
 const KEYSTROKE_POSITIONS: ModeChoice[] = [
   { id: "top", label: "Top", detail: "The row sits below the top bar." },

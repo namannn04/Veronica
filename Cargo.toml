@@ -22,6 +22,7 @@ members = [
     "extensions/color/backend",
     "extensions/emoji/backend",
     "extensions/fixture/backend",
+    "extensions/focus-dim/backend",
     "extensions/herdr/backend",
     "extensions/quinjet/backend",
     "extensions/workspace/backend",
