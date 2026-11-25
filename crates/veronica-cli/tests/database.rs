@@ -42,6 +42,7 @@ impl Home {
         let mut child = command
             .env("HOME", self.root.path())
             .env("NO_COLOR", "1")
+            .env("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/session")
             .current_dir(self.root.path())
             .args(args)
             .stdin(Stdio::piped())
@@ -89,7 +90,7 @@ fn a_sqlite_connection_is_saved_read_and_queried_through_the_extension() {
             &["database", "connections", "add", "local", "sqlite", "t.db"],
             None
         )),
-        "saved local (t.db)\ncredentials go to the desktop keyring\n"
+        "saved local (t.db)\ncredentials go to a 0600 file under the state directory\n"
     );
     let page: Value = serde_json::from_slice(
         &home
