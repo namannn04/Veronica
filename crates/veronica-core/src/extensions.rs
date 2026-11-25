@@ -363,18 +363,13 @@ mod tests {
                 toggle.id
             );
         }
-        assert_eq!(successor("seoAudit"), Some("audit"));
-        assert_eq!(successor("audit"), Some("audit"));
-        assert_eq!(successor("focusDim"), Some("focus-dim"));
-        assert_eq!(successor("attention"), Some("attention"));
-        assert_eq!(successor("herdr"), Some("herdr"));
-        assert_eq!(successor("quinjet"), Some("quinjet"));
-        assert_eq!(successor("calendar"), Some("calendar"));
-        assert_eq!(successor("music"), Some("media"));
-        assert_eq!(successor("colorPicker"), Some("color"));
-        assert_eq!(successor("emoji"), Some("emoji"));
-        assert_eq!(successor("usage"), Some("usage"));
-        assert_eq!(successor("database"), None);
+        for toggle in LEGACY_TOGGLES {
+            assert_eq!(successor(toggle.id), Some(toggle.extension));
+            assert_eq!(successor(toggle.extension), Some(toggle.extension));
+        }
+        for entry in ENTRIES {
+            assert_eq!(successor(entry.id), None, "{}", entry.id);
+        }
     }
 
     #[test]
